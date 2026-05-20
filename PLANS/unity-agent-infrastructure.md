@@ -237,13 +237,79 @@ Outcome: live `claude` chat in a browser from anywhere, against a worktree of th
 
 Test artifacts (`C:\Unity\a1-vanilla`, `C:\Unity\worktrees\a1-vanilla\{slot1,slot2}`, and the partial Scaffold worktrees at `C:\Unity\worktrees\Scaffold\{slot1,slot2}`) are throwaway and can be removed without consequence.
 
-### Phase A2 — Local tmux + claude TUI (1 hour)
-- [x] **Deferred to VM (A6/A7).** Local user host is Windows; tmux isn't native, and the question A2 actually asks — *does a tmux + `claude` TUI session survive detach/reattach?* — is a property of the Linux stack we'll deploy. Validating on Windows would either require WSL2 (a second `claude` auth path) or use Windows-native fallbacks that don't actually exercise persistence.
-- [x] Windows-native sanity: `claude --version` = 2.1.126; `claude -p` invokes cleanly from a working directory (exit 0). Confirms the Windows binary is alive; does not validate the persistence stack.
+### Phase A2 — Windows-local persistent `claude` in a browser, accessible from phone (code-server + Tailscale)
 
-### Phase A3 — Local web terminal (½ day)
-- [x] **Deferred to VM (A7).** Same reasoning as A2: ttyd is Linux-native, the meaningful test is the ttyd → tmux → `claude` chain end-to-end. The Windows-equivalent (code-server's Windows-shell terminal in a browser) would only demonstrate the browser-terminal link, not the persistence + remote-access pattern the VM actually delivers.
-- [ ] **Carry forward to A7**: if ttyd's mobile UX is fine on the VM, lock it in. If painful, queue a security review of `siteboon/claudecodeui` as the Phase B6 upgrade — do **not** install until reviewed.
+**Rewrite of original A2 + A3.** Owner constraint: no Linux / WSL on the local machine. Track A is validated end-to-end on the Windows host first; the VM (A4+) becomes "move this stack to a box that's always on," not "introduce new architecture." Track B's `tmux send-keys` pattern (§2.2) is Linux-specific and stays a VM concern — Track A doesn't need it.
+
+**Architecture (Windows-native, all binaries pre-approved per §5):**
+```
+Phone browser ── Tailscale (encrypted, no public ports) ──► Laptop
+                                                              │
+                                                              ▼
+                                          code-server (Windows Service)
+                                                              │  persistent integrated terminal
+                                                              ▼
+                                          claude TUI (Windows .exe)
+                                                              │
+                                                              ▼
+                                          Unity project worktree → Unity batch-mode
+```
+
+#### W1 — Tailscale on the laptop (10 min, owner action)
+- [ ] Sign up for Tailscale Personal (free) at `https://login.tailscale.com/start`.
+- [ ] Install the Windows client from `https://tailscale.com/download/windows`. Run, sign in.
+- [ ] Confirm "Connected" status and note the laptop's tailnet name (e.g., `<hostname>.<tailnet>.ts.net`).
+
+#### W2 — Tailscale on the phone (5 min, owner action)
+- [ ] Install Tailscale from App Store (iOS) or Play Store (Android). Sign in with the same account. Confirm both devices appear in `https://login.tailscale.com/admin/machines`.
+
+#### W3 — Phone-to-laptop reachability check (2 min)
+- [ ] From phone: open Safari/Chrome, navigate to `http://<laptop-tailnet-name>:80` (or any port serving anything). 200 / connection-refused are both proof of reachability; DNS timeout means tailnet routing isn't right.
+- [ ] **Gate**: if the phone can't reach the laptop over Tailscale, stop and fix this before installing code-server.
+
+#### W4 — Install code-server on Windows (15 min)
+- [ ] Install via the official Windows release at `https://github.com/coder/code-server/releases` (zip) or via npm (`npm install -g code-server`). Default install path documented in `infra/`.
+- [ ] First run from PowerShell: `code-server --bind-addr 127.0.0.1:8080 --auth password`. Note the auto-generated password in `%APPDATA%\code-server\config.yaml`.
+- [ ] Browser → `http://127.0.0.1:8080` → enter password → confirm VS Code loads and the integrated terminal opens.
+
+#### W5 — Configure code-server for our use (10 min)
+- [ ] Edit `%APPDATA%\code-server\config.yaml`:
+  - `bind-addr: 0.0.0.0:8080` (Tailscale will gate access; the WAN side is firewalled).
+  - Strong password (not the auto-generated one).
+  - `cert: false` for first pass (we add TLS later if we keep the laptop setup long-term).
+- [ ] Set the default workspace to a Unity project directory (probably `C:\Unity\` so all projects are reachable) via VS Code settings.
+- [ ] Confirm Windows Defender Firewall allows port 8080 on Private (tailscale0) interface only — not Public.
+
+#### W6 — Run code-server as a Windows Service via `nssm` (15 min)
+- [ ] Install `nssm` (Non-Sucking Service Manager) — `winget install NSSM.NSSM` or download from `https://nssm.cc/`.
+- [ ] Wrap code-server: `nssm install code-server "<path-to-code-server.cmd>"`, set startup to Automatic, working dir to `C:\Unity\`.
+- [ ] Start the service. Verify it survives a logoff/login cycle (close all RDP/console sessions, reconnect, code-server still serving).
+- [ ] Commit `infra/install-code-server-service.ps1` codifying the install + nssm wrapping.
+
+#### W7 — `claude` in the code-server terminal against a Unity worktree (5 min)
+- [ ] From code-server's browser UI, open a terminal. `cd` into an existing Unity project (e.g., `C:\Unity\Scaffold` — even though it doesn't cold-build, it has a warm Library, so `claude` can read/edit it fine).
+- [ ] Run `claude` interactively in that terminal. Confirm the TUI renders inside the browser. Type a small read-only prompt ("summarize Assets/Packages/com.scaffold.schemas in 3 bullets") and confirm it responds.
+
+#### W8 — Persistence validation (10 min)
+- [ ] In the same `claude` session, ask a question that requires it to remember context for the next message.
+- [ ] Close the browser tab entirely. Wait 2 minutes.
+- [ ] Reopen `http://127.0.0.1:8080` from the laptop. The terminal session should still be there (code-server keeps terminal sessions alive within the service process). Verify the conversation history is intact.
+- [ ] Repeat with a longer gap (close browser, lock laptop, come back 10 min later). Confirm session still alive.
+- [ ] **Gate**: if code-server doesn't keep the terminal alive, we need to layer something else (e.g., a hidden background process wrapping `claude`'s stdio) — surface and stop.
+
+#### W9 — Phone demo (the moment of truth) (10 min)
+- [ ] From phone over Tailscale: navigate to `http://<laptop-tailnet-name>:8080`. Enter password. Confirm code-server UI loads on mobile.
+- [ ] Attach to the existing terminal session from W7/W8. The TUI should render — confirm the same conversation is visible.
+- [ ] Type a prompt from the phone. Confirm `claude` executes it and output appears.
+- [ ] Close phone browser. Walk away. Come back in 10 min. Reload. Session still alive. **This is Track A working on Windows.**
+
+#### W10 — Unity loop closure (10 min)
+- [ ] From the phone-driven `claude` session, ask it to run a Unity batch-mode command (e.g., the wrapper at `infra/run-unity-import.ps1`) against a worktree. Watch it execute on the laptop, output streaming back to the phone. Confirms the full Track A + A1 + Unity stack works end-to-end on Windows-only.
+- [ ] **Done with Windows-local Track A.** Decision point on whether to proceed to A4 (VM) for desktop-off / always-on operation, or stay on the laptop.
+
+### Phase A3 — (merged into A2)
+
+A3's original split (local web terminal as a separate phase from local tmux) made sense for the ttyd + tmux Linux stack. With code-server on Windows, both concerns collapse into one phase (W4–W10 above). Track A is fully covered by the new A2.
 
 ### Phase A4 — VM provisioning (½ day)
 - [ ] Hetzner: create CCX33, Ubuntu 24.04, SSH key, optional 100 GB volume for Library/.
