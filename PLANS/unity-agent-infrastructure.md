@@ -222,11 +222,20 @@ Outcome: live `claude` chat in a browser from anywhere, against a worktree of th
 - [x] Verification codified at `infra/check-a0.ps1` — re-runnable on laptop and (later) the VM.
 
 ### Phase A1 — Local worktrees + Unity smoke test (½ day)
-- [ ] `git worktree add ../proj-slot1 <some-branch>` next to existing checkout. Add a second.
-- [ ] Run `Unity -batchmode -nographics -quit -projectPath ../proj-slot1 -logFile -` and confirm clean import + exit 0.
-- [ ] Run two batch-mode jobs simultaneously against the two worktrees — confirm no UnityLockfile conflict, both succeed.
-- [ ] Note Library/ disk usage per worktree for VM sizing.
-- [ ] **Gate**: if any of the above fails, the whole worktree premise is wrong — stop and rethink before provisioning.
+- [x] Worktree mechanic validated: `git worktree add --detach C:/Unity/worktrees/<project>/slotN HEAD` produces a clean cold worktree (no Library/) that Unity treats as an independent project (its own license slot, lockfile, Library/).
+- [x] Single batch-mode import: clean exit on the vanilla 6000.3.11f1 throwaway, 12.4s for an empty project (Library 11 MB → ~10 MB warm).
+- [x] **Concurrent batch-mode imports against two worktrees**: both exit 0 in parallel (slot1 12.4s, slot2 10.7s, launched 3s apart). No UnityLockfile contention. Both built independent Library/.
+- [x] License-IPC behavior under concurrency: first batch-mode instance spawns `Unity.Licensing.Client` and the version-specific channel `LicenseClient-mtgco-<editorVer>`; second instance attaches to the same LicensingClient instantly (connect 0.00s, handshake 0.09s). **Unity Personal serves multiple simultaneous batch-mode instances on one machine through a shared LicensingClient.** Relevant for the multi-project VM scenario.
+- [x] Library/ sizing (for VM): vanilla project = ~10 MB; real projects much larger — Scaffold = 12 GB warm. **Plan for 5–20 GB Library/ per worktree per real project.**
+- [x] **Gate cleared**: worktree premise holds. Proceed to A2.
+
+**Gotchas surfaced (load-bearing for the VM):**
+
+1. **Empty Unity directories don't survive git.** A vanilla Unity project has an empty `Assets/` directory by default; git doesn't track empty dirs, so a fresh worktree comes up without `Assets/` and Unity then fails to recognize the path as a project (printing the misleading `Couldn't set project path to: <cwd>/<input>` because it falls back to relative-path resolution). Fix: add a `.gitkeep` to any directory Unity expects to exist but might be empty, or have the worktree-setup script create empty `Assets/` if missing. **Affects A6 and Track B agent worktree provisioning.**
+2. **Project repo cold-build hygiene matters.** Scaffold can't cold-build because `com.scaffold.schemas` is committed at `Assets/Packages/com.scaffold.schemas/` AND referenced as a git package in `Packages/manifest.json` (same files, same GUIDs → 50+ conflicts). The parent works only because its 12 GB Library cached a one-time GUID reassignment. **Every Unity project deployed to the VM must cold-build cleanly.** Spawned as a separate task for Scaffold; needs the same check applied to every project before VM onboarding.
+3. **Stale Unity.Licensing.Client state can break new batch-mode launches.** Closing the interactive Editor while leaving the licensing daemon running put the base `LicenseClient-mtgco` channel in a half-initialized state, where new batch-mode instances connect "successfully" but then bail. First batch-mode instance after a clean state spawns a fresh LicensingClient and clears this. **Minor; document in VM bring-up: kill any orphan `Unity.Licensing.Client` before the first batch-mode run after an Editor close.**
+
+Test artifacts (`C:\Unity\a1-vanilla`, `C:\Unity\worktrees\a1-vanilla\{slot1,slot2}`, and the partial Scaffold worktrees at `C:\Unity\worktrees\Scaffold\{slot1,slot2}`) are throwaway and can be removed without consequence.
 
 ### Phase A2 — Local tmux + claude TUI (1 hour)
 - [ ] `tmux new -s chat -c ../proj-slot1` → `claude` inside.
