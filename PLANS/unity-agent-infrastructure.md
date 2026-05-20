@@ -21,7 +21,7 @@ Read in this order before doing anything: **§2 (Key principles)** — non-negot
   - **A1** — if Unity batch-mode against two concurrent worktrees has any conflict, stop. The worktree premise is wrong and the plan needs rework.
   - **Phase boundary** — complete one phase, tick the checkboxes in this file, commit, summarize findings, wait for user go-ahead before starting the next. Exception: if the user says "run through A unattended," chain A1→A7 but still stop at any failed gate.
 - **Trust filter is binding (§5)**: do not `npm install`/`pip install`/`git clone` anything outside the "Required" and "Optional" tables. `siteboon/claudecodeui` is "Under evaluation" — gated on a separate security review, do not install. "Reference-only" tools (Herdr, Flue, HolyClaude, sugyan/claude-code-webui, claude-bridge) are for reading source on GitHub, never cloning or installing.
-- **Subscription audit before any `claude` invocation**: run `claude /status` (must show Max plan) and `env | grep -i anthropic` (must show OAuth token only, no `ANTHROPIC_API_KEY`). If an API key ever appears, stop and surface — we're silently API-billing when we shouldn't be.
+- **Subscription audit before any `claude` invocation**: run `claude auth status` — must return JSON with `subscriptionType: "max"` and `apiProvider: "firstParty"`. Also check `ANTHROPIC_API_KEY` is unset *or* empty-string (the Claude Code harness itself injects an empty value into its own subprocess env, which is harmless; a non-empty value silently overrides OAuth and forces API billing — stop and surface if seen). `infra/check-a0.ps1` codifies both checks. (Note: `claude /status` is a TUI-only slash command and can't be used as a non-interactive gate; `claude auth status` is the scriptable equivalent.)
 - **Artifact discipline**: any reusable script, systemd unit, workflow YAML, or config you produce goes into `infra/` on this branch (create the directory if needed). Inline one-off commands run on the user's machine don't get committed. Plan-doc checkbox updates + script commits happen together at each phase boundary.
 - **VM access**: phases A4 onward need SSH to the Hetzner box. Until provisioned, do not write scripts assuming SSH access — write them as files the user/you will later `scp` or `git pull` onto the VM.
 
@@ -110,14 +110,17 @@ Every component is validated on the user's existing machine before moving to Het
               └────────────────────┬──────────────────────┘
                                    ▼
               ┌───────────────────────────────────────────┐
-              │  ~/work/main  ~/work/slot1  ~/work/slot2  │
-              │  (git worktree; own Library/ each)        │
+              │  ~/work/<project>/main   ~/work/<project>/slot1  │
+              │  (one tree per Unity project × N worktrees;       │
+              │   each worktree gets its own Library/)            │
               └────────────────────┬──────────────────────┘
                                    ▼
               ┌───────────────────────────────────────────┐
               │  Unity -batchmode + Unity Accelerator     │
               └───────────────────────────────────────────┘
 ```
+
+**Project scope**: the VM hosts **multiple distinct Unity projects** (e.g. `Card Framework`, `Scaffold`, …), each living under `~/work/<project>/` with its own `main` worktree plus N agent slot worktrees. Unity Hub is installed once; each project's pinned Editor version (from `ProjectSettings/ProjectVersion.txt`) is installed alongside the others. License activation happens once for the machine, not per project.
 
 **Hardware**: one Hetzner CCX33 (8 vCPU / 32 GB / 240 GB NVMe), Ubuntu 24.04, behind Tailscale.
 
@@ -213,9 +216,10 @@ After **Track B** (agent layer added):
 Outcome: live `claude` chat in a browser from anywhere, against a worktree of this repo. Desktop can be off. No agent layer yet.
 
 ### Phase A0 — Local prerequisites (1 hour)
-- [ ] `claude /status` → confirm Max subscription is active.
-- [ ] `env | grep -i anthropic` → confirm **no** `ANTHROPIC_API_KEY` set. If present, unset and verify `/status` still shows Max.
-- [ ] Confirm Unity Personal EULA eligibility for our entity. If not eligible, full plan needs a re-cost with Pro (~$2,200/yr/seat). **Blocker for everything below.**
+- [x] `claude auth status` → JSON shows `subscriptionType: "max"` and `apiProvider: "firstParty"`. (TUI's `/status` isn't scriptable; this is the gate.)
+- [x] `ANTHROPIC_API_KEY` is **unset or empty-string** (value-based check — the Claude Code harness itself sets an empty value into subprocess env; a non-empty value silently overrides OAuth → API billing). `ANTHROPIC_BASE_URL` may be present at the default `https://api.anthropic.com` — informational only.
+- [x] Confirm Unity Personal EULA eligibility for our entity. If not eligible, full plan needs a re-cost with Pro (~$2,200/yr/seat). **Blocker for everything below.**
+- [x] Verification codified at `infra/check-a0.ps1` — re-runnable on laptop and (later) the VM.
 
 ### Phase A1 — Local worktrees + Unity smoke test (½ day)
 - [ ] `git worktree add ../proj-slot1 <some-branch>` next to existing checkout. Add a second.
@@ -255,7 +259,7 @@ Outcome: live `claude` chat in a browser from anywhere, against a worktree of th
 - [ ] On laptop: `claude setup-token` → 1-year OAuth token.
 - [ ] On VM: `CLAUDE_CODE_OAUTH_TOKEN=...` in `/etc/profile.d/claude.sh`.
 - [ ] Audit: `env | grep -i anthropic` on VM shows OAuth token only, no API key.
-- [ ] `claude /status` in a worktree → confirms Max.
+- [ ] `claude auth status` in a worktree → JSON confirms `subscriptionType: "max"`. Re-run `infra/check-a0.ps1` to re-validate the full A0 gate on the VM.
 
 ### Phase A7 — VM chat deployment (½ day)
 - [ ] systemd user units for: `tmux-main.service` (persistent tmux session with `claude` in `~/work/main`), `ttyd-chat.service` (binds to `tailscale0`, attaches to `tmux-main`).
