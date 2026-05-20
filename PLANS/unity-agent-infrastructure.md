@@ -238,16 +238,12 @@ Outcome: live `claude` chat in a browser from anywhere, against a worktree of th
 Test artifacts (`C:\Unity\a1-vanilla`, `C:\Unity\worktrees\a1-vanilla\{slot1,slot2}`, and the partial Scaffold worktrees at `C:\Unity\worktrees\Scaffold\{slot1,slot2}`) are throwaway and can be removed without consequence.
 
 ### Phase A2 — Local tmux + claude TUI (1 hour)
-- [ ] `tmux new -s chat -c ../proj-slot1` → `claude` inside.
-- [ ] Detach (`C-b d`), reattach (`tmux attach -t chat`). Confirm session survives.
-- [ ] Send a trivial task, confirm it executes against the worktree.
+- [x] **Deferred to VM (A6/A7).** Local user host is Windows; tmux isn't native, and the question A2 actually asks — *does a tmux + `claude` TUI session survive detach/reattach?* — is a property of the Linux stack we'll deploy. Validating on Windows would either require WSL2 (a second `claude` auth path) or use Windows-native fallbacks that don't actually exercise persistence.
+- [x] Windows-native sanity: `claude --version` = 2.1.126; `claude -p` invokes cleanly from a working directory (exit 0). Confirms the Windows binary is alive; does not validate the persistence stack.
 
 ### Phase A3 — Local web terminal (½ day)
-- [ ] Install `ttyd` (or `code-server` if we want the editor too).
-- [ ] Launcher: `tmux new-session -A -s chat -c ../proj-slot1 claude`.
-- [ ] `ttyd -i 127.0.0.1 -p 7681 ./start-chat.sh` — open in laptop browser, confirm TUI works.
-- [ ] (Optional) `cloudflared tunnel --url http://localhost:7681` to test phone access end-to-end before the VM exists.
-- [ ] **Decision point**: if ttyd's mobile UX is fine, lock it in. If it's painful, queue a security review of `siteboon/claudecodeui` as the Phase A7 upgrade — do **not** install it until reviewed.
+- [x] **Deferred to VM (A7).** Same reasoning as A2: ttyd is Linux-native, the meaningful test is the ttyd → tmux → `claude` chain end-to-end. The Windows-equivalent (code-server's Windows-shell terminal in a browser) would only demonstrate the browser-terminal link, not the persistence + remote-access pattern the VM actually delivers.
+- [ ] **Carry forward to A7**: if ttyd's mobile UX is fine on the VM, lock it in. If painful, queue a security review of `siteboon/claudecodeui` as the Phase B6 upgrade — do **not** install until reviewed.
 
 ### Phase A4 — VM provisioning (½ day)
 - [ ] Hetzner: create CCX33, Ubuntu 24.04, SSH key, optional 100 GB volume for Library/.
