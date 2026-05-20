@@ -12,6 +12,29 @@ tags: [#infra, #claude-code, #unity, #agents, #remote, #tmux]
 
 ---
 
+## Current state (last update 2026-05-20)
+
+**Branch**: `phase-a/local-validation` (commits ahead of `main`: A0 → A1 → A2 rewrite). No PR open yet.
+
+**Resume here**: Phase A2 step **W1** — owner action required. Sign up for Tailscale Personal and install the Windows client. Detailed in §7 → Phase A2.
+
+| Phase | Status |
+|---|---|
+| A0 — Local prerequisites | ✅ subscription confirmed (Max, firstParty), `infra/check-a0.ps1` codifies the gate |
+| A1 — Worktree + Unity batch-mode concurrency | ✅ validated on vanilla Unity 6000.3.11f1 (parallel imports exit 0; shared `LicensingClient` confirmed); Scaffold cold-build issue spawned as a separate task |
+| A2 — Windows-local Track A (code-server + Tailscale + `claude` + Unity, phone-accessible) | 🟡 **W1–W10 not started** |
+| A3 | Merged into A2 (one Windows-native stack covers persistence + browser access) |
+| A4–A7 — Hetzner VM | ⏸ Gated on A2 demo passing end-to-end and owner approval of cloud spend |
+| Track B (agent dispatch) | ⏸ Comes after Track A is solid |
+
+**Load-bearing constraints to re-load on resume**:
+- **No Linux / WSL on the local Windows machine.** Track A is validated on Windows-native binaries (code-server, Tailscale, `claude.exe`). The VM later gets a Linux equivalent of the same architecture.
+- **Multi-Unity-project host.** `C:\Unity\` holds Card Framework, Scaffold, Gear-Engine, and growing. VM layout mirrors this as `~/work/<project>/{main,slotN}/`.
+- **Side task open**: Scaffold's `com.scaffold.schemas` is committed at `Assets/Packages/` AND declared as a git URL in `manifest.json` → 50+ GUID conflicts on cold build. A spawned task addresses this independently; it doesn't block this branch but must be resolved before Scaffold can be deployed to the VM.
+- **Empty Unity dirs don't survive git** (Assets/ in particular) — any worktree-provisioning script must handle this.
+
+---
+
 ## How to execute this plan (executor notes)
 
 Read in this order before doing anything: **§2 (Key principles)** — non-negotiable; **§5 (Services & tools)** — the binding trust filter; **§7 Track A** — start here. Track B is only after A0–A7 are all checked. §11 has the research history if you need to understand *why* a decision is the way it is.
