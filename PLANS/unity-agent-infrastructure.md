@@ -16,7 +16,7 @@ tags: [#infra, #claude-code, #unity, #agents, #remote, #tmux]
 
 **Branch**: `phase-a/local-validation` (commits ahead of `main`: A0 → A1 → A2 rewrite). No PR open yet.
 
-**Resume here**: Phase A2 step **W1** — owner action required. Sign up for Tailscale Personal and install the Windows client. Detailed in §7 → Phase A2.
+**Resume here**: Phase A2 step **W7** — validate `claude` in the browser-rendered VS Code terminal. W1–W6 status: Tailscale joined (laptop `matheus` 100.86.249.67 / phone `matheuss-z-fold6` 100.98.201.119, bidirectional via DERP relay, no direct UDP — harmless for HTTP). **W4 pivoted**: code-server install failed on Windows (postinstall.sh vendor-yarn step incompatible with Windows-native; Node 24 missing prebuilt argon2 + Node 20 hit EBUSY on rename during the inner VS Code build). Switched to **Microsoft `code serve-web`** (built into VS Code 1.120, local web server, no MS relay, full VS Code UI). Smoke-tested at `http://127.0.0.1:8080` — UI loads, workspace opens, but terminal access is the open question (owner reports no top menu bar and Ctrl+` not opening a terminal panel). Research in flight; W7 = "can we open a terminal in the web UI and run claude in it?" See §11 for pivot detail.
 
 | Phase | Status |
 |---|---|
@@ -188,7 +188,7 @@ After **Track B** (agent layer added):
 | Unity Personal license | Unity Editor (free, revenue-cap dependent) | Enterprise — verify EULA |
 | `claude` CLI | The agent | Enterprise (Anthropic official) |
 | `tmux` | Persistent sessions, programmatic drive | System tool |
-| `ttyd` or **code-server** | Browser access to TUI | Standard OSS — small, well-known |
+| Browser-accessible terminal/IDE | Surface that renders `claude` TUI in a browser | See note below: Windows uses `code serve-web` (Microsoft), VM uses `ttyd` or `code-server` (Linux) |
 | GitHub Actions self-hosted runner | Dispatch via `workflow_dispatch` / webhooks | Enterprise |
 | GitHub PAT (fine-grained) | Runner auth + dispatcher PR pushes | Enterprise |
 
@@ -199,6 +199,8 @@ After **Track B** (agent layer added):
 | Caddy | TLS + reverse proxy | Standard OSS |
 | Domain + Cloudflare DNS | Nicer URLs | Standard |
 | Unity Accelerator | Shared asset import cache | Enterprise (Unity official) |
+
+**Browser-terminal stack split (Windows-local vs. VM)** — code-server doesn't install cleanly on Windows-native (postinstall vendor-yarn step assumes Linux/macOS; Node 24 / Node 20 both fail). For Phase A2 (Windows-local Track A) we use **Microsoft's `code serve-web`** instead — it ships with VS Code 1.120+, runs a local web server (no Microsoft relay, distinct from `code tunnel`), exposes full VS Code UI + integrated terminal, has native Windows binary, and built-in 3-hour terminal reconnect grace (`[reconnection-grace-time] 10800000ms`). Microsoft Corp trust tier (parity with GitHub already in this table). For the VM (Phases A4+) we stay on the original `ttyd + tmux` stack — Linux-native, simpler, the source-of-truth target. The two surfaces don't need to match; Track A on the laptop is throwaway validation, the VM is what we keep.
 
 ### Under evaluation (do NOT install until reviewed)
 | Tool | Purpose | Trust tier | Action |
@@ -279,50 +281,53 @@ Phone browser ── Tailscale (encrypted, no public ports) ──► Laptop
 ```
 
 #### W1 — Tailscale on the laptop (10 min, owner action)
-- [ ] Sign up for Tailscale Personal (free) at `https://login.tailscale.com/start`.
-- [ ] Install the Windows client from `https://tailscale.com/download/windows`. Run, sign in.
-- [ ] Confirm "Connected" status and note the laptop's tailnet name (e.g., `<hostname>.<tailnet>.ts.net`).
+- [x] Sign up for Tailscale Personal (free) at `https://login.tailscale.com/start`. (Account: `tecocohen@gmail.com`.)
+- [x] Install the Windows client from `https://tailscale.com/download/windows`. Run, sign in.
+- [x] Laptop joined tailnet as `matheus` (100.86.249.67).
 
 #### W2 — Tailscale on the phone (5 min, owner action)
-- [ ] Install Tailscale from App Store (iOS) or Play Store (Android). Sign in with the same account. Confirm both devices appear in `https://login.tailscale.com/admin/machines`.
+- [x] Tailscale installed on phone (Android). Joined tailnet as `matheuss-z-fold6` (100.98.201.119). Both devices visible in admin console.
 
 #### W3 — Phone-to-laptop reachability check (2 min)
-- [ ] From phone: open Safari/Chrome, navigate to `http://<laptop-tailnet-name>:80` (or any port serving anything). 200 / connection-refused are both proof of reachability; DNS timeout means tailnet routing isn't right.
-- [ ] **Gate**: if the phone can't reach the laptop over Tailscale, stop and fix this before installing code-server.
+- [x] Validated via `tailscale ping 100.98.201.119` from the laptop: 5/5 pongs returned, ~400–1500ms via DERP(fra) relay. Bidirectional tailnet routing confirmed.
+- [x] **Note**: traffic is going via DERP relay, not direct UDP — likely CGNAT on home/mobile side. Harmless for HTTP (code-server :8080 will still work, just with relay latency added).
+- [x] **Gate passed**: proceed to W4.
 
-#### W4 — Install code-server on Windows (15 min)
-- [ ] Install via the official Windows release at `https://github.com/coder/code-server/releases` (zip) or via npm (`npm install -g code-server`). Default install path documented in `infra/`.
-- [ ] First run from PowerShell: `code-server --bind-addr 127.0.0.1:8080 --auth password`. Note the auto-generated password in `%APPDATA%\code-server\config.yaml`.
-- [ ] Browser → `http://127.0.0.1:8080` → enter password → confirm VS Code loads and the integrated terminal opens.
+#### W4 — Verify `code serve-web` (5 min) [DONE]
+- [x] `code serve-web --help` runs (VS Code 1.120 + `code-tunnel.exe` ship with this command natively, no install needed).
+- [x] Smoke-tested at `127.0.0.1:8080` with `--without-connection-token --accept-server-license-terms --default-folder C:\Unity`. First boot downloads the Server payload (~22s) and starts the extension host on a named pipe. HTTP probe returns 200; UI loads in browser.
+- [x] Log artifacts kept at `infra/logs/code-serve-web-smoke.log` for reference (non-fatal "File not found" warnings for `github-authentication`, `emmet`, `git-base`, `merge-conflict` browser-mode extensions — they don't ship with serve-web; harmless for our use).
 
-#### W5 — Configure code-server for our use (10 min)
-- [ ] Edit `%APPDATA%\code-server\config.yaml`:
-  - `bind-addr: 0.0.0.0:8080` (Tailscale will gate access; the WAN side is firewalled).
-  - Strong password (not the auto-generated one).
-  - `cert: false` for first pass (we add TLS later if we keep the laptop setup long-term).
-- [ ] Set the default workspace to a Unity project directory (probably `C:\Unity\` so all projects are reachable) via VS Code settings.
-- [ ] Confirm Windows Defender Firewall allows port 8080 on Private (tailscale0) interface only — not Public.
+#### W5 — Configure for our use (10 min)
+- [ ] Decide host binding strategy:
+  - **Safer**: `--host 127.0.0.1` + a Tailscale subnet route / Tailscale Serve proxy. Doesn't expose the port on the LAN at all.
+  - **Simpler** (default plan): `--host 0.0.0.0 --port 8080` with `--connection-token <strong-secret>`, then a Windows Defender Firewall rule limiting inbound 8080 to the Tailscale interface only.
+- [ ] Generate a connection token: `[Guid]::NewGuid().ToString()` (or stronger) → save to `%LOCALAPPDATA%\code-serve-web\token` (gitignored).
+- [ ] Confirm Windows Defender Firewall behavior: rule for TCP 8080 inbound, scoped to the Tailscale interface (profile = Private; the Tailscale adapter advertises Private when connected). The Public profile must NOT have a rule for 8080.
+- [ ] Set default workspace to `C:\Unity` (already smoke-tested with this).
 
-#### W6 — Run code-server as a Windows Service via `nssm` (15 min)
-- [ ] Install `nssm` (Non-Sucking Service Manager) — `winget install NSSM.NSSM` or download from `https://nssm.cc/`.
-- [ ] Wrap code-server: `nssm install code-server "<path-to-code-server.cmd>"`, set startup to Automatic, working dir to `C:\Unity\`.
-- [ ] Start the service. Verify it survives a logoff/login cycle (close all RDP/console sessions, reconnect, code-server still serving).
-- [ ] Commit `infra/install-code-server-service.ps1` codifying the install + nssm wrapping.
+#### W6 — Run `code serve-web` as a Windows Service via `nssm` (15 min)
+- [ ] Install `nssm` — `winget install NSSM.NSSM`.
+- [ ] Wrap the binary directly: `nssm install code-serve-web "C:\Users\mtgco\AppData\Local\Programs\Microsoft VS Code\code-tunnel.exe"`. Arguments: `serve-web --host 0.0.0.0 --port 8080 --accept-server-license-terms --connection-token-file %LOCALAPPDATA%\code-serve-web\token --default-folder C:\Unity --server-data-dir %LOCALAPPDATA%\code-serve-web\server-data`. (Use `code-tunnel.exe` directly, NOT `code.cmd` — nssm + cmd wrappers double-fork on Windows and don't track the child process for restart.)
+- [ ] Set startup = Automatic, working dir = `C:\Unity`, exit action = Restart, log redirect = `C:\Unity\remote-unity-agents\infra\logs\code-serve-web.{out,err}.log` (rotated weekly via nssm log rotation).
+- [ ] Start the service. Verify it survives a logoff/login cycle (close all RDP/console sessions, reconnect, port 8080 still serving).
+- [ ] Commit `infra/install-code-serve-web-service.ps1` codifying the token gen + nssm install + firewall rule. Do not commit the token file itself.
 
-#### W7 — `claude` in the code-server terminal against a Unity worktree (5 min)
-- [ ] From code-server's browser UI, open a terminal. `cd` into an existing Unity project (e.g., `C:\Unity\Scaffold` — even though it doesn't cold-build, it has a warm Library, so `claude` can read/edit it fine).
-- [ ] Run `claude` interactively in that terminal. Confirm the TUI renders inside the browser. Type a small read-only prompt ("summarize Assets/Packages/com.scaffold.schemas in 3 bullets") and confirm it responds.
+#### W7 — `claude` in the browser-rendered VS Code terminal (5 min) [PENDING]
+- [ ] **Resolved blocker from initial test**: `code serve-web` web UI hides the menu bar by default and some browsers hijack `Ctrl+Shift+P`. Canonical fixes (per [microsoft/vscode#95418](https://github.com/microsoft/vscode/issues/95418), [#205013](https://github.com/microsoft/vscode/issues/205013), [#219042](https://github.com/microsoft/vscode/issues/219042)): (a) press **F1** instead of Ctrl+Shift+P for the Command Palette, (b) click inside the empty editor area first so it has keyboard focus, (c) optional permanent fix — set `"window.menuBarVisibility": "classic"` in `%APPDATA%\Code\User\settings.json` and reload to restore the full menu bar. The terminal IS supported in serve-web (extension host runs a real shell) — no CLI flag needed.
+- [ ] Open terminal via F1 → "Terminal: Create New Terminal". `cd` into a Unity project (e.g., `C:\Unity\Scaffold`), run `claude` interactively, confirm TUI renders, type a small read-only prompt, confirm response.
+- [ ] **Gate** (revised): if F1 + click-to-focus still doesn't surface the terminal, suspect the connection token is missing (we ran `--without-connection-token` for smoke test — production needs the token). Re-test before escalating.
 
 #### W8 — Persistence validation (10 min)
 - [ ] In the same `claude` session, ask a question that requires it to remember context for the next message.
 - [ ] Close the browser tab entirely. Wait 2 minutes.
-- [ ] Reopen `http://127.0.0.1:8080` from the laptop. The terminal session should still be there (code-server keeps terminal sessions alive within the service process). Verify the conversation history is intact.
+- [ ] Reopen `http://127.0.0.1:8080` from the laptop. The terminal session should still be there — VS Code Server's `[reconnection-grace-time]` defaults to 10800s = 3 hours, which means terminal processes are held alive for that long after disconnect.
 - [ ] Repeat with a longer gap (close browser, lock laptop, come back 10 min later). Confirm session still alive.
-- [ ] **Gate**: if code-server doesn't keep the terminal alive, we need to layer something else (e.g., a hidden background process wrapping `claude`'s stdio) — surface and stop.
+- [ ] **Gate**: if persistence is shorter than the documented grace-time, surface — we may need to pass `--reconnection-grace-time-ms` explicitly to the server (the CLI flag exists per VS Code source).
 
 #### W9 — Phone demo (the moment of truth) (10 min)
-- [ ] From phone over Tailscale: navigate to `http://<laptop-tailnet-name>:8080`. Enter password. Confirm code-server UI loads on mobile.
-- [ ] Attach to the existing terminal session from W7/W8. The TUI should render — confirm the same conversation is visible.
+- [ ] From phone over Tailscale: navigate to `http://100.86.249.67:8080` (or the tailnet hostname). Enter connection token. Confirm `code serve-web` UI loads on mobile.
+- [ ] Attach to the existing terminal session from W7/W8 (VS Code remembers the last-open terminals on reconnect within the grace window). The TUI should render — confirm the same conversation is visible.
 - [ ] Type a prompt from the phone. Confirm `claude` executes it and output appears.
 - [ ] Close phone browser. Walk away. Come back in 10 min. Reload. Session still alive. **This is Track A working on Windows.**
 
@@ -464,6 +469,16 @@ Captures the research that shaped this plan, so future revisits don't re-derive 
 - **Coder / Gitpod / Daytona** (self-host CDEs): give "VM + dev env" but neither chat nor dispatch nor subscription auth. Same shape as our plan, more moving parts.
 - **Cursor BG agents / Devin / Factory / OpenHands / Replit Agent**: all bill on their own model or force API. Subscription-incompatible.
 - **HolyClaude** (Docker bundle): interesting reference, smaller maintainer base — read-for-patterns only.
+
+### Browser-terminal pivot: code-server → `code serve-web` (Windows-local only)
+- Original plan: `code-server` on Windows via `npm install -g code-server`. Found in W4 (2026-05-21) that this fails on Windows:
+  - Node 24: `argon2@0.28.4` fails to build (no prebuilts, requires VS Build Tools).
+  - Node 20 (installed via fnm to get prebuilts): `argon2@0.31.2` installs cleanly, but `postinstall.sh` (which runs `yarn` inside `vendor/` to build VS Code's own native modules: node-pty, kerberos, spdlog) fails and triggers an `EBUSY` rename on rollback (Windows Defender holding the freshly-extracted directory).
+  - coder/code-server's own docs state: "We currently do not publish Windows releases. We recommend installing code-server onto Windows with `npm`." — Windows is a second-class platform for the project.
+- Considered: VS Build Tools install (~6 GB, no guarantee), Microsoft `code tunnel` (rejected: relays through MS public infra, violates §2 "no public ports" principle), ttyd + custom session shim (no tmux equivalent on Windows, would need ~80 lines of conpty wrapper).
+- Chose: **Microsoft `code serve-web`** (ships with VS Code 1.120+, accessed via `code serve-web` or the `code-tunnel.exe` binary). Local web server only (no MS relay), full VS Code UI, integrated terminal, 3-hour reconnect grace by default. Native Windows binary, zero compile.
+- Smoke-tested 2026-05-21: UI loads at `127.0.0.1:8080`. **Open question at time of write: how to actually invoke the integrated terminal from the web UI** — owner reported no top menu bar visible and Ctrl+\` not opening a terminal. Resolving in W7.
+- Scope of this pivot: **Windows-local only**. VM (Phases A4+) stays on `ttyd + tmux` per the original plan; that's the Linux-native stack we keep long-term. The two halves don't need to match — Windows-local is throwaway validation, the VM is the production target.
 
 ### Off-the-shelf composition (collapses the build)
 - **GitHub Actions self-hosted runner** replaces a custom FastAPI dispatcher for the fire-and-forget half. `workflow_dispatch` REST = dispatch API. Runner = executor. GH UI = log streaming (mobile-friendly, free). Enterprise trust.
