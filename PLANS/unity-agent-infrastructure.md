@@ -12,11 +12,13 @@ tags: [#infra, #claude-code, #unity, #agents, #remote, #tmux]
 
 ---
 
-## Current state (last update 2026-05-21)
+## Current state (last update 2026-05-25 — post-audit)
 
-**Branch**: `phase-a/local-validation` (commits ahead of `main`: A0 → A1 → A2 rewrite → A2 reshape). No PR open yet.
+**Branch**: `phase-a/local-validation` (commits ahead of `main`: A0 → A1 → A2 rewrite → A2 reshape → A5 Hub-pivot → 2026-05-25 risk-register sweep). No PR open yet.
 
 **Resume here**: Phase **A4** — provision Hetzner CCX23, then in A5 install Unity Hub + Editor natively on the VM (temporary xrdp for the one-time Hub sign-in / Personal activation, then torn down). A3.0 (Docker Desktop) ✅. **A3 narrowed**: Unity-in-container path (A3.1-A3.4) deleted after the 2026-05-25 licensing discovery — Personal can't run in Linux containers. A3.5 / A3.6 (ttyd+tmux+claude in container) kept as optional pre-flight if we want extra confidence on mobile rendering before VM spend. Full new Unity strategy in §11 "Unity Personal on Linux VM — canonical 2026 path."
+
+**2026-05-25 audit**: full risk-register sweep of remaining unchecked steps (A3.5 → B5) against current 2026 reality. Result: no architecture changes; one load-bearing claim (Hetzner "MAC pinning") corrected to "MAC stability via server-resource binding"; A5 install path swapped from AppImage → apt repo; A5.4 activation simplified (Personal auto-activates on Unity ID signin); new A5 sub-step added for headless install of future Editor versions; xrdp setup hardened against `xrdp #3479` blue-screen failure mode; Tailscale ACLs added to A4.2; `-W` flag added to ttyd; A7 2-seat exhaustion path moved to self-service; `~/.claude` unbounded-growth caveat added to A7 backup scope; B2 supply-chain hardening (SHA-pinned actions) added. Full audit notes in §11 "2026-05-25 risk-register sweep."
 
 | Phase | Status |
 |---|---|
@@ -34,8 +36,8 @@ tags: [#infra, #claude-code, #unity, #agents, #remote, #tmux]
 - **No Linux / WSL on the local Windows machine.** A2 reshape acknowledged this: browser-terminal validation belongs on Linux. Local Windows is for editing + Tailscale client only.
 - **Multi-Unity-project host.** `C:\Unity\` holds Card Framework, Scaffold, Gear-Engine, and growing. VM layout mirrors this as `~/work/<project>/{main,slotN}/`.
 - **Two-pass validation discipline.** Pass 1 (A4) validates the chat layer with no Unity. Pass 2 (A5–A6) adds Unity. The split isolates failures.
-- **Unity Hub + Editor native on the Linux VM, NOT containerized.** Modern Unity Personal (2026) cannot be activated inside a Docker container (license is hardware-fingerprint bound, manual `.alf`/`.ulf` flow removed in Aug 2023). We treat the Linux VM as "a personal Linux machine I have" — Hub installed natively, Personal activated via temporary xrdp GUI session, Editor installed via Hub, license bound to the VM's MAC address. GameCI image considered but rejected — see §11 "Unity Personal in containers — blocking discovery" and "Unity Personal on Linux VM — canonical 2026 path."
-- **MAC-pin the Hetzner VM.** License binding means snapshot-restore-in-place is reliable only if MAC is stable. Hetzner Cloud supports pinned primary NIC; required for A7 disaster recovery to work.
+- **Unity Hub + Editor native on the Linux VM, NOT containerized.** Modern Unity Personal (2026) cannot be activated inside a Docker container (license is hardware-fingerprint bound, manual `.alf`/`.ulf` flow removed in Aug 2023). We treat the Linux VM as "a personal Linux machine I have" — Hub installed natively (via Unity's apt repo, not AppImage), Personal activated via temporary xrdp GUI session, Editor installed via Hub, license bound to the VM's MAC address. GameCI image considered but rejected — see §11 "Unity Personal in containers — blocking discovery" and "Unity Personal on Linux VM — canonical 2026 path."
+- **Hetzner MAC stability via server-resource binding** (corrected 2026-05-25). Hetzner does **not** offer an explicit "MAC pinning" feature — but the MAC is implicitly stable for the life of the **server resource (server ID)**: survives reboot, stop/start, host migration, and `hcloud server rebuild --image <snap> <server-id>` (the in-place snapshot restore). MAC changes ONLY if the server resource is deleted and re-created. Required for A7 disaster recovery: **never delete the server resource**; protect it with billing alerts + account safeguards, not just snapshots.
 - **2-seat Personal limit.** Laptop + VM = 2/2 seats consumed. Must "Return License" via Hub before destroying / re-provisioning the VM, or the seat is gone until Unity Support manually frees it.
 - **Ubuntu 22.04 LTS on VM**, not 24.04 — Unity has more bug-repros on 24.04 (research note §11).
 - **Free-tier validation before paid spend.** GCP $300 / 90-day credit, Hetzner referral €20, or Oracle Always Free can validate A4–A6 at $0. Paid Hetzner CCX23 (~€29/mo) is the target for graduation; CCX33 (~€57/mo) is the multi-project end state.
@@ -163,7 +165,7 @@ Migration to VM is **not** `rsync from laptop` — it's a fresh Ubuntu 22.04 ins
 
 **Project scope**: the VM hosts **multiple distinct Unity projects** (e.g. `Card Framework`, `Scaffold`, …), each living under `~/work/<project>/` with its own `main` worktree plus N agent slot worktrees. **Unity Hub is installed natively on the VM** (one-time, via temporary xrdp GUI for the sign-in dance — see A5). Each project's pinned Editor version (from `ProjectSettings/ProjectVersion.txt`) is installed via Hub, alongside the others. Personal license activates once for the machine, bound to the VM's MAC address; shared across all installed Editor versions and all worktrees.
 
-**Hardware (default end-state, Hetzner path)**: one Hetzner CCX33 (8 vCPU / 32 GB / 240 GB NVMe), Ubuntu 22.04 LTS, behind Tailscale. (CCX23 / 4 vCPU / 16 GB is the validation-budget floor; resize/upgrade to CCX33 once Pass 2 passes.) **GCP path**: `n2-standard-4` (4 vCPU / 16 GB) equivalent — pricier per spec but the $300 / 90-day credit covers the whole validation window. Decision made at A4.1.
+**Hardware (default end-state, Hetzner path)**: one Hetzner CCX33 (8 vCPU / 32 GB / 240 GB NVMe), Ubuntu 22.04 LTS, behind Tailscale. (CCX23 / 4 vCPU / 16 GB / **160 GB NVMe** is the validation-budget floor; resize/upgrade to CCX33 once Pass 2 passes.) **GCP path**: `n2-standard-4` (4 vCPU / 16 GB) equivalent — pricier per spec but the $300 / 90-day credit covers the whole validation window. Decision made at A4.1.
 
 **Auth**: `claude` authenticated via `CLAUDE_CODE_OAUTH_TOKEN` (from `claude setup-token`). `ANTHROPIC_API_KEY` is unset everywhere — verified by hook on shell startup.
 
@@ -206,12 +208,12 @@ After **Track B** (agent layer added):
 | Unity Personal license | Unity Editor (free, revenue-cap dependent) | Enterprise — verify EULA |
 | `claude` CLI | The agent | Enterprise (Anthropic official) |
 | `tmux` | Persistent sessions, programmatic drive | System tool |
-| `ttyd` | Browser-accessible terminal on the VM | Standard OSS — small, well-known, Linux-native |
+| `ttyd` (canonical repo: `tsl0922/ttyd`) | Browser-accessible terminal on the VM. **Note**: last release 1.7.7 (March 2024); ~25 months without a tagged release as of May 2026 — maintenance limbo, not abandoned. All required flags (`-W`, `-i`, `--ping-interval`, `--max-clients`) still work. | Standard OSS — small, well-known, Linux-native |
 | **Unity Hub** (AppImage, Linux) | Manages Editor installs + Personal license activation on the VM | Enterprise (Unity official) |
 | **Unity Editor** (installed by Hub, per pinned version) | The Editor itself; runs natively in batchmode | Enterprise (Unity official) |
 | `xrdp` + `xfce4` (TEMPORARY, A5 only) | Brief GUI session for Hub's one-time Personal activation flow; uninstalled after | Standard OSS |
 | Docker (CE on the VM, optional) | Runtime for the chat-layer test container (A3.5) and B2 fire-and-forget GH runner if we use container isolation. **Not** used for Unity. | Enterprise |
-| GitHub Actions self-hosted runner | Dispatch via `workflow_dispatch` (gh CLI from any device); webhooks deferred to post-v1 per §10 | Enterprise |
+| GitHub Actions self-hosted runner | Dispatch via `workflow_dispatch` (gh CLI from any device); webhooks deferred to post-v1 per §10. **Free on private repos for individual accounts** (a proposed self-hosted runner fee was floated in 2026 then **postponed** after community pushback — re-check before B2 implementation). | Enterprise |
 | GitHub PAT (fine-grained) | Runner auth + dispatcher PR pushes | Enterprise |
 
 ### Optional
@@ -247,9 +249,9 @@ After **Track B** (agent layer added):
 
 | Item | Monthly | Notes |
 |---|---|---|
-| Hetzner CCX33 (Hetzner path) | ~€57 (~$62) | Can start on CCX23 (~€29) and scale. Free for ~30 days on Hetzner referral credit. |
-| Hetzner snapshot (post-A5 restore point) | ~€0.012/GB/mo, ~€0.50–1/mo for a CCX23 snapshot | One-time snapshot taken after A5 (Hub + Editor + Personal license activated). A7 disaster recovery = restore this snapshot to the same VM ID (preserves MAC, license stays valid). Different from "Hetzner Cloud Backups" (the 20% recurring option) — snapshots are explicit, one-shot, cheap, and survive instance loss. |
-| Hetzner Storage Box BX11 (backups) | ~€3.81 | 1 TB SFTP target, restic-compatible, free intra-Falkenstein egress. For ongoing Library/ + `UnityEntitlementLicense.xml` data backups. Complementary to the post-A5 snapshot (snapshot = "fresh-VM reset point", Storage Box = "rolling data backups"). |
+| Hetzner CCX33 (Hetzner path) | **€48.49 (~$53)** | Post-April 2026 pricing. Can start on CCX23 (**€24.49**) and scale. Free for ~30 days on Hetzner referral credit (€20 signup credit + €10 to referrer after €10 spend). |
+| Hetzner snapshot (post-A5 restore point) | ~€0.012/GB/mo, ~€0.50–1/mo for a CCX23 snapshot | One-time snapshot taken after A5 (Hub + Editor + Personal license activated). A7 disaster recovery = `hcloud server rebuild --image <snap-id> <server-id>` against the **same server resource** (preserves MAC + server ID, license stays valid). Different from "Hetzner Cloud Backups" (the 20% recurring option) — snapshots are explicit, one-shot, cheap, survive instance state loss BUT NOT server-resource deletion. |
+| Hetzner Storage Box BX11 (backups) | **€3.20** | 1 TB SFTP target, restic-compatible, free intra-Falkenstein egress. Updated 2026 pricing (down from €3.81). For ongoing Library/ + `~/.config/unity3d/Unity/licenses/UnityEntitlementLicense.xml` + `~/.claude/` data backups. Complementary to the post-A5 snapshot (snapshot = "fresh-VM reset point", Storage Box = "rolling data backups"). |
 | GCP n2-standard equivalent (GCP path) | ~$100 | If we end up on GCP instead of Hetzner. Free for 90 days on $300 credit. |
 | Backblaze B2 (backups, GCP path) | ~$0.18 | 30 GB nightly. Replaces Storage Box if VM is on GCP. |
 | Tailscale | $0 | Personal plan (6 users / unlimited devices / 50 tagged resources). |
@@ -257,7 +259,7 @@ After **Track B** (agent layer added):
 | Unity Personal | $0 | Free if revenue cap qualifies. |
 | GitHub | $0 | Free tier covers self-hosted runners on private repos. |
 | Domain | ~$1/mo | Optional. |
-| **Total new spend (Hetzner path)** | **~€61/mo (~$66)** | CCX33 + Storage Box + optional domain. |
+| **Total new spend (Hetzner path)** | **~€52/mo (~$57)** | CCX33 (€48.49) + Storage Box (€3.20) + optional domain (~€1). Post-April 2026 prices. CCX23-only floor for validation: ~€28/mo. |
 | **Total new spend (GCP path)** | **~$101/mo** | Pricier per spec but generous free trial; reconsider after 90 days. |
 
 **Anthropic billing risk (June 15, 2026)**: `claude -p` headless mode moves to a separate Agent SDK credit pool at API rates. Interactive TUI sessions stay on Max quota.
@@ -355,7 +357,7 @@ The `Unity_v6000.3.11f1.alf` file at `C:\Unity\unity-license\` is useless (manua
   ENV PATH=/root/.local/bin:$PATH
   ```
   Commit to branch.
-- [ ] Run the container with `CLAUDE_CODE_OAUTH_TOKEN` passed via env var, bind ttyd to the laptop's tailnet IP: `docker run -d --name chat-test -e CLAUDE_CODE_OAUTH_TOKEN -p 100.86.249.67:7681:7681 chat-test ttyd -p 7681 --ping-interval 30 --max-clients 2 tmux new-session -A -s main claude` — matches A4.5's flag set for consistency.
+- [ ] Run the container with `CLAUDE_CODE_OAUTH_TOKEN` passed via env var, bind ttyd to the laptop's tailnet IP: `docker run -d --name chat-test -e CLAUDE_CODE_OAUTH_TOKEN -p 100.86.249.67:7681:7681 chat-test ttyd -W -p 7681 --ping-interval 30 --max-clients 2 tmux new-session -A -s main claude` — matches A4.5's flag set for consistency. (`-W` makes the terminal writable; default since 1.7.4 is read-only.)
 - [ ] From laptop browser: `http://100.86.249.67:7681` → terminal renders, claude TUI inside.
 - [ ] **From phone over Tailscale: same URL → confirm rendering.** Test scrolling, slash commands (`/help`, `/exit`), multi-line input, ANSI colors. This is the B1 render-fidelity check.
 - [ ] Disconnect (close phone browser, wait 5 min, reconnect). Verify tmux session intact.
@@ -384,14 +386,18 @@ The `Unity_v6000.3.11f1.alf` file at `C:\Unity\unity-license\` is useless (manua
 #### A4.1 — Provision (½ hour)
 - [ ] Create a small VM with the chosen provider — instance shapes per provider (all ~2 vCPU / 4–8 GB; enough for Pass 1 chat layer; Pass 2 will need resize or fresh CCX23):
   - **GCP**: `e2-standard-2` (2 vCPU / 8 GB) in `us-central1` or `europe-west1`.
-  - **Hetzner**: `CX22` (2 vCPU / 4 GB, ~€4/mo) for the cheapest Pass-1 trial; or jump straight to `CCX23` (4 vCPU / 16 GB, ~€29/mo) if you want one box for the whole journey.
+  - **Hetzner**: `CX22` (2 vCPU / 4 GB, ~€4/mo) for the cheapest Pass-1 trial; or jump straight to `CCX23` (4 vCPU / 16 GB / **160 GB NVMe**, **€24.49/mo** post-April 2026) if you want one box for the whole journey.
   - **Oracle Always Free**: `VM.Standard.E2.1.Micro` (1 OCPU / 1 GB) — tight, but it works for Pass 1.
-- [ ] **Ubuntu 22.04 LTS** (not 24.04 — see §11 for the Unity bug-repro reason; Pass 1 doesn't strictly need this, but we want one OS for the whole journey).
-- [ ] **Disk: stay on local NVMe (root disk).** Research §11: Hetzner attached Volumes are 10-17× slower than local NVMe for Unity workloads (IOPS-bound asset import). CCX23 ships 80 GB NVMe; CCX33 240 GB — enough for 3-4 worktrees' Library/. For GCP: PD-Balanced 200-500 GB for /home; avoid Local SSD (lost on stop).
+- [ ] **Ubuntu 22.04 LTS** (Unity 6.4 officially supports both 22.04 and 24.04 per current docs — 22.04 pin is a preference based on historical bug-repro density on 24.04, not a hard requirement; GLIBC 2.35 on 22.04 meets the ≥2.34 requirement for Editor 6000.3+).
+- [ ] **Disk: stay on local NVMe (root disk).** Research §11: Hetzner attached Volumes are ~5-7× slower than local NVMe on 4k random IOPS (2021 benchmark; no comprehensive 2026 re-bench published — treat as a lower bound). For Unity's IOPS-bound asset import workload, the gap matters. CCX23 ships 160 GB NVMe; CCX33 240 GB — enough for 3-4 worktrees' Library/ plus the unbounded `~/.claude/` cache (see A7 note). For GCP: PD-Balanced 200-500 GB for /home; avoid Local SSD (lost on stop).
 - [ ] SSH key on creation. Disable password auth.
 - [ ] Note the VM's public IP.
-- [ ] **Record the provider choice** in `infra/vm-host.txt` (gitignored). A7 backup destination branches on this (Storage Box for Hetzner; B2 for GCP).
-- [ ] **Pin the primary NIC's MAC address** at the provider level. Hetzner Cloud allows MAC pinning via the Cloud Console (instance settings → network → primary IP). This is critical for A5: Unity Personal license binds to MAC + machine-id, and a stable MAC means snapshot-restore-in-place keeps the license valid. Without this, Hetzner can re-roll MAC on host migration and invalidate the license. Record the pinned MAC in `infra/vm-host.txt`.
+- [ ] **Record the provider choice + server resource ID + primary MAC** in `infra/vm-host.txt` (gitignored). A7 backup destination branches on this (Storage Box for Hetzner; B2 for GCP). The server-ID is load-bearing for DR (see next bullet).
+- [ ] **MAC stability — corrected approach (2026-05-25)**. Hetzner does **NOT** offer an explicit "MAC pinning" feature in the Cloud Console (we previously believed otherwise). The MAC is instead **implicitly stable for the life of the server resource**: it survives reboot, stop/start, host migration, and `hcloud server rebuild --image <snap> <server-id>` (in-place snapshot restore). MAC changes only if the **server resource itself is deleted and re-created**. **Implications**:
+  - The Hetzner side requires no configuration step — MAC stability comes free as long as the server isn't deleted.
+  - DR plan in A7 must use `hcloud server rebuild` (not "create new from snapshot") to preserve MAC.
+  - **Protect the server resource itself**: enable billing alerts at the Hetzner account level so a missed payment can't auto-delete the resource; consider locking the Cloud project against accidental deletion via the Console.
+  - Record both the **server resource ID** and the **primary MAC** in `infra/vm-host.txt` — the MAC is for license-troubleshooting reference; the server-ID is for the `rebuild` command.
 
 #### A4.2 — Harden + Tailscale (½ hour)
 - [ ] Create non-root user `agent` with sudo. Disable root SSH.
@@ -399,11 +405,32 @@ The `Unity_v6000.3.11f1.alf` file at `C:\Unity\unity-license\` is useless (manua
 - [ ] Install Tailscale on VM: `curl -fsSL https://tailscale.com/install.sh | sh`; `sudo tailscale up`.
 - [ ] Verify SSH-over-Tailscale works: from laptop, `ssh agent@<vm-tailnet-name>` succeeds; from phone (Termius or Tailscale SSH), same.
 - [ ] **Then close public 22**: `sudo ufw delete allow 22; sudo ufw allow in on tailscale0`. SSH stays available over Tailscale only. The VM has zero open ports on the public interface.
+- [ ] **Tailscale ACLs — port-level lockdown** (added 2026-05-25). Defense-in-depth on top of `-i tailscale0` interface binding: if a tailnet device is compromised, the blast radius shouldn't include SSH. Tag each device in the admin console:
+  - VM: `tag:unity-vm`
+  - Laptop: `tag:laptop`
+  - Phone: `tag:mobile`
+  
+  Then write `infra/tailscale-acl.json` (apply via admin console → Access Controls):
+  ```json
+  {
+    "tagOwners": {
+      "tag:unity-vm": ["autogroup:admin"],
+      "tag:laptop":   ["autogroup:admin"],
+      "tag:mobile":   ["autogroup:admin"]
+    },
+    "acls": [
+      { "action": "accept", "src": ["tag:laptop"], "dst": ["tag:unity-vm:22,7681,7682"] },
+      { "action": "accept", "src": ["tag:mobile"], "dst": ["tag:unity-vm:7681"] }
+    ]
+  }
+  ```
+  Phone can only reach the chat-layer port (7681); SSH (22) + session-manager (7682, added in B1) restricted to laptop. Free on Personal plan. Verify with `tailscale ping --tsmp` from each device that only permitted ports succeed.
 
 #### A4.3 — Install chat-layer base + re-validate A0 gate on Linux (½ hour)
 - [ ] `apt install git tmux build-essential ttyd` — note: **NOT** `nodejs` or `python3` (research confirmed `claude` native install has no Node dependency; we add others only when a phase actually needs them).
 - [ ] Install `claude` CLI via the official native installer: `curl -fsSL https://claude.ai/install.sh | bash`. Installs to `~/.local/bin/claude` with background auto-update. (Alternative: signed APT repo at https://downloads.claude.ai/claude-code/apt/stable if we want apt-tracked installs — research §11.)
-- [ ] Set `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token` (run on laptop, exported once, used here). Place in `/etc/profile.d/claude.sh`, mode 0600.
+- [ ] Set `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token` (run on **laptop**, not VM — see warning below), exported once, used here. Place in `/etc/profile.d/claude.sh`, mode 0600.
+- [ ] **⚠ Do NOT run `claude login` or interactive OAuth flow from the VM.** Cloudflare JS-challenges the OAuth login from Hetzner / cloud-provider IPs (`anthropics/claude-code` #21678, closed "not planned"). The token-export workflow above is the documented bypass: generate the token on a non-datacenter IP (your laptop), then export it on the VM. No browser ever opens on the VM. Confirmed working approach for 2026 cloud-VM `claude` usage.
 - [ ] **Port the A0 gate to Linux**: write `infra/check-a0.sh` — bash equivalent of the existing `infra/check-a0.ps1`. Same gate logic: confirms `claude auth status` returns `subscriptionType: max` + `apiProvider: firstParty`, and that `ANTHROPIC_API_KEY` is unset or empty. Commit to the branch.
 - [ ] Run `infra/check-a0.sh` on the VM. **Gate**: must return exit 0. If it fails (e.g., `apiProvider: console` because the token somehow routed through API, or `ANTHROPIC_API_KEY` got set by something), stop and debug before any further work. A subscription-billed run depends on this passing.
 - [ ] **B2 validation (OAuth-on-cloud-VM billing)**: after one or two `claude` invocations on the VM, check the Anthropic dashboard (claude.ai/settings) and confirm usage drew from Max quota, not API credits. Research (§11) suggests this should work, but empirical confirmation closes the loop.
@@ -414,7 +441,7 @@ The `Unity_v6000.3.11f1.alf` file at `C:\Unity\unity-license\` is useless (manua
 - [ ] Detach (Ctrl-b d). Re-attach (`tmux attach -t main`). Confirm session intact.
 
 #### A4.5 — ttyd in front of tmux (¼ hour)
-- [ ] `ttyd -p 7681 -i tailscale0 --ping-interval 30 --max-clients 2 tmux new-session -A -s main` — binds to the Tailscale interface only, attaches/creates the tmux session if it doesn't exist (`new-session -A` is idempotent), pings every 30s to survive idle-proxy timeouts, allows 2 concurrent clients (active + reconnecting).
+- [ ] `ttyd -W -p 7681 -i tailscale0 --ping-interval 30 --max-clients 2 tmux new-session -A -s main` — binds to the Tailscale interface only, attaches/creates the tmux session if it doesn't exist (`new-session -A` is idempotent), pings every 30s to survive idle-proxy timeouts, allows 2 concurrent clients (active + reconnecting). **`-W` is mandatory** — since ttyd 1.7.4 (Mar 2024) the terminal is read-only by default; without `-W` the page renders but keystrokes are ignored.
 - [ ] **Per research (§11)**: ttyd is stateless per-connection; persistence comes from tmux. Closing the tab does NOT kill claude when tmux is the entrypoint (ttyd #89). Default reconnect timeout ~10s.
 - [ ] From laptop browser: `http://<vm-tailnet-name>:7681` → terminal renders with claude TUI inside.
 - [ ] From phone browser: same URL → terminal renders on mobile. **Enable Claude fullscreen mode** (`/fullscreen` slash command, per https://code.claude.com/docs/en/fullscreen) — uses xterm.js alternate screen buffer, reduces flicker on mobile.
@@ -448,31 +475,40 @@ The `Unity_v6000.3.11f1.alf` file at `C:\Unity\unity-license\` is useless (manua
 **Seat economics warning**: Personal licenses have a 2-seat-per-Unity-ID limit. Activating on the VM consumes seat 2 (laptop is seat 1). Before destroying or re-provisioning the VM, **MUST "Return License" via Hub first** — otherwise the seat is gone until Unity Support manually frees it.
 
 #### A5.1 — Resize VM if needed (10 min)
-- [ ] Pass 2 needs ≥8 GB RAM (Unity minimum 8 GB official, 16 GB realistic). If Pass 1 ran on a 4 GB box, resize now or provision a fresh CCX23 (4 vCPU / 16 GB) and re-run A4 on it. **If you re-provision, the MAC may change — re-pin it at A4.1 before starting A5.2.**
+- [ ] Pass 2 needs ≥8 GB RAM (Unity minimum 8 GB official, 16 GB realistic). If Pass 1 ran on a 4 GB box, resize now or provision a fresh CCX23 (4 vCPU / 16 GB / 160 GB NVMe) and re-run A4 on it. **If you re-provision** (new server resource = new MAC + new server-ID): re-record both in `infra/vm-host.txt` before A5.2, and confirm billing-alert / account-safeguard setup per A4.1. (In-place resize of an existing CCX22 → CCX23 via `hcloud server change-type` preserves server-ID + MAC, so it's preferred when feasible.)
 
 #### A5.2 — Install xrdp + lightweight desktop (TEMPORARY, ½ hour)
 - [ ] `apt install xfce4 xfce4-goodies xrdp`.
+- [ ] **`sudo adduser xrdp ssl-cert`** — the `xrdp` service user (not the agent user) needs ssl-cert group membership to read the snakeoil TLS cert; without this, mstsc connects but the X session never starts.
+- [ ] **`echo "xfce4-session" > /home/agent/.xsession && chown agent:agent /home/agent/.xsession`** — required to avoid the well-documented blue/black screen hang on Ubuntu 22.04 (`neutrinolabs/xrdp #3479`). Without this, xrdp doesn't know what session to launch and stalls after auth.
+- [ ] **TLS hardening** in `/etc/xrdp/xrdp.ini` (matches Windows 11 mstsc defaults): under `[Globals]` ensure `security_layer=negotiate`, `crypt_level=high`, `ssl_protocols=TLSv1.2,TLSv1.3`. Restart xrdp after edit.
 - [ ] `systemctl enable --now xrdp`.
-- [ ] Add agent user to ssl-cert group if xrdp needs it: `adduser agent ssl-cert`.
 - [ ] **Firewall**: `sudo ufw allow in on tailscale0 to any port 3389`. Never expose 3389 on the public interface — RDP brute-forced from the public internet within hours.
 - [ ] Confirm xrdp running: `systemctl status xrdp`.
-- [ ] **Note**: this is *temporary infrastructure* — uninstalled in A5.6 once Hub + license are set up.
+- [ ] **⚠ Connection-time discipline**: at the xrdp login screen pick **Xorg** (NOT Xvnc — Xvnc has rendering issues with Hub). **Do NOT have a local console login on the VM** simultaneously with the RDP session — concurrent local + RDP logins on Ubuntu xrdp cause session corruption.
+- [ ] **Note**: this is *temporary infrastructure* — uninstalled in A5.6 once Hub + license are set up. Additional Editor versions later don't need xrdp re-installed (use `unityhub --headless install` per A5.7).
 
-#### A5.3 — RDP from laptop, install Unity Hub (½ hour)
-- [ ] From Windows laptop: open built-in `mstsc.exe` (Remote Desktop). Host = `<vm-tailnet-name>:3389` or `<vm-tailnet-ip>:3389`. User = `agent`. Should land in an xfce desktop.
-- [ ] Download Unity Hub AppImage from https://unity.com/download (the official Linux download): `wget https://public-cdn.cloud.unity3d.com/hub/prod/UnityHub.AppImage`.
-- [ ] `chmod +x UnityHub.AppImage`, move to `/opt/UnityHub.AppImage` or `~/UnityHub.AppImage`.
-- [ ] First run: `./UnityHub.AppImage` (in the xrdp session). Hub may complain about missing FUSE — install if needed: `apt install libfuse2t64` (or `libfuse2` on older Ubuntu).
-- [ ] Hub opens. Click "Sign in" → opens browser to id.unity.com → log in with your Unity account.
+#### A5.3 — RDP from laptop, install Unity Hub via apt repo (½ hour)
+- [ ] From Windows laptop: open built-in `mstsc.exe` (Remote Desktop). Host = `<vm-tailnet-name>:3389` or `<vm-tailnet-ip>:3389`. User = `agent`. On first connect, click through the self-signed cert warning (snakeoil cert). Should land in an xfce desktop.
+- [ ] **Install Unity Hub via Unity's official apt repo** (canonical path in 2026 — preferred over AppImage; gives auto-updates, no libfuse dance, no manual file management):
+  ```bash
+  sudo install -d /etc/apt/keyrings
+  curl -fsSL https://hub.unity3d.com/linux/keys/public | sudo gpg --dearmor -o /etc/apt/keyrings/unityhub.gpg
+  echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/unityhub.gpg] https://hub.unity3d.com/linux/repos/deb stable main" | sudo tee /etc/apt/sources.list.d/unityhub.list
+  sudo apt update && sudo apt install unityhub
+  ```
+- [ ] **If install hangs**: recent Hub release notes call out an AppArmor profile-loading stall on Ubuntu 22.04. Reboot and retry; usually clears on second attempt.
+- [ ] Launch Hub from xfce app menu (or `unityhub` from terminal in the xrdp session).
+- [ ] Click "Sign in" → opens browser to id.unity.com → log in with your Unity account. **Personal license auto-activates** on signin if your account holds no paid license (no separate "Add license" click needed — Unity Hub UI changed; the old "Get a free Personal license" button is gone). Revenue cap acceptance is EULA-only.
 
-#### A5.4 — Activate Personal + install Editor 6000.3.11f1 (½ hour)
-- [ ] In Hub: **Manage licenses** (or Settings → Licenses) → **Add license** → **Get a free Personal license** → confirm revenue cap (Personal requires <$200K/yr; for personal projects, yes).
-- [ ] Hub writes `UnityEntitlementLicense.xml` to `~/.config/unity3d/Unity/licenses/` and starts the `Unity.Licensing.Client` daemon. License is now bound to this VM's MAC + machine-id.
+#### A5.4 — Confirm Personal active + install Editor 6000.3.11f1 (½ hour)
+- [ ] **Personal already activated** in A5.3 (auto on Unity ID signin). Verify in Hub: **Preferences → Licenses** should show one Personal seat active for this machine, with a **"Return license"** button visible (same UI as Pro on Linux — confirms self-service release works for the 2-seat exhaustion scenario in A7).
+- [ ] Hub has written `UnityEntitlementLicense.xml` to **`~/.config/unity3d/Unity/licenses/UnityEntitlementLicense.xml`** (confirmed path, 2026) and started the `Unity.Licensing.Client` daemon. License is now bound to this VM's MAC + machine-id + hostname.
 - [ ] In Hub: **Installs** → **Install Editor** → search for `6000.3.11f1` → install with default modules (or add Linux Build Support if you want to ship Linux Player builds; otherwise base is fine for asset import / script compile). Download is ~5 GB.
 - [ ] **Verify headless invocation works** (still inside xrdp, but using a terminal): `~/Unity/Hub/Editor/6000.3.11f1/Editor/Unity -batchmode -quit -nographics -logFile -` → exit 0, no license errors.
 - [ ] **Back up the license XML immediately** (cooldown applies to re-activation):
   - [ ] `scp ~/.config/unity3d/Unity/licenses/UnityEntitlementLicense.xml` back to laptop into `C:\Unity\backups\unity-license\UnityEntitlementLicense.xml.<vm-hostname>.<date>`.
-  - [ ] Note: this XML is hardware-fingerprint bound. It won't work on a different machine. The backup is for restoring to the *same* VM via Hetzner snapshot — see A7.
+  - [ ] Note: this XML is hardware-fingerprint bound. It won't work on a different machine. The backup is for restoring to the *same* VM via `hcloud server rebuild` (see A7) — primarily insurance against accidental local deletion of the file.
 
 #### A5.5 — Disable Parallel Import via CLI flag (no code change needed)
 - [ ] Same as before: `infra/unity-batchmode.sh` (factored in A5.7) passes `-desiredWorkerCount 0` on every invocation. No per-project `EditorSettings.asset` mutation needed. See §11 for why this is the canonical workaround.
@@ -489,7 +525,7 @@ The `Unity_v6000.3.11f1.alf` file at `C:\Unity\unity-license\` is useless (manua
 This wrapper script is called from A6, B1, and B2 — extract it once.
 
 - [ ] Write `infra/unity-batchmode.sh`: takes `<project-path>` (required), optional `<editor-version>` (default: read from `<project-path>/ProjectSettings/ProjectVersion.txt`), optional extra args. Resolves Editor binary path via `~/Unity/Hub/Editor/<version>/Editor/Unity`, runs `Unity -batchmode -quit -nographics -projectPath <path> -desiredWorkerCount 0 "$@" -logFile -`. Captures exit code, propagates. (No Docker — pure native invocation.)
-- [ ] If our projects use multiple Editor versions, the wrapper auto-resolves via Hub's install path; just need each version installed via Hub (`A5.4` step, can be repeated per version).
+- [ ] **Headless install for additional Editor versions** (2026 unlock — no second xrdp dance required): `unityhub -- --headless install --version <X.Y.Zf1> --changeset <hash> [--module <m>]`. Works over plain SSH after the first GUI activation; documented at https://docs.unity.com/en-us/hub/hub-cli. Find the changeset hash on https://unity.com/releases/editor/whats-new/<version>. The wrapper script auto-resolves Editor binary path; only the install step changes per version.
 - [ ] Make executable, commit.
 - [ ] Clone Card Framework into `~/work/CardFramework/main`.
 - [ ] Run: `bash infra/unity-batchmode.sh ~/work/CardFramework/main`. Watch for clean exit 0, Library/ populated.
@@ -513,13 +549,14 @@ This wrapper script is called from A6, B1, and B2 — extract it once.
   - If VM is on Hetzner: **Hetzner Storage Box BX11** (~€3.81/mo for 1 TB, free intra-Falkenstein traffic, SFTP backend works with `restic`). Best when staying on Hetzner.
   - If VM is on GCP: **Backblaze B2** ($0.18/mo for 30 GB, native restic backend, fast restore, free egress via Cloudflare Bandwidth Alliance). Best when geo-separated from primary host.
   - If VM is on Oracle: skip backups for the validation phase; revisit when promoting to a paid box.
-- [ ] Nightly `restic backup ~/work/*/main/Library/ ~/.config/unity3d/Unity/licenses/ /etc/systemd/system /home/agent/.config/claude` (or equivalent paths). Test restore monthly against a scratch directory. Note: the Unity license XML is bound to this VM's MAC + machine-id — backup is for restore to the *same* VM, not for cloning to a new one.
+- [ ] Nightly `restic backup ~/work/*/main/Library/ ~/.config/unity3d/Unity/licenses/UnityEntitlementLicense.xml /etc/systemd/system /home/agent/.claude/ /home/agent/.config/claude` (or equivalent paths). Test restore monthly against a scratch directory. Note: the Unity license XML is bound to this VM's MAC + machine-id — backup is for restore to the *same* VM (via `hcloud server rebuild` against the same server-ID), not for cloning to a new one.
+- [ ] **⚠ `~/.claude/` grows unbounded** (anthropics/claude-code #24207 — users report 3.2 GB after 2 months, some 200-472 GB). Add to nightly: `find ~/.claude/projects/*/sessions -mtime +30 -delete` (or similar retention). Watch CCX23 160 GB disk: a 4-worktree Scaffold install (~12 GB Library each = 48 GB) + Unity 5 GB + `~/.claude` (variable, plan 20 GB ceiling) + OS leaves ~80 GB headroom. Promote to CCX33 (240 GB) before it gets tight.
 - [ ] Document the GH Actions runner deployment shape: **ephemeral / just-in-time (JIT) runner only**, one job per runner instance, then destroyed. Never autoscale persistent runners. **Never** scope to public repos. Runner unit goes in `batch.slice`. See B2 for details.
 - [ ] **Write the full `infra/runbook.md`** — disaster recovery now branches on failure mode:
-  - **VM disk corruption / config drift, VM ID intact**: restore Hetzner snapshot from A5.6 ("post-A5-unity-activated") to the same VM. License stays valid because MAC is preserved. Then restore Library/ caches from restic backup. Estimated <30 min if snapshot is recent.
-  - **VM completely lost / Hetzner outage / need to migrate to a new VM**: provision fresh VM, re-do A4 + A5 (including re-activating Personal license — burns the seat from the lost VM, may need to ask Unity Support to release if 2-seat cap hit). Then restore Library/ caches. Estimated 2-3 hours.
-  - **Personal license seat exhausted (both seats taken by laptop + dead VM)**: Hub → Manage Licenses → Return License from the *active* VM, OR contact Unity Support to release the dead VM's seat. Then re-activate.
-  - Test the snapshot-restore path once on a throwaway VM before declaring done.
+  - **VM disk corruption / config drift, server resource intact**: `hcloud server rebuild --image <snapshot-id-from-A5.6> <server-id>` against the same server. MAC + server-ID preserved → license stays valid. Then restore Library/ + `~/.claude/` caches from restic backup. Estimated <30 min if snapshot is recent. **This is the command, not "restore snapshot" in the Console — `rebuild` is the in-place operation; create-from-snapshot would mint a new server with a new MAC.**
+  - **Server resource deleted / Hetzner account locked / need to migrate to a new VM**: provision fresh VM (new server-ID, new MAC), re-do A4 + A5 (including re-activating Personal license — consumes a seat from the dead VM). Then restore Library/ + `~/.claude/` caches. Estimated 2-3 hours. **Account-level safeguard to prevent this**: enable Hetzner billing alerts; consider Cloud project locks; don't manually delete the server.
+  - **Personal license seat exhausted (both seats taken by laptop + dead VM)**: log in to **id.unity.com → Account → Active Devices** and self-release the dead VM's seat (no support ticket needed). Alternatively, "Return License" via Hub on the active VM. Only if both seats are inaccessible (e.g., both VMs destroyed without Return-License) do you need to contact Unity Support.
+  - Test the `hcloud server rebuild` path once on a throwaway VM before declaring done. Use `hcloud snapshot create --description test` + `hcloud server rebuild --image <id> <server>` + verify Unity license still validates post-rebuild.
 - [ ] **Done with Track A.** Desktop can be off. Work from anywhere. Move to Track B planning.
 
 ---
@@ -558,6 +595,13 @@ Outcome: programmatic dispatch into the same `claude` sessions Track A exposes, 
 **Note on ordering**: on the VM. Self-hosted GH Actions runner needs to spawn Unity batchmode against the natively-installed Editor (per A5), which lives on the VM. Cannot run on Windows laptop.
 
 **Security shape (per research §11)**: ephemeral / just-in-time (JIT) runner only — one job per runner, destroyed after. Never autoscale persistent runners. Never scope to public repos. Avoid mounting `/var/run/docker.sock` blindly (= root on host); use rootless Docker or invoke `docker` via a constrained user. Use OIDC for cloud creds if any are needed (not long-lived secrets in env).
+
+**⚠ Supply-chain hygiene (added 2026-05-25)**: pin all third-party GitHub Actions by **commit SHA, not by tag**. 2025-2026 supply-chain attacks against the Actions ecosystem have been frequent and severe:
+- **CVE-2025-30066** (`tj-actions/changed-files`): 23,000+ repos compromised via retroactive tag mutation.
+- **Nov 2025 Shai-Hulud worm**: installed rogue runners on compromised hosts.
+- **March 2026 `trivy-action` force-push**: 75/76 version tags compromised.
+
+Pattern: `uses: org/action@<40-char-sha> # v1.2.3` (SHA is load-bearing; the comment is for readability). Apply to **every** non-`actions/`-namespace action in `agent-task.yml`.
 
 - [ ] Install `gh` on the VM: `sudo apt install gh` (or per GitHub CLI's official install). Auth with `gh auth login` using the same fine-grained PAT that the runner is registered with.
 - [ ] Write `.github/workflows/agent-task.yml` with `workflow_dispatch` inputs `(branch, prompt, project)`.
@@ -604,10 +648,11 @@ If triggered:
 
 - **April 2026 third-party-harness restriction** — confirmed: subscription billing only valid for Anthropic's own surfaces. Mitigation: never call Anthropic from our code; always shell out to the official `claude` binary. Re-validate quarterly.
 - **June 15, 2026 `-p` billing split** — Track B-fire-and-forget becomes API-priced. Mitigation: session-driven path (B-session) stays on subscription; switch defaults to it if API cost shows up.
-- **Unity Personal licensing fragility on the VM** (managed via the canonical 2026 path — native Hub + MAC-pinned VM, see §11). Real risks under this model:
-  - **2-seat exhaustion**: forgetting to "Return License" before destroying/re-provisioning the VM = seat permanently locked until Unity Support intervenes. Mitigation: runbook checklist in A7; consider automating Return-License as a pre-shutdown systemd ExecStop hook.
-  - **MAC re-roll**: if Hetzner ever migrates the VM and MAC pinning fails for any reason, the license invalidates. Mitigation: pinned at A4.1; A7 runbook covers re-activation path.
-  - **Hub UI changes**: Unity could change the Personal activation flow in Hub at any time (they killed manual `.alf` upload in Aug 2023). Mitigation: low impact — re-activation is once per VM lifetime, manual GUI step, not automated.
+- **Unity Personal licensing fragility on the VM** (managed via the canonical 2026 path — native Hub + server-resource-stable MAC, see §11). Real risks under this model:
+  - **2-seat exhaustion**: dead-VM seat usually self-releasable via id.unity.com Active Devices (2026-05-25 audit confirmed). Only Unity Support if both seats inaccessible. Mitigation: runbook checklist in A7; consider automating Return-License as a pre-shutdown systemd ExecStop hook.
+  - **Server-resource deletion**: only failure mode that breaks the license. Mitigation: Hetzner billing alerts so account-level issues can't auto-delete; Cloud project lock; runbook checklist (A7) treats the server-ID as load-bearing.
+  - **Hub UI changes**: Unity could change the Personal activation flow in Hub at any time (they killed manual `.alf` upload in Aug 2023; in 2026 they removed the explicit "Get a free Personal license" button — Personal now auto-activates on signin). Mitigation: low impact — re-activation is once per VM lifetime, manual GUI step, not automated.
+  - **ttyd maintenance limbo**: last release 1.7.7 (March 2024); ~25 months without a tagged release as of May 2026. Functional but stagnant. Mitigation: monitor for replacement; siteboon/claudecodeui (B5) is the upgrade path if rendering issues mount.
 - **Anthropic could harden against PTY-driving the TUI** — Path B-session relies on the interactive CLI being scriptable via tmux. If they detect/block this, fallback is API-billed dispatch. Watch policy updates.
 - **Unity headless Parallel Import bug** — known. Disabled per-invocation via `-desiredWorkerCount 0` CLI flag (baked into `infra/unity-batchmode.sh`). Re-test on each Editor version bump.
 - **`siteboon/claudecodeui` if adopted later (Phase B5)** — high-alert dependency: handles tokens + shells, ~11k stars but smaller maintainer base than enterprise tools. Not adopted in v1; only revisited if mobile UX in A4.5 / A7 surfaces real pain that ttyd can't fix. Adoption requires security review + sandboxed trial per §5.
@@ -862,6 +907,60 @@ Stripe's pattern is the right north star, but Unity licensing is the binding con
 - [game-ci/unity-license-activate](https://github.com/game-ci/unity-license-activate)
 - [game-ci/documentation#408 — manual Personal flow broken (open since Aug 2023)](https://github.com/game-ci/documentation/issues/408)
 
+### 2026-05-25 risk-register sweep — all remaining steps audited against 2026 reality
+
+After the §11 "Unity Personal on Linux VM" pivot was committed, ran a full audit of every unchecked step (A3.5 → B5) against current 2026 sources to surface unknowns before VM provisioning. Four parallel research agents covered: Hetzner infra (MAC + snapshots + pricing), Unity Hub + xrdp current state, Anthropic billing + CLI policy, Tailscale + ttyd + GH runner state.
+
+**Net result: no architecture changes. One load-bearing claim corrected, several improvements adopted, several confirmations.**
+
+**🔴 Corrections (claims were wrong as written)**:
+- **"Hetzner MAC pinning" feature does NOT exist.** Reworded across A4.1, §2.4, §9, and the canonical-2026-path entry below. Reality: MAC is **implicitly stable for the life of the server resource (server ID)** — survives reboot, stop/start, host migration, and `hcloud server rebuild --image <snap> <server-id>` (in-place snapshot restore). Only deletion of the server resource itself changes the MAC. Mitigation moves from "configure pinning" → "protect the server resource itself" (billing alerts, account safeguards).
+- **Hetzner snapshot restore is `hcloud server rebuild`, not generic "restore"** — A7 runbook now specifies the command. `rebuild` overwrites disk in place, preserves server-ID + MAC. The alternative (create-from-image) mints a new server with a new MAC, invalidating the license.
+- **CCX23 disk is 160 GB NVMe, not 80 GB** — fixed in §3 + A4.1.
+- **Post-April 2026 pricing**: CCX23 €24.49, CCX33 €48.49, Storage Box BX11 €3.20. §6 updated.
+- **Volume vs NVMe IOPS gap is ~5-7× (2021 bench), not 10-17×** — softened in A4.1 disk note. Direction (stay on local NVMe) unchanged.
+
+**🟡 Improvements adopted (better way to do the same thing in 2026)**:
+- **A5.3 Hub install: AppImage → apt repo.** Unity's docs now canonicalize the deb repo at `https://hub.unity3d.com/linux/repos/deb stable main`. Auto-updates via apt, no libfuse2 dance, no manual file management. AppImage path still exists but is no longer recommended.
+- **A5.2 xrdp hardening**: added `sudo adduser xrdp ssl-cert` (the xrdp service user, not the agent user), `~/.xsession` with `xfce4-session` (avoids `neutrinolabs/xrdp #3479` blue-screen hang), TLS hardening in `xrdp.ini`, and explicit "pick Xorg not Xvnc, no concurrent local console login" connection-time discipline.
+- **A5.4 Personal activation simplified**: in 2026 Hub, Personal **auto-activates on Unity ID signin** (no "Add license → Get a free Personal license" click — that button was removed). Revenue cap is EULA-only.
+- **A5.7 headless install for future Editor versions**: `unityhub -- --headless install --version <X.Y.Zf1> --changeset <hash>` works over plain SSH after the first GUI activation. **Eliminates the recurring xrdp risk** — only the FIRST license activation needs GUI; all subsequent Editor installs are SSH-only.
+- **A4.5 / A3.5 ttyd flag**: added mandatory `-W`. Since ttyd 1.7.4 (March 2024) the terminal is read-only by default; without `-W` the page renders but keystrokes are silently ignored.
+- **A7 2-seat exhaustion path**: moved to self-service via id.unity.com → Active Devices (no Unity Support ticket needed unless both seats inaccessible).
+- **A4.2 Tailscale ACLs**: layered on top of `-i tailscale0` interface binding — phone restricted to port 7681 only, SSH (22) + session-manager (7682) restricted to laptop. Free on Personal, ~20 lines of JSON, defense-in-depth.
+- **A4.3 Cloudflare-from-Hetzner warning**: `claude login` from a Hetzner IP gets JS-challenged by Cloudflare (`anthropics/claude-code` #21678, closed not-planned). Plan already does the right thing (token generated on laptop, exported on VM) but now explicitly calls out "do NOT run `claude login` on the VM."
+- **A7 backup scope**: added `~/.claude/` to restic paths + retention pruning. GitHub #24207 reports unbounded growth (3.2 GB / 2 months typical; 200-472 GB in extreme cases). Disk-sizing implication for CCX23.
+- **B2 supply-chain hardening**: pin all third-party Actions by commit SHA, not tag. References CVE-2025-30066 (tj-actions, 23K repos), Nov 2025 Shai-Hulud worm, March 2026 trivy-action force-push.
+
+**🟢 Confirmations (claims that DID hold up)**:
+- **June 15, 2026 Anthropic billing split**: interactive TUI on Max **unchanged**. `tmux send-keys` driving the TUI is unaffected (split is by binary mode, not transport). Only `claude -p` moves to API-billed Agent SDK credit pool. Max 5x gets ~$100/mo Agent SDK credit, Max 20x ~$200/mo.
+- **`claude` install + auth lifecycle**: `claude.ai/install.sh`, APT repo, `claude setup-token` (1-year OAuth), `claude auth status` JSON schema (`subscriptionType: "max"`, `apiProvider: "firstParty"`) all unchanged.
+- **`tmux send-keys` driving TUI**: no ToS prohibition, no anti-automation. Anthropic ships official docs examples of piped/scripted usage. Ecosystem of tmux-driver tooling (tmai, NTM, tui-use, amux, hermes-agent) active and unblocked.
+- **Ubuntu 22.04 vs 24.04**: Unity 6.4 officially supports both. 22.04 pin is preference (GLIBC 2.35 meets ≥2.34 requirement), not requirement.
+- **Tailscale Personal**: 6 users / unlimited devices / 50 tagged resources / Funnel / SSH / ACLs all free, unchanged.
+- **GH JIT runners (`--ephemeral`)**: setup unchanged. Free on private repos for individual accounts (proposed fee postponed).
+- **restic + Storage Box / B2**: all stable. B2 still ~$0.18/mo for 30 GB with Cloudflare Bandwidth Alliance free egress.
+- **xterm.js mobile (Pixel 7 Pro #4279)**: issue is closed but no documented fix commit found — treat as unverified. Claude Code `/tui fullscreen` (v2.1.89+) is now real and documented but explicitly hedges on mobile compatibility. Mitigation: test on actual device in A4.5; fallback path is siteboon/claudecodeui (B5).
+
+**🎉 Net effect**: the Hub-native-on-VM pivot turns out **even cleaner** than written. Apt-repo install is simpler than AppImage; headless install for future Editors removes a major recurring risk; self-service seat release removes the Unity Support dependency; MAC stability comes free with server-resource binding.
+
+**Sources** (load-bearing, post-audit):
+- [Unity Hub Linux install — official docs](https://docs.unity.com/en-us/hub/install-hub-linux) (apt repo path)
+- [Unity Hub CLI reference (`--headless install`)](https://docs.unity.com/en-us/hub/hub-cli)
+- [Unity Support — "License is already active on two devices" (self-release)](https://support.unity.com/hc/en-us/articles/39943726903060)
+- [neutrinolabs/xrdp #3479 — Xorg blue screen on Ubuntu 22.04](https://github.com/neutrinolabs/xrdp/issues/3479)
+- [Hetzner Docs — Backups/Snapshots](https://docs.hetzner.com/cloud/servers/backups-snapshots/overview/)
+- [Hetzner Cloud API — `server rebuild`](https://docs.hetzner.cloud/)
+- [Hetzner price adjustment April 2026](https://docs.hetzner.com/general/infrastructure-and-availability/price-adjustment/)
+- [Anthropic — Claude Code Billing Changes June 15, 2026 (article 15036540)](https://support.claude.com/en/articles/15036540)
+- [anthropics/claude-code #21678 — Cloudflare blocks OAuth from Hetzner](https://github.com/anthropics/claude-code/issues/21678)
+- [anthropics/claude-code #24207 — `~/.claude` unbounded growth](https://github.com/anthropics/claude-code/issues/24207)
+- [Tailscale Personal plan limits](https://tailscale.com/docs/account/manage-plans/free-plans-discounts)
+- [Tailscale ACL docs](https://tailscale.com/docs/features/access-control/acls)
+- [tsl0922/ttyd releases (1.7.7 = March 2024, last)](https://github.com/tsl0922/ttyd/releases)
+- [CVE-2025-30066 (tj-actions/changed-files)](https://github.com/advisories/ghsa-mrrh-fwg8-r2c3)
+- [Wiz — Hardening GitHub Actions (SHA pinning)](https://www.wiz.io/blog/github-actions-security-guide)
+
 ### Unity Personal on Linux VM — canonical 2026 path (2026-05-25)
 
 After the "Personal can't run in containers" discovery above, owner suggested: "treat the Linux VM as a personal machine I have." Follow-up research confirmed this is the cleanest working path in 2026; no better alternative exists.
@@ -870,24 +969,24 @@ After the "Personal can't run in containers" discovery above, owner suggested: "
 - No CLI activation path for Personal (Unity docs explicit: "command-line procedures don't apply to Unity Personal").
 - No remote activation (Hub on machine A can't license machine B).
 - No mature community installer; the Hub-via-temporary-GUI dance is what indies actually do.
-- Two refinements over a naive VNC approach: **use xrdp** (built-in Windows RDP client, smoother than any VNC client), and **pin the VM's MAC** at the provider level (Hetzner supports this) so snapshot-restore-in-place keeps the license valid.
+- Two refinements over a naive VNC approach: **use xrdp** (built-in Windows RDP client, smoother than any VNC client), and **rely on Hetzner's implicit MAC stability** (MAC is bound to the server resource ID for its lifetime — survives reboot, stop/start, host migration, `hcloud server rebuild`). Earlier draft of this entry said "pin the MAC at provider level" — that's wrong; no such feature exists in Hetzner Cloud Console. See 2026-05-25 risk-register sweep entry above for the corrected approach.
 
 **Workflow** (codified in plan-doc A4.1 + A5):
-1. Provision Hetzner CCX23, Ubuntu 22.04, **pin the primary NIC's MAC**.
-2. Install `xfce4 + xrdp` (TEMPORARY), open port 3389 on `tailscale0` only.
-3. RDP from Windows laptop (built-in `mstsc.exe`) over Tailscale.
-4. Install Unity Hub AppImage, sign in to Unity account, activate Personal (Hub writes `UnityEntitlementLicense.xml` to `~/.config/unity3d/Unity/licenses/`, starts `Unity.Licensing.Client` daemon, license binds to this VM's MAC + machine-id).
+1. Provision Hetzner CCX23 (160 GB NVMe), Ubuntu 22.04. **Record the server resource ID + primary MAC** in `infra/vm-host.txt` — MAC is implicitly stable for the life of the server resource (no config needed; just don't delete the server). Enable billing alerts at the Hetzner account level.
+2. Install `xfce4 + xrdp` (TEMPORARY) with the hardening from A5.2 (`adduser xrdp ssl-cert`, `~/.xsession`, TLS pin), open port 3389 on `tailscale0` only.
+3. RDP from Windows laptop (built-in `mstsc.exe`) over Tailscale. Pick **Xorg** at login (not Xvnc). Don't be logged in locally.
+4. **Install Unity Hub via apt repo** (`https://hub.unity3d.com/linux/repos/deb stable main`), sign in to Unity account — **Personal auto-activates on signin** (no separate "Add license" click; the old button was removed). Hub writes `UnityEntitlementLicense.xml` to `~/.config/unity3d/Unity/licenses/`, starts `Unity.Licensing.Client` daemon, license binds to this VM's MAC + machine-id + hostname.
 5. Install Editor 6000.3.11f1 via Hub (~5 GB).
-6. **Take a Hetzner snapshot now** — this is the A7 disaster-recovery restore point.
-7. `apt purge xfce4* xrdp` + close port 3389. VM is back to headless.
+6. **Take a Hetzner snapshot now** — this is the A7 disaster-recovery restore point. Recover with `hcloud server rebuild --image <snap-id> <server-id>`.
+7. `apt purge xfce4* xrdp` + close port 3389. VM is back to headless. **Future Editor versions install headlessly** via `unityhub -- --headless install --version <X.Y.Zf1> --changeset <hash>` — no need to re-spin xrdp.
 8. From here on: `~/Unity/Hub/Editor/<version>/Editor/Unity -batchmode -quit -nographics -projectPath <path> -desiredWorkerCount 0 -logFile -` works headlessly. LicensingClient daemon is auto-started by Editor on each invocation.
 
 **Constraints to live with**:
 - **2-seat Personal limit** per Unity ID (laptop + VM = 2/2). Before destroying/re-provisioning the VM, **MUST "Return License" via Hub** or the seat is gone until Unity Support manually frees it. Document in runbook (A7).
-- **MAC must stay stable.** Hetzner can re-roll MAC on host migration if not pinned. Pin at A4.1.
-- **Snapshot restore semantics**:
-  - Restore to **same VM ID** (Hetzner) → MAC preserved → license still valid. Fast disaster recovery (<30 min).
-  - Restore to **new VM ID** → new MAC → license invalid → must re-activate (burns a seat). Use only if same-VM restore impossible.
+- **MAC must stay stable.** Hetzner's MAC is implicitly bound to the server resource ID; survives reboot, stop/start, host migration. Only deletion of the server resource itself changes MAC. **Protect the server resource** with billing alerts + account safeguards (A4.1).
+- **Snapshot restore semantics** (2026-05-25 corrected):
+  - **In-place rebuild**: `hcloud server rebuild --image <snap-id> <server-id>` → server-ID + MAC preserved → license still valid. Fast disaster recovery (<30 min). This is the A7 default.
+  - **Create new server from snapshot** → new server-ID → new MAC → license invalid → must re-activate (burns a seat). Use only if the server resource is unrecoverable.
 - **Editor version upgrades**: install additional versions via Hub (one-time RDP-back-in: re-install xfce+xrdp briefly, install new Editor, tear down). Or `~/Unity/Hub/UnityHub.AppImage --headless install --version <new>` if it works in 2026 (untested, would simplify).
 
 **Trade-offs vs the original GameCI-container plan**:
