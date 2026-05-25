@@ -16,14 +16,14 @@ tags: [#infra, #claude-code, #unity, #agents, #remote, #tmux]
 
 **Branch**: `phase-a/local-validation` (commits ahead of `main`: A0 → A1 → A2 rewrite → A2 reshape). No PR open yet.
 
-**Resume here**: Phase **A3** — Local Docker validation of Linux primitives, no cloud VM yet. Uses Docker Desktop on the Windows laptop (WSL2 backend, hidden runtime) to validate GameCI image, container worktree mounts, concurrent batchmode, and ttyd+tmux+claude rendering — all the things we'd otherwise discover for the first time on a paid VM. A4 (cloud VM provisioning) only starts once A3 passes.
+**Resume here**: ⛔ **PAUSED — Unity licensing decision required.** A3.0 (Docker Desktop) ✅ and A3.1 (research gate) ✅ completed. A3.2 hit a hard block: **Unity Personal in 2026 cannot be activated inside a Linux container** (modern Unity uses XML license format bound to hardware fingerprint — machine-id + MAC + hostname — and manual `.alf`/`.ulf` activation for Personal was removed in Aug 2023). Full finding in §11 "Unity Personal in containers — blocking discovery (2026-05-25)." Decision required before any further work; three options laid out in that note. Once decided, A3.2 + later phases get rewritten and we resume.
 
 | Phase | Status |
 |---|---|
 | A0 — Local prerequisites | ✅ subscription confirmed (Max, firstParty), `infra/check-a0.ps1` codifies the gate |
 | A1 — Worktree + Unity batch-mode concurrency | ✅ validated on vanilla Unity 6000.3.11f1 (parallel imports exit 0; shared `LicensingClient` confirmed); Scaffold cold-build issue spawned as a separate task |
 | A2 — Local Tailscale validation (reshaped) | ✅ W1–W3 done: laptop + phone joined tailnet, bidirectional `tailscale ping` confirmed. Browser-terminal validation moved to A3 / A4 (Linux primitives) after two Windows-native install attempts failed (code-server, code serve-web). See §11 for the journey. |
-| A3 — Local Docker validation (Linux primitives, no VM) | ⏸ Docker Desktop on laptop (WSL2 backend) hosts a Linux container for: GameCI image smoke, our-projects-actually-build test, concurrent batchmode behavior, worktree-mount semantics, ttyd+tmux+claude render check from phone. De-risks A5/A6 at $0. |
+| A3 — Local Docker validation (Linux primitives, no VM) | ⛔ **BLOCKED at A3.2** by Unity Personal licensing model change (see §11). A3.0 + A3.1 ✅; A3.5/A3.6 (non-Unity ttyd+tmux+claude) could still run independently if licensing decision is deferred. |
 | A4 — Linux VM: chat layer (Pass 1) | ⏸ Provision VM (free credit), install ttyd + tmux + claude, phone access via Tailscale. **No Unity yet.** Validates the chat layer on a non-personal-device host. |
 | A5 — Linux VM: Unity layer (Pass 2 start) | ⏸ `docker pull unityci/editor:ubuntu-6000.3.11f1-...`, license activation once on host. **GameCI image is the substrate** — we take the image only, not the GitHub-Actions workflow. |
 | A6 — VM worktrees + first batchmode in container | ⏸ |
@@ -336,7 +336,12 @@ Caveat — "folkloric, not blessed": GameCI has no official doc for standalone u
 
 - [ ] No new search needed; research already done. Read §11 → "GameCI image standalone confirmed" for the full finding before A3.2.
 
-#### A3.2 — Pull GameCI image + smoke against our real projects (1 hour)
+#### A3.2 — Pull GameCI image + smoke against our real projects (1 hour) ⛔ BLOCKED
+
+**Status (2026-05-25)**: Image pulled successfully (`unityci/editor:ubuntu-6000.3.11f1-base-3.2.2`, digest `sha256:ef80dca0…8021`, 14.3 GB unpacked, `unity-editor -version` returns 6000.3.11f1). `infra/docker/unity-images.txt` committed. **Then licensing hit a wall** — see §11 "Unity Personal in containers — blocking discovery." Container can't activate Personal license; no Unity-blessed workflow for Personal-in-container exists. Three pivot options in the §11 entry; decision required before this step can complete.
+
+The `Unity_v6000.3.11f1.alf` file at `C:\Unity\unity-license\` is now useless (Unity removed the manual ALF→ULF flow for Personal in Aug 2023). Left in place as evidence of the dead-end exploration; can be deleted once the new licensing path is decided.
+
 - [ ] Pull the GameCI image for our pinned Editor version: `docker pull unityci/editor:ubuntu-6000.3.11f1-linux-il2cpp-<N>`. Record the image SHA256 digest.
 - [ ] Activate Unity license inside the container: `docker run --rm -v C:\Unity\unity-license:/license unityci/editor:... unity-editor -batchmode -quit -createManualActivationFile -logFile -`. Outputs `.alf` file. Upload to https://license.unity3d.com/manual, get `.ulf`, save to `C:\Unity\unity-license\Unity_lic.ulf` (mode-restricted; gitignored).
 - [ ] **Backup the `.ulf` immediately** to a separate location on the laptop *and* to whatever cloud backup we have available (OneDrive, B2, etc.) — same discipline as A5.4.
@@ -609,7 +614,7 @@ If triggered:
 
 - **April 2026 third-party-harness restriction** — confirmed: subscription billing only valid for Anthropic's own surfaces. Mitigation: never call Anthropic from our code; always shell out to the official `claude` binary. Re-validate quarterly.
 - **June 15, 2026 `-p` billing split** — Track B-fire-and-forget becomes API-priced. Mitigation: session-driven path (B-session) stays on subscription; switch defaults to it if API cost shows up.
-- **Unity EULA on Personal for headless** — fuzzy "one machine" clause when "machine" is a VM. If borderline, need Pro. **Phase A0 blocker.**
+- **Unity Personal in headless Linux containers is unsupported (2026)** — confirmed by A3.2 discovery and follow-up research; see §11. Not just a fuzzy EULA question — modern Unity (2021.2+) uses LicensingClient daemon + hardware-fingerprint-bound XML format, and Unity removed manual `.alf`/`.ulf` activation for Personal in Aug 2023. Three paths: GameCI Puppeteer flow (brittle), Editor-on-Windows + SSH (architecture pivot), or Unity Pro ($2,200/yr). **Plan currently paused on this gate.**
 - **Anthropic could harden against PTY-driving the TUI** — Path B-session relies on the interactive CLI being scriptable via tmux. If they detect/block this, fallback is API-billed dispatch. Watch policy updates.
 - **Unity headless Parallel Import bug** — known. Disabled per-invocation via `-desiredWorkerCount 0` CLI flag (baked into `infra/unity-batchmode.sh`). Re-test on each Editor version bump.
 - **`siteboon/claudecodeui` if adopted later (Phase B5)** — high-alert dependency: handles tokens + shells, ~11k stars but smaller maintainer base than enterprise tools. Not adopted in v1; only revisited if mobile UX in A4.5 / A7 surfaces real pain that ttyd can't fix. Adoption requires security review + sandboxed trial per §5.
@@ -620,7 +625,8 @@ If triggered:
 
 ## 10. Open questions
 
-- [x] ~~GameCI-image-without-license-automation research~~ **Resolved (research §11): conditional pass.** Image works standalone; pre-mount `.ulf` at `/root/.local/share/unity3d/Unity/Unity_lic.ulf`. A3.1 captures the finding inline; A3.2 confirms empirically.
+- [ ] ⛔ **Unity licensing path for headless Linux (BLOCKING).** Personal can't run in Linux containers in 2026 (see §11 "Unity Personal in containers — blocking discovery"). Three options on the table: (a) GameCI Puppeteer flow (free, brittle, ~$0 ongoing + periodic fix-it work), (b) pivot architecture to Editor-on-Windows + SSH-from-Linux-VM (changes "desktop-off" goal), (c) buy Unity Pro ($2,200/yr ≈ $183/mo, cleanest). **Plan is paused at A3.2 until owner picks.** Until then, A3.5 / A3.6 (non-Unity ttyd+tmux+claude) can run independently if we want to keep validating the chat layer.
+- [x] ~~GameCI-image-without-license-automation research~~ **Partially resolved.** Image mechanics confirmed (no ENTRYPOINT, mount path correct), but the deeper Personal-in-container issue surfaced only in A3.2. Image works; licensing is the blocker. See §11.
 - [x] ~~Chat UI: ttyd vs claudecodeui?~~ **Resolved: ttyd primary; defer UX evaluation until core stack works.** Phase B5 stays as the placeholder slot for "evaluate UX upgrades (claudecodeui or others) if A7 reveals real mobile-UX pain." No pre-commitment to claudecodeui — it stays in §5 "Under evaluation" pending need + security review.
 - [x] ~~Webhook trigger now or later?~~ **Resolved: defer.** Track B v1 uses `gh workflow run` from any device with gh installed. B3 becomes a "post-v1, only if commenting becomes the dominant trigger" phase.
 - [x] ~~CCX23 / CCX33 / CCX43 sizing?~~ **Resolved: trigger-based.** Start CCX23 after free-tier validation passes. Resize to CCX33 if (A3.3 proves concurrent batchmode works) AND (B0 picks 2+ concurrent slots). Resize to CCX43 only if 4+ concurrent Unity jobs become the dominant workload. Default end-state remains CCX33 per §3.
@@ -825,6 +831,41 @@ Stripe's pattern is the right north star, but Unity licensing is the binding con
 **Unity Accelerator**: **skip on single-host multi-worktree.** Unity's own forum guidance (post 1093288): *"With Asset Database Pipeline V2, you would have a built-in cache database in the Editor so you would not need to have Unity Accelerator running for a single developer."* Accelerator's value is cross-machine LAN cache.
 
 **Digest pinning**: GameCI **does republish** suffixed tags occasionally (their `-0`, `-1`, `-2`, `-3` suffix scheme indicates re-rolls). Pin by digest for production. Syntax: `docker pull unityci/editor@sha256:<digest>`. Lookup: `docker buildx imagetools inspect <tag>` or `docker inspect --format='{{index .RepoDigests 0}}' <tag>` after a pull.
+
+### Unity Personal in containers — blocking discovery (2026-05-25) ⛔
+
+**The earlier "GameCI image standalone confirmed" entry above is correct about the IMAGE mechanics** (no ENTRYPOINT, `.ulf` mount-path is `/root/.local/share/unity3d/Unity/Unity_lic.ulf`, license injection is opt-in via `UNITY_LICENSE` env var hook). **But it missed a deeper licensing-model issue** that surfaced only when we tried to activate.
+
+**What we found when we ran A3.2**:
+1. Pulled `unityci/editor:ubuntu-6000.3.11f1-base-3.2.2`, image works, `unity-editor -version` returns 6000.3.11f1. ✅
+2. Generated a `.alf` activation file inside the container (works). Tried to upload to `https://license.unity3d.com/manual` — Unity's page **only offers Plus/Pro serial entry**. No Personal option, no `.alf` upload field. Confirmed Unity removed manual Personal activation in ~Aug 2023 (Unity Discussions: "Unity no longer supports manual activation of Personal licenses" — open thread, no Unity-staff response).
+3. Searched the Windows host for the legacy `Unity_lic.ulf` — doesn't exist. Modern Unity Hub writes **`UnityEntitlementLicense.xml`** (5869 bytes) to `C:\Users\<user>\AppData\Local\Unity\licenses\` instead. Different format, different path, different licensing model entirely.
+4. Tried running Unity in the container with no license: failed with `[Licensing::IpcConnector] Channel LicenseClient-root doesn't exist` — modern Unity (2021.2+) uses a separate **LicensingClient daemon** that the Editor talks to over Unix IPC; no daemon running = no license.
+5. The GameCI `base-3.2.2` image has `Unity.Licensing.Client` binary at `/opt/unity/Editor/Data/Resources/Licensing/Client/` (108 MB) but **no startup hook** in `/usr/bin/unity-editor.d/` (directory empty). LicensingClient isn't autostarted; we'd need to wire it ourselves.
+6. Even if we wired it up: modern Unity Personal license is **hardware-fingerprint bound** (machine-id + primary MAC + hostname, per Unity issue tracker). Windows host's XML won't validate in a Linux container (Docker Desktop containers see WSL2 VM hardware, not the Windows host's).
+
+**Net**: there is **no Unity-blessed workflow for Personal-in-Linux-container in 2026.** Unity's de-facto answer: "Personal is for desktop dev; for headless/CI, use Pro + Build Server."
+
+**What GameCI users actually do (2026 status):**
+- Adopt `game-ci/unity-license-activate` — a Puppeteer script that logs into `id.unity.com` via headless Chrome, re-generates a license per CI job, hardcodes `/etc/machine-id` in the image so the same license works across jobs. Requires `UNITY_EMAIL` + `UNITY_PASSWORD` in plaintext (TOTP fragile).
+- This flow is **constantly breaking** as Unity changes the login UI — `game-ci/docker#268` (open since Nov 2025: "Access token is unavailable; failed to update").
+- It's unofficial and Unity-hostile. Indies use it because Pro is $2,200/yr/seat; small teams budget periodic "fix GameCI" time.
+
+**Three pivot options for our plan** (owner decision required):
+
+1. **Adopt GameCI Puppeteer flow.** Plan stays free ($60/mo target). Cost: brittle, requires plaintext Unity credentials in secrets, periodic breakage to fix. Plan-doc rewrites: A3.2 / A5.4 add the Puppeteer activation step + hardcoded machine-id in container image.
+2. **Pivot architecture: Editor on Windows host, claude on Linux VM, SSH bridge.** Cloud VM hosts the chat layer + agent dispatch. When `claude` needs Unity batchmode, it SSHes to the Windows desktop (or a small Windows VM) and runs Unity there natively. Personal license works fine on Windows. Cost: the "desktop off" goal weakens — the Windows machine has to be on when Unity work happens. Plan-doc rewrites: A5/A6 become "SSH-to-Windows-Unity" instead of "Linux-container-Unity."
+3. **Buy Unity Pro ($2,200/yr/seat ≈ $183/mo).** Pro supports manual activation, headless Linux is officially supported, no hacks. Plan economics: $60/mo → $243/mo. Justifiable if approaching the $200K/yr Personal revenue cap anyway, or if your time is worth more than $2,200/yr of brittle GameCI babysitting.
+
+**Decision deferred to owner** (2026-05-25). Plan paused at A3.2 until decision is made. A3.5 / A3.6 (non-Unity ttyd+tmux+claude validation) could be unblocked independently if owner wants to continue chat-layer validation while deciding.
+
+**Sources** (load-bearing):
+- [Unity Discussions — Unity no longer supports manual activation of Personal licenses](https://discussions.unity.com/t/unity-no-longer-supports-manual-activation-of-personal-licenses/926760)
+- [Unity Issue Tracker — Cannot activate license within a docker container](https://issuetracker.unity3d.com/issues/cannot-activate-license-within-a-docker-container)
+- [Unity Support — Machine Identification Is Invalid For Current License](https://support.unity.com/hc/en-us/articles/360039435032)
+- [game-ci/docker#268 — Access token is unavailable (open Nov 2025)](https://github.com/game-ci/docker/issues/268)
+- [game-ci/unity-license-activate](https://github.com/game-ci/unity-license-activate)
+- [game-ci/documentation#408 — manual Personal flow broken (open since Aug 2023)](https://github.com/game-ci/documentation/issues/408)
 
 ### Local-validate-then-VM-deploy: partially abandoned (revised 2026-05-21)
 - Original premise: validate every primitive on the user's Windows machine before paying for the VM, then migrate via `rsync + systemd units + tailscale up`.

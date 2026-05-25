@@ -1,0 +1,24 @@
+# Pinned GameCI Unity image references
+# Format: <Editor version> <tag> <sha256-digest>
+#
+# Always pull via digest in scripts. Tag is for human readability + Docker Hub lookup.
+# Source: https://hub.docker.com/r/unityci/editor/tags
+# Rationale: GameCI's suffix-versioned tags (`-3`, `-3.2`, `-3.2.2`) are intended to be
+# immutable but they re-publish occasionally; digest pinning prevents silent rebuilds.
+#
+# Schema:
+#   editor_version  tag  digest
+#
+# Adding a new pin:
+#   1. Find your version on Docker Hub: ubuntu-<version>-<target>-<N>
+#      target = `base` for asset import / script compile / Editor scripts (smallest)
+#              `linux-il2cpp` for Linux Player builds
+#              `webgl` for WebGL Player
+#              `android` / `ios` / `mac-mono` / `windows-mono` / etc. for those targets
+#   2. Get digest:
+#        curl -s 'https://hub.docker.com/v2/repositories/unityci/editor/tags/<full-tag>' | jq -r '.digest'
+#      or after pull:
+#        docker inspect --format='{{index .RepoDigests 0}}' unityci/editor:<tag>
+#   3. Append below.
+
+6000.3.11f1  ubuntu-6000.3.11f1-base-3.2.2  sha256:ef80dca03acbba3459224b27c05a1614f07f041c33791b7e23a3272e0e800021
