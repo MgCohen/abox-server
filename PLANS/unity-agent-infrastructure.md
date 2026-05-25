@@ -16,16 +16,16 @@ tags: [#infra, #claude-code, #unity, #agents, #remote, #tmux]
 
 **Branch**: `phase-a/local-validation` (commits ahead of `main`: A0 → A1 → A2 rewrite → A2 reshape). No PR open yet.
 
-**Resume here**: ⛔ **PAUSED — Unity licensing decision required.** A3.0 (Docker Desktop) ✅ and A3.1 (research gate) ✅ completed. A3.2 hit a hard block: **Unity Personal in 2026 cannot be activated inside a Linux container** (modern Unity uses XML license format bound to hardware fingerprint — machine-id + MAC + hostname — and manual `.alf`/`.ulf` activation for Personal was removed in Aug 2023). Full finding in §11 "Unity Personal in containers — blocking discovery (2026-05-25)." Decision required before any further work; three options laid out in that note. Once decided, A3.2 + later phases get rewritten and we resume.
+**Resume here**: Phase **A4** — provision Hetzner CCX23, then in A5 install Unity Hub + Editor natively on the VM (temporary xrdp for the one-time Hub sign-in / Personal activation, then torn down). A3.0 (Docker Desktop) ✅. **A3 narrowed**: Unity-in-container path (A3.1-A3.4) deleted after the 2026-05-25 licensing discovery — Personal can't run in Linux containers. A3.5 / A3.6 (ttyd+tmux+claude in container) kept as optional pre-flight if we want extra confidence on mobile rendering before VM spend. Full new Unity strategy in §11 "Unity Personal on Linux VM — canonical 2026 path."
 
 | Phase | Status |
 |---|---|
 | A0 — Local prerequisites | ✅ subscription confirmed (Max, firstParty), `infra/check-a0.ps1` codifies the gate |
 | A1 — Worktree + Unity batch-mode concurrency | ✅ validated on vanilla Unity 6000.3.11f1 (parallel imports exit 0; shared `LicensingClient` confirmed); Scaffold cold-build issue spawned as a separate task |
 | A2 — Local Tailscale validation (reshaped) | ✅ W1–W3 done: laptop + phone joined tailnet, bidirectional `tailscale ping` confirmed. Browser-terminal validation moved to A3 / A4 (Linux primitives) after two Windows-native install attempts failed (code-server, code serve-web). See §11 for the journey. |
-| A3 — Local Docker validation (Linux primitives, no VM) | ⛔ **BLOCKED at A3.2** by Unity Personal licensing model change (see §11). A3.0 + A3.1 ✅; A3.5/A3.6 (non-Unity ttyd+tmux+claude) could still run independently if licensing decision is deferred. |
-| A4 — Linux VM: chat layer (Pass 1) | ⏸ Provision VM (free credit), install ttyd + tmux + claude, phone access via Tailscale. **No Unity yet.** Validates the chat layer on a non-personal-device host. |
-| A5 — Linux VM: Unity layer (Pass 2 start) | ⏸ `docker pull unityci/editor:ubuntu-6000.3.11f1-...`, license activation once on host. **GameCI image is the substrate** — we take the image only, not the GitHub-Actions workflow. |
+| A3 — Local Docker validation (narrowed) | A3.0 ✅. A3.1-A3.4 deleted (Unity-in-container is dead). A3.5/A3.6 (ttyd+tmux+claude in container, no Unity) kept as optional chat-layer pre-flight. |
+| A4 — Linux VM: chat layer (Pass 1) | ⏸ Provision Hetzner CCX23 (referral credit if possible), install ttyd + tmux + claude, phone access via Tailscale. **No Unity yet.** Validates the chat layer on a non-personal-device host. |
+| A5 — Linux VM: Unity layer (Pass 2 start) | ⏸ Native Hub + Editor install via temporary xrdp session (one-time, for Personal activation GUI flow), then xrdp torn down. Hetzner snapshot taken before teardown = A7 restore point. |
 | A6 — VM worktrees + first batchmode in container | ⏸ |
 | A7 — Permanent service (systemd) | ⏸ |
 | Track B (agent dispatch) | ⏸ Comes after Track A is solid |
@@ -34,7 +34,9 @@ tags: [#infra, #claude-code, #unity, #agents, #remote, #tmux]
 - **No Linux / WSL on the local Windows machine.** A2 reshape acknowledged this: browser-terminal validation belongs on Linux. Local Windows is for editing + Tailscale client only.
 - **Multi-Unity-project host.** `C:\Unity\` holds Card Framework, Scaffold, Gear-Engine, and growing. VM layout mirrors this as `~/work/<project>/{main,slotN}/`.
 - **Two-pass validation discipline.** Pass 1 (A4) validates the chat layer with no Unity. Pass 2 (A5–A6) adds Unity. The split isolates failures.
-- **GameCI image only, not GameCI workflow.** We pull `unityci/editor` for Unity-on-Linux primitive. License activation stays manual on the host (`-createManualActivationFile` → upload `.alf` → download `.ulf` → mount into container). We never adopt `unity-license-activate` / `unity-builder` actions — those don't fit our persistent-session model.
+- **Unity Hub + Editor native on the Linux VM, NOT containerized.** Modern Unity Personal (2026) cannot be activated inside a Docker container (license is hardware-fingerprint bound, manual `.alf`/`.ulf` flow removed in Aug 2023). We treat the Linux VM as "a personal Linux machine I have" — Hub installed natively, Personal activated via temporary xrdp GUI session, Editor installed via Hub, license bound to the VM's MAC address. GameCI image considered but rejected — see §11 "Unity Personal in containers — blocking discovery" and "Unity Personal on Linux VM — canonical 2026 path."
+- **MAC-pin the Hetzner VM.** License binding means snapshot-restore-in-place is reliable only if MAC is stable. Hetzner Cloud supports pinned primary NIC; required for A7 disaster recovery to work.
+- **2-seat Personal limit.** Laptop + VM = 2/2 seats consumed. Must "Return License" via Hub before destroying / re-provisioning the VM, or the seat is gone until Unity Support manually frees it.
 - **Ubuntu 22.04 LTS on VM**, not 24.04 — Unity has more bug-repros on 24.04 (research note §11).
 - **Free-tier validation before paid spend.** GCP $300 / 90-day credit, Hetzner referral €20, or Oracle Always Free can validate A4–A6 at $0. Paid Hetzner CCX23 (~€29/mo) is the target for graduation; CCX33 (~€57/mo) is the multi-project end state.
 - **Side task open**: Scaffold's `com.scaffold.schemas` is committed at `Assets/Packages/` AND declared as a git URL in `manifest.json` → 50+ GUID conflicts on cold build. Spawned task addresses this; doesn't block this branch but must be resolved before Scaffold can be deployed to the VM.
@@ -113,11 +115,11 @@ This is a defensive default — Anthropic OAuth tokens and a Unity-equipped VM a
 
 Every Linux-substrate question is validated on the laptop before any cloud spend, but **not via Windows-native tooling** (we tried twice in A2, both failed — see §11). Instead, Phase A3 uses Docker Desktop (WSL2 backend, hidden runtime) on the Windows host to run the same `unityci/editor` container, `ttyd + tmux + claude` container, and concurrent batchmode tests that the VM will run. From Docker's perspective there's no difference between "container on the laptop" and "container on the cloud VM" — same image, same x86, same syscalls.
 
-What that validates locally: GameCI image + our projects, worktree+volume-mount semantics, claude TUI in ttyd on mobile, tmux send-keys reliability, concurrent batchmode behavior.
+What still validates locally (post-2026-05-25 pivot — A3 narrowed): claude TUI in ttyd on mobile, tmux send-keys reliability — A3.5 + A3.6, both optional pre-flight. Most of the original A3 (Unity-in-container) is moot now that Unity runs natively on the VM.
 
-What still requires the cloud VM (A4+): OAuth billing on a non-personal-device host, cloud-provider-specific provisioning, real systemd-on-Ubuntu instead of Docker-managed PID 1.
+What requires the cloud VM (A4+): chat-layer end-to-end test, **Unity Hub install + Personal activation** (binds to the VM's hardware), Editor install, headless batchmode, real systemd-on-Ubuntu.
 
-Migration to VM is **not** `rsync from laptop` — it's a fresh Ubuntu 22.04 install per A4.1-A4.3. Reusable across hosts: GameCI image (pinned by digest), `.ulf` license file, our `infra/` scripts. Everything else gets rebuilt from the plan.
+Migration to VM is **not** `rsync from laptop` — it's a fresh Ubuntu 22.04 install per A4.1-A4.3, then Hub-driven Unity install per A5. Reusable across hosts: our `infra/` scripts. Reusable on the *same* VM via Hetzner snapshot (A5.6): the activated license + installed Editor. Reusable to a *new* VM: nothing — must re-activate Personal (burns a seat).
 
 ---
 
@@ -153,12 +155,13 @@ Migration to VM is **not** `rsync from laptop` — it's a fresh Ubuntu 22.04 ins
               └────────────────────┬──────────────────────┘
                                    ▼
               ┌───────────────────────────────────────────┐
-              │  Unity -batchmode (via GameCI image:      │
-              │  `unityci/editor`, per-Editor-version)    │
+              │  Unity -batchmode (Editor installed        │
+              │  natively via Hub on the VM;               │
+              │  Personal license, MAC-pinned)             │
               └───────────────────────────────────────────┘
 ```
 
-**Project scope**: the VM hosts **multiple distinct Unity projects** (e.g. `Card Framework`, `Scaffold`, …), each living under `~/work/<project>/` with its own `main` worktree plus N agent slot worktrees. Unity is not installed on the host; instead, one **GameCI Docker image (`unityci/editor`) is pulled per Editor version** pinned in `ProjectSettings/ProjectVersion.txt`. License activation happens once for the machine (one `.ulf` shared across all images, mounted read-only into each container).
+**Project scope**: the VM hosts **multiple distinct Unity projects** (e.g. `Card Framework`, `Scaffold`, …), each living under `~/work/<project>/` with its own `main` worktree plus N agent slot worktrees. **Unity Hub is installed natively on the VM** (one-time, via temporary xrdp GUI for the sign-in dance — see A5). Each project's pinned Editor version (from `ProjectSettings/ProjectVersion.txt`) is installed via Hub, alongside the others. Personal license activates once for the machine, bound to the VM's MAC address; shared across all installed Editor versions and all worktrees.
 
 **Hardware (default end-state, Hetzner path)**: one Hetzner CCX33 (8 vCPU / 32 GB / 240 GB NVMe), Ubuntu 22.04 LTS, behind Tailscale. (CCX23 / 4 vCPU / 16 GB is the validation-budget floor; resize/upgrade to CCX33 once Pass 2 passes.) **GCP path**: `n2-standard-4` (4 vCPU / 16 GB) equivalent — pricier per spec but the $300 / 90-day credit covers the whole validation window. Decision made at A4.1.
 
@@ -204,8 +207,10 @@ After **Track B** (agent layer added):
 | `claude` CLI | The agent | Enterprise (Anthropic official) |
 | `tmux` | Persistent sessions, programmatic drive | System tool |
 | `ttyd` | Browser-accessible terminal on the VM | Standard OSS — small, well-known, Linux-native |
-| Docker (CE on the VM) | Runtime for the GameCI Unity image | Enterprise |
-| `unityci/editor` (GameCI image only) | Maintained Unity-on-Linux install | Standard OSS — **image only, not the GH Actions workflow** |
+| **Unity Hub** (AppImage, Linux) | Manages Editor installs + Personal license activation on the VM | Enterprise (Unity official) |
+| **Unity Editor** (installed by Hub, per pinned version) | The Editor itself; runs natively in batchmode | Enterprise (Unity official) |
+| `xrdp` + `xfce4` (TEMPORARY, A5 only) | Brief GUI session for Hub's one-time Personal activation flow; uninstalled after | Standard OSS |
+| Docker (CE on the VM, optional) | Runtime for the chat-layer test container (A3.5) and B2 fire-and-forget GH runner if we use container isolation. **Not** used for Unity. | Enterprise |
 | GitHub Actions self-hosted runner | Dispatch via `workflow_dispatch` (gh CLI from any device); webhooks deferred to post-v1 per §10 | Enterprise |
 | GitHub PAT (fine-grained) | Runner auth + dispatcher PR pushes | Enterprise |
 
@@ -220,7 +225,7 @@ After **Track B** (agent layer added):
 
 ~~Unity Accelerator~~ — researched, dropped. Accelerator's value is cross-machine LAN cache; on a single-host multi-worktree setup, Asset Database V2's built-in cache delivers the same benefit. Unity's own forum guidance: "you would not need to have Unity Accelerator running for a single developer." See §11.
 
-**Why GameCI image only, not the GameCI workflow** — GameCI is three separable pieces: (1) the `unityci/editor` Docker image with Unity pre-installed, (2) `unity-license-activate` / `unity-license-return` GitHub Actions, (3) `unity-builder` end-to-end CI workflow. We adopt (1) because it collapses Unity-on-Linux install from ~½ day of manual debugging to one `docker pull`, gives us version-pinned reproducibility, and isolates Unity's filesystem crufts inside the container. We reject (2) and (3) because they're GitHub-Actions-shaped and ephemeral-per-job — wrong shape for our persistent-host model where one license activation feeds long-lived tmux sessions for hours/days. License activation stays manual on the host (`Unity -batchmode -createManualActivationFile` → upload `.alf` → download `.ulf` → mount into container at run-time).
+**Why native Hub install on the Linux VM (not the GameCI Docker image)** — original plan adopted `unityci/editor` as the Unity substrate; A3.2 discovered (2026-05-25) that Personal can't be activated in a container in 2026 (Unity removed manual `.alf`→`.ulf` flow for Personal in Aug 2023; modern Personal is XML format + LicensingClient daemon, hardware-fingerprint bound to MAC + machine-id + hostname). Three options were on the table: GameCI's Puppeteer flow (brittle), Editor-on-Windows + SSH bridge (architecture pivot), or Unity Pro ($2,200/yr). We picked a fourth: **install Hub + Editor natively on the Linux VM as if it were a personal Linux desktop** — uses a temporary xrdp session for the one-time Hub sign-in / Personal activation, then tears down. This works because the activation happens *on* the VM, so the license binds to the VM's own hardware fingerprint (MAC-pinned via Hetzner so it survives snapshot restore). Trade-offs: lose container portability and version pinning by image SHA; gain a free, Unity-blessed licensing path with no Puppeteer hacks. Full rationale + sources in §11 "Unity Personal on Linux VM — canonical 2026 path."
 
 **Browser-terminal stack** — `ttyd + tmux` on the Linux VM. Original A2 Windows-local attempt (code-server, then `code serve-web`) failed twice (see §11) and was reshaped to "Tailscale validation only on local; browser-terminal validation moves to A4 on Linux." The two failed attempts are not retried — we don't need browser-terminal-on-Windows; we only need it on the VM, where Linux-native tools work.
 
@@ -243,7 +248,8 @@ After **Track B** (agent layer added):
 | Item | Monthly | Notes |
 |---|---|---|
 | Hetzner CCX33 (Hetzner path) | ~€57 (~$62) | Can start on CCX23 (~€29) and scale. Free for ~30 days on Hetzner referral credit. |
-| Hetzner Storage Box BX11 (backups) | ~€3.81 | 1 TB SFTP target, restic-compatible, free intra-Falkenstein egress. Replaces Hetzner Cloud built-in backups (20%, ~€11) — Storage Box is cheaper *and* survives instance loss, where built-in snapshots are tied to the project. |
+| Hetzner snapshot (post-A5 restore point) | ~€0.012/GB/mo, ~€0.50–1/mo for a CCX23 snapshot | One-time snapshot taken after A5 (Hub + Editor + Personal license activated). A7 disaster recovery = restore this snapshot to the same VM ID (preserves MAC, license stays valid). Different from "Hetzner Cloud Backups" (the 20% recurring option) — snapshots are explicit, one-shot, cheap, and survive instance loss. |
+| Hetzner Storage Box BX11 (backups) | ~€3.81 | 1 TB SFTP target, restic-compatible, free intra-Falkenstein egress. For ongoing Library/ + `UnityEntitlementLicense.xml` data backups. Complementary to the post-A5 snapshot (snapshot = "fresh-VM reset point", Storage Box = "rolling data backups"). |
 | GCP n2-standard equivalent (GCP path) | ~$100 | If we end up on GCP instead of Hetzner. Free for 90 days on $300 credit. |
 | Backblaze B2 (backups, GCP path) | ~$0.18 | 30 GB nightly. Replaces Storage Box if VM is on GCP. |
 | Tailscale | $0 | Personal plan (6 users / unlimited devices / 50 tagged resources). |
@@ -313,58 +319,30 @@ Test artifacts (`C:\Unity\a1-vanilla`, `C:\Unity\worktrees\a1-vanilla\{slot1,slo
 
 **A2 complete.** Tailscale validated; browser-terminal validation deferred to A4 (Linux VM, Pass 1).
 
-### Phase A3 — Local Docker validation of Linux primitives (½ day, no cloud spend)
+### Phase A3 — Local Docker validation (narrowed scope after A3.2 discovery)
 
-**Goal**: prove the Linux/Docker/GameCI/ttyd primitives work for *our specific projects* on the Windows laptop, using Docker Desktop (WSL2 backend) as a hidden Linux runtime. Everything we'd otherwise discover for the first time on a paid VM gets discovered here at $0. A4 only starts if A3 passes.
+**History**: A3 was originally designed as a Linux-primitive pre-flight on the Windows laptop via Docker Desktop, validating: GameCI image + our real projects (A3.2), concurrent batchmode (A3.3), worktree+container mounts (A3.4), ttyd+tmux+claude rendering on mobile (A3.5), tmux send-keys reliability (A3.6). A3.2 ran into a hard licensing block (Unity Personal can't activate in Linux containers in 2026 — see §11 "Unity Personal in containers — blocking discovery") and the architecture pivoted to native Hub-on-VM install (see §11 "Unity Personal on Linux VM — canonical 2026 path").
 
-**Why local works**: Docker Desktop's WSL2 backend gives us a real Linux kernel + containerd runtime. From Docker's perspective there's no difference between "container on my laptop" and "container on a Hetzner CCX23" — same image, same x86, same syscalls. The only things we *can't* validate locally are (a) OAuth-token billing on a non-personal-device host and (b) cloud-provider-specific provisioning. Both belong on the VM.
-
-**The "no WSL" rule preserved**: WSL2 here is the hidden container runtime, not a dev environment we open or operate. We never SSH into WSL, never edit files there, never run `claude` there directly — we just `docker run` from PowerShell and the containers happen to live inside the WSL2 VM.
+**Current scope**:
+- **A3.0 ✅ kept** (Docker Desktop install — still useful for A3.5/A3.6 and future B2 fire-and-forget container isolation).
+- **A3.1 deleted** (GameCI research gate — answered, then mooted by the pivot).
+- **A3.2, A3.3, A3.4 deleted** (Unity-in-container is not our substrate anymore).
+- **A3.5, A3.6 kept as OPTIONAL pre-flight** — ttyd+tmux+claude rendering question is still real and the chat-layer container test on the laptop can de-risk A4.5 before we commit to a VM. Skip if you'd rather go straight to A4.
 
 #### A3.0 — Install Docker Desktop ✅ (2026-05-22)
 - [x] Installed Docker Desktop for Windows (v29.4.3) with WSL2 backend.
 - [x] `docker run --rm hello-world` exit 0 — image pulled, container ran.
 - [x] Host mount confirmed: `docker run --rm -v C:\Unity:/host alpine ls /host` lists all C:\Unity\* projects.
-- [x] Versions captured at `infra/docker-desktop-version.txt`: Docker 29.4.3, WSL 2.7.3.0, kernel 6.6.114.1-1, Windows 26200.8457. (Originally drafted into `infra/logs/` but that's gitignored — moved to top of `infra/` since version pins are tracked artifacts, not runtime logs.)
-- **Gotcha worth flagging**: WSL was in `REGDB_E_CLASSNOTREG` ("class not registered") state pre-install. Fix was `wsl --install --no-distribution` from elevated PowerShell + reboot. Documented in the version log under "Recovery notes" — same pattern likely on any fresh Windows host where WSL was never used.
+- [x] Versions captured at `infra/docker-desktop-version.txt`: Docker 29.4.3, WSL 2.7.3.0, kernel 6.6.114.1-1, Windows 26200.8457.
+- **Gotcha**: WSL was in `REGDB_E_CLASSNOTREG` state pre-install. Fix was `wsl --install --no-distribution` from elevated PowerShell + reboot. Documented in the version log.
 
-#### A3.1 — GameCI image research gate (already answered — see §11)
+#### A3.1 — GameCI image research gate (deleted; superseded by pivot)
+Replaced by the native-Hub-on-VM path. See §11 "Unity Personal on Linux VM — canonical 2026 path."
 
-**Conclusion (2026-05-21 research)**: ✅ **conditional pass**. The `unityci/editor` image has no ENTRYPOINT; it ships a `/usr/bin/unity-editor` wrapper that runs `xvfb-run -ae /dev/stdout Unity -batchmode "$@"`. License injection via `UNITY_LICENSE` env var is *opt-in* through hooks in `/usr/bin/unity-editor.d/`. **Pre-mounting `.ulf` at `/root/.local/share/unity3d/Unity/Unity_lic.ulf` works without any GameCI bootstrap** (the hook is inert if `UNITY_LICENSE` is unset). Filename must be exactly `Unity_lic.ulf` — no extra dots (Unity Issue Tracker bug). For non-root containers, path is `/home/<user>/.local/share/unity3d/Unity/Unity_lic.ulf`.
+#### A3.2 / A3.3 / A3.4 — Unity-in-container validations (deleted; superseded by pivot)
+The image is irrelevant to the chosen architecture. The `unityci/editor:ubuntu-6000.3.11f1-base-3.2.2` image (digest `sha256:ef80dca0…8021`) pulled in the 2026-05-25 attempt remains in local Docker cache; harmless, can be removed with `docker rmi` if disk pressure. `infra/docker/unity-images.txt` is kept on-branch as historical record (forward usefulness if we ever pivot back to containerized CI).
 
-Caveat — "folkloric, not blessed": GameCI has no official doc for standalone usage (open request: game-ci/documentation#386). John Austin's 2020 blog ("Running Unity 2020.1 in Docker") is the closest community reference. We're somewhat pioneering — A3.2 confirms empirically.
-
-- [ ] No new search needed; research already done. Read §11 → "GameCI image standalone confirmed" for the full finding before A3.2.
-
-#### A3.2 — Pull GameCI image + smoke against our real projects (1 hour) ⛔ BLOCKED
-
-**Status (2026-05-25)**: Image pulled successfully (`unityci/editor:ubuntu-6000.3.11f1-base-3.2.2`, digest `sha256:ef80dca0…8021`, 14.3 GB unpacked, `unity-editor -version` returns 6000.3.11f1). `infra/docker/unity-images.txt` committed. **Then licensing hit a wall** — see §11 "Unity Personal in containers — blocking discovery." Container can't activate Personal license; no Unity-blessed workflow for Personal-in-container exists. Three pivot options in the §11 entry; decision required before this step can complete.
-
-The `Unity_v6000.3.11f1.alf` file at `C:\Unity\unity-license\` is now useless (Unity removed the manual ALF→ULF flow for Personal in Aug 2023). Left in place as evidence of the dead-end exploration; can be deleted once the new licensing path is decided.
-
-- [ ] Pull the GameCI image for our pinned Editor version: `docker pull unityci/editor:ubuntu-6000.3.11f1-linux-il2cpp-<N>`. Record the image SHA256 digest.
-- [ ] Activate Unity license inside the container: `docker run --rm -v C:\Unity\unity-license:/license unityci/editor:... unity-editor -batchmode -quit -createManualActivationFile -logFile -`. Outputs `.alf` file. Upload to https://license.unity3d.com/manual, get `.ulf`, save to `C:\Unity\unity-license\Unity_lic.ulf` (mode-restricted; gitignored).
-- [ ] **Backup the `.ulf` immediately** to a separate location on the laptop *and* to whatever cloud backup we have available (OneDrive, B2, etc.) — same discipline as A5.4.
-- [ ] Smoke against Card Framework: `docker run --rm -v C:\Unity\unity-license\Unity_lic.ulf:/root/.local/share/unity3d/Unity/Unity_lic.ulf:ro -v C:\Unity\CardFramework:/project unityci/editor:... unity-editor -batchmode -quit -nographics -projectPath /project -desiredWorkerCount 0 -logFile -`. Watch for exit 0, Library/ populated in `C:\Unity\CardFramework\Library\`.
-- [ ] **Why `-desiredWorkerCount 0`**: forces zero Parallel Import workers per-invocation. Cleaner than mutating `EditorSettings.asset` (which doesn't reliably serialize the field; see §11 research) and avoids the known headless-Linux Parallel Import bug.
-- [ ] Repeat for Scaffold (after the spawned Scaffold cold-build task is resolved) and Gear-Engine.
-- [ ] **Gate**: at least one of our real projects must build cold via the GameCI image. If all three fail, the Unity-on-Linux substrate is fundamentally broken for us — stop and surface.
-
-#### A3.3 — Concurrent docker-run Unity batchmode against two worktrees (½ hour)
-
-**Heads-up from research (§11)**: GameCI docs explicitly warn that concurrent batchmode on Personal license can fail server-side seat-limit checks. Each container has its own LicensingClient daemon, but Unity's activation server may reject simultaneous activations. **This is not a fatal gate — it informs Track B concurrency planning.** If it fails, we serialize batchmode runs in B-session rather than running them in parallel.
-
-- [ ] `git worktree add C:\Unity\worktrees\CardFramework\slot1 HEAD` and `slot2` (per A1 mechanic — handle the empty `Assets/` gotcha).
-- [ ] Run two concurrent `docker run` instances of unity-batchmode, one per worktree, started ~3 seconds apart (matching A1's timing). Each container mounts its own worktree and the shared `.ulf`.
-- [ ] **Outcome capture (not a hard gate)**:
-  - Both exit 0 → concurrent batchmode in container works; Track B can run parallel agents.
-  - One fails with license error → expected; document for Track B (B-session must serialize, B-fire-and-forget queues).
-  - Both crash unrelated to license → real bug, escalate.
-
-#### A3.4 — Worktree + container volume-mount semantics (¼ hour)
-- [ ] Mount one worktree from `C:\Unity\worktrees\...\slot1` into a container, run batchmode, confirm Library/ written *back to the host filesystem* (not lost when container exits). Same for Assets changes (if any).
-- [ ] Test the empty-Assets/ gotcha in container context: create a fresh worktree, do NOT seed `Assets/`, run batchmode in container — confirm same failure mode as host-native (per A1 finding #1). Then add `.gitkeep`, retest, confirm fix works in container too.
-- [ ] **Gate**: container filesystem semantics match host expectations. Worktree script `infra/worktree-add.sh` design assumes this.
+The `Unity_v6000.3.11f1.alf` file at `C:\Unity\unity-license\` is useless (manual `.alf`→`.ulf` flow is dead). Can be deleted.
 
 #### A3.5 — ttyd + tmux + claude in a Linux container, rendered from phone (1 hour)
 - [ ] Build a tiny Dockerfile in `infra/docker/chat-test/Dockerfile` based on `ubuntu:22.04`:
@@ -413,6 +391,7 @@ The `Unity_v6000.3.11f1.alf` file at `C:\Unity\unity-license\` is now useless (U
 - [ ] SSH key on creation. Disable password auth.
 - [ ] Note the VM's public IP.
 - [ ] **Record the provider choice** in `infra/vm-host.txt` (gitignored). A7 backup destination branches on this (Storage Box for Hetzner; B2 for GCP).
+- [ ] **Pin the primary NIC's MAC address** at the provider level. Hetzner Cloud allows MAC pinning via the Cloud Console (instance settings → network → primary IP). This is critical for A5: Unity Personal license binds to MAC + machine-id, and a stable MAC means snapshot-restore-in-place keeps the license valid. Without this, Hetzner can re-roll MAC on host migration and invalidate the license. Record the pinned MAC in `infra/vm-host.txt`.
 
 #### A4.2 — Harden + Tailscale (½ hour)
 - [ ] Create non-root user `agent` with sudo. Disable root SSH.
@@ -460,63 +439,70 @@ The `Unity_v6000.3.11f1.alf` file at `C:\Unity\unity-license\` is now useless (U
 #### A4.7 — Gate
 - [ ] **Pass 1 gate**: phone browser → live `claude` over Tailscale, survives VM reboot, survives idle disconnect. **No Unity involved.** If this gate fails, the problem is in chat-layer plumbing — fix here before adding Unity complexity. If it passes, proceed to A5.
 
-### Phase A5 — Linux VM: Unity layer (Pass 2 starts) (½ day)
+### Phase A5 — Linux VM: native Hub + Editor + Personal activation (Pass 2 starts) (½ day)
 
-**Goal**: install Unity on the VM via the GameCI Docker image, activate license once, run a smoke-test batchmode import in the container.
+**Goal**: install Unity Hub + Editor natively on the VM, activate Personal via temporary xrdp GUI, install pinned Editor version(s), validate headless batchmode against a real project, take a Hetzner snapshot, tear down the GUI.
 
-**Substrate decision**: we pull `unityci/editor:ubuntu-6000.3.11f1-...` and treat the container as Unity-on-Linux. We do NOT use GameCI's GitHub Actions automation (see §5 for why). License activation stays manual on the host.
+**Substrate decision (2026-05-25 pivot)**: native install via Hub, NOT via the GameCI Docker image. Unity Personal in 2026 can't be activated in a Linux container — license is XML format bound to MAC + machine-id, and the manual `.alf`→`.ulf` flow for Personal was removed in Aug 2023. By activating Hub on the VM directly (using a temporary xrdp session for the GUI), the license binds to the VM's own hardware, which is MAC-pinned at the provider level (A4.1). See §11 "Unity Personal in containers — blocking discovery" and "Unity Personal on Linux VM — canonical 2026 path" for the full investigation.
+
+**Seat economics warning**: Personal licenses have a 2-seat-per-Unity-ID limit. Activating on the VM consumes seat 2 (laptop is seat 1). Before destroying or re-provisioning the VM, **MUST "Return License" via Hub first** — otherwise the seat is gone until Unity Support manually frees it.
 
 #### A5.1 — Resize VM if needed (10 min)
-- [ ] Pass 2 needs ≥8 GB RAM (Unity minimum 8 GB official, 16 GB realistic). If Pass 1 ran on a 4 GB box, resize now or provision a fresh CCX23 (4 vCPU / 16 GB) and re-run A4 quickly on it.
+- [ ] Pass 2 needs ≥8 GB RAM (Unity minimum 8 GB official, 16 GB realistic). If Pass 1 ran on a 4 GB box, resize now or provision a fresh CCX23 (4 vCPU / 16 GB) and re-run A4 on it. **If you re-provision, the MAC may change — re-pin it at A4.1 before starting A5.2.**
 
-#### A5.2 — Install Docker (10 min)
-- [ ] `apt install docker.io docker-compose-v2`.
-- [ ] Add `agent` user to `docker` group (`usermod -aG docker agent`), re-login.
-- [ ] `docker run --rm hello-world` succeeds.
+#### A5.2 — Install xrdp + lightweight desktop (TEMPORARY, ½ hour)
+- [ ] `apt install xfce4 xfce4-goodies xrdp`.
+- [ ] `systemctl enable --now xrdp`.
+- [ ] Add agent user to ssl-cert group if xrdp needs it: `adduser agent ssl-cert`.
+- [ ] **Firewall**: `sudo ufw allow in on tailscale0 to any port 3389`. Never expose 3389 on the public interface — RDP brute-forced from the public internet within hours.
+- [ ] Confirm xrdp running: `systemctl status xrdp`.
+- [ ] **Note**: this is *temporary infrastructure* — uninstalled in A5.6 once Hub + license are set up.
 
-#### A5.3 — Pull GameCI Unity image, one tag per Editor version in use (15 min per tag, mostly download time)
-- [ ] `apt install jq` (needed for digest resolution below).
-- [ ] **Precondition**: A3.1 research gate passed (conditional pass per §11) and A3.2 empirically confirmed Unity batchmode works in `unityci/editor` against at least one of our real projects.
-- [ ] For each distinct Editor version pinned across our projects (read `ProjectSettings/ProjectVersion.txt` of each project — currently `6000.3.11f1` everywhere, but Gear-Engine / Card Framework / Scaffold could diverge later), identify the matching image tag at `https://hub.docker.com/r/unityci/editor/tags` (form: `ubuntu-<version>-linux-il2cpp-<N>` or `-base-<N>` if il2cpp isn't needed).
-- [ ] **Pin by digest, not just tag** — once you've identified a tag, resolve its SHA256: `docker manifest inspect <tag> | jq -r '.config.digest'`. Record both the tag and the digest. Use the digest form (`unityci/editor@sha256:...`) in scripts so the load-bearing 7–10 GB image is reproducible even if upstream re-tags.
-- [ ] Commit the chosen `(tag, digest)` per Editor version to `infra/docker/unity-images.txt`.
-- [ ] `docker pull <tag>@<digest>` for each. Note disk usage per image (7–10 GB compressed, more uncompressed).
-- [ ] Smoke per image: `docker run --rm <image-ref> unity-editor -version` → prints the editor version, exits 0.
+#### A5.3 — RDP from laptop, install Unity Hub (½ hour)
+- [ ] From Windows laptop: open built-in `mstsc.exe` (Remote Desktop). Host = `<vm-tailnet-name>:3389` or `<vm-tailnet-ip>:3389`. User = `agent`. Should land in an xfce desktop.
+- [ ] Download Unity Hub AppImage from https://unity.com/download (the official Linux download): `wget https://public-cdn.cloud.unity3d.com/hub/prod/UnityHub.AppImage`.
+- [ ] `chmod +x UnityHub.AppImage`, move to `/opt/UnityHub.AppImage` or `~/UnityHub.AppImage`.
+- [ ] First run: `./UnityHub.AppImage` (in the xrdp session). Hub may complain about missing FUSE — install if needed: `apt install libfuse2t64` (or `libfuse2` on older Ubuntu).
+- [ ] Hub opens. Click "Sign in" → opens browser to id.unity.com → log in with your Unity account.
 
-#### A5.4 — Activate Unity Personal license (½ hour, manual) + back up `.ulf` immediately
-- [ ] On VM, inside container: `docker run --rm -v ~/unity-license:/license <image-ref> unity-editor -batchmode -quit -createManualActivationFile -logFile -`. Outputs a `.alf` file into `~/unity-license/`.
-- [ ] On laptop: upload `.alf` to https://license.unity3d.com/manual → download the resulting `.ulf`.
-- [ ] `scp` the `.ulf` to `~/unity-license/Unity_lic.ulf` on the VM (mode 0600, gitignored).
-- [ ] Verify activation works: `docker run --rm -v ~/unity-license/Unity_lic.ulf:/root/.local/share/unity3d/Unity/Unity_lic.ulf:ro <image-ref> unity-editor -batchmode -quit -logFile -` → exit 0, no license errors.
-- [ ] **Back up the `.ulf` immediately, before any further work.** This file is rate-limited to re-create (Unity's manual activation page enforces a cooldown) and impossible to fully replace without going through the activation dance again. Two copies, two destinations:
-  - [ ] `scp Unity_lic.ulf` back to laptop into a gitignored backup directory (`C:\Unity\backups\unity-license\Unity_lic.ulf.<vm-hostname>.<date>`).
-  - [ ] (Optional, recommended) encrypted push to a B2 bucket or Hetzner Storage Box (`restic backup ~/unity-license/`).
-- [ ] Document the backup paths in `infra/runbook.md` (write a stub now; A7 fills it out fully). The runbook must include: where the .ulf is, how to restore it to a new VM, what to do if it's truly lost (Unity site, fresh activation, accept the cooldown).
+#### A5.4 — Activate Personal + install Editor 6000.3.11f1 (½ hour)
+- [ ] In Hub: **Manage licenses** (or Settings → Licenses) → **Add license** → **Get a free Personal license** → confirm revenue cap (Personal requires <$200K/yr; for personal projects, yes).
+- [ ] Hub writes `UnityEntitlementLicense.xml` to `~/.config/unity3d/Unity/licenses/` and starts the `Unity.Licensing.Client` daemon. License is now bound to this VM's MAC + machine-id.
+- [ ] In Hub: **Installs** → **Install Editor** → search for `6000.3.11f1` → install with default modules (or add Linux Build Support if you want to ship Linux Player builds; otherwise base is fine for asset import / script compile). Download is ~5 GB.
+- [ ] **Verify headless invocation works** (still inside xrdp, but using a terminal): `~/Unity/Hub/Editor/6000.3.11f1/Editor/Unity -batchmode -quit -nographics -logFile -` → exit 0, no license errors.
+- [ ] **Back up the license XML immediately** (cooldown applies to re-activation):
+  - [ ] `scp ~/.config/unity3d/Unity/licenses/UnityEntitlementLicense.xml` back to laptop into `C:\Unity\backups\unity-license\UnityEntitlementLicense.xml.<vm-hostname>.<date>`.
+  - [ ] Note: this XML is hardware-fingerprint bound. It won't work on a different machine. The backup is for restoring to the *same* VM via Hetzner snapshot — see A7.
 
-#### A5.5 — Parallel Import disabled via CLI flag (no code change needed)
-- [ ] `infra/unity-batchmode.sh` (factored in A5.6) already passes `-desiredWorkerCount 0` on every invocation, which disables Parallel Import per-run without mutating any project file. **No per-project `EditorSettings.asset` change required.**
-- [ ] Research note (§11): the exact `EditorSettings.asset` key for Parallel Import in 6000.3 is undocumented in the public Unity corpus (Unity often serializes only non-default values, so the key may not exist in your file at all). `-desiredWorkerCount 0` is the canonical workaround for the headless-Linux Parallel Import bug.
-- [ ] If you ever need to disable in the Editor UI for some other reason: Edit → Project Settings → Editor → Asset Pipeline → Parallel Import. Toggle, then `git diff ProjectSettings/EditorSettings.asset` to see what Unity wrote.
+#### A5.5 — Disable Parallel Import via CLI flag (no code change needed)
+- [ ] Same as before: `infra/unity-batchmode.sh` (factored in A5.7) passes `-desiredWorkerCount 0` on every invocation. No per-project `EditorSettings.asset` mutation needed. See §11 for why this is the canonical workaround.
 
-#### A5.6 — Factor `unity-batchmode.sh`, then smoke test in container against a real project (½ hour)
+#### A5.6 — Take Hetzner snapshot, tear down xrdp + xfce (¼ hour)
+- [ ] **Take a Hetzner snapshot of the VM right now** (Hetzner Cloud Console → instance → snapshots → "Take snapshot," label as `post-A5-unity-activated`). This is the A7 disaster-recovery restore point. Includes Hub, Editor, activated license, and (briefly) the xfce/xrdp install.
+- [ ] **Important**: this snapshot must restore to the **same VM ID** to preserve MAC. Restoring to a new VM = new MAC = invalid license. Document this loud in `infra/runbook.md`.
+- [ ] Tear down GUI: `apt purge xfce4* xrdp` + `apt autoremove`. Closes the temporary GUI surface, frees ~1 GB disk.
+- [ ] `sudo ufw delete allow in on tailscale0 to any port 3389`. Port 3389 closed.
+- [ ] Verify Editor still runs headlessly: `~/Unity/Hub/Editor/6000.3.11f1/Editor/Unity -batchmode -quit -nographics -logFile -` → exit 0. Hub is unused from here on but stays installed (useful if we ever need to install another Editor version or Return License).
 
-The `docker run -v ~/unity-license/...` invocation is 200+ characters and will be called from at least three places (A5.6 smoke, A6, B1 session-manager, B2 fire-and-forget workflow). Extract it into a reusable script *first*, then use the script for the smoke test. Keeps the rest of the plan from coupling to a one-liner.
+#### A5.7 — Factor `unity-batchmode.sh`, smoke test against Card Framework (½ hour)
 
-- [ ] Write `infra/unity-batchmode.sh` — a small bash wrapper that takes `<project-path>` (required), optional `<editor-version>` (default: read from `<project-path>/ProjectSettings/ProjectVersion.txt`), optional extra args (passed through to `unity-editor`). Internally resolves the image ref from `infra/docker/unity-images.txt` (digest-form, not tag-only) for that Editor version, mounts the project at `/project`, mounts the `.ulf` read-only, runs `unity-editor -batchmode -quit -nographics -projectPath /project -desiredWorkerCount 0 "$@" -logFile -`. Captures exit code, propagates.
-- [ ] **Always include `-desiredWorkerCount 0`** — disables Parallel Import per-invocation (Linux headless bug workaround); cleaner than mutating `EditorSettings.asset`. See A5.5.
-- [ ] Make it executable, commit to the branch.
-- [ ] Clone Card Framework (smallest of our real projects) into `~/work/CardFramework/main`.
-- [ ] Run via the wrapper: `~/remote-unity-agents/infra/unity-batchmode.sh ~/work/CardFramework/main`. Watch for clean exit 0, Library/ populated in `~/work/CardFramework/main/Library/`.
-- [ ] **Gate**: if this fails (license, GLIBC, file permissions, anything), surface and stop — the Unity-on-Linux substrate is the variable we couldn't validate on Windows. Don't paper over it.
+This wrapper script is called from A6, B1, and B2 — extract it once.
+
+- [ ] Write `infra/unity-batchmode.sh`: takes `<project-path>` (required), optional `<editor-version>` (default: read from `<project-path>/ProjectSettings/ProjectVersion.txt`), optional extra args. Resolves Editor binary path via `~/Unity/Hub/Editor/<version>/Editor/Unity`, runs `Unity -batchmode -quit -nographics -projectPath <path> -desiredWorkerCount 0 "$@" -logFile -`. Captures exit code, propagates. (No Docker — pure native invocation.)
+- [ ] If our projects use multiple Editor versions, the wrapper auto-resolves via Hub's install path; just need each version installed via Hub (`A5.4` step, can be repeated per version).
+- [ ] Make executable, commit.
+- [ ] Clone Card Framework into `~/work/CardFramework/main`.
+- [ ] Run: `bash infra/unity-batchmode.sh ~/work/CardFramework/main`. Watch for clean exit 0, Library/ populated.
+- [ ] **Gate**: if this fails (license activation lost, GLIBC mismatch, file perms, anything), surface and stop. The Hub-native-install thesis depends on this passing.
 
 ### Phase A6 — VM worktrees + first phone-driven batchmode (¼ day)
 
-**Goal**: prove the full stack — phone-driven `claude` session → spawn Unity batchmode in container → see output streaming back to phone — works end-to-end on Linux.
+**Goal**: prove the full stack — phone-driven `claude` session → spawn Unity batchmode natively on the VM → see output streaming back to phone — works end-to-end on Linux.
 
 - [ ] `git worktree add ~/work/CardFramework/slot1 <branch>` and `slot2`. Confirm independent Library/ per worktree (per A1's findings).
 - [ ] Provisioning script `infra/worktree-add.sh`: creates worktree, ensures `Assets/` exists (per A1 gotcha #1 — empty Unity dirs don't survive git), seeds an empty Library/ directory, fixes mode bits if needed. Test it on a fresh worktree before relying on it.
-- [ ] From phone-driven `claude` session (the persistent tmux-main session from A4.6, opened at `~/work/remote-unity-agents/main` — claude can shell out to any path): ask it to run `bash infra/unity-batchmode.sh ~/work/CardFramework/slot1` (factored in A5.6). Watch output stream back to the phone.
-- [ ] **Gate**: phone → claude → unity-batchmode.sh → docker → Unity → exit 0. **This is the end-state Track A working.** Desktop can be off, work from anywhere, agent can drive Unity.
+- [ ] From phone-driven `claude` session (the persistent tmux-main session from A4.6, opened at `~/work/remote-unity-agents/main` — claude can shell out to any path): ask it to run `bash infra/unity-batchmode.sh ~/work/CardFramework/slot1` (factored in A5.7). Watch output stream back to the phone.
+- [ ] **Gate**: phone → claude → unity-batchmode.sh → Unity Editor → exit 0. **This is the end-state Track A working.** Desktop can be off, work from anywhere, agent can drive Unity.
 
 ### Phase A7 — Harden as permanent service (½ day)
 
@@ -527,9 +513,13 @@ The `docker run -v ~/unity-license/...` invocation is 200+ characters and will b
   - If VM is on Hetzner: **Hetzner Storage Box BX11** (~€3.81/mo for 1 TB, free intra-Falkenstein traffic, SFTP backend works with `restic`). Best when staying on Hetzner.
   - If VM is on GCP: **Backblaze B2** ($0.18/mo for 30 GB, native restic backend, fast restore, free egress via Cloudflare Bandwidth Alliance). Best when geo-separated from primary host.
   - If VM is on Oracle: skip backups for the validation phase; revisit when promoting to a paid box.
-- [ ] Nightly `restic backup ~/work/*/main/Library/ ~/unity-license/Unity_lic.ulf /etc/systemd/system /home/agent/.config/claude` (or equivalent paths). Test restore monthly against a scratch directory.
+- [ ] Nightly `restic backup ~/work/*/main/Library/ ~/.config/unity3d/Unity/licenses/ /etc/systemd/system /home/agent/.config/claude` (or equivalent paths). Test restore monthly against a scratch directory. Note: the Unity license XML is bound to this VM's MAC + machine-id — backup is for restore to the *same* VM, not for cloning to a new one.
 - [ ] Document the GH Actions runner deployment shape: **ephemeral / just-in-time (JIT) runner only**, one job per runner instance, then destroyed. Never autoscale persistent runners. **Never** scope to public repos. Runner unit goes in `batch.slice`. See B2 for details.
-- [ ] **Write the full `infra/runbook.md`**: how to provision a replacement VM from scratch in <2 hours if this one dies. Must include: (1) provider-side VM creation, (2) Tailscale join, (3) base install (A4.2-A4.3 condensed), (4) restore .ulf from backup, (5) re-pull GameCI images (A5.3), (6) restore Library/ caches from backup, (7) reattach to existing tailnet so phone bookmarks still work. Test it once on a throwaway VM before declaring done.
+- [ ] **Write the full `infra/runbook.md`** — disaster recovery now branches on failure mode:
+  - **VM disk corruption / config drift, VM ID intact**: restore Hetzner snapshot from A5.6 ("post-A5-unity-activated") to the same VM. License stays valid because MAC is preserved. Then restore Library/ caches from restic backup. Estimated <30 min if snapshot is recent.
+  - **VM completely lost / Hetzner outage / need to migrate to a new VM**: provision fresh VM, re-do A4 + A5 (including re-activating Personal license — burns the seat from the lost VM, may need to ask Unity Support to release if 2-seat cap hit). Then restore Library/ caches. Estimated 2-3 hours.
+  - **Personal license seat exhausted (both seats taken by laptop + dead VM)**: Hub → Manage Licenses → Return License from the *active* VM, OR contact Unity Support to release the dead VM's seat. Then re-activate.
+  - Test the snapshot-restore path once on a throwaway VM before declaring done.
 - [ ] **Done with Track A.** Desktop can be off. Work from anywhere. Move to Track B planning.
 
 ---
@@ -565,7 +555,7 @@ Outcome: programmatic dispatch into the same `claude` sessions Track A exposes, 
 
 ### Phase B2 — VM fire-and-forget (B-fire-and-forget path) (½ day)
 
-**Note on ordering**: on the VM. Self-hosted GH Actions runner needs to spawn Unity batchmode in container, which is Linux-only. Cannot run on Windows laptop.
+**Note on ordering**: on the VM. Self-hosted GH Actions runner needs to spawn Unity batchmode against the natively-installed Editor (per A5), which lives on the VM. Cannot run on Windows laptop.
 
 **Security shape (per research §11)**: ephemeral / just-in-time (JIT) runner only — one job per runner, destroyed after. Never autoscale persistent runners. Never scope to public repos. Avoid mounting `/var/run/docker.sock` blindly (= root on host); use rootless Docker or invoke `docker` via a constrained user. Use OIDC for cloud creds if any are needed (not long-lived secrets in env).
 
@@ -614,7 +604,10 @@ If triggered:
 
 - **April 2026 third-party-harness restriction** — confirmed: subscription billing only valid for Anthropic's own surfaces. Mitigation: never call Anthropic from our code; always shell out to the official `claude` binary. Re-validate quarterly.
 - **June 15, 2026 `-p` billing split** — Track B-fire-and-forget becomes API-priced. Mitigation: session-driven path (B-session) stays on subscription; switch defaults to it if API cost shows up.
-- **Unity Personal in headless Linux containers is unsupported (2026)** — confirmed by A3.2 discovery and follow-up research; see §11. Not just a fuzzy EULA question — modern Unity (2021.2+) uses LicensingClient daemon + hardware-fingerprint-bound XML format, and Unity removed manual `.alf`/`.ulf` activation for Personal in Aug 2023. Three paths: GameCI Puppeteer flow (brittle), Editor-on-Windows + SSH (architecture pivot), or Unity Pro ($2,200/yr). **Plan currently paused on this gate.**
+- **Unity Personal licensing fragility on the VM** (managed via the canonical 2026 path — native Hub + MAC-pinned VM, see §11). Real risks under this model:
+  - **2-seat exhaustion**: forgetting to "Return License" before destroying/re-provisioning the VM = seat permanently locked until Unity Support intervenes. Mitigation: runbook checklist in A7; consider automating Return-License as a pre-shutdown systemd ExecStop hook.
+  - **MAC re-roll**: if Hetzner ever migrates the VM and MAC pinning fails for any reason, the license invalidates. Mitigation: pinned at A4.1; A7 runbook covers re-activation path.
+  - **Hub UI changes**: Unity could change the Personal activation flow in Hub at any time (they killed manual `.alf` upload in Aug 2023). Mitigation: low impact — re-activation is once per VM lifetime, manual GUI step, not automated.
 - **Anthropic could harden against PTY-driving the TUI** — Path B-session relies on the interactive CLI being scriptable via tmux. If they detect/block this, fallback is API-billed dispatch. Watch policy updates.
 - **Unity headless Parallel Import bug** — known. Disabled per-invocation via `-desiredWorkerCount 0` CLI flag (baked into `infra/unity-batchmode.sh`). Re-test on each Editor version bump.
 - **`siteboon/claudecodeui` if adopted later (Phase B5)** — high-alert dependency: handles tokens + shells, ~11k stars but smaller maintainer base than enterprise tools. Not adopted in v1; only revisited if mobile UX in A4.5 / A7 surfaces real pain that ttyd can't fix. Adoption requires security review + sandboxed trial per §5.
@@ -625,8 +618,8 @@ If triggered:
 
 ## 10. Open questions
 
-- [ ] ⛔ **Unity licensing path for headless Linux (BLOCKING).** Personal can't run in Linux containers in 2026 (see §11 "Unity Personal in containers — blocking discovery"). Three options on the table: (a) GameCI Puppeteer flow (free, brittle, ~$0 ongoing + periodic fix-it work), (b) pivot architecture to Editor-on-Windows + SSH-from-Linux-VM (changes "desktop-off" goal), (c) buy Unity Pro ($2,200/yr ≈ $183/mo, cleanest). **Plan is paused at A3.2 until owner picks.** Until then, A3.5 / A3.6 (non-Unity ttyd+tmux+claude) can run independently if we want to keep validating the chat layer.
-- [x] ~~GameCI-image-without-license-automation research~~ **Partially resolved.** Image mechanics confirmed (no ENTRYPOINT, mount path correct), but the deeper Personal-in-container issue surfaced only in A3.2. Image works; licensing is the blocker. See §11.
+- [x] ~~Unity licensing path for headless Linux~~ **Resolved (2026-05-25 pivot): native Hub install on the VM via temporary xrdp.** Personal can't run in Linux containers (see §11 "Unity Personal in containers — blocking discovery"), so we treat the Linux VM as "a personal Linux machine I have" — Hub installed natively, Personal activated via brief xrdp session, license MAC-pinned, snapshot taken for A7 restore point. Full canonical workflow in §11 "Unity Personal on Linux VM — canonical 2026 path." Plan-doc A3-A7 rewritten accordingly.
+- [x] ~~GameCI-image-without-license-automation research~~ **Resolved.** Image works standalone for paid licenses; for Personal it doesn't (the LicensingClient daemon + hardware-fingerprint binding don't permit it). We adopted native Hub install instead. GameCI image kept as a "considered, rejected" reference in §11.
 - [x] ~~Chat UI: ttyd vs claudecodeui?~~ **Resolved: ttyd primary; defer UX evaluation until core stack works.** Phase B5 stays as the placeholder slot for "evaluate UX upgrades (claudecodeui or others) if A7 reveals real mobile-UX pain." No pre-commitment to claudecodeui — it stays in §5 "Under evaluation" pending need + security review.
 - [x] ~~Webhook trigger now or later?~~ **Resolved: defer.** Track B v1 uses `gh workflow run` from any device with gh installed. B3 becomes a "post-v1, only if commenting becomes the dominant trigger" phase.
 - [x] ~~CCX23 / CCX33 / CCX43 sizing?~~ **Resolved: trigger-based.** Start CCX23 after free-tier validation passes. Resize to CCX33 if (A3.3 proves concurrent batchmode works) AND (B0 picks 2+ concurrent slots). Resize to CCX43 only if 4+ concurrent Unity jobs become the dominant workload. Default end-state remains CCX33 per §3.
@@ -684,9 +677,11 @@ Three things we keep from the abandoned Windows work:
 - The Microsoft `code-tunnel.exe` discovery is worth knowing exists for ad-hoc cases (we just don't use it as the load-bearing architecture).
 - The two failed attempts validated that Windows-native server tooling has too rough an edge to bet a plan on. Future plans should pin Linux as the server OS from the start.
 
-### GameCI Docker image as Unity-on-Linux substrate (2026-05-21)
+### GameCI Docker image as Unity-on-Linux substrate (2026-05-21) — ⚠ SUPERSEDED by 2026-05-25 pivot
 
-Decided in Q2 of the plan-doc reconciliation. GameCI is three separable pieces — we take only piece (1):
+**Note**: this entry documents a decision that was *later reversed* when A3.2 discovered the Personal-in-container licensing block. The actual Unity substrate we adopted is native Hub install on the VM — see "Unity Personal on Linux VM — canonical 2026 path" further below. The text below describes the rejected approach for historical context only.
+
+Decided in Q2 of the 2026-05-21 plan-doc reconciliation. GameCI is three separable pieces — we take only piece (1):
 1. **`unityci/editor` Docker image** — Unity Editor pre-installed on Ubuntu, GPU-stub libs included, version-pinned by image tag. ✅ Adopted.
 2. **`unity-license-activate` / `unity-license-return` GitHub Actions** — license helpers for ephemeral CI jobs. ❌ Rejected: wrong shape for our persistent host. License activation is a one-time manual step on the host (`.alf` → upload to Unity → `.ulf` → mount into container).
 3. **`unity-builder` action / full CI workflow** — opinionated GitHub-Actions-shaped build pipeline. ❌ Rejected: ephemeral per-job model doesn't fit long-lived tmux sessions.
@@ -857,7 +852,7 @@ Stripe's pattern is the right north star, but Unity licensing is the binding con
 2. **Pivot architecture: Editor on Windows host, claude on Linux VM, SSH bridge.** Cloud VM hosts the chat layer + agent dispatch. When `claude` needs Unity batchmode, it SSHes to the Windows desktop (or a small Windows VM) and runs Unity there natively. Personal license works fine on Windows. Cost: the "desktop off" goal weakens — the Windows machine has to be on when Unity work happens. Plan-doc rewrites: A5/A6 become "SSH-to-Windows-Unity" instead of "Linux-container-Unity."
 3. **Buy Unity Pro ($2,200/yr/seat ≈ $183/mo).** Pro supports manual activation, headless Linux is officially supported, no hacks. Plan economics: $60/mo → $243/mo. Justifiable if approaching the $200K/yr Personal revenue cap anyway, or if your time is worth more than $2,200/yr of brittle GameCI babysitting.
 
-**Decision deferred to owner** (2026-05-25). Plan paused at A3.2 until decision is made. A3.5 / A3.6 (non-Unity ttyd+tmux+claude validation) could be unblocked independently if owner wants to continue chat-layer validation while deciding.
+**Decision made (2026-05-25)**: ⬇ see next §11 entry "Unity Personal on Linux VM — canonical 2026 path." None of the three options above were picked — owner suggested a fourth: treat the Linux VM as "a personal Linux machine I have" — install Hub natively on the VM, activate Personal via temporary GUI session, license binds to VM's own hardware fingerprint. Research-validated; plan rewritten accordingly.
 
 **Sources** (load-bearing):
 - [Unity Discussions — Unity no longer supports manual activation of Personal licenses](https://discussions.unity.com/t/unity-no-longer-supports-manual-activation-of-personal-licenses/926760)
@@ -866,6 +861,45 @@ Stripe's pattern is the right north star, but Unity licensing is the binding con
 - [game-ci/docker#268 — Access token is unavailable (open Nov 2025)](https://github.com/game-ci/docker/issues/268)
 - [game-ci/unity-license-activate](https://github.com/game-ci/unity-license-activate)
 - [game-ci/documentation#408 — manual Personal flow broken (open since Aug 2023)](https://github.com/game-ci/documentation/issues/408)
+
+### Unity Personal on Linux VM — canonical 2026 path (2026-05-25)
+
+After the "Personal can't run in containers" discovery above, owner suggested: "treat the Linux VM as a personal machine I have." Follow-up research confirmed this is the cleanest working path in 2026; no better alternative exists.
+
+**Research verdict** (cross-checked against Unity docs 6000.3/6000.4, GameCI 2024-2026, Unity Discussions 2023-2026):
+- No CLI activation path for Personal (Unity docs explicit: "command-line procedures don't apply to Unity Personal").
+- No remote activation (Hub on machine A can't license machine B).
+- No mature community installer; the Hub-via-temporary-GUI dance is what indies actually do.
+- Two refinements over a naive VNC approach: **use xrdp** (built-in Windows RDP client, smoother than any VNC client), and **pin the VM's MAC** at the provider level (Hetzner supports this) so snapshot-restore-in-place keeps the license valid.
+
+**Workflow** (codified in plan-doc A4.1 + A5):
+1. Provision Hetzner CCX23, Ubuntu 22.04, **pin the primary NIC's MAC**.
+2. Install `xfce4 + xrdp` (TEMPORARY), open port 3389 on `tailscale0` only.
+3. RDP from Windows laptop (built-in `mstsc.exe`) over Tailscale.
+4. Install Unity Hub AppImage, sign in to Unity account, activate Personal (Hub writes `UnityEntitlementLicense.xml` to `~/.config/unity3d/Unity/licenses/`, starts `Unity.Licensing.Client` daemon, license binds to this VM's MAC + machine-id).
+5. Install Editor 6000.3.11f1 via Hub (~5 GB).
+6. **Take a Hetzner snapshot now** — this is the A7 disaster-recovery restore point.
+7. `apt purge xfce4* xrdp` + close port 3389. VM is back to headless.
+8. From here on: `~/Unity/Hub/Editor/<version>/Editor/Unity -batchmode -quit -nographics -projectPath <path> -desiredWorkerCount 0 -logFile -` works headlessly. LicensingClient daemon is auto-started by Editor on each invocation.
+
+**Constraints to live with**:
+- **2-seat Personal limit** per Unity ID (laptop + VM = 2/2). Before destroying/re-provisioning the VM, **MUST "Return License" via Hub** or the seat is gone until Unity Support manually frees it. Document in runbook (A7).
+- **MAC must stay stable.** Hetzner can re-roll MAC on host migration if not pinned. Pin at A4.1.
+- **Snapshot restore semantics**:
+  - Restore to **same VM ID** (Hetzner) → MAC preserved → license still valid. Fast disaster recovery (<30 min).
+  - Restore to **new VM ID** → new MAC → license invalid → must re-activate (burns a seat). Use only if same-VM restore impossible.
+- **Editor version upgrades**: install additional versions via Hub (one-time RDP-back-in: re-install xfce+xrdp briefly, install new Editor, tear down). Or `~/Unity/Hub/UnityHub.AppImage --headless install --version <new>` if it works in 2026 (untested, would simplify).
+
+**Trade-offs vs the original GameCI-container plan**:
+- Lose: image-based version pinning, container isolation, one-line install.
+- Gain: free Personal licensing that actually works; no Puppeteer scripts; no $2,200/yr Pro; Unity-blessed activation path.
+
+**Sources** (load-bearing):
+- [Unity Manual — Manage license through CLI (6000.4)](https://docs.unity3d.com/6000.4/Documentation/Manual/ManagingYourUnityLicense.html) — confirms Personal has no CLI activation.
+- [Unity Hub install on Linux](https://docs.unity.com/en-us/hub/install-hub-linux)
+- [Unity Discussions — License Activation Issue on Linux Server Headless (Feb 2025)](https://discussions.unity.com/t/unity-license-activation-issue-on-linux-server-headless-mode/1603609)
+- [Silicon Orchid — Unity on Hyper-V VM (MAC fingerprint issue)](https://blogs.siliconorchid.com/post/coding-inspiration/unity-on-hyperv/)
+- [Hetzner Cloud docs — primary NIC MAC pinning](https://docs.hetzner.cloud/) (configurable via Cloud Console)
 
 ### Local-validate-then-VM-deploy: partially abandoned (revised 2026-05-21)
 - Original premise: validate every primitive on the user's Windows machine before paying for the VM, then migrate via `rsync + systemd units + tailscale up`.
