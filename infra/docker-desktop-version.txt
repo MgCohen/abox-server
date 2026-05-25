@@ -1,0 +1,48 @@
+Docker Desktop / WSL2 version capture — A3.0 (2026-05-22)
+============================================================
+
+Captured after first successful `docker run hello-world` + host-mount check.
+Goal: pin the local Docker environment so the future VM (A4.x) can match
+closely enough to reproduce A3.x findings without surprise version-skew bugs.
+
+Docker
+------
+docker --version          : Docker version 29.4.3, build 055a478
+docker info ServerVersion : 29.4.3
+                            (client and server match — Docker Desktop ships
+                            them coupled, so this is expected)
+
+WSL
+---
+WSL version       : 2.7.3.0
+Kernel version    : 6.6.114.1-1
+WSLg version      : 1.0.73
+MSRDC version     : 1.2.6676
+Direct3D version  : 1.611.1-81528511
+DXCore version    : 10.0.26100.1-240331-1435.ge-release
+
+Windows
+-------
+Windows version   : 10.0.26200.8457 (Windows 11)
+
+Smoke-test results
+------------------
+docker run --rm hello-world                            : exit 0 — image pulled, container ran, expected output
+docker run --rm -v C:\Unity:/host alpine ls /host      : exit 0 — host mount works, all C:\Unity\* projects visible
+                                                         from inside container
+
+Backend
+-------
+WSL2 (chosen during installer config screen, see plan §A3.0).
+
+Recovery notes
+--------------
+Initial WSL state was broken (REGDB_E_CLASSNOTREG / "Class not registered").
+Fix path: from elevated PowerShell, `wsl --install --no-distribution`, then reboot.
+After reboot Docker Desktop auto-started and engine came up cleanly.
+
+If this happens again on the VM (or after a Windows update on the laptop):
+  1. Open PowerShell as Administrator.
+  2. wsl --install --no-distribution
+  3. Reboot.
+  4. Wait for Docker Desktop tray icon to show "running."

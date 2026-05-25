@@ -321,11 +321,12 @@ Test artifacts (`C:\Unity\a1-vanilla`, `C:\Unity\worktrees\a1-vanilla\{slot1,slo
 
 **The "no WSL" rule preserved**: WSL2 here is the hidden container runtime, not a dev environment we open or operate. We never SSH into WSL, never edit files there, never run `claude` there directly — we just `docker run` from PowerShell and the containers happen to live inside the WSL2 VM.
 
-#### A3.0 — Install Docker Desktop (15 min)
-- [ ] Install Docker Desktop for Windows from https://www.docker.com/products/docker-desktop. Accept WSL2 backend default.
-- [ ] First boot: confirm `docker run --rm hello-world` succeeds from PowerShell.
-- [ ] Confirm Docker can mount host paths: `docker run --rm -v C:\Unity:/host alpine ls /host` lists our project directories.
-- [ ] Document Docker Desktop version + WSL2 kernel version in `infra/logs/docker-desktop-version.txt` (for reproducibility when the VM comes up — we want the VM's docker version close enough).
+#### A3.0 — Install Docker Desktop ✅ (2026-05-22)
+- [x] Installed Docker Desktop for Windows (v29.4.3) with WSL2 backend.
+- [x] `docker run --rm hello-world` exit 0 — image pulled, container ran.
+- [x] Host mount confirmed: `docker run --rm -v C:\Unity:/host alpine ls /host` lists all C:\Unity\* projects.
+- [x] Versions captured at `infra/docker-desktop-version.txt`: Docker 29.4.3, WSL 2.7.3.0, kernel 6.6.114.1-1, Windows 26200.8457. (Originally drafted into `infra/logs/` but that's gitignored — moved to top of `infra/` since version pins are tracked artifacts, not runtime logs.)
+- **Gotcha worth flagging**: WSL was in `REGDB_E_CLASSNOTREG` ("class not registered") state pre-install. Fix was `wsl --install --no-distribution` from elevated PowerShell + reboot. Documented in the version log under "Recovery notes" — same pattern likely on any fresh Windows host where WSL was never used.
 
 #### A3.1 — GameCI image research gate (already answered — see §11)
 
