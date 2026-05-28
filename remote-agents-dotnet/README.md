@@ -10,15 +10,28 @@ See [`../PLANS/csharp-orchestrator-build.md`](../PLANS/csharp-orchestrator-build
 for the build plan and [`../PLANS/csharp-orchestrator-prd.md`](../PLANS/csharp-orchestrator-prd.md)
 for the PRD.
 
-## Solution
+## Layout
 
-- `RemoteAgents/` — library (net10.0).
-- `RemoteAgents.Tests/` — xUnit tests.
-- `flows/` — `.NET 10` file-based programs that compose agents + primitives.
-- `agents/` — named agent factories with sidecar prompts.
-- `validation/` — per-project `IValidator` implementations.
-- `bin/` — CLI shim (`agents-dotnet`).
-- `sessions/` — gitignored per-run session directories.
+```
+remote-agents-dotnet/
+  Directory.Build.props        # UseArtifactsOutput=true — all bin/obj redirect to artifacts/
+  RemoteAgents.slnx            # solution
+  src/
+    RemoteAgents/              # the library (net10.0)
+      Core/                    # abstractions + reusable primitives (no vendor coupling)
+      Providers/               # adapters: Claude, Codex, Unity, Orchestrator
+      Flows/                   # composed pipelines built on Core + Providers
+    NamedAgents/               # persona agents (Planner / Documenter / Researcher) + embedded prompts
+  tests/RemoteAgents.Tests/    # xUnit
+  cli/
+    agents-dotnet.cs           # CLI shim
+    flows/                     # file-based programs (`dotnet run cli/flows/<flow>.cs`)
+  docs/                        # usage.md + architecture.md
+  artifacts/                   # all build output (gitignored)
+  sessions/                    # per-run session dirs (gitignored)
+```
+
+Dependency rule: **Core ← Providers ← Flows / NamedAgents.** Core knows nothing of providers; providers know nothing of flows.
 
 ## Build
 

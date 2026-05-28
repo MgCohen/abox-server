@@ -16,54 +16,63 @@ Everything else (sessions, events, sinks, validators, flows, the CLI shim) exist
 
 ---
 
-## 2. The four layers
+## 2. The three layers
 
-Bottom-up. Each layer only depends on the layers below it.
+Bottom-up. Each layer only depends on the layers below it. The folder structure under `src/` mirrors this split exactly: `Core/`, `Providers/`, and the layer-3 consumers (`Flows/` + `NamedAgents/`).
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  4. Per-project tooling                                          │
-│     flows/*.cs (file-based programs)                             │
-│     agents/*.cs (named factories)                                │
-│     validation/*.cs (IValidator impls)                           │
+│  3. Composed                                                     │
+│     src/RemoteAgents/Flows/*.cs           (ReviewPipeline + ctx) │
+│     src/NamedAgents/*.cs                  (Planner / Documenter /│
+│                                            Researcher personas)  │
+│     cli/flows/*.cs                        (top-level entry-point │
+│                                            scripts users run)    │
 └─────────────────────────────────────────────────────────────────┘
         ▲ depends on
 ┌─────────────────────────────────────────────────────────────────┐
-│  3. Events & sessions                                            │
-│     AgentEvent (5 cases) · IEventSink · JsonlSink / ConsoleSink /│
-│     CompositeSink / NoOpSink / ProviderJsonlIngestSink           │
-│     Session · SessionMeta                                        │
+│  2. Providers — adapters to external tools                       │
+│     Claude/        ClaudeAgent (Porta.Pty) + ClaudeJsonl +       │
+│                    ProviderJsonlIngestSink                       │
+│     Codex/         CodexAgent (Process + --json)                 │
+│     Unity/         UnityBatchValidator                           │
+│     Orchestrator/  OrchestratorValidator                         │
 └─────────────────────────────────────────────────────────────────┘
         ▲ depends on
 ┌─────────────────────────────────────────────────────────────────┐
-│  2. Agents                                                       │
-│     abstract Agent (sealed RunAsync lifecycle)                   │
-│     ClaudeAgent (Porta.Pty)   CodexAgent (Process + --json)      │
-│     virtual hooks: DetectStartupDialog, IsResponseComplete       │
-└─────────────────────────────────────────────────────────────────┘
-        ▲ depends on
-┌─────────────────────────────────────────────────────────────────┐
-│  1. Primitives                                                   │
-│     GitOps · RunCommand · FsDiff · ProjectRegistry               │
-│     SubscriptionGuard · AnsiHelpers · PtyExtensions              │
+│  1. Core — abstractions + reusable primitives, no vendor coupling│
+│     Agents/      abstract Agent (sealed RunAsync lifecycle),     │
+│                  AgentResult, AgentRunRequest                    │
+│     Events/      AgentEvent (5 cases) · IEventSink · ConsoleSink/│
+│                  JsonlSink / CompositeSink / NoOpSink            │
+│     Pty/         PtySession, AnsiHelpers, PtyExtensions          │
+│     Primitives/  GitOps · RunCommand · FsDiff · ProjectRegistry  │
+│                  SubscriptionGuard · RepoRoot · Shell            │
+│     Sessions/    Session · SessionMeta · SessionJsonContext      │
+│     Validation/  IValidator · ValidationResult                   │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### Layer 1 — Primitives ([`RemoteAgents/Primitives/`](../RemoteAgents/Primitives/), [`RemoteAgents/Pty/`](../RemoteAgents/Pty/))
+**Dependency rule, enforced by eye:** Core knows nothing of Providers; Providers know nothing of Flows/NamedAgents. If you ever want to make this mechanical, split each provider into its own csproj — the `Providers/` name makes that natural.
 
-Dumb verbs. No state, no inheritance, all static. Every async method takes `CancellationToken` (default `default`).
+### Layer 1 — Core ([`src/RemoteAgents/Core/`](../src/RemoteAgents/Core/))
 
-- `GitOps` — `Diff/DiffStat/Add/Commit/Push/CurrentBranch/IsDirty`. Refuses `git add` with no file list and `git push --force` to `main`/`master`.
-- `RunCommand` — `Process` wrapper through `cmd.exe /c`. Captures stdout/stderr, supports stdin input, env overrides (null value → unset), timeout.
-- `FsDiff` — directory snapshot (size + mtime ms) with a skip list (`.git`, `node_modules`, `sessions`, Unity `Library/Temp/Logs/UserSettings`, `obj/bin`, etc.). `Diff(before, after)` returns added/changed/removed.
-- `ProjectRegistry` — walks up from CWD looking for `<repo>/projects.json`, resolves short names to absolute paths.
-- `SubscriptionGuard` — refuses to start if `ANTHROPIC_API_KEY` / `CLAUDE_API_KEY` / `OPENAI_API_KEY` is set; probes `claude --version` and `codex --version` to fail fast on missing binaries.
-- `AnsiHelpers.StripAnsi` — regex strip for parsing TUI buffers.
-- `PtyExtensions.ExitCodeOrNull` — wraps Porta.Pty's throw-happy `ExitCode` getter.
+Abstractions + reusable primitives. No vendor knowledge. The folder layout:
 
-### Layer 2 — Agents ([`RemoteAgents/Agents/`](../RemoteAgents/Agents/))
+- **`Primitives/`** — dumb verbs, no state, all static, every async method takes `CancellationToken` (default `default`):
+  - `GitOps` — `Diff/DiffStat/Add/Commit/Push/CurrentBranch/IsDirty`. Refuses `git add` with no file list and `git push --force` to `main`/`master`.
+  - `RunCommand` — `Process` wrapper through `cmd.exe /c`. Captures stdout/stderr, supports stdin input, env overrides (null value → unset), timeout.
+  - `FsDiff` — directory snapshot (size + mtime ms) with a skip list (`.git`, `node_modules`, `sessions`, Unity `Library/Temp/Logs/UserSettings`, `obj/bin`, etc.). `Diff(before, after)` returns added/changed/removed.
+  - `ProjectRegistry` — walks up from CWD looking for `<repo>/projects.json`, resolves short names to absolute paths.
+  - `SubscriptionGuard` — refuses to start if `ANTHROPIC_API_KEY` / `CLAUDE_API_KEY` / `OPENAI_API_KEY` is set; probes `claude --version` and `codex --version` to fail fast on missing binaries.
+  - `RepoRoot` / `Shell` — walk-up helpers and a Windows-quoting helper.
+- **`Pty/`** — `PtySession` (RAII over Porta.Pty), `AnsiHelpers.StripAnsi` (regex strip for parsing TUI buffers), `PtyExtensions.ExitCodeOrNull` (wraps Porta.Pty's throw-happy `ExitCode` getter).
+- **`Agents/`** — `abstract class Agent` (sealed `RunAsync` lifecycle), plus `AgentResult` and `AgentRunRequest`. The abstraction; concrete agents live in `Providers/`.
+- **`Events/`** — `AgentEvent` (5-case discriminated record), `IEventSink`, and the vendor-agnostic sinks (`ConsoleSink`, `JsonlSink`, `NoOpSink`, `CompositeSink`, plus `EventSinkExtensions` for `PhaseStart/Ok/Fail/Info` sugar).
+- **`Sessions/`** — `Session.Start(...)` creates `sessions/<isoTs>-<slug>/` and tracks `SessionMeta` until `End(result, failureReason?)`. JSON shape lives in `SessionJsonContext` (source-gen).
+- **`Validation/`** — `IValidator` and `ValidationResult`. The contract; concrete validators live in `Providers/`.
 
-`abstract class Agent` owns the lifecycle. Subclasses own the mechanics.
+The `Agent` abstraction:
 
 ```csharp
 public abstract class Agent
@@ -99,14 +108,7 @@ Invariants:
 - **`Failed` always fires on exception**, including when the caller's `CancellationToken` was the cause — the emit uses `CancellationToken.None` so the event survives the cancellation.
 - **Successful runs go Started → (StreamChunk | DialogDismissed)\* → Completed.**
 
-Two concrete subclasses ship in the library, both **non-sealed** with two `virtual` protected hooks:
-
-- `ClaudeAgent` — `cmd.exe` via Porta.Pty → ConPTY. Hooks: `DetectStartupDialog(buf)` (trust dialog / bypass warning) and `IsResponseComplete(buf, lastChunkAt)` (default: 6s idle threshold).
-- `CodexAgent` — `cmd.exe /c codex exec` via plain `Process`. Streams `--json` stdout, reads final agent message from `-o <tmpfile>`. Tolerates schema drift via a defensive session-id scanner (root `thread_id` / `session_id` / `sessionId`, nested `.thread.id` / `.session.id`, `payload.*`).
-
-Both blank API-key env vars in the spawned child env as defense in depth.
-
-### Layer 3 — Events & sessions ([`RemoteAgents/Events/`](../RemoteAgents/Events/), [`RemoteAgents/Sessions/`](../RemoteAgents/Sessions/))
+The `AgentEvent` vocabulary is **deliberately small**:
 
 ```csharp
 public abstract record AgentEvent(DateTimeOffset At, string AgentName)
@@ -116,41 +118,43 @@ public abstract record AgentEvent(DateTimeOffset At, string AgentName)
     public sealed record DialogDismissed(...) : AgentEvent(...);
     public sealed record Completed(...)       : AgentEvent(...);
     public sealed record Failed(...)          : AgentEvent(...);
+    public sealed record Phase(...)           : AgentEvent(...);  // flow-level phase markers (start/ok/fail/info)
 }
 ```
 
-This is the entire live-event vocabulary. **Deliberately small.** What's NOT here:
+What's NOT here lives in the ingested provider JSONL (`claude-turn-N.jsonl` / `codex-turn-N.jsonl`):
 
 | Concern | Lives in |
 |---|---|
-| Tool calls | The ingested Claude/Codex provider JSONL (`claude-turn-N.jsonl`) |
-| Token usage | Same |
-| Rate-limit signals | Same |
-| Provider-internal turn boundaries | Same |
+| Tool calls | Provider JSONL |
+| Token usage | Provider JSONL |
+| Rate-limit signals | Provider JSONL |
+| Provider-internal turn boundaries | Provider JSONL |
 
-That's the deal: the live transcript is for what *the orchestrator* decided (what was run, did it complete, did it fail). Everything the provider already records lives in the provider's own JSONL, which `ProviderJsonlIngestSink` copies into the session dir after each run.
+The live transcript is for what *the orchestrator* decided. Everything the provider already records, the provider keeps.
 
-`IEventSink` is the entire interface — one method, `EmitAsync(evt, ct)`. Compose freely:
+### Layer 2 — Providers ([`src/RemoteAgents/Providers/`](../src/RemoteAgents/Providers/))
 
-```csharp
-var sink = new CompositeSink(
-    new ConsoleSink(),                                  // human-readable progress
-    new JsonlSink(session.TranscriptFile),              // deterministic transcript
-    new ProviderJsonlIngestSink(session.Dir, projDir)); // post-run provider telemetry
-```
+Adapters to external tools. One folder per vendor. Each implements one or more Core contracts (`Agent`, `IValidator`, `IEventSink`).
 
-`CompositeSink` is **sequential** in registration order. Deterministic transcripts depend on that. `JsonlSink` also takes a `SemaphoreSlim` so two agents emitting concurrently produce line-atomic output.
+- **`Providers/Claude/`** — `ClaudeAgent` subclasses `Agent`, spawns `cmd.exe` via Porta.Pty → ConPTY, types `claude --session-id <uuid> ...` into the spawned shell. Two `protected virtual` hooks for projects that need to extend it:
+  - `DetectStartupDialog(buf)` — returns `"trust"`, `"bypass-warning"`, or `null`.
+  - `IsResponseComplete(buf, lastChunkAt)` — default 6s idle threshold.
+  Also here: `ClaudeAgentOptions` (record), `ClaudeJsonl` (parses `~/.claude/projects/<encoded>/<sessionId>.jsonl` for assistant text), and `ProviderJsonlIngestSink` (copies that JSONL into the session dir after each completed run).
+- **`Providers/Codex/`** — `CodexAgent` subclasses `Agent`, spawns `cmd.exe /c codex exec` via plain `Process`, streams `--json` stdout, reads final agent message from `-o <tmpfile>`. Tolerates schema drift via a defensive session-id scanner (root `thread_id` / `session_id` / `sessionId`, nested `.thread.id` / `.session.id`, `payload.*`).
+- **`Providers/Unity/`** — `UnityBatchValidator` implements `IValidator` by running `Unity.exe -batchmode -nographics -quit -projectPath <dir>` and parsing the editor log.
+- **`Providers/Orchestrator/`** — `OrchestratorValidator` implements `IValidator` by walking `**/*.cs` and parsing with `CSharpSyntaxTree.ParseText` (FileBasedProgram feature). Used by `claude-validate.cs`.
 
-`Session.Start(StartSessionRequest)` creates `sessions/<isoTs>-<slug>/` with three files and tracks meta until `End(result, failureReason?)`. The meta.json schema is versioned (`Orchestrator: "csharp"`, `SchemaVersion: "1"`) so a future replay viewer self-identifies.
+Both agent providers blank API-key env vars in the spawned child env as defense in depth.
 
-### Layer 4 — Per-project tooling (`flows/`, `agents/`, `validation/`)
+### Layer 3 — Composed
 
-**Convention, not framework.**
+**Convention, not framework.** Three flavors:
 
-- `flows/<name>.cs` — `.NET 10` file-based programs. First lines are `#:project ../RemoteAgents/RemoteAgents.csproj` (plus any others). Hand-written control flow; the library imposes none.
-- `agents/<Name>.cs` — static factories returning configured `ClaudeAgent` / `CodexAgent`. System prompts loaded from `agents/prompts/<name>.md` via embedded resource (`Prompts.Load("name")`).
-- `RemoteAgents/Validation/<Project>/<Name>Validator.cs` — implementations of `IValidator`, shipped inside the main `RemoteAgents` project. Flows just `using RemoteAgents.Validation.<Project>;`.
-- `bin/agents-dotnet.cs` — CLI shim. `list / projects / run <flow> [...args]`. Spawns `dotnet run flows/<flow>.cs -- <args>` with stdio inherited.
+- **Pipelines** — [`src/RemoteAgents/Flows/`](../src/RemoteAgents/Flows/) — reusable compositions over Core + Providers (`ReviewPipeline`, `FlowContext`). Imported by entry-point scripts.
+- **Personas** — [`src/NamedAgents/`](../src/NamedAgents/) — static factories returning configured `ClaudeAgent` / `CodexAgent` with a role-specific prompt. System prompts live as `prompts/<name>.md` files, embedded into the dll via `<EmbeddedResource>` and loaded with `Prompts.Load("name")`. This is a separate csproj **for embedding reasons only** (no layering implication).
+- **Entry-point scripts** — [`cli/flows/<name>.cs`](../cli/flows/) — `.NET 10` file-based programs. First lines are `#:project ../../src/RemoteAgents/RemoteAgents.csproj` (plus `#:project ../../src/NamedAgents/NamedAgents.csproj` if you use personas). Hand-written control flow; the library imposes none.
+- **CLI shim** — [`cli/agents-dotnet.cs`](../cli/agents-dotnet.cs) — `list / projects / run <flow> [...args]`. Spawns `dotnet run cli/flows/<flow>.cs -- <args>` with stdio inherited.
 
 This layer is the user's. The library doesn't reach into it; it's the other way around.
 
@@ -164,47 +168,59 @@ remote-unity-agents/
 ├── PLANS/                              # PRD, build plan, design handover
 ├── research/                           # historical design notes (JS-prototype era)
 └── remote-agents-dotnet/
-    ├── RemoteAgents.slnx               # solution: 4 projects
-    ├── RemoteAgents/                   # the library (net10.0)
-    │   ├── Agents/
-    │   ├── Events/
-    │   ├── Sessions/
-    │   ├── Primitives/
-    │   ├── Validation/                 # IValidator + ValidationResult
-    │   └── Pty/
-    ├── RemoteAgents.Tests/             # xUnit (52 tests)
-    ├── validation/                     # per-project validators
-    │   ├── Validators.csproj
-    │   ├── OrchestratorValidator.cs    # Roslyn syntax-only parse
-    │   └── UnityBatchValidator.cs      # Unity.exe -batchmode -quit
-    ├── agents/                         # named agent factories
-    │   ├── NamedAgents.csproj
-    │   ├── Planner.cs      (Claude opus)
-    │   ├── Documenter.cs   (Claude haiku)
-    │   ├── Researcher.cs   (Codex gpt-5.5)
-    │   ├── Prompts.cs                  # embedded-resource loader
-    │   └── prompts/*.md                # system prompts
-    ├── flows/                          # .NET 10 file-based programs
-    │   ├── claude-only.cs
-    │   ├── claude-validate.cs
-    │   ├── full-review.cs
-    │   ├── unity-review.cs
-    │   └── smoke-*.cs                  # CLI hides smoke-* from `list`
-    ├── bin/
-    │   └── agents-dotnet.cs            # CLI shim
-    ├── sessions/                       # gitignored, per-run dirs
+    ├── Directory.Build.props           # UseArtifactsOutput=true — all bin/obj → artifacts/
+    ├── RemoteAgents.slnx               # solution: 3 projects
+    ├── src/
+    │   ├── RemoteAgents/               # the library (net10.0)
+    │   │   ├── RemoteAgents.csproj
+    │   │   ├── Core/                   # layer 1: abstractions + primitives, no vendor coupling
+    │   │   │   ├── Agents/             #   Agent, AgentResult, AgentRunRequest
+    │   │   │   ├── Events/             #   IEventSink + ConsoleSink/JsonlSink/NoOpSink/CompositeSink/EventSinkExtensions + AgentEvent
+    │   │   │   ├── Pty/                #   PtySession, AnsiHelpers, PtyExtensions
+    │   │   │   ├── Primitives/         #   GitOps, RunCommand, FsDiff, ProjectRegistry, SubscriptionGuard, RepoRoot, Shell
+    │   │   │   ├── Sessions/           #   Session, SessionMeta, SessionJsonContext
+    │   │   │   └── Validation/         #   IValidator, ValidationResult
+    │   │   ├── Providers/              # layer 2: adapters to external tools
+    │   │   │   ├── Claude/             #   ClaudeAgent + Options + ClaudeJsonl + ProviderJsonlIngestSink
+    │   │   │   ├── Codex/              #   CodexAgent + Options
+    │   │   │   ├── Unity/              #   UnityBatchValidator
+    │   │   │   └── Orchestrator/       #   OrchestratorValidator
+    │   │   └── Flows/                  # layer 3: composed pipelines
+    │   │       ├── FlowBootstrap.cs    #   FlowContext / shared session+sink wiring
+    │   │       └── ReviewPipeline.cs   #   the agent-then-validator-then-review composition
+    │   └── NamedAgents/                # layer 3: persona agents (separate csproj for embedded prompts)
+    │       ├── NamedAgents.csproj
+    │       ├── Planner.cs        (Claude opus)
+    │       ├── Documenter.cs     (Claude haiku)
+    │       ├── Researcher.cs     (Codex gpt-5.5)
+    │       ├── Prompts.cs              # embedded-resource loader
+    │       └── prompts/*.md            # system prompts (embedded into the dll)
+    ├── tests/
+    │   └── RemoteAgents.Tests/         # xUnit
+    ├── cli/                            # entry-point scripts
+    │   ├── agents-dotnet.cs            #   CLI shim
+    │   └── flows/                      #   .NET 10 file-based programs
+    │       ├── claude-only.cs
+    │       ├── claude-validate.cs
+    │       ├── full-review.cs
+    │       ├── unity-review.cs
+    │       └── smoke-*.cs              #   CLI hides smoke-* from `list`
+    ├── artifacts/                      # all build output (gitignored)
+    ├── sessions/                       # per-run session dirs (gitignored)
     └── docs/
         ├── architecture.md             # ← this file
         └── usage.md
 ```
 
-`.slnx` (Microsoft's slimmer solution format) bundles four projects: `RemoteAgents`, `RemoteAgents.Tests`, `Validators`, `NamedAgents`. Flow files reference whichever of those csprojs they need via `#:project`.
+`.slnx` (Microsoft's slimmer solution format) bundles three projects: `RemoteAgents`, `NamedAgents`, `RemoteAgents.Tests`. Entry-point scripts reference whichever csprojs they need via `#:project` headers (always with the `../../src/...` prefix, since they live two levels deep under `cli/flows/`).
+
+Build output is centralized via `Directory.Build.props` (`<UseArtifactsOutput>true</UseArtifactsOutput>`) — instead of a `bin/obj` pair under each csproj, everything lands in `artifacts/{bin,obj}/<ProjectName>/<Config>/<TFM>/`. One folder to gitignore, one folder to nuke when MSBuild gets weird.
 
 ---
 
 ## 4. Anatomy of a run
 
-What `dotnet run flows/full-review.cs gear-engine "..."` does, step by step:
+What `dotnet run cli/flows/full-review.cs gear-engine "..."` does, step by step:
 
 ```
 1. SubscriptionGuard.CheckAsync()
@@ -328,7 +344,7 @@ The Claude session UUID is generated by us, passed via `--session-id <uuid>` on 
 
 If you add a new serializable shape inside the library, add it to the appropriate context. Don't reach for reflection-based serialization.
 
-For one-off JSON inside a flow file, hand-build the line (see how `flows/unity-review.cs` writes `codex-review.jsonl` — escape `\`, `"`, `\n`, `\r`, `\t` and interpolate).
+For one-off JSON inside a flow file, hand-build the line (see how `cli/flows/unity-review.cs` writes `codex-review.jsonl` — escape `\`, `"`, `\n`, `\r`, `\t` and interpolate).
 
 ---
 
@@ -360,7 +376,7 @@ The one exception is `IEventSink.EmitAsync` calls in `RunAsync`'s `catch` block 
 
 ## 9. Test strategy
 
-The xUnit suite (`RemoteAgents.Tests/`, 52 tests) covers:
+The xUnit suite (`tests/RemoteAgents.Tests/`, 52 tests) covers:
 
 - Primitives, end-to-end (`GitOpsTests`, `FsDiffTests`, `ProjectRegistryTests`, `SubscriptionGuardTests`, `RunCommandTests`)
 - Agent lifecycle invariants (`AgentLifecycleTests` against fake agents)
@@ -370,7 +386,7 @@ The xUnit suite (`RemoteAgents.Tests/`, 52 tests) covers:
 
 What is **not** under xUnit:
 
-- `ClaudeAgent.ExecuteAsync` (the PTY mechanics) — validated only by live smokes in `flows/smoke-*.cs`. Driving Porta.Pty in a unit test would mean spawning a real `cmd.exe`, which we already do in the smoke flows.
+- `ClaudeAgent.ExecuteAsync` (the PTY mechanics) — validated only by live smokes in `cli/flows/smoke-*.cs`. Driving Porta.Pty in a unit test would mean spawning a real `cmd.exe`, which we already do in the smoke flows.
 - `CodexAgent.ExecuteAsync` — same.
 - The flows themselves — validated by running them end-to-end against real subscription-billed Claude/Codex.
 
@@ -406,10 +422,10 @@ Either path: **don't change the library's public types** to accommodate the UI. 
 ## 12. Where to look next
 
 - [`usage.md`](usage.md) — getting started, the four example flows, writing your own.
-- [`../RemoteAgents/Agents/Agent.cs`](../RemoteAgents/Agents/Agent.cs) — the sealed lifecycle in 60 lines.
-- [`../RemoteAgents/Agents/ClaudeAgent.cs`](../RemoteAgents/Agents/ClaudeAgent.cs) — the PTY mechanics.
-- [`../RemoteAgents/Events/AgentEvent.cs`](../RemoteAgents/Events/AgentEvent.cs) — the five event cases.
-- [`../flows/full-review.cs`](../flows/full-review.cs) — the most complete example flow; copy as a starting point.
+- [`../src/RemoteAgents/Core/Agents/Agent.cs`](../src/RemoteAgents/Core/Agents/Agent.cs) — the sealed lifecycle in 60 lines.
+- [`../src/RemoteAgents/Providers/Claude/ClaudeAgent.cs`](../src/RemoteAgents/Providers/Claude/ClaudeAgent.cs) — the PTY mechanics.
+- [`../src/RemoteAgents/Core/Events/AgentEvent.cs`](../src/RemoteAgents/Core/Events/AgentEvent.cs) — the five event cases.
+- [`../cli/flows/full-review.cs`](../cli/flows/full-review.cs) — the most complete example flow; copy as a starting point.
 - [`../../PLANS/csharp-orchestrator-prd.md`](../../PLANS/csharp-orchestrator-prd.md) — PRD (standalone-buildable from cold).
 - [`../../PLANS/csharp-orchestrator-build.md`](../../PLANS/csharp-orchestrator-build.md) — build plan + 19 confirmed decisions.
 - [`../../research/`](../../research/) — design notes from the JS-prototype era.

@@ -1,12 +1,12 @@
-#:project ../RemoteAgents/RemoteAgents.csproj
+#:project ../src/RemoteAgents/RemoteAgents.csproj
 // agents-dotnet — thin CLI runner. `agents-dotnet run <flow> <args...>`
-// executes flows/<flow>.cs with the remaining args forwarded as
+// executes cli/flows/<flow>.cs with the remaining args forwarded as
 // command-line args. Matches the JS bin/agents.js ergonomics.
 //
 // Usage:
-//   dotnet run bin/agents-dotnet.cs run <flow> <args...>
-//   dotnet run bin/agents-dotnet.cs list
-//   dotnet run bin/agents-dotnet.cs projects
+//   dotnet run cli/agents-dotnet.cs run <flow> <args...>
+//   dotnet run cli/agents-dotnet.cs list
+//   dotnet run cli/agents-dotnet.cs projects
 
 using System.Diagnostics;
 using RemoteAgents.Primitives;
@@ -14,7 +14,7 @@ using RemoteAgents.Primitives;
 // Locate the orchestrator dir (RemoteAgents.slnx lives at its root).
 var orchestratorRoot = ResolveOrchestratorRoot()
     ?? throw new InvalidOperationException("Could not locate remote-agents-dotnet/ — run from inside the repo.");
-var flowsDir = Path.Combine(orchestratorRoot, "flows");
+var flowsDir = Path.Combine(orchestratorRoot, "cli", "flows");
 
 string? ResolveOrchestratorRoot()
 {
@@ -66,7 +66,7 @@ void Usage()
     Console.WriteLine("  agents-dotnet list                     List available flows");
     Console.WriteLine("  agents-dotnet projects                 List configured projects");
     Console.WriteLine();
-    Console.WriteLine($"Flows:    {(flows.Count > 0 ? string.Join(", ", flows) : "(none yet — add files to flows/)")}");
+    Console.WriteLine($"Flows:    {(flows.Count > 0 ? string.Join(", ", flows) : "(none yet — add files to cli/flows/)")}");
     Console.WriteLine($"Projects: {(projs.Count > 0 ? string.Join(", ", projs) : "(none yet — see projects.json)")}");
 }
 

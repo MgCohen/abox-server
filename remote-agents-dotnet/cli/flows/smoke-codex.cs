@@ -1,4 +1,4 @@
-#:project ../RemoteAgents/RemoteAgents.csproj
+#:project ../../src/RemoteAgents/RemoteAgents.csproj
 // One-shot smoke for CodexAgent — runs `codex exec` against a fixed
 // review prompt and asserts the session id round-trips + the final
 // message is parseable.

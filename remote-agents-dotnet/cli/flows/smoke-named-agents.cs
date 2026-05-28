@@ -1,5 +1,5 @@
-#:project ../RemoteAgents/RemoteAgents.csproj
-#:project ../agents/NamedAgents.csproj
+#:project ../../src/RemoteAgents/RemoteAgents.csproj
+#:project ../../src/NamedAgents/NamedAgents.csproj
 // Step-12 acceptance: run each of the three named agents against a
 // trivial prompt and confirm they wire up.
 

@@ -56,17 +56,17 @@ Expected: `dotnet build` clean, `dotnet test` → 52 passed.
 
 ```pwsh
 cd remote-agents-dotnet
-dotnet run bin/agents-dotnet.cs <subcommand> [args...]
+dotnet run cli/agents-dotnet.cs <subcommand> [args...]
 ```
 
 | Subcommand | What it does |
 |---|---|
-| `list` | Show flows under `flows/` (filters `smoke-*` helpers) |
+| `list` | Show flows under `cli/flows/` (filters `smoke-*` helpers) |
 | `projects` | Show short names from `projects.json` |
-| `run <flow> <project> "<prompt>" [flow-specific args...]` | Spawn the flow via `dotnet run flows/<flow>.cs -- <args>` |
+| `run <flow> <project> "<prompt>" [flow-specific args...]` | Spawn the flow via `dotnet run cli/flows/<flow>.cs -- <args>` |
 | `help` / `-h` / `--help` | Print usage + flow list + project list |
 
-The CLI is a thin shim. You can also call any flow directly: `dotnet run flows/claude-only.cs <project> "<prompt>"`.
+The CLI is a thin shim. You can also call any flow directly: `dotnet run cli/flows/claude-only.cs <project> "<prompt>"`.
 
 ---
 
@@ -75,7 +75,7 @@ The CLI is a thin shim. You can also call any flow directly: `dotnet run flows/c
 ### `claude-only` — baseline
 
 ```pwsh
-dotnet run bin/agents-dotnet.cs run claude-only card-framework `
+dotnet run cli/agents-dotnet.cs run claude-only card-framework `
     "Add an XML doc comment to GameManager.Awake."
 ```
 
@@ -84,7 +84,7 @@ One Claude turn against the project dir. Captures the file diff. No validation, 
 ### `claude-validate` — Claude + fix loop
 
 ```pwsh
-dotnet run bin/agents-dotnet.cs run claude-validate remote-unity-agents `
+dotnet run cli/agents-dotnet.cs run claude-validate remote-unity-agents `
     "Fix the syntax error in remote-agents-dotnet/scratch/Broken.cs."
 ```
 
@@ -93,7 +93,7 @@ Claude runs once, then `OrchestratorValidator` (Roslyn syntax-only). On failure 
 ### `full-review` — full pipeline (non-Unity)
 
 ```pwsh
-dotnet run bin/agents-dotnet.cs run full-review remote-unity-agents `
+dotnet run cli/agents-dotnet.cs run full-review remote-unity-agents `
     "Refactor the GitOps.Quote helper to use Span<char>."
 ```
 
@@ -104,7 +104,7 @@ Refuses to run on a dirty tree.
 ### `unity-review` — full pipeline (Unity)
 
 ```pwsh
-dotnet run bin/agents-dotnet.cs run unity-review gear-engine `
+dotnet run cli/agents-dotnet.cs run unity-review gear-engine `
     "Add summary XML docs to the RaceStartData class."
 ```
 
@@ -134,12 +134,12 @@ If the orchestrator made a decision, look in `transcript.jsonl`. If the provider
 
 ## 7. Writing a new flow
 
-A flow is a `.NET 10` file-based program under `flows/`. Three references plus your control flow:
+A flow is a `.NET 10` file-based program under `cli/flows/`. Three references plus your control flow:
 
 ```csharp
-#:project ../RemoteAgents/RemoteAgents.csproj
-#:project ../agents/NamedAgents.csproj         // only if you use Planner/Documenter/Researcher
-// flows/my-flow.cs
+#:project ../../src/RemoteAgents/RemoteAgents.csproj
+#:project ../../src/NamedAgents/NamedAgents.csproj         // only if you use Planner/Documenter/Researcher
+// cli/flows/my-flow.cs
 
 using RemoteAgents.Agents;
 using RemoteAgents.Events;
@@ -150,7 +150,7 @@ const string FLOW_NAME = "my-flow";
 
 if (args.Length < 2)
 {
-    Console.Error.WriteLine($"Usage: dotnet run flows/{FLOW_NAME}.cs <project> \"<prompt>\"");
+    Console.Error.WriteLine($"Usage: dotnet run cli/flows/{FLOW_NAME}.cs <project> \"<prompt>\"");
     Environment.ExitCode = 2;
     return;
 }
@@ -190,23 +190,23 @@ catch (Exception ex)
 Run it:
 
 ```pwsh
-dotnet run flows/my-flow.cs <project> "<prompt>"
+dotnet run cli/flows/my-flow.cs <project> "<prompt>"
 # or
-dotnet run bin/agents-dotnet.cs run my-flow <project> "<prompt>"
+dotnet run cli/agents-dotnet.cs run my-flow <project> "<prompt>"
 ```
 
 The library imposes **zero control flow** on you. The validate-and-fix loop in `claude-validate.cs` is a hand-written `while`. The commit step in `full-review.cs` is a hand-written `if`. Tune them by editing.
 
-If your flow is a smoke / one-off / not user-facing, name it `flows/smoke-<name>.cs` — the CLI's `list` and `help` will hide it.
+If your flow is a smoke / one-off / not user-facing, name it `cli/flows/smoke-<name>.cs` — the CLI's `list` and `help` will hide it.
 
 ---
 
 ## 8. Writing a project validator
 
-`validation/` is a small csproj (`Validators.csproj`) that picks up everything in `validation/*.cs` automatically.
+Validators are providers — they adapt an external validation tool (Unity batch mode, Roslyn, dotnet build) to the `IValidator` contract. Drop a new one under `src/RemoteAgents/Providers/<Vendor>/`; it's compiled as part of the main `RemoteAgents` library (no separate csproj).
 
 ```csharp
-// validation/MyProjectValidator.cs
+// src/RemoteAgents/Providers/MyProject/MyProjectValidator.cs
 using RemoteAgents.Validation;
 using RemoteAgents.Primitives;
 
@@ -245,10 +245,10 @@ A good `ValidationResult.Errors` payload is what Claude will see when fixing —
 
 ## 9. Registering a named agent
 
-If you find yourself constructing the same `ClaudeAgent { Model = ..., SystemPrompt = ... }` in multiple flows, hoist it into `agents/`:
+If you find yourself constructing the same `ClaudeAgent { Model = ..., SystemPrompt = ... }` in multiple flows, hoist it into `src/NamedAgents/`:
 
 ```csharp
-// agents/Refactorer.cs
+// src/NamedAgents/Refactorer.cs
 using RemoteAgents.Agents;
 using RemoteAgents.Events;
 
@@ -267,12 +267,12 @@ public static class Refactorer
 }
 ```
 
-Drop the system prompt as `agents/prompts/refactorer.md`. The csproj has `<EmbeddedResource Include="prompts\*.md" />` so it gets picked up automatically — no manual wiring.
+Drop the system prompt as `src/NamedAgents/prompts/refactorer.md`. The csproj has `<EmbeddedResource Include="prompts\*.md" />` so it gets picked up automatically — no manual wiring.
 
 Flow usage:
 
 ```csharp
-#:project ../agents/NamedAgents.csproj
+#:project ../../src/NamedAgents/NamedAgents.csproj
 
 using Flows.Agents;
 // ...
@@ -302,7 +302,7 @@ new ClaudeAgent
 };
 ```
 
-Defaults live in [`ClaudeAgentOptions.cs`](../RemoteAgents/Agents/ClaudeAgentOptions.cs) and [`CodexAgentOptions.cs`](../RemoteAgents/Agents/CodexAgentOptions.cs).
+Defaults live in [`ClaudeAgentOptions.cs`](../src/RemoteAgents/Providers/Claude/ClaudeAgentOptions.cs) and [`CodexAgentOptions.cs`](../src/RemoteAgents/Providers/Codex/CodexAgentOptions.cs).
 
 Worth knowing:
 - `CodexAgentOptions.Model` defaults to `"gpt-5.5"` because `gpt-5.3-codex` is API-only and 400s under subscription billing.
@@ -338,7 +338,7 @@ public sealed class StrictClaude : ClaudeAgent
 
 - `DetectStartupDialog(string buf) → string?` — return `"trust"`, `"bypass-warning"`, or `null` based on the TUI buffer. Override per-project if Claude changes its UI.
 - `IsResponseComplete(string buf, DateTimeOffset lastChunkAt) → bool` — your own "Claude is done talking" predicate.
-- `SpawnPtyAsync(PtyOptions, CancellationToken) → IPtyConnection` — swap the real ConPTY for a fake. This is how `ClaudeAgentDriveLoopTests` runs the drive loop against scripted bytes — see `RemoteAgents.Tests/Agents/FakePty.cs` for the harness.
+- `SpawnPtyAsync(PtyOptions, CancellationToken) → IPtyConnection` — swap the real ConPTY for a fake. This is how `ClaudeAgentDriveLoopTests` runs the drive loop against scripted bytes — see `tests/RemoteAgents.Tests/Agents/FakePty.cs` for the harness.
 
 Other mechanics (`BuildClaudeArgs`, the dwell choreography, `ExtractAssistantText`, the JSONL read) stay private. For one-off text reads from past turns, call `ClaudeJsonl.TryReadLastAssistantText(projectDir, sessionId, promptHint?)` directly — it's public.
 
@@ -396,14 +396,14 @@ var sink = new CompositeSink(
 
 ## 13. Adding a primitive
 
-If more than one flow would want it, drop it in `RemoteAgents/Primitives/`. Conventions:
+If more than one flow would want it, drop it in `src/RemoteAgents/Core/Primitives/`. Conventions:
 
 - Static class, no state.
 - All async methods take `CancellationToken ct = default`.
 - Throw `InvalidOperationException` for misuse, `ArgumentException` for bad args.
 - Add an xUnit test.
 
-If a primitive is project-specific, leave it in `flows/` or `validation/` — `RemoteAgents/` is for reusable verbs only.
+If a primitive is project-specific, leave it in `cli/flows/` — `src/RemoteAgents/Core/Primitives/` is for reusable verbs only (no vendor coupling).
 
 ---
 
@@ -484,14 +484,14 @@ Reality. Check `projects.json` is pointing at the populated one (paths with spac
 | You want to… | Edit… |
 |---|---|
 | Add a project | `<repo>/projects.json` |
-| Add a flow | `flows/<name>.cs` |
-| Add a validator | `validation/<MyProject>Validator.cs` |
+| Add a flow | `cli/flows/<name>.cs` |
+| Add a validator | `src/RemoteAgents/Providers/<MyProject>/<MyProject>Validator.cs` |
 | Tune Claude timings for one call | the flow file — pass `ClaudeAgentOptions` |
 | Tune Claude timings for one project | subclass `ClaudeAgent`, override `IsResponseComplete` |
-| Change a named agent's prompt | `agents/prompts/<name>.md` (then `dotnet build` to refresh the embedded resource) |
-| Add a named agent | `agents/<Name>.cs` + `agents/prompts/<name>.md` |
-| Add a sink | `RemoteAgents/Events/<Name>Sink.cs` implementing `IEventSink` |
-| Add a primitive | `RemoteAgents/Primitives/<Name>.cs` |
+| Change a named agent's prompt | `src/NamedAgents/prompts/<name>.md` (then `dotnet build` to refresh the embedded resource) |
+| Add a named agent | `src/NamedAgents/<Name>.cs` + `src/NamedAgents/prompts/<name>.md` |
+| Add a sink | `src/RemoteAgents/Core/Events/<Name>Sink.cs` implementing `IEventSink` |
+| Add a primitive | `src/RemoteAgents/Core/Primitives/<Name>.cs` |
 | Add a provider | subclass `Agent`, implement `ExecuteAsync` |
 | Read a past run | `sessions/<isoTs>-<slug>/` — `meta.json` for the summary, `transcript.jsonl` for the live trace, `*-turn-N.jsonl` for provider detail |
 

@@ -1,4 +1,4 @@
-#:project ../RemoteAgents/RemoteAgents.csproj
+#:project ../../src/RemoteAgents/RemoteAgents.csproj
 // One-shot smoke for ClaudeAgent — reproduces the dotnet-pty-smoke
 // acceptance (--session-id honored, PONG round-trips, exit 0,
 // subscription billing intact).

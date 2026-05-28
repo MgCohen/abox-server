@@ -1,4 +1,4 @@
-#:project ../RemoteAgents/RemoteAgents.csproj
+#:project ../../src/RemoteAgents/RemoteAgents.csproj
 // flows/unity-review.cs
 //
 // Same pipeline as full-review.cs but validates with UnityBatchValidator

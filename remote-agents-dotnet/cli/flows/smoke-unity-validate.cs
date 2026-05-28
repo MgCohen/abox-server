@@ -1,4 +1,4 @@
-#:project ../RemoteAgents/RemoteAgents.csproj
+#:project ../../src/RemoteAgents/RemoteAgents.csproj
 // Step-15 pre-check: confirm UnityBatchValidator passes against a clean
 // Unity project before we burn Claude+Codex turns on the full pipeline.
 

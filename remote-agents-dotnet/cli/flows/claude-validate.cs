@@ -1,4 +1,4 @@
-#:project ../RemoteAgents/RemoteAgents.csproj
+#:project ../../src/RemoteAgents/RemoteAgents.csproj
 // flows/claude-validate.cs
 //
 // Phase 2 flow: Claude does the work → project validator runs → if it

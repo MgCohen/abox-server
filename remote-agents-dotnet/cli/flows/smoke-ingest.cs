@@ -1,4 +1,4 @@
-#:project ../RemoteAgents/RemoteAgents.csproj
+#:project ../../src/RemoteAgents/RemoteAgents.csproj
 // Step-7 smoke: ProviderJsonlIngestSink copies the provider's own session
 // JSONL into the orchestrator session folder. Runs one Claude turn and
 // one Codex turn, then asserts:

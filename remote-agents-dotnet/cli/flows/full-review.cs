@@ -1,4 +1,4 @@
-#:project ../RemoteAgents/RemoteAgents.csproj
+#:project ../../src/RemoteAgents/RemoteAgents.csproj
 // flows/full-review.cs
 //
 // Claude works → orchestrator-validator (Roslyn parse) fix loop → Codex

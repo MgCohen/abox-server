@@ -1,11 +1,15 @@
-# bin/ and obj/ are MSBuild output dirs, but our CLI shim source lives
-# at remote-agents-dotnet/bin/agents-dotnet.cs — ignore the build dirs
-# under any csproj's bin/obj instead of the top-level bin/.
+# Canonical build output: centralized via Directory.Build.props
+# (UseArtifactsOutput=true) — `dotnet build` writes everything here.
+/artifacts/
+
+# Fallback catch-alls: vstest (`dotnet test`) doesn't fully honor
+# UseArtifactsOutput and creates per-project bin/obj as a test-host
+# working dir. Same for some VS / Rider workflows.
 **/bin/
 **/obj/
-!/bin/
+
 # Runtime sessions only — anchored to the root so it doesn't shadow the
-# Sessions/ source namespace directories.
+# Core/Sessions source namespace directory.
 /sessions/
 /scratch/
 *.user

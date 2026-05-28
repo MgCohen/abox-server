@@ -1,0 +1,10 @@
+<Project>
+
+  <!-- Centralize all bin/ and obj/ output under remote-agents-dotnet/artifacts/.
+       Defaults to artifacts/{bin,obj}/<ProjectName>/<Configuration>/<TargetFramework>/.
+       See: https://learn.microsoft.com/en-us/dotnet/core/sdk/artifacts-output -->
+  <PropertyGroup>
+    <UseArtifactsOutput>true</UseArtifactsOutput>
+  </PropertyGroup>
+
+</Project>

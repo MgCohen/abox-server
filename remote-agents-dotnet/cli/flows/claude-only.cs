@@ -1,4 +1,4 @@
-#:project ../RemoteAgents/RemoteAgents.csproj
+#:project ../../src/RemoteAgents/RemoteAgents.csproj
 // flows/claude-only.cs
 //
 // Baseline flow. Hand it a project name and a prompt; it spins up Claude
