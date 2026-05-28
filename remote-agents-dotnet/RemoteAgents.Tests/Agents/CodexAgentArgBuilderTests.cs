@@ -1,0 +1,95 @@
+using RemoteAgents.Agents;
+
+namespace RemoteAgents.Tests.Agents;
+
+public class CodexAgentArgBuilderTests
+{
+    [Fact]
+    public void Fresh_session_has_exec_no_resume()
+    {
+        var args = CodexAgent.BuildCodexArgs(null, "C:/proj", "C:/tmp/last.txt", new CodexAgentOptions());
+        Assert.Equal("exec", args[0]);
+        Assert.DoesNotContain("resume", args);
+    }
+
+    [Fact]
+    public void Resume_session_uses_exec_resume_id()
+    {
+        var args = CodexAgent.BuildCodexArgs("sess-abc", "C:/proj", "C:/tmp/last.txt", new CodexAgentOptions());
+        Assert.Equal("exec", args[0]);
+        Assert.Equal("resume", args[1]);
+        Assert.Equal("sess-abc", args[2]);
+    }
+
+    [Fact]
+    public void Includes_bypass_and_json_and_sandbox()
+    {
+        var args = CodexAgent.BuildCodexArgs(null, "C:/proj", "C:/tmp/last.txt", new CodexAgentOptions());
+        Assert.Contains("--dangerously-bypass-approvals-and-sandbox", args);
+        Assert.Contains("--json", args);
+        var i = args.IndexOf("--sandbox");
+        Assert.True(i >= 0);
+        Assert.Equal("workspace-write", args[i + 1]);
+    }
+
+    [Fact]
+    public void Stdin_dash_is_last()
+    {
+        var args = CodexAgent.BuildCodexArgs(null, "C:/proj", "C:/tmp/last.txt", new CodexAgentOptions());
+        Assert.Equal("-", args.Last());
+    }
+
+    [Fact]
+    public void Model_omitted_when_null()
+    {
+        var args = CodexAgent.BuildCodexArgs(null, "C:/proj", "C:/tmp/last.txt", new CodexAgentOptions(Model: null));
+        Assert.DoesNotContain("--model", args);
+    }
+
+    [Fact]
+    public void Model_emitted_when_set()
+    {
+        var args = CodexAgent.BuildCodexArgs(null, "C:/proj", "C:/tmp/last.txt", new CodexAgentOptions(Model: "gpt-5.5"));
+        var i = args.IndexOf("--model");
+        Assert.True(i >= 0);
+        Assert.Equal("gpt-5.5", args[i + 1]);
+    }
+}
+
+public class CodexAgentSessionIdScannerTests
+{
+    [Fact]
+    public void Finds_thread_id_at_root() =>
+        Assert.Equal("abc12345-thread", CodexAgent.ScanForSessionId("{\"thread_id\":\"abc12345-thread\"}"));
+
+    [Fact]
+    public void Finds_session_id_at_root() =>
+        Assert.Equal("abc12345-sess", CodexAgent.ScanForSessionId("{\"session_id\":\"abc12345-sess\"}"));
+
+    [Fact]
+    public void Finds_camel_case_sessionId() =>
+        Assert.Equal("abc12345-camel", CodexAgent.ScanForSessionId("{\"sessionId\":\"abc12345-camel\"}"));
+
+    [Fact]
+    public void Finds_nested_thread_id_in_thread_object() =>
+        Assert.Equal("abc12345-nested", CodexAgent.ScanForSessionId("{\"thread\":{\"id\":\"abc12345-nested\"}}"));
+
+    [Fact]
+    public void Finds_payload_session_id() =>
+        Assert.Equal("abc12345-payload", CodexAgent.ScanForSessionId("{\"payload\":{\"session_id\":\"abc12345-payload\"}}"));
+
+    [Fact]
+    public void Returns_null_for_non_json_lines()
+    {
+        Assert.Null(CodexAgent.ScanForSessionId(""));
+        Assert.Null(CodexAgent.ScanForSessionId("not json"));
+        Assert.Null(CodexAgent.ScanForSessionId("{\"foo\":\"bar\"}"));
+    }
+
+    [Fact]
+    public void Rejects_too_short_ids()
+    {
+        // 7 chars — below the 8-char floor
+        Assert.Null(CodexAgent.ScanForSessionId("{\"thread_id\":\"abc1234\"}"));
+    }
+}
