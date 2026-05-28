@@ -357,7 +357,7 @@ The `Unity_v6000.3.11f1.alf` file at `C:\Unity\unity-license\` is useless (manua
   ENV PATH=/root/.local/bin:$PATH
   ```
   Commit to branch.
-- [ ] Run the container with `CLAUDE_CODE_OAUTH_TOKEN` passed via env var, bind ttyd to the laptop's tailnet IP: `docker run -d --name chat-test -e CLAUDE_CODE_OAUTH_TOKEN -p 100.86.249.67:7681:7681 chat-test ttyd -W -p 7681 --ping-interval 30 --max-clients 2 tmux new-session -A -s main claude` — matches A4.5's flag set for consistency. (`-W` makes the terminal writable; default since 1.7.4 is read-only.)
+- [ ] Run the container with `CLAUDE_CODE_OAUTH_TOKEN` passed via env var, bind ttyd to the laptop's tailnet IP: `docker run -d --name chat-test -e CLAUDE_CODE_OAUTH_TOKEN -p 100.86.249.67:7681:7681 chat-test`. Image's default CMD runs `ttyd -p 7681 --ping-interval 30 --max-clients 2 tmux new-session -A -s main claude`. (Ubuntu 22.04 apt ttyd is 1.6.3 — writable by default, no `-W` flag needed; verified 2026-05-25.)
 - [ ] From laptop browser: `http://100.86.249.67:7681` → terminal renders, claude TUI inside.
 - [ ] **From phone over Tailscale: same URL → confirm rendering.** Test scrolling, slash commands (`/help`, `/exit`), multi-line input, ANSI colors. This is the B1 render-fidelity check.
 - [ ] Disconnect (close phone browser, wait 5 min, reconnect). Verify tmux session intact.
@@ -441,7 +441,7 @@ The `Unity_v6000.3.11f1.alf` file at `C:\Unity\unity-license\` is useless (manua
 - [ ] Detach (Ctrl-b d). Re-attach (`tmux attach -t main`). Confirm session intact.
 
 #### A4.5 — ttyd in front of tmux (¼ hour)
-- [ ] `ttyd -W -p 7681 -i tailscale0 --ping-interval 30 --max-clients 2 tmux new-session -A -s main` — binds to the Tailscale interface only, attaches/creates the tmux session if it doesn't exist (`new-session -A` is idempotent), pings every 30s to survive idle-proxy timeouts, allows 2 concurrent clients (active + reconnecting). **`-W` is mandatory** — since ttyd 1.7.4 (Mar 2024) the terminal is read-only by default; without `-W` the page renders but keystrokes are ignored.
+- [ ] `ttyd -p 7681 -i tailscale0 --ping-interval 30 --max-clients 2 tmux new-session -A -s main` — binds to the Tailscale interface only, attaches/creates the tmux session if it doesn't exist (`new-session -A` is idempotent), pings every 30s to survive idle-proxy timeouts, allows 2 concurrent clients (active + reconnecting). **Note on `-W` flag**: ttyd 1.7.4+ flipped to read-only-by-default and requires `-W` for input. **But Ubuntu 22.04 apt ships ttyd 1.6.3** (4 years old, writable by default, `--writable`/`-W` flag doesn't exist yet). Empirically confirmed in A3.5 container build. If you ever upgrade ttyd (snap, GitHub release binary, source build to 1.7.7), add `-W`. With apt's 1.6.3, no flag needed.
 - [ ] **Per research (§11)**: ttyd is stateless per-connection; persistence comes from tmux. Closing the tab does NOT kill claude when tmux is the entrypoint (ttyd #89). Default reconnect timeout ~10s.
 - [ ] From laptop browser: `http://<vm-tailnet-name>:7681` → terminal renders with claude TUI inside.
 - [ ] From phone browser: same URL → terminal renders on mobile. **Enable Claude fullscreen mode** (`/fullscreen` slash command, per https://code.claude.com/docs/en/fullscreen) — uses xterm.js alternate screen buffer, reduces flicker on mobile.
