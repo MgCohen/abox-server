@@ -68,12 +68,16 @@ IValidator validator = new UnityBatchValidator();
 
 try
 {
-    var before = FsDiff.Snapshot(projectDir);
-
     var claude = new ClaudeAgent { Name = "claude", Sink = sink };
 
     var claudeResult = await claude.RunAsync(new AgentRunRequest(userPrompt, null, projectDir));
     Console.WriteLine($"[claude] turn 1 done (session={claudeResult.SessionId})\n");
+
+    // Snapshot what Claude actually touched, BEFORE the validator gets a
+    // chance to dirty the tree. We protect this set during the post-
+    // validate cleanup so Unity's TMP_SDF / .meta / Library cascade
+    // doesn't end up in the commit.
+    var claudeTouched = await GitOps.ChangedFilesAsync(projectDir);
 
     bool validationOk = false;
     int validateAttempt = 0;
@@ -102,15 +106,12 @@ try
     }
 
     // Unity batch-mode touches auto-regenerated assets (TMP_SDF, .meta,
-    // Library/, etc.) during validation. Revert anything that isn't a
-    // .cs file so the diff Codex sees, and the commit that lands, only
-    // reflect what Claude actually meant to change.
-    var dirtyBeforeFilter = FsDiff.Diff(before, FsDiff.Snapshot(projectDir));
-    foreach (var noise in dirtyBeforeFilter.All.Where(f => !f.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)))
-    {
-        await RunCommand.RunAsync($"git checkout -- \"{noise}\"",
-            new RunCommandOptions(Cwd: projectDir));
-    }
+    // Library/, etc.) during validation. Revert everything except what
+    // Claude actually changed so the diff Codex sees, and the commit
+    // that lands, only reflect intended edits.
+    var reverted = await GitOps.RestoreUnstagedExceptAsync(projectDir, claudeTouched);
+    if (reverted.Count > 0)
+        Console.WriteLine($"[cleanup] reverted {reverted.Count} validator-generated files.");
 
     var diffText = await GitOps.DiffAsync(new GitDiffRequest(projectDir));
     if (string.IsNullOrWhiteSpace(diffText))
@@ -157,6 +158,16 @@ try
     await File.WriteAllTextAsync(Path.Combine(session.Dir, "codex-review.jsonl"),
         $"{{\"verdict\":\"{verdict}\",\"sessionId\":\"{review.SessionId}\",\"text\":\"{textEscaped}\"}}\n");
 
+    // Codex didn't open with APPROVE: or REVISE: — refuse to commit rather
+    // than silently shipping "(no comment)" on an unreviewed diff.
+    if (verdict == "unclear")
+    {
+        Console.Error.WriteLine($"[abort] Codex verdict unclear (review was {review.Text.Length} bytes). Refusing to commit.");
+        session.End("verdict-unclear");
+        Environment.ExitCode = 2;
+        return;
+    }
+
     int revisionRounds = 0;
     while (revisionRounds < MAX_REVISION_ROUNDS && verdict == "revise")
     {
@@ -177,10 +188,11 @@ try
         break;
     }
 
-    var after = FsDiff.Snapshot(projectDir);
-    var fileDiff = FsDiff.Diff(before, after);
+    // Source of truth for what to commit: git itself, not FsDiff (mtime is
+    // unreliable after revert).
+    var filesToCommit = await GitOps.ChangedFilesAsync(projectDir);
 
-    if (fileDiff.All.Count == 0)
+    if (filesToCommit.Count == 0)
     {
         Console.WriteLine("[done] No files ultimately changed.");
         session.End("no-changes");
@@ -201,11 +213,11 @@ try
         $"Reviewed by Codex: {(string.IsNullOrEmpty(reviewLine) ? "(no comment)" : reviewLine)}",
     });
 
-    Console.WriteLine($"[commit] {fileDiff.All.Count} files...");
+    Console.WriteLine($"[commit] {filesToCommit.Count} files...");
     await GitOps.CommitAsync(new GitCommitRequest(
         ProjectDir: projectDir,
         Message: commitMessage,
-        Files: fileDiff.All,
+        Files: filesToCommit,
         CoAuthor: "Claude Opus 4.7 + Codex gpt-5.5"));
     Console.WriteLine("[commit] done.");
 

@@ -75,8 +75,6 @@ IValidator validator = new OrchestratorValidator();
 
 try
 {
-    var before = FsDiff.Snapshot(projectDir);
-
     var claude = new ClaudeAgent { Name = "claude", Sink = sink };
     var codex  = new CodexAgent  { Name = "codex",  Sink = sink };
 
@@ -159,6 +157,17 @@ try
     await File.WriteAllTextAsync(Path.Combine(session.Dir, "codex-review.jsonl"),
         $"{{\"verdict\":\"{verdict}\",\"sessionId\":\"{review.SessionId}\",\"text\":\"{textEscaped}\"}}\n");
 
+    // Codex didn't open with APPROVE: or REVISE: — most likely it errored,
+    // ran out of model tokens, or said something we don't understand. Either
+    // way, do not commit "(no comment)" on top of an unreviewed diff.
+    if (verdict == "unclear")
+    {
+        Console.Error.WriteLine($"[abort] Codex verdict unclear (review was {review.Text.Length} bytes). Refusing to commit.");
+        session.End("verdict-unclear");
+        Environment.ExitCode = 2;
+        return;
+    }
+
     // ── 4. revision round ─────────────────────────────────────────────
     int revisionRounds = 0;
     while (revisionRounds < MAX_REVISION_ROUNDS && verdict == "revise")
@@ -182,10 +191,11 @@ try
     }
 
     // ── 5. commit (+ optional push) ───────────────────────────────────
-    var after = FsDiff.Snapshot(projectDir);
-    var fileDiff = FsDiff.Diff(before, after);
+    // Use git as source of truth for "what changed" — FsDiff compares
+    // mtime, which is unreliable after revert/restore operations.
+    var filesToCommit = await GitOps.ChangedFilesAsync(projectDir);
 
-    if (fileDiff.All.Count == 0)
+    if (filesToCommit.Count == 0)
     {
         Console.WriteLine("[done] No files ultimately changed.");
         session.End("no-changes");
@@ -204,11 +214,11 @@ try
         $"Reviewed by Codex: {(string.IsNullOrEmpty(reviewLine) ? "(no comment)" : reviewLine)}",
     });
 
-    Console.WriteLine($"[commit] {fileDiff.All.Count} files...");
+    Console.WriteLine($"[commit] {filesToCommit.Count} files...");
     await GitOps.CommitAsync(new GitCommitRequest(
         ProjectDir: projectDir,
         Message: commitMessage,
-        Files: fileDiff.All,
+        Files: filesToCommit,
         CoAuthor: "Claude Opus 4.7 + Codex gpt-5.5"));
     Console.WriteLine("[commit] done.");
 
