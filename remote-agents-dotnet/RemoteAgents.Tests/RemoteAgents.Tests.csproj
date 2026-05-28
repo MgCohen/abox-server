@@ -20,13 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\RemoteAgents\RemoteAgents.csproj" />
-  </ItemGroup>
-
-  <!-- Per-project validators live in ../validation/ as standalone files
-       consumed by flow programs via #:project. Link them into the test
-       project so xUnit can exercise them directly. -->
-  <ItemGroup>
-    <Compile Include="..\validation\OrchestratorValidator.cs" Link="Validation\OrchestratorValidator.cs" />
+    <ProjectReference Include="..\validation\Validators.csproj" />
   </ItemGroup>
 
 </Project>
