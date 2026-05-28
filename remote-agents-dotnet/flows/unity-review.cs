@@ -101,10 +101,21 @@ try
         return;
     }
 
+    // Unity batch-mode touches auto-regenerated assets (TMP_SDF, .meta,
+    // Library/, etc.) during validation. Revert anything that isn't a
+    // .cs file so the diff Codex sees, and the commit that lands, only
+    // reflect what Claude actually meant to change.
+    var dirtyBeforeFilter = FsDiff.Diff(before, FsDiff.Snapshot(projectDir));
+    foreach (var noise in dirtyBeforeFilter.All.Where(f => !f.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)))
+    {
+        await RunCommand.RunAsync($"git checkout -- \"{noise}\"",
+            new RunCommandOptions(Cwd: projectDir));
+    }
+
     var diffText = await GitOps.DiffAsync(new GitDiffRequest(projectDir));
     if (string.IsNullOrWhiteSpace(diffText))
     {
-        Console.WriteLine("[done] Claude made no file changes. Nothing to review or commit.");
+        Console.WriteLine("[done] Claude made no .cs changes. Nothing to review or commit.");
         session.End("no-changes");
         return;
     }
