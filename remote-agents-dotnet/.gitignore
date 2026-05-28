@@ -1,5 +1,9 @@
-bin/
-obj/
+# bin/ and obj/ are MSBuild output dirs, but our CLI shim source lives
+# at remote-agents-dotnet/bin/agents-dotnet.cs — ignore the build dirs
+# under any csproj's bin/obj instead of the top-level bin/.
+**/bin/
+**/obj/
+!/bin/
 # Runtime sessions only — anchored to the root so it doesn't shadow the
 # Sessions/ source namespace directories.
 /sessions/
