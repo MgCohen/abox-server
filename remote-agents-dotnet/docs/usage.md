@@ -1,18 +1,18 @@
 # Usage
 
-Day-to-day commands for the C# orchestrator. For internals, read [`architecture.md`](architecture.md) first.
+How to use, extend, and customize the C# orchestrator. For the internals view, read [`architecture.md`](architecture.md).
 
 ---
 
-## 1. Prerequisites
+## 1. Prereqs
 
-- **Windows** (v1 is Windows-only; Linux follow-up is a known port tax)
-- **.NET 10 SDK** (`dotnet --version` ≥ 10.0)
-- **`claude` CLI** on PATH, logged into a Claude Max subscription (`claude auth status` → `authMethod: "claude.ai"`)
-- **`codex` CLI** on PATH, logged into a ChatGPT subscription
-- **No API-key env vars set** — `ANTHROPIC_API_KEY`, `CLAUDE_API_KEY`, `OPENAI_API_KEY` must all be unset. `SubscriptionGuard.CheckAsync()` will refuse to start otherwise.
+- **Windows** (v1 is Windows-only)
+- **.NET 10 SDK** (`dotnet --version` ≥ `10.0`)
+- **`claude` CLI** on PATH, logged into a Claude Max subscription (`claude auth status` → `authMethod: "claude.ai"`, `subscriptionType: "max"`)
+- **`codex` CLI** on PATH, logged into a ChatGPT Plus/Pro subscription
+- **No API-key env vars set**: `ANTHROPIC_API_KEY`, `CLAUDE_API_KEY`, `OPENAI_API_KEY` must all be unset. `SubscriptionGuard.CheckAsync()` will refuse to start otherwise.
 
-Verify the toolchain in one shot:
+Verify in one shot:
 
 ```pwsh
 claude --version
@@ -23,94 +23,124 @@ dotnet --version
 
 ---
 
-## 2. Register projects
+## 2. Register your projects
 
 `<repo>/projects.json` maps short names to absolute paths:
 
 ```json
 {
-  "card-framework":      "C:/Unity/CardFramework",
+  "card-framework":      "C:/Unity/Card Framework",
   "scaffold":            "C:/Unity/Scaffold",
   "gear-engine":         "C:/Unity/Gear-Engine",
   "remote-unity-agents": "C:/Unity/remote-unity-agents"
 }
 ```
 
-Both orchestrators (JS and C#) read from this file. Add your projects here once.
+Paths with spaces are fine. Add your projects here once; the CLI and every flow can use short names from anywhere in the repo.
 
 ---
 
-## 3. The CLI
+## 3. Build + sanity check
 
 ```pwsh
-dotnet run bin/agents-dotnet.cs list                       # show available flows
-dotnet run bin/agents-dotnet.cs projects                   # show configured projects
-dotnet run bin/agents-dotnet.cs run <flow> <project> "<prompt>"  # run a flow
+cd remote-agents-dotnet
+dotnet build
+dotnet test
 ```
 
-The CLI is a thin shim — `run <flow>` just spawns `dotnet run flows/<flow>.cs -- ...args`. You can call the flow file directly if you prefer.
+Expected: `dotnet build` clean, `dotnet test` → 52 passed.
 
 ---
 
-## 4. The three example flows
+## 4. The CLI
 
-### claude-only — baseline
+```pwsh
+cd remote-agents-dotnet
+dotnet run bin/agents-dotnet.cs <subcommand> [args...]
+```
+
+| Subcommand | What it does |
+|---|---|
+| `list` | Show flows under `flows/` (filters `smoke-*` helpers) |
+| `projects` | Show short names from `projects.json` |
+| `run <flow> <project> "<prompt>" [flow-specific args...]` | Spawn the flow via `dotnet run flows/<flow>.cs -- <args>` |
+| `help` / `-h` / `--help` | Print usage + flow list + project list |
+
+The CLI is a thin shim. You can also call any flow directly: `dotnet run flows/claude-only.cs <project> "<prompt>"`.
+
+---
+
+## 5. The four flows that ship
+
+### `claude-only` — baseline
 
 ```pwsh
 dotnet run bin/agents-dotnet.cs run claude-only card-framework `
     "Add an XML doc comment to GameManager.Awake."
 ```
 
-Runs Claude once, captures whatever changed, writes the session transcript. No validation, no review, no git.
+One Claude turn against the project dir. Captures the file diff. No validation, no review, no git. Useful for prototyping a prompt before wiring it into a richer flow.
 
-### claude-validate — Claude + project validator
+### `claude-validate` — Claude + fix loop
 
 ```pwsh
 dotnet run bin/agents-dotnet.cs run claude-validate remote-unity-agents `
     "Fix the syntax error in remote-agents-dotnet/scratch/Broken.cs."
 ```
 
-Runs Claude, then runs the project validator. On failure, feeds errors back to the same Claude session and retries — up to 3 attempts. Exit 0 if validation passes, exit 2 if it doesn't.
+Claude runs once, then `OrchestratorValidator` (Roslyn syntax-only). On failure the errors get fed back to the same Claude session and we retry — up to 3 attempts. Exit 0 if validation passes, exit 2 if it doesn't.
 
-### full-review — full pipeline
+### `full-review` — full pipeline (non-Unity)
 
 ```pwsh
-dotnet run bin/agents-dotnet.cs run full-review card-framework `
-    "Refactor InventorySlot.OnDrop to early-return on null."
+dotnet run bin/agents-dotnet.cs run full-review remote-unity-agents `
+    "Refactor the GitOps.Quote helper to use Span<char>."
 ```
 
-Claude → validator (fix loop) → Codex review of the diff → optional Claude revision pass → commit. Add `--push` to push the commit on the current branch (refuses force-push to `main`/`master`).
+Claude → validator → fix loop → Codex review of the diff → optional Claude revision pass → commit. Add `--push` to push the resulting commit on the current branch (refuses force-push to `main`/`master`).
 
-Refuses to run if the working tree is dirty. That's deliberate — you don't want the orchestrator's commit to include unrelated edits.
+Refuses to run on a dirty tree.
 
----
+### `unity-review` — full pipeline (Unity)
 
-## 5. Reading a session
+```pwsh
+dotnet run bin/agents-dotnet.cs run unity-review gear-engine `
+    "Add summary XML docs to the RaceStartData class."
+```
 
-Every flow run writes `remote-agents-dotnet/sessions/<isoTs>-<slug>/` with:
-
-| File | What's in it |
-|---|---|
-| `prompt.txt` | the verbatim user prompt |
-| `meta.json` | id, orchestrator, schemaVersion, timing, result |
-| `transcript.jsonl` | one JSON event per line (Started/StreamChunk/DialogDismissed/Completed/Failed) |
-| `claude-turn-N.jsonl` | the corresponding Claude session JSONL (tool calls, token usage, rate-limit signals) |
-| `codex-turn-N.jsonl` | the corresponding Codex rollout JSONL |
-| `claude-raw.txt` | the raw PTY byte stream (debugging only) |
-| `claude-text.txt` | best-effort extracted assistant text |
-| `codex-review.jsonl` / `codex-review.txt` | full-review only: verdict + text |
-
-If you want to know *what Claude actually did*, read `claude-turn-N.jsonl`. If you want to know *what the orchestrator did with it*, read `transcript.jsonl`.
+Same as `full-review`, but the validator is `UnityBatchValidator` (`Unity.exe -batchmode -nographics -quit -projectPath <dir>`). The flow automatically reverts non-`.cs` files Unity touched (TMP_SDF font assets get auto-regenerated by every batch-mode run) so the commit and the Codex review stay focused on the intentional changes.
 
 ---
 
-## 6. Writing a new flow
+## 6. Reading a session
 
-Drop a `.cs` file in `flows/`. The first two non-comment lines are project references:
+Every flow writes `remote-agents-dotnet/sessions/<isoTs>-<slug>/`:
+
+| File | What's in it | Read it when… |
+|---|---|---|
+| `prompt.txt` | verbatim user prompt | reproducing a run |
+| `meta.json` | id, orchestrator, schemaVersion, timing, result | querying outcome at a glance |
+| `transcript.jsonl` | orchestrator's live events | tracing flow control |
+| `claude-turn-N.jsonl` | Claude's full session (tool calls, token usage, rate-limit signals) | asking "what did Claude actually do?" |
+| `codex-turn-N.jsonl` | Codex's rollout | same for Codex |
+| `claude-raw.txt` | raw PTY byte stream | debugging PTY weirdness |
+| `claude-text.txt` | best-effort extracted assistant text | quick scan of the reply |
+| `codex-review.jsonl` | `{verdict, sessionId, text}` (full-review/unity-review only) | scripting on the verdict |
+| `codex-review.txt` | Codex's reply, untransformed | reading the review |
+
+If the orchestrator made a decision, look in `transcript.jsonl`. If the provider made a decision, look in `claude-turn-N.jsonl` / `codex-turn-N.jsonl`.
+
+---
+
+## 7. Writing a new flow
+
+A flow is a `.NET 10` file-based program under `flows/`. Three references plus your control flow:
 
 ```csharp
 #:project ../RemoteAgents/RemoteAgents.csproj
-#:project ../validation/Validators.csproj   // only if you use IValidator impls
+#:project ../validation/Validators.csproj      // only if you use IValidator impls
+#:project ../agents/NamedAgents.csproj         // only if you use Planner/Documenter/Researcher
+// flows/my-flow.cs
 
 using RemoteAgents.Agents;
 using RemoteAgents.Events;
@@ -119,13 +149,23 @@ using RemoteAgents.Sessions;
 
 const string FLOW_NAME = "my-flow";
 
-if (args.Length < 2) { /* usage + Environment.ExitCode = 2 + return */ }
+if (args.Length < 2)
+{
+    Console.Error.WriteLine($"Usage: dotnet run flows/{FLOW_NAME}.cs <project> \"<prompt>\"");
+    Environment.ExitCode = 2;
+    return;
+}
 var projectName = args[0];
 var userPrompt = string.Join(' ', args[1..]).Trim();
 
 await SubscriptionGuard.CheckAsync();
+
 var projectDir = ProjectRegistry.Resolve(projectName);
-var session = Session.Start(new StartSessionRequest(projectDir, projectName, userPrompt, FLOW_NAME));
+var session = Session.Start(new StartSessionRequest(
+    ProjectDir: projectDir,
+    ProjectName: projectName,
+    UserPrompt: userPrompt,
+    FlowName: FLOW_NAME));
 
 var sink = new CompositeSink(
     new ConsoleSink(),
@@ -152,17 +192,22 @@ Run it:
 
 ```pwsh
 dotnet run flows/my-flow.cs <project> "<prompt>"
+# or
+dotnet run bin/agents-dotnet.cs run my-flow <project> "<prompt>"
 ```
 
-The library imposes zero control flow on you. The validate-and-fix loop in `claude-validate.cs` is a hand-written `while`. The commit step in `full-review.cs` is a hand-written `if`. Tune them by editing.
+The library imposes **zero control flow** on you. The validate-and-fix loop in `claude-validate.cs` is a hand-written `while`. The commit step in `full-review.cs` is a hand-written `if`. Tune them by editing.
+
+If your flow is a smoke / one-off / not user-facing, name it `flows/smoke-<name>.cs` — the CLI's `list` and `help` will hide it.
 
 ---
 
-## 7. Writing a project validator
+## 8. Writing a project validator
 
-Add a file under `validation/` implementing `IValidator`:
+`validation/` is a small csproj (`Validators.csproj`) that picks up everything in `validation/*.cs` automatically.
 
 ```csharp
+// validation/MyProjectValidator.cs
 using RemoteAgents.Validation;
 using RemoteAgents.Primitives;
 
@@ -176,26 +221,32 @@ public sealed class MyProjectValidator : IValidator
             "dotnet build /nologo /clp:Summary",
             new RunCommandOptions(Cwd: projectDir),
             ct);
+
         return new ValidationResult(
             Ok: res.ExitCode == 0,
-            Summary: res.ExitCode == 0 ? "build ok" : $"build failed (exit {res.ExitCode})",
+            Summary: res.ExitCode == 0 ? "dotnet build OK" : $"dotnet build failed (exit {res.ExitCode})",
             Errors: res.Stderr);
     }
 }
 ```
 
-The `Validators.csproj` picks up everything in `validation/*.cs` automatically. Reference it from your flow:
+Reference it from your flow:
 
 ```csharp
 #:project ../validation/Validators.csproj
+
 using RemoteAgents.Validation.MyProject;
 // ...
 IValidator validator = new MyProjectValidator();
+var v = await validator.ValidateAsync(projectDir);
+if (!v.Ok) { /* feed v.Errors back to Claude */ }
 ```
+
+A good `ValidationResult.Errors` payload is what Claude will see when fixing — keep it scoped to the failure, not the whole log. For Unity batch-mode that means tailing the last ~100 lines (see `UnityBatchValidator`). For dotnet build that means the error lines, not the noise.
 
 ---
 
-## 8. Naming a configured agent
+## 9. Registering a named agent
 
 If you find yourself constructing the same `ClaudeAgent { Model = ..., SystemPrompt = ... }` in multiple flows, hoist it into `agents/`:
 
@@ -219,22 +270,25 @@ public static class Refactorer
 }
 ```
 
-Drop the system prompt as `agents/prompts/refactorer.md` (embedded resource — picked up automatically by `NamedAgents.csproj`).
+Drop the system prompt as `agents/prompts/refactorer.md`. The csproj has `<EmbeddedResource Include="prompts\*.md" />` so it gets picked up automatically — no manual wiring.
 
 Flow usage:
 
 ```csharp
 #:project ../agents/NamedAgents.csproj
+
 using Flows.Agents;
 // ...
 var agent = Refactorer.Create(sink);
 ```
 
+Existing examples to crib from: `Planner` (Claude opus), `Documenter` (Claude haiku), `Researcher` (Codex gpt-5.5).
+
 ---
 
-## 9. Per-call provider tweaks
+## 10. Per-call provider tweaks
 
-`ClaudeAgentOptions` / `CodexAgentOptions` are records — override only what you need:
+`ClaudeAgentOptions` and `CodexAgentOptions` are records — override only what you need:
 
 ```csharp
 new ClaudeAgent
@@ -242,47 +296,194 @@ new ClaudeAgent
     Name = "tight-claude",
     Sink = sink,
     Options = new ClaudeAgentOptions(
-        IdleThresholdMs: 12_000,   // wait longer for slow responses
-        PermissionMode: "default",  // require approval per tool call
-        Model: "haiku"),
+        InitialDwellMs:   4000,        // claude takes a moment to render
+        IdleThresholdMs: 12_000,       // wait longer for slow replies
+        MaxWaitMs:       10 * 60_000,  // hard cap per call
+        PermissionMode:  "default",    // ask before each tool call
+        Model:           "haiku",
+        SystemPrompt:    "Reply tersely. No prose."),
 };
 ```
 
-Defaults are in [`ClaudeAgentOptions.cs`](../RemoteAgents/Agents/ClaudeAgentOptions.cs) and [`CodexAgentOptions.cs`](../RemoteAgents/Agents/CodexAgentOptions.cs).
+Defaults live in [`ClaudeAgentOptions.cs`](../RemoteAgents/Agents/ClaudeAgentOptions.cs) and [`CodexAgentOptions.cs`](../RemoteAgents/Agents/CodexAgentOptions.cs).
+
+Worth knowing:
+- `CodexAgentOptions.Model` defaults to `"gpt-5.5"` because `gpt-5.3-codex` is API-only and 400s under subscription billing.
+- `CodexAgentOptions.Sandbox` defaults to `"workspace-write"` for write tasks; pass `"read-only"` for review-only Codex turns.
 
 ---
 
-## 10. Subclassing a provider
+## 11. Subclassing a provider
 
-When Claude's trust-dialog wording changes (it has, twice), or your project needs a different idle-completion signal, subclass:
+When Claude reworded the trust dialog (twice) or you need a project-specific completion signal, subclass:
 
 ```csharp
-public sealed class GameDevClaude : ClaudeAgent
+public sealed class StrictClaude : ClaudeAgent
 {
     protected override string? DetectStartupDialog(string buf)
     {
-        // Claude v2.4 reworded "trust this folder" — recognize the new wording too.
         var plain = RemoteAgents.Pty.AnsiHelpers.StripAnsi(buf);
+        // claude v2.4+ reworded the trust prompt — recognize the new wording too.
         if (plain.Contains("Do you trust this directory?", StringComparison.Ordinal))
             return "trust";
         return base.DetectStartupDialog(buf);
     }
+
+    protected override bool IsResponseComplete(string buf, DateTimeOffset lastChunkAt)
+    {
+        // For long-running compile-heavy work, wait longer than the 6s default.
+        return (DateTimeOffset.UtcNow - lastChunkAt).TotalMilliseconds > 20_000;
+    }
 }
 ```
 
-Only `DetectStartupDialog` and `IsResponseComplete` are `virtual` in v1. Others are `private` until a real subclass need shows up.
+Only `DetectStartupDialog` and `IsResponseComplete` are `virtual` in v1. Other private mechanics (`BuildClaudeArgs`, the dwell choreography, `ExtractAssistantText`) stay private until a real subclass need shows up. If you need a different hook lifted to `virtual`, file a library change — don't reach into the privates.
 
 ---
 
-## 11. Common edits
+## 12. Writing a custom sink
+
+`IEventSink` is one method:
+
+```csharp
+public interface IEventSink
+{
+    Task EmitAsync(AgentEvent evt, CancellationToken ct = default);
+}
+```
+
+A Slack-notification sink:
+
+```csharp
+public sealed class SlackSink : IEventSink
+{
+    private readonly HttpClient _http = new();
+    private readonly string _webhookUrl;
+    public SlackSink(string webhookUrl) { _webhookUrl = webhookUrl; }
+
+    public async Task EmitAsync(AgentEvent evt, CancellationToken ct = default)
+    {
+        // Only ping Slack on terminal events to avoid spam.
+        if (evt is not AgentEvent.Completed and not AgentEvent.Failed) return;
+        var msg = evt switch
+        {
+            AgentEvent.Completed c => $":white_check_mark: {c.AgentName} completed",
+            AgentEvent.Failed f    => $":x: {f.AgentName} failed: {f.Reason}",
+            _ => null,
+        };
+        if (msg is not null)
+            await _http.PostAsync(_webhookUrl, new StringContent($"{{\"text\":\"{msg}\"}}"), ct);
+    }
+}
+```
+
+Compose it in with the rest:
+
+```csharp
+var sink = new CompositeSink(
+    new ConsoleSink(),
+    new JsonlSink(session.TranscriptFile),
+    new ProviderJsonlIngestSink(session.Dir, projectDir),
+    new SlackSink(Environment.GetEnvironmentVariable("SLACK_WEBHOOK")!));
+```
+
+`CompositeSink` runs children sequentially in registration order; any child that throws aborts the rest.
+
+---
+
+## 13. Adding a primitive
+
+If more than one flow would want it, drop it in `RemoteAgents/Primitives/`. Conventions:
+
+- Static class, no state.
+- All async methods take `CancellationToken ct = default`.
+- Throw `InvalidOperationException` for misuse, `ArgumentException` for bad args.
+- Add an xUnit test.
+
+If a primitive is project-specific, leave it in `flows/` or `validation/` — `RemoteAgents/` is for reusable verbs only.
+
+---
+
+## 14. Adding a new provider
+
+Subclass `Agent` directly. Implement `ExecuteAsync` to do whatever talking-to-the-provider takes. Emit `StreamChunk` events as you go. Return a populated `AgentResult`. Throw on failure; the sealed `RunAsync` will emit `Failed` + rethrow.
+
+Skeleton:
+
+```csharp
+public class GeminiAgent : Agent
+{
+    public GeminiAgentOptions Options { get; init; } = new();
+
+    protected override async Task<AgentResult> ExecuteAsync(AgentRunRequest req, CancellationToken ct)
+    {
+        // 1. spawn the provider (Process, Porta.Pty, HTTP — whatever it needs)
+        // 2. send the prompt
+        // 3. stream output → Sink.EmitAsync(new StreamChunk(...))
+        // 4. block until provider signals completion
+        // 5. return new AgentResult(Text, SessionId, ExitCode, RawOutput);
+    }
+}
+```
+
+Provider-specific virtual hooks (the equivalent of `DetectStartupDialog`) belong as `protected virtual` on your subclass, not as new abstract methods on `Agent`.
+
+---
+
+## 15. Resuming a Claude session
+
+Every `AgentResult` carries the `SessionId`. Pass it back as `AgentRunRequest.SessionId` to continue:
+
+```csharp
+var first  = await claude.RunAsync(new AgentRunRequest(prompt1, null, projectDir));
+var second = await claude.RunAsync(new AgentRunRequest(prompt2, first.SessionId, projectDir));
+```
+
+Internally that flips `--session-id <uuid>` to `--resume <uuid>`. The same JSONL accumulates in `~/.claude/projects/<encoded-cwd>/<uuid>.jsonl`, and `ProviderJsonlIngestSink` will copy successive snapshots in as `claude-turn-1.jsonl`, `claude-turn-2.jsonl`, etc.
+
+Codex resume works the same way (`exec resume <thread_id>`), driven by `AgentRunRequest.SessionId`.
+
+---
+
+## 16. Troubleshooting
+
+**`SubscriptionGuard` throws at start with API key in env**
+Unset whatever's set. Don't try to override — the guard exists to prevent silent API billing. If you genuinely want API mode, that's a separate provider class to write.
+
+**`Failed to find a Unity install matching <version>`**
+The `UnityBatchValidator` matches `ProjectSettings/ProjectVersion.txt` against installed Hub versions. Open Unity Hub and install the required version, or pass an explicit `unityExePath` to the constructor.
+
+**Claude `Completed.ExitCode == -1` and the flow looks OK otherwise**
+Known rough edge. The PTY reader sometimes tears down before Claude's `/exit` reply is captured. The work landed; the reported exit code is stale. Check the actual git diff to confirm.
+
+**Codex review gets a huge diff and 400s**
+Something between Claude's run and the review (probably Unity batch-mode) touched files you didn't expect. The `unity-review.cs` template handles this by reverting non-`.cs` files before computing the diff Codex sees. Adapt the same pattern to your flow.
+
+**`Reflection-based serialization has been disabled for this application`**
+.NET 10 file-based programs disable reflection JSON by default. Use the source-gen contexts: `SessionJsonContext.Default.SessionMeta`, `EventJsonContext.Default.<EventCase>`, `ProjectsJsonContext.Default.DictionaryStringString`. For one-off JSON in a flow, hand-build the line.
+
+**Flow refuses to run with `working tree is dirty`**
+By design (full-review and unity-review). Commit or stash first. If you genuinely want to run with a dirty tree, comment out the `IsDirtyAsync` guard in your flow — it's your flow, you can.
+
+**Two `CardFramework` directories on disk**
+Reality. Check `projects.json` is pointing at the populated one (paths with spaces are fine, just quote them).
+
+---
+
+## 17. Common edits — a cheat sheet
 
 | You want to… | Edit… |
 |---|---|
 | Add a project | `<repo>/projects.json` |
 | Add a flow | `flows/<name>.cs` |
 | Add a validator | `validation/<MyProject>Validator.cs` |
-| Tune Claude timings | `flows/<your-flow>.cs` (pass `ClaudeAgentOptions`) |
-| Change a named agent's prompt | `agents/prompts/<name>.md` |
-| Add a new sink | `RemoteAgents/Events/<Name>Sink.cs` implementing `IEventSink` |
+| Tune Claude timings for one call | the flow file — pass `ClaudeAgentOptions` |
+| Tune Claude timings for one project | subclass `ClaudeAgent`, override `IsResponseComplete` |
+| Change a named agent's prompt | `agents/prompts/<name>.md` (then `dotnet build` to refresh the embedded resource) |
+| Add a named agent | `agents/<Name>.cs` + `agents/prompts/<name>.md` |
+| Add a sink | `RemoteAgents/Events/<Name>Sink.cs` implementing `IEventSink` |
+| Add a primitive | `RemoteAgents/Primitives/<Name>.cs` |
+| Add a provider | subclass `Agent`, implement `ExecuteAsync` |
+| Read a past run | `sessions/<isoTs>-<slug>/` — `meta.json` for the summary, `transcript.jsonl` for the live trace, `*-turn-N.jsonl` for provider detail |
 
 Anything else, see [`architecture.md`](architecture.md).
