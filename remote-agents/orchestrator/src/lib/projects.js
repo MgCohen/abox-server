@@ -1,13 +1,14 @@
 // projects.js — resolve a short project name (passed on the CLI) to an
 // absolute directory. Lookup table lives in `projects.json` at the
-// orchestrator root.
+// repo root (shared with the C# orchestrator during coexistence).
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PROJECTS_FILE = path.resolve(__dirname, '../../projects.json');
+// remote-agents/orchestrator/src/lib/projects.js -> repo root is 4 levels up.
+const PROJECTS_FILE = path.resolve(__dirname, '../../../../projects.json');
 
 let cache = null;
 

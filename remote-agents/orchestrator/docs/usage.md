@@ -49,7 +49,7 @@ suffice).
 
 ### 1.3 Register your projects
 
-`projects.json` maps a short name to an absolute path:
+`projects.json` (at the repo root, shared with the C# orchestrator) maps a short name to an absolute path:
 
 ```json
 {
@@ -547,4 +547,4 @@ PTY trick failed (almost always because an API key was set).
 - `flows/full-review.mjs` — the most complete example; copy it as a
   starting point for your own pipelines.
 - `validation/orchestrator.mjs` — the canonical validator example.
-- `projects.json` — add your projects here for short-name CLI access.
+- `<repo>/projects.json` — add your projects here for short-name CLI access (shared with the C# orchestrator).

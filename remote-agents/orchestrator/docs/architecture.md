@@ -104,8 +104,9 @@ remote-agents/orchestrator/
 ├── validation/              # user-authored validators (one per project)
 │   └── orchestrator.mjs        # example: node --check on every JS file
 ├── sessions/                # transcripts; gitignored
-├── projects.json            # short-name → absolute-path lookup
 └── package.json
+                             # `projects.json` lives at the repo root
+                             # (shared with the C# orchestrator).
 ```
 
 The split is deliberate:
