@@ -1,6 +1,6 @@
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Serialization;
+using RemoteAgents.Sessions;
 
 namespace RemoteAgents.Events;
 
@@ -8,11 +8,6 @@ namespace RemoteAgents.Events;
 // concrete record type so the `kind` field (added below) is consistent.
 public sealed class JsonlSink : IEventSink, IDisposable
 {
-    private static readonly JsonSerializerOptions JsonOpts = new()
-    {
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-    };
-
     private readonly string _path;
     private readonly SemaphoreSlim _lock = new(1, 1);
 
@@ -26,7 +21,8 @@ public sealed class JsonlSink : IEventSink, IDisposable
     public async Task EmitAsync(AgentEvent evt, CancellationToken ct = default)
     {
         var kind = evt.GetType().Name;
-        var line = $"{{\"kind\":{JsonSerializer.Serialize(kind)},{TrimWrappingBraces(JsonSerializer.Serialize(evt, evt.GetType(), JsonOpts))}}}\n";
+        var body = SerializeEvent(evt);
+        var line = $"{{\"kind\":{SerializeKind(kind)},{TrimWrappingBraces(body)}}}\n";
 
         await _lock.WaitAsync(ct);
         try
@@ -37,6 +33,19 @@ public sealed class JsonlSink : IEventSink, IDisposable
     }
 
     public void Dispose() => _lock.Dispose();
+
+    private static string SerializeEvent(AgentEvent evt) => evt switch
+    {
+        AgentEvent.Started s         => JsonSerializer.Serialize(s, EventJsonContext.Default.Started),
+        AgentEvent.StreamChunk c     => JsonSerializer.Serialize(c, EventJsonContext.Default.StreamChunk),
+        AgentEvent.DialogDismissed d => JsonSerializer.Serialize(d, EventJsonContext.Default.DialogDismissed),
+        AgentEvent.Completed c       => JsonSerializer.Serialize(c, EventJsonContext.Default.Completed),
+        AgentEvent.Failed f          => JsonSerializer.Serialize(f, EventJsonContext.Default.Failed),
+        _ => throw new InvalidOperationException($"unknown AgentEvent: {evt.GetType().Name}"),
+    };
+
+    private static string SerializeKind(string kind) =>
+        JsonSerializer.Serialize(kind, EventJsonContext.Default.String);
 
     private static string TrimWrappingBraces(string json) => json.Substring(1, json.Length - 2);
 }

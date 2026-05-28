@@ -78,7 +78,7 @@ public sealed class Session
 
     private void WriteMeta()
     {
-        var json = JsonSerializer.Serialize(Meta, new JsonSerializerOptions { WriteIndented = true });
+        var json = JsonSerializer.Serialize(Meta, SessionJsonContext.Default.SessionMeta);
         File.WriteAllText(MetaFile, json);
     }
 
