@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Flows.Agents</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RemoteAgents\RemoteAgents.csproj" />
+  </ItemGroup>
+
+  <!-- Sidecar prompts embedded so they travel with the dll. Read via
+       Assembly.GetManifestResourceStream("Flows.Agents.prompts.<name>.md"). -->
+  <ItemGroup>
+    <EmbeddedResource Include="prompts\*.md" />
+  </ItemGroup>
+
+</Project>
