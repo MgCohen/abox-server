@@ -1,0 +1,13 @@
+{
+  "name": "pty-smoke",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Throwaway: verify node-pty + claude routes to Max subscription, not Agent SDK pool",
+  "scripts": {
+    "smoke": "node smoke.js"
+  },
+  "dependencies": {
+    "node-pty": "^1.0.0"
+  }
+}

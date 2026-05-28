@@ -1,0 +1,23 @@
+{
+  "name": "agents",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local orchestrator: subscription-billed CLI agents (Claude, Codex) driven by hand-written JS flow scripts.",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "bin": {
+    "agents": "./bin/agents.js"
+  },
+  "scripts": {
+    "agents": "node bin/agents.js"
+  },
+  "dependencies": {
+    "node-pty": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
