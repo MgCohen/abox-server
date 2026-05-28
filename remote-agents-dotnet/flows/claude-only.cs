@@ -8,8 +8,6 @@
 //
 // Usage:
 //   dotnet run flows/claude-only.cs <project> "<prompt>"
-//
-// Parity reference: remote-agents/orchestrator/flows/claude-only.mjs
 
 using RemoteAgents.Agents;
 using RemoteAgents.Events;

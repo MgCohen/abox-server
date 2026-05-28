@@ -10,8 +10,6 @@
 //
 // Usage:
 //   dotnet run flows/claude-validate.cs <project> "<prompt>"
-//
-// Parity reference: remote-agents/orchestrator/flows/claude-validate.mjs
 
 using RemoteAgents.Agents;
 using RemoteAgents.Events;

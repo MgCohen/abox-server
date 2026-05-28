@@ -6,10 +6,7 @@ using RemoteAgents.Validation;
 namespace RemoteAgents.Validation.Orchestrator;
 
 // Syntax-only Roslyn parse over every .cs file under
-// remote-agents-dotnet/. Equivalent to the `node --check` walker in
-// remote-agents/orchestrator/validation/orchestrator.mjs.
-//
-// Per the build plan, this is intentionally narrow — we don't reach for
+// remote-agents-dotnet/. Intentionally narrow — we don't reach for
 // MSBuild here. Compile failures are caught by `dotnet build` upstream.
 // What we care about is "does this parse?" so that a broken .cs landed
 // by an agent gets flagged before the flow proceeds.

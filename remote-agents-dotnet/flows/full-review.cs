@@ -14,8 +14,6 @@
 //
 // Usage:
 //   dotnet run flows/full-review.cs <project> "<prompt>" [--push]
-//
-// Parity reference: remote-agents/orchestrator/flows/full-review.mjs
 
 using RemoteAgents.Agents;
 using RemoteAgents.Events;

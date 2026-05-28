@@ -1,6 +1,6 @@
 # Architecture
 
-C#/.NET 10 rewrite of the JS orchestrator at [`../../remote-agents/orchestrator/`](../../remote-agents/orchestrator/). Same job — drive `claude` and `codex exec` against your Unity projects under your **subscription billing**, not the API — implemented as four layers in idiomatic C#.
+Local C#/.NET 10 orchestrator that drives `claude` and `codex exec` against your Unity projects under your **subscription billing** (Claude Max, ChatGPT Plus/Pro), not the per-token API. Started life as a JS prototype under `../../remote-agents/` (removed once C# parity shipped). Implemented as four layers in idiomatic C#.
 
 This document is the internals view. For day-to-day commands, see [`usage.md`](usage.md). For decisions and tradeoffs, see [`../../PLANS/csharp-orchestrator-prd.md`](../../PLANS/csharp-orchestrator-prd.md) and [`../../PLANS/csharp-orchestrator-build.md`](../../PLANS/csharp-orchestrator-build.md).
 
@@ -240,4 +240,4 @@ The env-var check protects against the silent-API-billing failure mode. The `--v
 - [`../../PLANS/csharp-orchestrator-prd.md`](../../PLANS/csharp-orchestrator-prd.md) — PRD for the rewrite (standalone-buildable).
 - [`../../PLANS/csharp-orchestrator-build.md`](../../PLANS/csharp-orchestrator-build.md) — build plan + decisions (Q1–Q19).
 - [`../../PLANS/csharp-orchestrator-rewrite.md`](../../PLANS/csharp-orchestrator-rewrite.md) — design handover with the reference-library audit.
-- [`../../remote-agents/orchestrator/docs/`](../../remote-agents/orchestrator/docs/) — the JS orchestrator docs, still authoritative until the parallel JS lib is retired.
+- [`../../remote-agents/research/`](../../remote-agents/research/) — historical design notes from the JS-prototype era (PTY pattern, billing-policy changes, alternatives considered, logging plan, etc.).

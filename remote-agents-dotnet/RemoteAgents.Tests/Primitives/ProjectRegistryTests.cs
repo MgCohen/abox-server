@@ -34,6 +34,7 @@ public class ProjectRegistryTests
         var p = ProjectRegistry.ProjectsFilePath();
         Assert.True(File.Exists(p));
         // Repo root, not orchestrator-local.
-        Assert.False(p.Replace('\\', '/').Contains("/remote-agents/orchestrator/", StringComparison.OrdinalIgnoreCase));
+        // Should sit at the repo root, not under any orchestrator-local subdir.
+        Assert.EndsWith("/projects.json", p.Replace('\\', '/'));
     }
 }
