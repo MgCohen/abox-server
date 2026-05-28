@@ -35,6 +35,12 @@ public class ClaudeAgent : Agent
     protected virtual bool IsResponseComplete(string buf, DateTimeOffset lastChunkAt)
         => (DateTimeOffset.UtcNow - lastChunkAt).TotalMilliseconds > Options.IdleThresholdMs;
 
+    // PTY spawn hook. Defaults to PtyProvider.SpawnAsync (real ConPTY).
+    // Override in tests with a FakePtyConnection so ExecuteAsync's drive
+    // loop can be exercised without launching `claude` for real.
+    protected virtual Task<IPtyConnection> SpawnPtyAsync(PtyOptions opts, CancellationToken ct)
+        => PtyProvider.SpawnAsync(opts, ct);
+
     // Public for testing — exact arg list claude will be invoked with.
     public static List<string> BuildClaudeArgs(string effectiveSessionId, bool isResume, ClaudeAgentOptions opts)
     {
@@ -94,7 +100,7 @@ public class ClaudeAgent : Agent
             Environment = env,
         };
 
-        using var pty = await PtyProvider.SpawnAsync(ptyOpts, ct);
+        using var pty = await SpawnPtyAsync(ptyOpts, ct);
 
         var buffer = new StringBuilder();
         var bufLock = new object();
@@ -172,7 +178,7 @@ public class ClaudeAgent : Agent
         await WriteAsync(pty, "/exit\r", ct);
         await Task.Delay(Options.ExitDwellMs, ct);
         await WriteAsync(pty, "exit\r", ct);
-        exited = pty.WaitForExit(15_000);
+        exited = pty.WaitForExit(Options.WaitForExitMs);
 
         int exitCode;
         if (exited)
@@ -181,7 +187,7 @@ public class ClaudeAgent : Agent
             // loop sees ReadAsync==0 and exits cleanly. Give it a short
             // grace window to drain, but do NOT cancel — that would risk
             // truncating Claude's final bytes.
-            var drained = await Task.WhenAny(readerTask, Task.Delay(2000));
+            var drained = await Task.WhenAny(readerTask, Task.Delay(Options.ReaderDrainMs));
             if (drained != readerTask)
             {
                 // PTY didn't close its stream within 2s of exit. Force the

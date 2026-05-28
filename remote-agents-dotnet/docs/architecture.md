@@ -397,8 +397,9 @@ Either path: **don't change the library's public types** to accommodate the UI. 
 | Windows-only v1 | `cmd.exe /c` callsites, Porta.Pty Windows-only path, hardcoded `C:\Program Files\Unity\Hub\Editor\` for `UnityBatchValidator`. Linux port = ~1–2d when Hetzner-VM time lands. |
 | No `IAsyncEnumerable<AgentEvent>` return | By design (Q5). Events go through sinks only. |
 | No live tool-call / token-usage events | By design (Q6). Those live in the ingested provider JSONLs. |
-| Unity batch-mode dirties the tree every run | Provider-side reality (TMP_SDF auto-regen). Flows handle it by reverting non-`.cs` changes pre-commit (see `unity-review.cs`). |
-| Claude `Completed.ExitCode == -1` in some runs | The PTY reader cancels before claude's `/exit` reply is captured. The flow's actual work still lands; the reported exit code is wrong. Known rough edge. |
+| Unity batch-mode dirties the tree every run | Provider-side reality (TMP_SDF auto-regen). Flows handle it by snapshotting Claude-touched files via `GitOps.ChangedFilesAsync` before validation, then `GitOps.RestoreUnstagedExceptAsync(projectDir, claudeTouched)` after — see `unity-review.cs`. |
+| Claude `Completed.ExitCode == -1` | Real abnormal teardown — `pty.WaitForExit(Options.WaitForExitMs)` timed out, Kill path fired. Inspect `claude-turn-N.jsonl` and `claude-raw.txt` to see where it stalled. (Earlier behavior where clean exits also reported `-1` was a reader-drain bug; fixed.) |
+| Claude assistant text source | Primary: `~/.claude/projects/<encoded>/<sessionId>.jsonl`, parsed by `ClaudeJsonl.TryReadLastAssistantText`. Fallback: ANSI-stripped PTY buffer. The JSONL path survives TUI wrap/scroll/drain hazards; the buffer path doesn't. |
 
 ---
 

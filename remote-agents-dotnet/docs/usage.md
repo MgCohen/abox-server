@@ -337,7 +337,13 @@ public sealed class StrictClaude : ClaudeAgent
 }
 ```
 
-Only `DetectStartupDialog` and `IsResponseComplete` are `virtual` in v1. Other private mechanics (`BuildClaudeArgs`, the dwell choreography, `ExtractAssistantText`) stay private until a real subclass need shows up. If you need a different hook lifted to `virtual`, file a library change — don't reach into the privates.
+`virtual` extension points on `ClaudeAgent`:
+
+- `DetectStartupDialog(string buf) → string?` — return `"trust"`, `"bypass-warning"`, or `null` based on the TUI buffer. Override per-project if Claude changes its UI.
+- `IsResponseComplete(string buf, DateTimeOffset lastChunkAt) → bool` — your own "Claude is done talking" predicate.
+- `SpawnPtyAsync(PtyOptions, CancellationToken) → IPtyConnection` — swap the real ConPTY for a fake. This is how `ClaudeAgentDriveLoopTests` runs the drive loop against scripted bytes — see `RemoteAgents.Tests/Agents/FakePty.cs` for the harness.
+
+Other mechanics (`BuildClaudeArgs`, the dwell choreography, `ExtractAssistantText`, the JSONL read) stay private. For one-off text reads from past turns, call `ClaudeJsonl.TryReadLastAssistantText(projectDir, sessionId, promptHint?)` directly — it's public.
 
 ---
 
@@ -453,11 +459,17 @@ Unset whatever's set. Don't try to override — the guard exists to prevent sile
 **`Failed to find a Unity install matching <version>`**
 The `UnityBatchValidator` matches `ProjectSettings/ProjectVersion.txt` against installed Hub versions. Open Unity Hub and install the required version, or pass an explicit `unityExePath` to the constructor.
 
-**Claude `Completed.ExitCode == -1` and the flow looks OK otherwise**
-Known rough edge. The PTY reader sometimes tears down before Claude's `/exit` reply is captured. The work landed; the reported exit code is stale. Check the actual git diff to confirm.
+**Claude `Completed.ExitCode == -1`**
+This now genuinely means the PTY didn't exit cleanly within `Options.WaitForExitMs` (default 15s) and was killed. The previous behavior — where a clean exit could still produce `-1` because the reader was cancelled too eagerly — was fixed: ClaudeAgent now drains the reader on the happy path and only surfaces `-1` from the Kill teardown. Check the session's `claude-turn-N.jsonl` and `claude-raw.txt` to see where it stalled.
+
+**Claude `Completed.OutputChars == 0` but the work landed**
+The TUI buffer-extract didn't find your prompt (the wrap broke substring matching) AND Claude's per-session JSONL at `~/.claude/projects/<encoded>/<sessionId>.jsonl` wasn't there yet (early termination, or unusual path encoding). Inspect `<session>/claude-turn-1.jsonl` directly — that's the authoritative record.
 
 **Codex review gets a huge diff and 400s**
-Something between Claude's run and the review (probably Unity batch-mode) touched files you didn't expect. The `unity-review.cs` template handles this by reverting non-`.cs` files before computing the diff Codex sees. Adapt the same pattern to your flow.
+Something between Claude's run and the review touched files you didn't expect. The `unity-review.cs` template handles Unity's TMP_SDF cascade by snapshotting Claude-touched files via `GitOps.ChangedFilesAsync` before the validator runs, then calling `GitOps.RestoreUnstagedExceptAsync(projectDir, claudeTouched)` after. Adapt the same pattern to your flow.
+
+**`[abort] Codex verdict unclear`**
+Codex's reply didn't open with `APPROVE:` or `REVISE:`. Likely a model timeout, an empty reply, or a model that decided to chat. Read `<session>/codex-review.txt`; if it actually contains a clear answer the model just used a different prefix, rerun with a tweaked review prompt. The flow refuses to commit in this state by design — silently shipping "(no comment)" on an unreviewed diff was a previous rough edge.
 
 **`Reflection-based serialization has been disabled for this application`**
 .NET 10 file-based programs disable reflection JSON by default. Use the source-gen contexts: `SessionJsonContext.Default.SessionMeta`, `EventJsonContext.Default.<EventCase>`, `ProjectsJsonContext.Default.DictionaryStringString`. For one-off JSON in a flow, hand-build the line.
