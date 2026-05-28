@@ -802,8 +802,8 @@ When this passes, the JS orchestrator is retirable.
 | Design handover (architecture decisions) | [`csharp-orchestrator-rewrite.md`](csharp-orchestrator-rewrite.md) |
 | JS orchestrator architecture | [`remote-agents/orchestrator/docs/architecture.md`](../remote-agents/orchestrator/docs/architecture.md) |
 | JS orchestrator usage | [`remote-agents/orchestrator/docs/usage.md`](../remote-agents/orchestrator/docs/usage.md) |
-| Logging plan (T0 ingest) | [`remote-agents/research/logging-and-telemetry.md`](../remote-agents/research/logging-and-telemetry.md) |
-| C# validation result + smoke logs | [`remote-agents/research/csharp-rewrite-validation.md`](../remote-agents/research/csharp-rewrite-validation.md) + `C:\Unity\dotnet-pty-smoke\` |
+| Logging plan (T0 ingest) | [`research/logging-and-telemetry.md`](../research/logging-and-telemetry.md) |
+| C# validation result + smoke logs | [`research/csharp-rewrite-validation.md`](../research/csharp-rewrite-validation.md) + `C:\Unity\dotnet-pty-smoke\` |
 | Larger infrastructure plan | [`unity-agent-infrastructure.md`](unity-agent-infrastructure.md) |
 | JS claude provider (port reference for `ClaudeAgent.ExecuteAsync`) | [`remote-agents/orchestrator/src/providers/claudeProvider.js`](../remote-agents/orchestrator/src/providers/claudeProvider.js) |
 | JS codex provider (port reference for `CodexAgent.ExecuteAsync`) | [`remote-agents/orchestrator/src/providers/codexProvider.js`](../remote-agents/orchestrator/src/providers/codexProvider.js) |

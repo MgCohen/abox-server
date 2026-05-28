@@ -150,6 +150,40 @@ public class ClaudeAgentDriveLoopTests : IDisposable
         Assert.DoesNotContain("FAKE_BUFFER_REPLY", result.Text);
     }
 
+    [Fact]
+    public async Task deadline_aborts_run_when_max_overall_ms_fires()
+    {
+        // The JS prototype's zombies were runner processes that hung in
+        // their main flow and never returned. The deadline is the C#
+        // backstop: even with a wedged PTY that never EOFs and a Claude
+        // that never settles, ExecuteAsync must abort within MaxOverallMs
+        // (plus normal teardown slop). Without this, the orchestrator
+        // could pin itself forever the same way.
+        var fake = new FakePtyConnection();
+        // No reads enqueued, no Exit() wired — the fake stays "hung"
+        // forever from the agent's perspective.
+
+        var opts = new ClaudeAgentOptions(
+            InitialDwellMs: 10,
+            IdleThresholdMs: 50,
+            ExitDwellMs: 10,
+            MaxWaitMs: 60_000,   // would dominate if deadline didn't fire
+            WaitForExitMs: 60_000,
+            ReaderDrainMs: 100,
+            MaxOverallMs: 300);
+
+        var agent = new TestableClaudeAgent(fake) { Name = "claude", Options = opts };
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
+            await agent.RunAsync(new AgentRunRequest("anything", null, _projectDir)));
+        sw.Stop();
+
+        // Deadline + dispose teardown should land well under 2s; the
+        // important assertion is "didn't sit there for MaxWaitMs".
+        Assert.True(sw.ElapsedMilliseconds < 2_000,
+            $"deadline teardown took {sw.ElapsedMilliseconds}ms — should be under 2s.");
+    }
+
     // ── helpers ────────────────────────────────────────────────────────
 
     private void StageClaudeJsonl(string sessionId, params string[] lines)

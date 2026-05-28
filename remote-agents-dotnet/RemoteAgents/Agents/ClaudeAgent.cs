@@ -68,35 +68,45 @@ public class ClaudeAgent : Agent
         var claudeArgs = BuildClaudeArgs(sessionId, isResume: req.SessionId is not null, Options);
         var launchLine = "claude " + string.Join(' ', claudeArgs.Select(Shell.QuoteArg));
 
-        var pty = await SpawnPtyAsync(BuildPtyOptions(req.ProjectDir), ct);
+        // Hard deadline: even if WaitIdle hangs, /exit is ignored, or the
+        // PTY never EOFs, this CTS fires and PtySession's DisposeAsync
+        // (Cancel reader → Kill PTY → close Job Object) tears everything
+        // down on the way out of the using block. Without this, a wedged
+        // claude could pin the orchestrator indefinitely — exactly the
+        // failure mode that left JS-prototype zombies running for weeks.
+        using var deadlineCts = new CancellationTokenSource(TimeSpan.FromMilliseconds(Options.MaxOverallMs));
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, deadlineCts.Token);
+        var dct = linkedCts.Token;
+
+        var pty = await SpawnPtyAsync(BuildPtyOptions(req.ProjectDir), dct);
         await using var session = new PtySession(
             pty,
             onChunk: (chunk, innerCt) => Sink.EmitAsync(
                 new AgentEvent.StreamChunk(DateTimeOffset.UtcNow, Name, chunk), innerCt),
-            ct);
+            dct);
 
         // 1. Give cmd.exe a moment to render, then launch claude + dwell
         //    for its first paint.
-        await session.DwellAsync(500, ct);
-        await session.WriteLineAsync(launchLine, ct);
-        await session.DwellAsync(Options.InitialDwellMs, ct);
+        await session.DwellAsync(500, dct);
+        await session.WriteLineAsync(launchLine, dct);
+        await session.DwellAsync(Options.InitialDwellMs, dct);
 
         // 2. Startup dialog dismissal (trust folder / bypass warning).
-        await MaybeDismissDialogAsync(session, ct);
+        await MaybeDismissDialogAsync(session, dct);
 
         // 3. Type the prompt and submit.
-        await session.WriteAsync(req.Prompt, ct);
-        await session.DwellAsync(500, ct);
-        await session.WriteAsync("\r", ct);
+        await session.WriteAsync(req.Prompt, dct);
+        await session.DwellAsync(500, dct);
+        await session.WriteAsync("\r", dct);
 
         // 4. Wait for Claude's response to settle (no new chunks for
         //    IdleThresholdMs, capped at MaxWaitMs).
-        await session.WaitIdleAsync(Options.IdleThresholdMs, Options.MaxWaitMs, ct: ct);
+        await session.WaitIdleAsync(Options.IdleThresholdMs, Options.MaxWaitMs, ct: dct);
 
         // 5. Send /exit so claude prints the resume URL, then exit cmd.
-        await session.WriteLineAsync("/exit", ct);
-        await session.DwellAsync(Options.ExitDwellMs, ct);
-        await session.WriteLineAsync("exit", ct);
+        await session.WriteLineAsync("/exit", dct);
+        await session.DwellAsync(Options.ExitDwellMs, dct);
+        await session.WriteLineAsync("exit", dct);
         var exitCode = await session.ShutdownAsync(Options.WaitForExitMs, Options.ReaderDrainMs);
 
         var raw = session.Buffer;

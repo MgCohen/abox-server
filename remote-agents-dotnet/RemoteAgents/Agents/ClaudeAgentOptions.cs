@@ -13,6 +13,12 @@ public sealed record ClaudeAgentOptions(
     // before we force-cancel. 2s is well above any observed lag; tests
     // can shrink this when they need to.
     int ReaderDrainMs = 2_000,
+    // Wall-clock cap on the whole ExecuteAsync run. Even if WaitIdle hangs,
+    // the PTY misses a prompt, or claude wedges, the linked CTS fires at
+    // this point, exceptions propagate, and PtySession's DisposeAsync +
+    // the Job Object reap everything. 10 min covers MaxWaitMs (5 min) plus
+    // dwells/shutdown with plenty of headroom; tests crank this down.
+    int MaxOverallMs = 10 * 60_000,
     string PermissionMode = "acceptEdits",
     string? Model = null,
     string? SystemPrompt = null);

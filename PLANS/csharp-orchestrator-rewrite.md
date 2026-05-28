@@ -31,7 +31,7 @@ forkpty on Unix) so it sees real TTYs on both sides. Codex doesn't need this —
 `codex exec` is officially supported on ChatGPT subs since April 2026; plain
 `child_process.spawn` is fine.
 
-**Empirically verified**: see `remote-agents/research/pty-smoke-result.md` and
+**Empirically verified**: see `research/pty-smoke-result.md` and
 `~/.claude/projects/.../*.jsonl` showing `apiProvider:"firstParty"`,
 `subscriptionType:"max"`, `entrypoint:"claude-desktop"`. A full end-to-end run
 (`full-review` flow, JSDoc addition task) shipped a real commit (`14b5cc8`).
@@ -83,7 +83,7 @@ Both should be ported / replaced for the C# rewrite.
 - `PLANS/unity-agent-infrastructure.md` — the larger plan this orchestrator
   serves. Local-validation phase (Phase A), then Hetzner VM with native Unity
   Hub install for headless Unity work.
-- `remote-agents/research/` — empirical investigation logs.
+- `research/` — empirical investigation logs.
 - The orchestrator drives Unity and non-Unity projects. Unity projects sit at
   `C:\Unity\<ProjectName>` (Card Framework, Scaffold, Gear-Engine, plus the
   meta-project `remote-unity-agents` itself).
@@ -124,14 +124,14 @@ split made explicit.
 
 ## 3. Reference audit — what other frameworks taught us
 
-All five references live as MD files in `remote-agents/research/`. The
+All five references live as MD files in `research/`. The
 question we asked of each: **do they have the provider/agent split, and if so,
 what shape does the agent layer take?**
 
 ### 3.1 Flue — closest verbatim precedent
 
 - Repo: https://github.com/withastro/flue
-- Research file: `remote-agents/research/flue.md`
+- Research file: `research/flue.md`
 - **Tagline**: `Agent = Model + Harness`. Four-layer stack:
   ```
   Model (tokens, tools, prompts)
@@ -148,7 +148,7 @@ what shape does the agent layer take?**
 ### 3.2 Sandcastle — confirms the provider shape; lacks persistence
 
 - Repo: https://github.com/mattpocock/sandcastle
-- Research file: `remote-agents/research/sandcastle.md`
+- Research file: `research/sandcastle.md`
 - Has **pluggable "agent providers"** (Claude Code, Codex CLI, Cursor, Pi,
   OpenCode, Copilot) and pluggable sandbox providers.
 - Actual API shape (from their docs):
@@ -197,7 +197,7 @@ Provider is a *parameter* of the agent, not the API surface.
 ### 3.4 LiteLLM — the dumb-provider precedent
 
 - Repo: https://github.com/BerriAI/litellm
-- Research file: `remote-agents/research/litellm.md`
+- Research file: `research/litellm.md`
 - Pure provider-normalization layer; **no agent concept at all.**
   ```python
   litellm.completion(model="anthropic/claude-opus-4-7", messages=[...])
@@ -866,7 +866,7 @@ attaches later via `ProjectReference` (MAUI) or HTTP wrapper (Tauri).
   repo. Three log files (`pty-stage1.log`, `pty-stage2.log`,
   `pty-stage3-auth.log`) are empirical evidence. `pty-stage2.log` is the
   reference for what Claude's TUI byte stream looks like under ConPTY.
-- **Research notes** at `remote-agents/research/` — flue, sandcastle,
+- **Research notes** at `research/` — flue, sandcastle,
   agno-agentos, litellm, alternatives-considered, pty-pattern,
   pty-smoke-result, billing-policy-changes.
 - **Documentation** at `remote-agents/orchestrator/docs/` —
@@ -919,14 +919,14 @@ attaches later via `ProjectReference` (MAUI) or HTTP wrapper (Tauri).
 | JS claude provider                 | `remote-agents/orchestrator/src/providers/claudeProvider.js`           |
 | JS codex provider                  | `remote-agents/orchestrator/src/providers/codexProvider.js`            |
 | JS example full-review flow        | `remote-agents/orchestrator/flows/full-review.mjs`                     |
-| Reference: Flue                    | `remote-agents/research/flue.md`                                       |
-| Reference: Sandcastle              | `remote-agents/research/sandcastle.md`                                 |
-| Reference: LiteLLM                 | `remote-agents/research/litellm.md`                                    |
-| Reference: Agno AgentOS            | `remote-agents/research/agno-agentos.md`                               |
-| Reference: alternatives considered | `remote-agents/research/alternatives-considered.md`                    |
-| PTY pattern notes                  | `remote-agents/research/pty-pattern.md`                                |
-| PTY smoke result (JS)              | `remote-agents/research/pty-smoke-result.md`                           |
-| Billing policy changes context     | `remote-agents/research/billing-policy-changes.md`                     |
+| Reference: Flue                    | `research/flue.md`                                       |
+| Reference: Sandcastle              | `research/sandcastle.md`                                 |
+| Reference: LiteLLM                 | `research/litellm.md`                                    |
+| Reference: Agno AgentOS            | `research/agno-agentos.md`                               |
+| Reference: alternatives considered | `research/alternatives-considered.md`                    |
+| PTY pattern notes                  | `research/pty-pattern.md`                                |
+| PTY smoke result (JS)              | `research/pty-smoke-result.md`                           |
+| Billing policy changes context     | `research/billing-policy-changes.md`                     |
 | .NET PTY smoke test artifact       | `C:\Unity\dotnet-pty-smoke\` (outside repo)                            |
 | Larger infrastructure plan         | `PLANS/unity-agent-infrastructure.md`                                  |
 | User memory file                   | `~/.claude/projects/.../memory/MEMORY.md`                              |

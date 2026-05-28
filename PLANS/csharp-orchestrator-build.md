@@ -197,7 +197,7 @@ in practice.
   which folder it's in.
 - Bugs surfaced in the JS lib during the rewrite (e.g. trust-dialog
   wording, `Porta.Pty.ExitCode` gotcha) should still be backported to JS if
-  they apply — see [csharp-rewrite-validation](remote-agents/research/csharp-rewrite-validation.md).
+  they apply — see [csharp-rewrite-validation](research/csharp-rewrite-validation.md).
 
 ---
 
@@ -293,8 +293,8 @@ In rough order of "how often you'll touch them":
 | Design context (read first) | [`PLANS/csharp-orchestrator-rewrite.md`](csharp-orchestrator-rewrite.md) |
 | JS orchestrator architecture | [`remote-agents/orchestrator/docs/architecture.md`](../remote-agents/orchestrator/docs/architecture.md) |
 | JS orchestrator usage | [`remote-agents/orchestrator/docs/usage.md`](../remote-agents/orchestrator/docs/usage.md) |
-| Logging plan (T0 ingest in step 7) | [`remote-agents/research/logging-and-telemetry.md`](../remote-agents/research/logging-and-telemetry.md) |
-| C# validation result + carry-forward findings | [`remote-agents/research/csharp-rewrite-validation.md`](../remote-agents/research/csharp-rewrite-validation.md) |
+| Logging plan (T0 ingest in step 7) | [`research/logging-and-telemetry.md`](../research/logging-and-telemetry.md) |
+| C# validation result + carry-forward findings | [`research/csharp-rewrite-validation.md`](../research/csharp-rewrite-validation.md) |
 | Reference smoke test artifact | `C:\Unity\dotnet-pty-smoke\` (outside repo) |
 | JS claude provider (port reference for step 5) | [`remote-agents/orchestrator/src/providers/claudeProvider.js`](../remote-agents/orchestrator/src/providers/claudeProvider.js) |
 | JS codex provider (port reference for step 6) | [`remote-agents/orchestrator/src/providers/codexProvider.js`](../remote-agents/orchestrator/src/providers/codexProvider.js) |

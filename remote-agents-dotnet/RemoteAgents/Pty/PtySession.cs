@@ -29,6 +29,13 @@ public sealed class PtySession : IAsyncDisposable, IDisposable
     // session's internal CancellationToken so it tears down with the
     // reader on Kill-path shutdown. Pass null if you don't need chunk
     // notifications.
+    //
+    // Descendant cleanup: Porta.Pty (Windows) puts the spawned process
+    // tree under its own Job Object with kill-on-close, so cmd → claude →
+    // (whatever claude spawned) all die when _pty.Dispose() runs. Our
+    // job is to make sure _pty.Dispose() actually runs, even on hangs —
+    // that's what the cancel-reader-then-kill sequence in DisposeAsync
+    // and ClaudeAgent's MaxOverallMs deadline together guarantee.
     public PtySession(
         IPtyConnection pty,
         Func<string, CancellationToken, Task>? onChunk,
@@ -152,12 +159,20 @@ public sealed class PtySession : IAsyncDisposable, IDisposable
 
     public void Dispose()
     {
+        _readerCts.Cancel();
+        try { _pty.Kill(); } catch { /* already gone */ }
         _readerCts.Dispose();
         _pty.Dispose();
     }
 
+    // Async disposal. Cancel the reader first so a stuck Read can't pin
+    // us, then kill the PTY (best-effort — it may already be dead), then
+    // dispose, which closes Porta.Pty's internal Job Object and cascades
+    // the kill to every descendant.
     public async ValueTask DisposeAsync()
     {
+        _readerCts.Cancel();
+        try { _pty.Kill(); } catch { /* already gone */ }
         try { await _readerTask; } catch { }
         _readerCts.Dispose();
         _pty.Dispose();

@@ -162,7 +162,7 @@ This layer is the user's. The library doesn't reach into it; it's the other way 
 remote-unity-agents/
 ├── projects.json                      # <-- short-name → abs path lookup
 ├── PLANS/                              # PRD, build plan, design handover
-├── remote-agents/research/             # historical design notes
+├── research/                           # historical design notes (JS-prototype era)
 └── remote-agents-dotnet/
     ├── RemoteAgents.slnx               # solution: 4 projects
     ├── RemoteAgents/                   # the library (net10.0)
@@ -412,4 +412,4 @@ Either path: **don't change the library's public types** to accommodate the UI. 
 - [`../flows/full-review.cs`](../flows/full-review.cs) — the most complete example flow; copy as a starting point.
 - [`../../PLANS/csharp-orchestrator-prd.md`](../../PLANS/csharp-orchestrator-prd.md) — PRD (standalone-buildable from cold).
 - [`../../PLANS/csharp-orchestrator-build.md`](../../PLANS/csharp-orchestrator-build.md) — build plan + 19 confirmed decisions.
-- [`../../remote-agents/research/`](../../remote-agents/research/) — design notes from the JS-prototype era.
+- [`../../research/`](../../research/) — design notes from the JS-prototype era.
