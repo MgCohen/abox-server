@@ -2,9 +2,6 @@
   <Folder Name="/agents/">
     <Project Path="agents/NamedAgents.csproj" />
   </Folder>
-  <Folder Name="/validation/">
-    <Project Path="validation/Validators.csproj" />
-  </Folder>
   <Project Path="RemoteAgents.Tests/RemoteAgents.Tests.csproj" />
   <Project Path="RemoteAgents/RemoteAgents.csproj" />
 </Solution>

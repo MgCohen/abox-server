@@ -32,14 +32,19 @@ public class SessionAndSinksTests : IDisposable
             UserPrompt: "do the thing",
             FlowName: "test-flow"), sessionsRoot: _root);
 
-        var jsonl = new JsonlSink(session.TranscriptFile);
-        var sink = new CompositeSink(jsonl);  // console omitted to keep test output clean
+        // Use `using` so the writer is released before the test reads the
+        // transcript file back. JsonlSink now holds the file open for the
+        // life of the sink (perf for chatty StreamChunk events).
+        using (var jsonl = new JsonlSink(session.TranscriptFile))
+        {
+            var sink = new CompositeSink(jsonl);  // console omitted to keep test output clean
 
-        var t0 = DateTimeOffset.UtcNow;
-        await sink.EmitAsync(new AgentEvent.Started(t0, "planner", "do the thing", null));
-        await sink.EmitAsync(new AgentEvent.StreamChunk(t0.AddMilliseconds(100), "planner", "step 1\n"));
-        await sink.EmitAsync(new AgentEvent.StreamChunk(t0.AddMilliseconds(200), "planner", "step 2\n"));
-        await sink.EmitAsync(new AgentEvent.Completed(t0.AddMilliseconds(300), "planner", "abc-123", 0, 14));
+            var t0 = DateTimeOffset.UtcNow;
+            await sink.EmitAsync(new AgentEvent.Started(t0, "planner", "do the thing", null));
+            await sink.EmitAsync(new AgentEvent.StreamChunk(t0.AddMilliseconds(100), "planner", "step 1\n"));
+            await sink.EmitAsync(new AgentEvent.StreamChunk(t0.AddMilliseconds(200), "planner", "step 2\n"));
+            await sink.EmitAsync(new AgentEvent.Completed(t0.AddMilliseconds(300), "planner", "abc-123", 0, 14));
+        }
 
         session.End("ok");
 
@@ -80,8 +85,10 @@ public class SessionAndSinksTests : IDisposable
     {
         var session = Session.Start(new StartSessionRequest(
             null, null, null, "broken"), sessionsRoot: _root);
-        var sink = new JsonlSink(session.TranscriptFile);
-        await sink.EmitAsync(new AgentEvent.Failed(DateTimeOffset.UtcNow, "planner", "spawn failed", "InvalidOperationException"));
+        using (var sink = new JsonlSink(session.TranscriptFile))
+        {
+            await sink.EmitAsync(new AgentEvent.Failed(DateTimeOffset.UtcNow, "planner", "spawn failed", "InvalidOperationException"));
+        }
         session.End("failed", failureReason: "spawn failed");
 
         var meta = JsonSerializer.Deserialize<SessionMeta>(File.ReadAllText(session.MetaFile))!;

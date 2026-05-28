@@ -20,7 +20,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\RemoteAgents\RemoteAgents.csproj" />
-    <ProjectReference Include="..\validation\Validators.csproj" />
   </ItemGroup>
 
 </Project>

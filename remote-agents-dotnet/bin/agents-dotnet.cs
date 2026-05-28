@@ -11,24 +11,20 @@
 using System.Diagnostics;
 using RemoteAgents.Primitives;
 
-// Walk up from CWD looking for the orchestrator solution. File-based
-// programs run from a temp build dir, so AppContext.BaseDirectory is not
-// helpful here.
-var orchestratorRoot = FindOrchestratorRoot()
+// Locate the orchestrator dir (RemoteAgents.slnx lives at its root).
+var orchestratorRoot = ResolveOrchestratorRoot()
     ?? throw new InvalidOperationException("Could not locate remote-agents-dotnet/ — run from inside the repo.");
 var flowsDir = Path.Combine(orchestratorRoot, "flows");
 
-string? FindOrchestratorRoot()
+string? ResolveOrchestratorRoot()
 {
-    var dir = new DirectoryInfo(Environment.CurrentDirectory);
-    while (dir is not null)
-    {
-        if (File.Exists(Path.Combine(dir.FullName, "RemoteAgents.slnx"))) return dir.FullName;
-        if (Directory.Exists(Path.Combine(dir.FullName, "remote-agents-dotnet")))
-            return Path.Combine(dir.FullName, "remote-agents-dotnet");
-        dir = dir.Parent;
-    }
-    return null;
+    // Prefer the dir that contains the .slnx (already the orchestrator
+    // root). Fall back to the repo-root case where it lives under a
+    // remote-agents-dotnet/ subdir.
+    var slnxOwner = RepoRoot.Find("RemoteAgents.slnx");
+    if (slnxOwner is not null) return slnxOwner;
+    var repoRoot = RepoRoot.Find("remote-agents-dotnet");
+    return repoRoot is null ? null : Path.Combine(repoRoot, "remote-agents-dotnet");
 }
 
 var subcommand = args.Length > 0 ? args[0] : null;

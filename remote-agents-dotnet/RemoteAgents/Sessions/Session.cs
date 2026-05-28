@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using RemoteAgents.Primitives;
 
 namespace RemoteAgents.Sessions;
 
@@ -96,16 +97,12 @@ public sealed class Session
 
     private static string DefaultSessionsRoot()
     {
-        // Walk up from CWD looking for remote-agents-dotnet/ directory; if
-        // found, put sessions inside it. Otherwise drop in CWD/sessions/.
-        var dir = new DirectoryInfo(Environment.CurrentDirectory);
-        while (dir is not null)
-        {
-            var candidate = Path.Combine(dir.FullName, "remote-agents-dotnet", "sessions");
-            if (Directory.Exists(Path.Combine(dir.FullName, "remote-agents-dotnet")))
-                return candidate;
-            dir = dir.Parent;
-        }
-        return Path.Combine(Environment.CurrentDirectory, "sessions");
+        // First look for the orchestrator dir as a sibling (the typical
+        // case when invoked from the repo root). If none, fall back to
+        // CWD/sessions/ — only happens in detached test harnesses.
+        var root = RepoRoot.Find("remote-agents-dotnet");
+        return root is null
+            ? Path.Combine(Environment.CurrentDirectory, "sessions")
+            : Path.Combine(root, "remote-agents-dotnet", "sessions");
     }
 }

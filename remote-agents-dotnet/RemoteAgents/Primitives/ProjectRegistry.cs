@@ -60,20 +60,8 @@ public static class ProjectRegistry
 
     private static string? FindProjectsJson()
     {
-        // Walk up from the current working directory first, then from the
-        // executing assembly. The CWD path covers `dotnet run flows/x.cs` from
-        // the repo; the assembly path covers running tests from bin/.
-        foreach (var start in new[] { Environment.CurrentDirectory, AppContext.BaseDirectory })
-        {
-            var dir = new DirectoryInfo(start);
-            while (dir is not null)
-            {
-                var candidate = Path.Combine(dir.FullName, "projects.json");
-                if (File.Exists(candidate)) return candidate;
-                dir = dir.Parent;
-            }
-        }
-        return null;
+        var root = RepoRoot.Find("projects.json");
+        return root is null ? null : Path.Combine(root, "projects.json");
     }
 
     // Test hook: reset the cache so a test can point at a different file.

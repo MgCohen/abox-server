@@ -149,7 +149,7 @@ var sink = new CompositeSink(
 
 - `flows/<name>.cs` — `.NET 10` file-based programs. First lines are `#:project ../RemoteAgents/RemoteAgents.csproj` (plus any others). Hand-written control flow; the library imposes none.
 - `agents/<Name>.cs` — static factories returning configured `ClaudeAgent` / `CodexAgent`. System prompts loaded from `agents/prompts/<name>.md` via embedded resource (`Prompts.Load("name")`).
-- `validation/<Project>Validator.cs` — implementations of `IValidator`. Bundled into `validation/Validators.csproj` which flows reference via `#:project`.
+- `RemoteAgents/Validation/<Project>/<Name>Validator.cs` — implementations of `IValidator`, shipped inside the main `RemoteAgents` project. Flows just `using RemoteAgents.Validation.<Project>;`.
 - `bin/agents-dotnet.cs` — CLI shim. `list / projects / run <flow> [...args]`. Spawns `dotnet run flows/<flow>.cs -- <args>` with stdio inherited.
 
 This layer is the user's. The library doesn't reach into it; it's the other way around.

@@ -1,7 +1,9 @@
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Channels;
 using RemoteAgents.Events;
+using RemoteAgents.Primitives;
 
 namespace RemoteAgents.Agents;
 
@@ -36,15 +38,12 @@ public class CodexAgent : Agent
 
     protected override async Task<AgentResult> ExecuteAsync(AgentRunRequest req, CancellationToken ct)
     {
-        if (string.IsNullOrEmpty(req.Prompt)) throw new ArgumentException("prompt is required", nameof(req));
-        if (string.IsNullOrEmpty(req.ProjectDir)) throw new ArgumentException("projectDir is required", nameof(req));
-
         var tmpDir = Path.Combine(Path.GetTempPath(), "agents-codex-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tmpDir);
         var lastMessageFile = Path.Combine(tmpDir, "last.txt");
 
         var args = BuildCodexArgs(req.SessionId, req.ProjectDir, lastMessageFile, Options);
-        var commandLine = "codex " + string.Join(' ', args.Select(QuoteIfNeeded));
+        var commandLine = "codex " + string.Join(' ', args.Select(Shell.QuoteArg));
 
         var psi = new ProcessStartInfo
         {
@@ -66,6 +65,16 @@ public class CodexAgent : Agent
         var stderr = new StringBuilder();
         string? extractedSessionId = req.SessionId;
 
+        // Pump stream chunks through an unbounded channel so EmitAsync is
+        // awaited in order on a single consumer task. The previous
+        // `_ = Sink.EmitAsync(...)` would race with itself under chatty
+        // output and silently swallow sink exceptions.
+        var chunks = Channel.CreateUnbounded<string>(new UnboundedChannelOptions
+        {
+            SingleReader = true,
+            SingleWriter = true,
+        });
+
         proc.OutputDataReceived += (_, e) =>
         {
             if (e.Data is null) return;
@@ -75,14 +84,20 @@ public class CodexAgent : Agent
                 var found = ScanForSessionId(e.Data);
                 if (found is not null) extractedSessionId = found;
             }
-            // Mirror the chunk into the sink for live observability. Fire-and-forget
-            // on Task — the lifecycle's ct will tear down the proc on shutdown.
-            _ = Sink.EmitAsync(new AgentEvent.StreamChunk(DateTimeOffset.UtcNow, Name, e.Data + "\n"));
+            chunks.Writer.TryWrite(e.Data + "\n");
         };
         proc.ErrorDataReceived += (_, e) =>
         {
             if (e.Data is not null) stderr.AppendLine(e.Data);
         };
+
+        var pump = Task.Run(async () =>
+        {
+            await foreach (var chunk in chunks.Reader.ReadAllAsync())
+            {
+                await Sink.EmitAsync(new AgentEvent.StreamChunk(DateTimeOffset.UtcNow, Name, chunk));
+            }
+        });
 
         // System prompt prepended to user prompt — codex has no flag for it.
         var fullPrompt = string.IsNullOrEmpty(Options.SystemPrompt)
@@ -104,6 +119,11 @@ public class CodexAgent : Agent
             try { await proc.WaitForExitAsync(CancellationToken.None); } catch { }
             if (!timeoutCts.IsCancellationRequested) throw;
         }
+
+        // Drain any chunks queued between WaitForExit returning and the
+        // OutputDataReceived callbacks finishing.
+        chunks.Writer.Complete();
+        await pump;
 
         string text = "";
         if (File.Exists(lastMessageFile))
@@ -162,13 +182,5 @@ public class CodexAgent : Agent
             }
         }
         return null;
-    }
-
-    private static string QuoteIfNeeded(string arg)
-    {
-        if (arg.Length == 0) return "\"\"";
-        var needs = arg.Any(c => char.IsWhiteSpace(c) || c == '"');
-        if (!needs) return arg;
-        return "\"" + arg.Replace("\"", "\\\"") + "\"";
     }
 }

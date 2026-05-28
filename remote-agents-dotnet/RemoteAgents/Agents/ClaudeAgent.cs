@@ -1,6 +1,7 @@
 using System.Text;
 using Porta.Pty;
 using RemoteAgents.Events;
+using RemoteAgents.Primitives;
 using RemoteAgents.Pty;
 
 namespace RemoteAgents.Agents;
@@ -67,9 +68,7 @@ public class ClaudeAgent : Agent
 
     protected override async Task<AgentResult> ExecuteAsync(AgentRunRequest req, CancellationToken ct)
     {
-        if (string.IsNullOrEmpty(req.Prompt)) throw new ArgumentException("prompt is required", nameof(req));
-        if (string.IsNullOrEmpty(req.ProjectDir)) throw new ArgumentException("projectDir is required", nameof(req));
-
+        // Prompt/ProjectDir already validated by AgentRunRequest's ctor.
         var effectiveSessionId = req.SessionId ?? Guid.NewGuid().ToString();
         var isResume = req.SessionId is not null;
         var claudeArgs = BuildClaudeArgs(effectiveSessionId, isResume, Options);
@@ -89,7 +88,7 @@ public class ClaudeAgent : Agent
         // Smoke-test-proven shape: spawn cmd.exe in cwd; write the claude
         // launch line to its stdin. Letting the shell parse the command keeps
         // arg quoting aligned with the JS provider behavior under cmd.exe.
-        var launchLine = "claude " + string.Join(' ', claudeArgs.Select(QuoteIfNeeded)) + "\r";
+        var launchLine = "claude " + string.Join(' ', claudeArgs.Select(Shell.QuoteArg)) + "\r";
         var ptyOpts = new PtyOptions
         {
             Name = "claude-agent",
@@ -230,14 +229,6 @@ public class ClaudeAgent : Agent
         var bytes = Encoding.UTF8.GetBytes(s);
         await pty.WriterStream.WriteAsync(bytes, 0, bytes.Length, ct);
         await pty.WriterStream.FlushAsync(ct);
-    }
-
-    private static string QuoteIfNeeded(string arg)
-    {
-        if (arg.Length == 0) return "\"\"";
-        var needs = arg.Any(c => char.IsWhiteSpace(c) || c == '"');
-        if (!needs) return arg;
-        return "\"" + arg.Replace("\"", "\\\"") + "\"";
     }
 
     private static string ExtractAssistantText(string buf, string prompt)

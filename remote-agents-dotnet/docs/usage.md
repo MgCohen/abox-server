@@ -138,7 +138,6 @@ A flow is a `.NET 10` file-based program under `flows/`. Three references plus y
 
 ```csharp
 #:project ../RemoteAgents/RemoteAgents.csproj
-#:project ../validation/Validators.csproj      // only if you use IValidator impls
 #:project ../agents/NamedAgents.csproj         // only if you use Planner/Documenter/Researcher
 // flows/my-flow.cs
 
@@ -230,11 +229,9 @@ public sealed class MyProjectValidator : IValidator
 }
 ```
 
-Reference it from your flow:
+Reference it from your flow (validators live in the main `RemoteAgents` project — no separate `#:project` needed):
 
 ```csharp
-#:project ../validation/Validators.csproj
-
 using RemoteAgents.Validation.MyProject;
 // ...
 IValidator validator = new MyProjectValidator();
