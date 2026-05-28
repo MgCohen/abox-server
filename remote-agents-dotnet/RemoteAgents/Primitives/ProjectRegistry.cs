@@ -1,6 +1,10 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace RemoteAgents.Primitives;
+
+[JsonSerializable(typeof(Dictionary<string, string>))]
+internal sealed partial class ProjectsJsonContext : JsonSerializerContext { }
 
 // Resolve a short project name (passed on the CLI) to an absolute directory.
 // Lookup table lives in <repo>/projects.json — discovered by walking up from
@@ -46,7 +50,7 @@ public static class ProjectRegistry
                     "expected at the repo root (sibling of remote-agents-dotnet/).");
 
             var raw = File.ReadAllText(path);
-            var parsed = JsonSerializer.Deserialize<Dictionary<string, string>>(raw)
+            var parsed = JsonSerializer.Deserialize(raw, ProjectsJsonContext.Default.DictionaryStringString)
                 ?? throw new InvalidDataException($"projects.json at {path} did not parse as Dictionary<string,string>.");
             _cache = parsed;
             _cachedPath = path;
