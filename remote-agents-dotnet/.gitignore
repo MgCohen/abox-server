@@ -1,5 +1,7 @@
 bin/
 obj/
-sessions/
+# Runtime sessions only — anchored to the root so it doesn't shadow the
+# Sessions/ source namespace directories.
+/sessions/
 *.user
 .vs/
