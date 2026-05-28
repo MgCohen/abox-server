@@ -2,9 +2,15 @@ using System.Text.Json.Serialization;
 
 namespace RemoteAgents.Events;
 
-// Five live event variants (Q6). Tool calls / token usage / rate limits do
+// Live event variants (Q6). Tool calls / token usage / rate limits do
 // not appear here — they live exclusively in the provider JSONL files
 // copied in by ProviderJsonlIngestSink.
+//
+// Phase is the flow-orchestration variant: ReviewPipeline emits it for
+// every step ("[validate] PASSED", "[commit] done", etc.) so the
+// pipeline's control flow is no longer interleaved with Console.WriteLine
+// calls. AgentName for Phase events is the bracket tag (validate, codex,
+// commit, …), reusing the slot for the entity producing the update.
 //
 // The [JsonPolymorphic] attributes let JsonSerializer (and the source-gen
 // context) emit each variant with a "kind" discriminator field as the first
@@ -15,6 +21,7 @@ namespace RemoteAgents.Events;
 [JsonDerivedType(typeof(DialogDismissed), "DialogDismissed")]
 [JsonDerivedType(typeof(Completed), "Completed")]
 [JsonDerivedType(typeof(Failed), "Failed")]
+[JsonDerivedType(typeof(Phase), "Phase")]
 public abstract record AgentEvent(DateTimeOffset At, string AgentName)
 {
     public sealed record Started(DateTimeOffset At, string AgentName, string Prompt, string? SessionId)
@@ -31,4 +38,15 @@ public abstract record AgentEvent(DateTimeOffset At, string AgentName)
 
     public sealed record Failed(DateTimeOffset At, string AgentName, string Reason, string? ExceptionType)
         : AgentEvent(At, AgentName);
+
+    // Status is one of: "start" | "ok" | "fail" | "info". ConsoleSink
+    // routes "fail" to stderr and prints the rest on stdout.
+    public sealed record Phase(DateTimeOffset At, string AgentName, string Status, string Detail)
+        : AgentEvent(At, AgentName)
+    {
+        public const string Start = "start";
+        public const string Ok    = "ok";
+        public const string Fail  = "fail";
+        public const string Info  = "info";
+    }
 }

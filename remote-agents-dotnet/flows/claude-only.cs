@@ -10,57 +10,29 @@
 //   dotnet run flows/claude-only.cs <project> "<prompt>"
 
 using RemoteAgents.Agents;
-using RemoteAgents.Events;
+using RemoteAgents.Flows;
 using RemoteAgents.Primitives;
-using RemoteAgents.Sessions;
 
 const string FLOW_NAME = "claude-only";
 
-if (args.Length < 2)
-{
-    Console.Error.WriteLine($"Usage: dotnet run flows/{FLOW_NAME}.cs <project> \"<prompt>\"");
-    Environment.ExitCode = 2;
-    return;
-}
-
-var projectName = args[0];
-var userPrompt = string.Join(' ', args[1..]).Trim();
-
-await SubscriptionGuard.CheckAsync();
-
-var projectDir = ProjectRegistry.Resolve(projectName);
-var session = Session.Start(new StartSessionRequest(
-    ProjectDir: projectDir,
-    ProjectName: projectName,
-    UserPrompt: userPrompt,
-    FlowName: FLOW_NAME));
-
-Console.WriteLine($"[{session.Id}]");
-Console.WriteLine($"  flow:    {FLOW_NAME}");
-Console.WriteLine($"  project: {projectName} ({projectDir})");
-Console.WriteLine($"  prompt:  {userPrompt}");
-Console.WriteLine();
-
-var sink = new CompositeSink(
-    new ConsoleSink(),
-    new JsonlSink(session.TranscriptFile),
-    new ProviderJsonlIngestSink(session.Dir, projectDir));
+await using var ctx = await FlowBootstrap.StartAsync(args, FLOW_NAME);
+if (ctx is null) return;
 
 try
 {
-    var before = FsDiff.Snapshot(projectDir);
+    var before = FsDiff.Snapshot(ctx.ProjectDir);
 
-    var claude = new ClaudeAgent { Name = "claude", Sink = sink };
+    var claude = new ClaudeAgent { Name = "claude", Sink = ctx.Sink };
     var result = await claude.RunAsync(new AgentRunRequest(
-        Prompt: userPrompt,
+        Prompt: ctx.UserPrompt,
         SessionId: null,
-        ProjectDir: projectDir));
+        ProjectDir: ctx.ProjectDir));
 
     // Forensic dumps — useful while PTY timings are still being tuned.
-    await File.WriteAllTextAsync(Path.Combine(session.Dir, "claude-raw.txt"), result.RawOutput);
-    await File.WriteAllTextAsync(Path.Combine(session.Dir, "claude-text.txt"), result.Text);
+    await File.WriteAllTextAsync(Path.Combine(ctx.Session.Dir, "claude-raw.txt"), result.RawOutput);
+    await File.WriteAllTextAsync(Path.Combine(ctx.Session.Dir, "claude-text.txt"), result.Text);
 
-    var after = FsDiff.Snapshot(projectDir);
+    var after = FsDiff.Snapshot(ctx.ProjectDir);
     var diff = FsDiff.Diff(before, after);
 
     Console.WriteLine();
@@ -70,13 +42,13 @@ try
     Console.WriteLine($"Files removed:  {diff.Removed.Count}");
     foreach (var f in diff.All) Console.WriteLine($"  - {f}");
 
-    session.End("done");
+    ctx.Session.End("done");
     Console.WriteLine();
-    Console.WriteLine($"Transcript: {session.Dir}");
+    Console.WriteLine($"Transcript: {ctx.Session.Dir}");
 }
 catch (Exception ex)
 {
     Console.Error.WriteLine($"[{FLOW_NAME}] FAILED: {ex}");
-    session.End("failed", failureReason: ex.Message);
+    ctx.Session.End("failed", failureReason: ex.Message);
     Environment.ExitCode = 1;
 }

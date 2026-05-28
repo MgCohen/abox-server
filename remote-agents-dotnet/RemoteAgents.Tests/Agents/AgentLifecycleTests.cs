@@ -115,13 +115,12 @@ public class AgentLifecycleTests
     }
 
     [Fact]
-    public void All_five_AgentEvent_cases_exist()
+    public void AgentEvent_variants_are_the_expected_set()
     {
-        // Compile-time + runtime check that we have the full 5-variant set.
         var t = typeof(AgentEvent);
         var nested = t.GetNestedTypes().Where(nt => nt.IsSubclassOf(t)).Select(nt => nt.Name).ToHashSet();
         Assert.Equal(
-            new HashSet<string> { "Started", "StreamChunk", "DialogDismissed", "Completed", "Failed" },
+            new HashSet<string> { "Started", "StreamChunk", "DialogDismissed", "Completed", "Failed", "Phase" },
             nested);
     }
 }

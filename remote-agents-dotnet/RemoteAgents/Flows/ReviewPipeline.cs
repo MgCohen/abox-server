@@ -23,6 +23,13 @@ public sealed record ReviewPipelineOptions(
     // restore everything else after. Used by Unity-style validators that
     // dirty the tree on every run (TMP_SDF, .meta, Library/, etc.).
     bool IsolateClaudeChanges = false,
+    // Suffix appended to "[validate] attempt N" — set to e.g.
+    // " (Unity batch-mode, this can take minutes)" for slow validators.
+    string ValidationProgressNote = "",
+    // Parenthetical descriptor in the fix prompt sent to Claude.
+    // Empty by default → "Validation failed."; set to
+    // "Unity batch-mode compile" → "Validation (Unity batch-mode compile) failed."
+    string FixPromptValidationDescriptor = "",
     string ValidationLabel = "all project checks passed",
     string ReviewProjectKind = "changes",
     string CoAuthor = "Claude Opus 4.7 + Codex gpt-5.5");
@@ -35,6 +42,9 @@ public sealed record ReviewPipelineResult(string Outcome, int ExitCode)
 // Shared Claude→validate→Codex→revise→commit pipeline. full-review.cs and
 // unity-review.cs differ only in the validator instance and a couple of
 // labels — those become parameters on ReviewPipelineOptions.
+//
+// The pipeline emits AgentEvent.Phase for every step; ConsoleSink renders
+// them on stdout/stderr. No Console.WriteLine here — control flow only.
 public static class ReviewPipeline
 {
     public static async Task<ReviewPipelineResult> RunAsync(
@@ -51,7 +61,7 @@ public static class ReviewPipeline
 
         // 1. Claude does the work
         var claudeResult = await claude.RunAsync(new AgentRunRequest(userPrompt, null, projectDir), ct);
-        Console.WriteLine($"[claude] turn 1 done (session={claudeResult.SessionId})\n");
+        await sink.PhaseOkAsync("claude", $"turn 1 done (session={claudeResult.SessionId})", ct);
 
         // Optional: capture what Claude actually changed BEFORE the
         // validator gets a chance to spray noise across the tree.
@@ -61,8 +71,7 @@ public static class ReviewPipeline
 
         // 2. validate + fix loop
         var (validationOk, _) = await RunValidateFixLoopAsync(
-            claude, claudeResult, validator, projectDir,
-            opts.MaxFixAttempts, opts.FlowName == "unity-review", ct);
+            sink, claude, claudeResult, validator, projectDir, opts, ct);
 
         if (!validationOk)
         {
@@ -74,20 +83,20 @@ public static class ReviewPipeline
         {
             var reverted = await GitOps.RestoreUnstagedExceptAsync(projectDir, claudeTouched, ct);
             if (reverted.Count > 0)
-                Console.WriteLine($"[cleanup] reverted {reverted.Count} validator-generated files.");
+                await sink.PhaseInfoAsync("cleanup", $"reverted {reverted.Count} validator-generated files.", ct);
         }
 
         // 3. Codex review
         var diffText = await GitOps.DiffAsync(new GitDiffRequest(projectDir), ct);
         if (string.IsNullOrWhiteSpace(diffText))
         {
-            Console.WriteLine("[done] Claude made no file changes. Nothing to review or commit.");
+            await sink.PhaseInfoAsync("done", "Claude made no file changes. Nothing to review or commit.", ct);
             session.End("no-changes");
             return new("no-changes", 0);
         }
 
         var reviewPrompt = BuildReviewPrompt(userPrompt, diffText, opts.ReviewProjectKind, opts.ValidationLabel);
-        Console.WriteLine($"[codex] reviewing diff ({diffText.Length} bytes)...");
+        await sink.PhaseStartAsync("codex", $"reviewing diff ({diffText.Length} bytes)...", ct);
 
         var codex = new CodexAgent
         {
@@ -98,15 +107,13 @@ public static class ReviewPipeline
         var review = await codex.RunAsync(new AgentRunRequest(reviewPrompt, null, projectDir), ct);
         var verdict = ParseVerdict(review.Text);
 
-        Console.WriteLine("[codex] review:");
-        foreach (var line in review.Text.Trim().Split('\n')) Console.WriteLine("  " + line);
-        Console.WriteLine();
-
+        await sink.PhaseInfoAsync("codex", FormatReviewBlock(review.Text), ct);
         await WriteReviewArtifactAsync(session.Dir, verdict, review.SessionId, review.Text, ct);
 
         if (verdict == "unclear")
         {
-            Console.Error.WriteLine($"[abort] Codex verdict unclear (review was {review.Text.Length} bytes). Refusing to commit.");
+            await sink.PhaseFailAsync("abort",
+                $"Codex verdict unclear (review was {review.Text.Length} bytes). Refusing to commit.", ct);
             session.End("verdict-unclear");
             return new("verdict-unclear", 2);
         }
@@ -114,7 +121,7 @@ public static class ReviewPipeline
         // 4. one revision round
         if (verdict == "revise" && opts.MaxRevisionRounds > 0)
         {
-            Console.WriteLine("[revise] sending reviewer feedback to Claude...");
+            await sink.PhaseStartAsync("revise", "sending reviewer feedback to Claude...", ct);
             claudeResult = await claude.RunAsync(new AgentRunRequest(
                 $"Code reviewer feedback — please address:\n\n{review.Text}",
                 claudeResult.SessionId, projectDir), ct);
@@ -122,7 +129,7 @@ public static class ReviewPipeline
             var v2 = await validator.ValidateAsync(projectDir, ct);
             if (!v2.Ok)
             {
-                Console.Error.WriteLine($"[abort] post-revision validation failed: {v2.Summary}");
+                await sink.PhaseFailAsync("abort", $"post-revision validation failed: {v2.Summary}", ct);
                 session.End("revision-broke-validation");
                 return new("revision-broke-validation", 2);
             }
@@ -132,69 +139,67 @@ public static class ReviewPipeline
         var filesToCommit = await GitOps.ChangedFilesAsync(projectDir, ct);
         if (filesToCommit.Count == 0)
         {
-            Console.WriteLine("[done] No files ultimately changed.");
+            await sink.PhaseInfoAsync("done", "No files ultimately changed.", ct);
             session.End("no-changes");
             return new("no-changes", 0);
         }
 
         var commitMessage = BuildCommitMessage(userPrompt, review.Text);
-        Console.WriteLine($"[commit] {filesToCommit.Count} files...");
+        await sink.PhaseStartAsync("commit", $"{filesToCommit.Count} files...", ct);
         await GitOps.CommitAsync(new GitCommitRequest(
             ProjectDir: projectDir,
             Message: commitMessage,
             Files: filesToCommit,
             CoAuthor: opts.CoAuthor), ct);
-        Console.WriteLine("[commit] done.");
+        await sink.PhaseOkAsync("commit", "done.", ct);
 
         if (shouldPush)
         {
             var branch = await GitOps.CurrentBranchAsync(projectDir, ct);
-            Console.WriteLine($"[push] origin {branch}...");
+            await sink.PhaseStartAsync("push", $"origin {branch}...", ct);
             await GitOps.PushAsync(new GitPushRequest(projectDir, Branch: branch), ct);
-            Console.WriteLine("[push] done.");
+            await sink.PhaseOkAsync("push", "done.", ct);
         }
 
         await File.WriteAllTextAsync(Path.Combine(session.Dir, "claude-raw.txt"), claudeResult.RawOutput, ct);
         await File.WriteAllTextAsync(Path.Combine(session.Dir, "codex-review.txt"), review.Text, ct);
 
         session.End("shipped");
-        Console.WriteLine();
-        Console.WriteLine("──────────────────────────────────────────");
-        Console.WriteLine($"Shipped. Transcript: {session.Dir}");
+        await sink.PhaseOkAsync("done", $"Shipped. Transcript: {session.Dir}", ct);
         return new("shipped", 0);
     }
 
     private static async Task<(bool ok, ValidationResult last)> RunValidateFixLoopAsync(
+        IEventSink sink,
         ClaudeAgent claude,
         AgentResult initialResult,
         IValidator validator,
         string projectDir,
-        int maxAttempts,
-        bool isUnityValidator,
+        ReviewPipelineOptions opts,
         CancellationToken ct)
     {
         var last = new ValidationResult(false, "", "");
         var claudeResult = initialResult;
-        for (var attempt = 1; attempt <= maxAttempts; attempt++)
+        for (var attempt = 1; attempt <= opts.MaxFixAttempts; attempt++)
         {
-            var suffix = isUnityValidator ? " (Unity batch-mode, this can take minutes)" : "";
-            Console.WriteLine($"[validate] attempt {attempt}{suffix}...");
+            await sink.PhaseStartAsync("validate", $"attempt {attempt}{opts.ValidationProgressNote}...", ct);
             last = await validator.ValidateAsync(projectDir, ct);
             if (last.Ok)
             {
-                Console.WriteLine($"[validate] PASSED — {last.Summary}\n");
+                await sink.PhaseOkAsync("validate", $"PASSED — {last.Summary}", ct);
                 return (true, last);
             }
-            Console.WriteLine($"[validate] FAILED — {last.Summary}");
-            if (attempt == maxAttempts) break;
+            await sink.PhaseFailAsync("validate", $"FAILED — {last.Summary}", ct);
+            if (attempt == opts.MaxFixAttempts) break;
 
-            var fixPrompt =
-                $"Validation{(isUnityValidator ? " (Unity batch-mode compile)" : "")} failed. " +
-                $"Address these issues:\n\n{last.Errors}";
+            var descriptor = string.IsNullOrEmpty(opts.FixPromptValidationDescriptor)
+                ? ""
+                : $" ({opts.FixPromptValidationDescriptor})";
+            var fixPrompt = $"Validation{descriptor} failed. Address these issues:\n\n{last.Errors}";
             claudeResult = await claude.RunAsync(new AgentRunRequest(fixPrompt, claudeResult.SessionId, projectDir), ct);
-            Console.WriteLine($"[claude] fix turn {attempt + 1} done\n");
+            await sink.PhaseOkAsync("claude", $"fix turn {attempt + 1} done", ct);
         }
-        Console.Error.WriteLine($"[abort] validation never passed after {maxAttempts} attempts.");
+        await sink.PhaseFailAsync("abort", $"validation never passed after {opts.MaxFixAttempts} attempts.", ct);
         return (false, last);
     }
 
@@ -247,6 +252,12 @@ public static class ReviewPipeline
         var artifact = new CodexReviewArtifact(verdict, sessionId, text);
         var json = JsonSerializer.Serialize(artifact, FlowsJsonContext.Default.CodexReviewArtifact);
         await File.WriteAllTextAsync(Path.Combine(sessionDir, "codex-review.jsonl"), json + "\n", ct);
+    }
+
+    private static string FormatReviewBlock(string text)
+    {
+        var lines = text.Trim().Split('\n');
+        return "review:\n" + string.Join("\n", lines.Select(l => "  " + l));
     }
 
     private static readonly Regex VerdictPrefix = new(

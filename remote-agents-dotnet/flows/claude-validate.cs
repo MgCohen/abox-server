@@ -12,55 +12,28 @@
 
 using RemoteAgents.Agents;
 using RemoteAgents.Events;
+using RemoteAgents.Flows;
 using RemoteAgents.Primitives;
-using RemoteAgents.Sessions;
 using RemoteAgents.Validation;
 using RemoteAgents.Validation.Orchestrator;
 
 const string FLOW_NAME = "claude-validate";
 const int MAX_FIX_ATTEMPTS = 3;
 
-if (args.Length < 2)
-{
-    Console.Error.WriteLine($"Usage: dotnet run flows/{FLOW_NAME}.cs <project> \"<prompt>\"");
-    Environment.ExitCode = 2;
-    return;
-}
-
-var projectName = args[0];
-var userPrompt = string.Join(' ', args[1..]).Trim();
-
-await SubscriptionGuard.CheckAsync();
-
-var projectDir = ProjectRegistry.Resolve(projectName);
-var session = Session.Start(new StartSessionRequest(
-    ProjectDir: projectDir,
-    ProjectName: projectName,
-    UserPrompt: userPrompt,
-    FlowName: FLOW_NAME));
-
-Console.WriteLine($"[{session.Id}]");
-Console.WriteLine($"  flow:    {FLOW_NAME}");
-Console.WriteLine($"  project: {projectName} ({projectDir})");
-Console.WriteLine($"  prompt:  {userPrompt}");
-Console.WriteLine();
-
-var sink = new CompositeSink(
-    new ConsoleSink(),
-    new JsonlSink(session.TranscriptFile),
-    new ProviderJsonlIngestSink(session.Dir, projectDir));
+await using var ctx = await FlowBootstrap.StartAsync(args, FLOW_NAME);
+if (ctx is null) return;
 
 IValidator validator = new OrchestratorValidator();
 
 try
 {
-    var before = FsDiff.Snapshot(projectDir);
+    var before = FsDiff.Snapshot(ctx.ProjectDir);
 
-    var claude = new ClaudeAgent { Name = "claude", Sink = sink };
+    var claude = new ClaudeAgent { Name = "claude", Sink = ctx.Sink };
 
     // ── 1. initial Claude run ─────────────────────────────────────────
-    var result = await claude.RunAsync(new AgentRunRequest(userPrompt, null, projectDir));
-    Console.WriteLine($"[claude] turn 1 done (session={result.SessionId})\n");
+    var result = await claude.RunAsync(new AgentRunRequest(ctx.UserPrompt, null, ctx.ProjectDir));
+    await ctx.Sink.PhaseOkAsync("claude", $"turn 1 done (session={result.SessionId})");
 
     // ── 2. validate + fix loop ────────────────────────────────────────
     bool validationOk = false;
@@ -70,29 +43,27 @@ try
     while (attempt < MAX_FIX_ATTEMPTS)
     {
         attempt++;
-        Console.WriteLine($"[validate] attempt {attempt}...");
-        v = await validator.ValidateAsync(projectDir);
-        Console.WriteLine($"[validate] {(v.Ok ? "PASSED" : "FAILED")} — {v.Summary}");
-
-        if (v.Ok) { validationOk = true; break; }
+        await ctx.Sink.PhaseStartAsync("validate", $"attempt {attempt}...");
+        v = await validator.ValidateAsync(ctx.ProjectDir);
+        if (v.Ok) { await ctx.Sink.PhaseOkAsync("validate", $"PASSED — {v.Summary}"); validationOk = true; break; }
+        await ctx.Sink.PhaseFailAsync("validate", $"FAILED — {v.Summary}");
         if (attempt >= MAX_FIX_ATTEMPTS) break;
 
         var fixPrompt =
             $"The previous changes failed validation. Address these issues:\n\n{v.Errors}\n\n" +
             "Make whatever edits are necessary, then I'll re-run validation.";
 
-        result = await claude.RunAsync(new AgentRunRequest(fixPrompt, result.SessionId, projectDir));
-        Console.WriteLine($"[claude] fix turn {attempt + 1} done\n");
+        result = await claude.RunAsync(new AgentRunRequest(fixPrompt, result.SessionId, ctx.ProjectDir));
+        await ctx.Sink.PhaseOkAsync("claude", $"fix turn {attempt + 1} done");
     }
 
     // ── 3. summary ────────────────────────────────────────────────────
-    var after = FsDiff.Snapshot(projectDir);
+    var after = FsDiff.Snapshot(ctx.ProjectDir);
     var diff = FsDiff.Diff(before, after);
 
-    await File.WriteAllTextAsync(Path.Combine(session.Dir, "claude-raw.txt"), result.RawOutput);
-    await File.WriteAllTextAsync(Path.Combine(session.Dir, "claude-text.txt"), result.Text);
+    await File.WriteAllTextAsync(Path.Combine(ctx.Session.Dir, "claude-raw.txt"), result.RawOutput);
+    await File.WriteAllTextAsync(Path.Combine(ctx.Session.Dir, "claude-text.txt"), result.Text);
 
-    Console.WriteLine("──────────────────────────────────────────");
     Console.WriteLine($"Result:         {(validationOk ? "VALIDATION PASSED" : "VALIDATION FAILED")}");
     Console.WriteLine($"Attempts:       {attempt}");
     Console.WriteLine($"Claude session: {result.SessionId}");
@@ -101,14 +72,14 @@ try
     Console.WriteLine($"Files removed:  {diff.Removed.Count}");
     foreach (var f in diff.All) Console.WriteLine($"  - {f}");
     Console.WriteLine();
-    Console.WriteLine($"Transcript: {session.Dir}");
+    Console.WriteLine($"Transcript: {ctx.Session.Dir}");
 
-    session.End(validationOk ? "validated" : "validation-failed");
+    ctx.Session.End(validationOk ? "validated" : "validation-failed");
     Environment.ExitCode = validationOk ? 0 : 2;
 }
 catch (Exception ex)
 {
     Console.Error.WriteLine($"[{FLOW_NAME}] FAILED: {ex}");
-    session.End("failed", failureReason: ex.Message);
+    ctx.Session.End("failed", failureReason: ex.Message);
     Environment.ExitCode = 1;
 }

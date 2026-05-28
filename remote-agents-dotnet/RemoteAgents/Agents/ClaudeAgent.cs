@@ -1,4 +1,3 @@
-using System.Text;
 using Porta.Pty;
 using RemoteAgents.Events;
 using RemoteAgents.Primitives;
@@ -11,8 +10,8 @@ namespace RemoteAgents.Agents;
 // of the API path. Q12: Windows-only v1 (cmd.exe /c).
 //
 // Non-sealed (Q7) with two virtual hooks for v1 (Q8): DetectStartupDialog
-// and IsResponseComplete. Other private methods can be lifted to virtual
-// if a real subclass need shows up.
+// and IsResponseComplete. The PTY plumbing (buffer, reader task,
+// drain/kill) lives in PtySession; this class only owns the script.
 public class ClaudeAgent : Agent
 {
     public ClaudeAgentOptions Options { get; init; } = new();
@@ -32,9 +31,6 @@ public class ClaudeAgent : Agent
             return "trust";
         return null;
     }
-
-    protected virtual bool IsResponseComplete(string buf, DateTimeOffset lastChunkAt)
-        => (DateTimeOffset.UtcNow - lastChunkAt).TotalMilliseconds > Options.IdleThresholdMs;
 
     // PTY spawn hook. Defaults to PtyProvider.SpawnAsync (real ConPTY).
     // Override in tests with a FakePtyConnection so ExecuteAsync's drive
@@ -68,15 +64,59 @@ public class ClaudeAgent : Agent
 
     protected override async Task<AgentResult> ExecuteAsync(AgentRunRequest req, CancellationToken ct)
     {
-        // Prompt/ProjectDir already validated by AgentRunRequest's ctor.
-        var effectiveSessionId = req.SessionId ?? Guid.NewGuid().ToString();
-        var isResume = req.SessionId is not null;
-        var claudeArgs = BuildClaudeArgs(effectiveSessionId, isResume, Options);
+        var sessionId = req.SessionId ?? Guid.NewGuid().ToString();
+        var claudeArgs = BuildClaudeArgs(sessionId, isResume: req.SessionId is not null, Options);
+        var launchLine = "claude " + string.Join(' ', claudeArgs.Select(Shell.QuoteArg));
 
-        // Windows-only v1: cmd.exe /c claude <args...>. PtyOptions.Environment
-        // is passed verbatim — we explicitly blank out the API-key vars to
-        // keep subscription billing intact (defense in depth: SubscriptionGuard
-        // already refused to start if any were set).
+        var pty = await SpawnPtyAsync(BuildPtyOptions(req.ProjectDir), ct);
+        await using var session = new PtySession(
+            pty,
+            onChunk: (chunk, innerCt) => Sink.EmitAsync(
+                new AgentEvent.StreamChunk(DateTimeOffset.UtcNow, Name, chunk), innerCt),
+            ct);
+
+        // 1. Give cmd.exe a moment to render, then launch claude + dwell
+        //    for its first paint.
+        await session.DwellAsync(500, ct);
+        await session.WriteLineAsync(launchLine, ct);
+        await session.DwellAsync(Options.InitialDwellMs, ct);
+
+        // 2. Startup dialog dismissal (trust folder / bypass warning).
+        await MaybeDismissDialogAsync(session, ct);
+
+        // 3. Type the prompt and submit.
+        await session.WriteAsync(req.Prompt, ct);
+        await session.DwellAsync(500, ct);
+        await session.WriteAsync("\r", ct);
+
+        // 4. Wait for Claude's response to settle (no new chunks for
+        //    IdleThresholdMs, capped at MaxWaitMs).
+        await session.WaitIdleAsync(Options.IdleThresholdMs, Options.MaxWaitMs, ct: ct);
+
+        // 5. Send /exit so claude prints the resume URL, then exit cmd.
+        await session.WriteLineAsync("/exit", ct);
+        await session.DwellAsync(Options.ExitDwellMs, ct);
+        await session.WriteLineAsync("exit", ct);
+        var exitCode = await session.ShutdownAsync(Options.WaitForExitMs, Options.ReaderDrainMs);
+
+        var raw = session.Buffer;
+
+        // Prefer the per-session JSONL Claude writes — it survives TUI
+        // re-wraps, ANSI noise, and any reader-drain truncation. Fall back
+        // to the ANSI-stripped buffer if the file isn't there yet.
+        var jsonlText = ClaudeJsonl.TryReadLastAssistantText(req.ProjectDir, sessionId, req.Prompt);
+        var text = !string.IsNullOrWhiteSpace(jsonlText)
+            ? jsonlText!
+            : ExtractAssistantText(raw, req.Prompt);
+
+        return new AgentResult(Text: text, SessionId: sessionId, ExitCode: exitCode, RawOutput: raw);
+    }
+
+    private PtyOptions BuildPtyOptions(string projectDir)
+    {
+        // PtyOptions.Environment is passed verbatim — explicitly blank out
+        // the API-key vars to keep subscription billing intact (defense in
+        // depth: SubscriptionGuard already refused to start if any were set).
         var env = new Dictionary<string, string>();
         foreach (System.Collections.DictionaryEntry kv in Environment.GetEnvironmentVariables())
         {
@@ -85,150 +125,33 @@ public class ClaudeAgent : Agent
         env["ANTHROPIC_API_KEY"] = "";
         env["CLAUDE_API_KEY"] = "";
 
-        // Smoke-test-proven shape: spawn cmd.exe in cwd; write the claude
-        // launch line to its stdin. Letting the shell parse the command keeps
-        // arg quoting aligned with the JS provider behavior under cmd.exe.
-        var launchLine = "claude " + string.Join(' ', claudeArgs.Select(Shell.QuoteArg)) + "\r";
-        var ptyOpts = new PtyOptions
+        return new PtyOptions
         {
             Name = "claude-agent",
             Cols = Cols,
             Rows = Rows,
-            Cwd = req.ProjectDir,
+            Cwd = projectDir,
             App = Path.Combine(Environment.SystemDirectory, "cmd.exe"),
             Environment = env,
         };
-
-        using var pty = await SpawnPtyAsync(ptyOpts, ct);
-
-        var buffer = new StringBuilder();
-        var bufLock = new object();
-        var lastChunkAt = DateTimeOffset.UtcNow;
-        var exited = false;
-        // Two cancellation sources:
-        //   - readerCts: linked to caller ct. Cancelled only on Kill-path
-        //     teardown so a still-blocked Read doesn't keep the agent
-        //     hanging. On the happy path, the PTY ReaderStream closes
-        //     when cmd.exe exits → ReadAsync returns 0 → loop exits
-        //     cleanly without us ever cancelling. That guarantees no
-        //     trailing bytes get dropped from the buffer.
-        //   - sinkCts: a separate token for sink emits so we don't mark
-        //     them cancelled when we shut the reader down.
-        using var readerCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        var readerTask = Task.Run(async () =>
-        {
-            var buf = new byte[4096];
-            try
-            {
-                while (true)
-                {
-                    var n = await pty.ReaderStream.ReadAsync(buf, 0, buf.Length, readerCts.Token);
-                    if (n == 0) break; // PTY closed — clean EOF, drained.
-                    var chunk = Encoding.UTF8.GetString(buf, 0, n);
-                    lock (bufLock) buffer.Append(chunk);
-                    lastChunkAt = DateTimeOffset.UtcNow;
-                    await Sink.EmitAsync(new AgentEvent.StreamChunk(DateTimeOffset.UtcNow, Name, chunk), CancellationToken.None);
-                }
-            }
-            catch (OperationCanceledException) { /* Kill-path teardown */ }
-            catch (IOException) { /* PTY stream torn down */ }
-        });
-
-        // Give cmd.exe a moment to render its prompt, then launch claude.
-        await Task.Delay(500, ct);
-        await WriteAsync(pty, launchLine, ct);
-
-        // ── 1. initial UI render dwell — claude takes a few seconds to draw
-        await Task.Delay(Options.InitialDwellMs, ct);
-
-        // ── 2. startup dialog dismissal
-        string snapshot;
-        lock (bufLock) snapshot = buffer.ToString();
-        var dialog = DetectStartupDialog(snapshot);
-        if (dialog == "trust")
-        {
-            await WriteAsync(pty, "\r", ct);
-            await Sink.EmitAsync(new AgentEvent.DialogDismissed(DateTimeOffset.UtcNow, Name, "trust"), ct);
-            await Task.Delay(Options.InitialDwellMs / 2, ct);
-        }
-        else if (dialog == "bypass-warning")
-        {
-            await WriteAsync(pty, "2\r", ct);
-            await Sink.EmitAsync(new AgentEvent.DialogDismissed(DateTimeOffset.UtcNow, Name, "bypass-warning"), ct);
-            await Task.Delay(Options.InitialDwellMs / 2, ct);
-        }
-
-        // ── 3. type prompt + submit
-        await WriteAsync(pty, req.Prompt, ct);
-        await Task.Delay(500, ct);
-        await WriteAsync(pty, "\r", ct);
-
-        // ── 4. wait for response to settle (idle for IdleThresholdMs)
-        var submittedAt = DateTimeOffset.UtcNow;
-        while (!exited && (DateTimeOffset.UtcNow - submittedAt).TotalMilliseconds < Options.MaxWaitMs)
-        {
-            await Task.Delay(500, ct);
-            string snap2;
-            lock (bufLock) snap2 = buffer.ToString();
-            if (IsResponseComplete(snap2, lastChunkAt)) break;
-        }
-
-        // ── 5. /exit so claude prints the resume URL, then exit cmd itself
-        await WriteAsync(pty, "/exit\r", ct);
-        await Task.Delay(Options.ExitDwellMs, ct);
-        await WriteAsync(pty, "exit\r", ct);
-        exited = pty.WaitForExit(Options.WaitForExitMs);
-
-        int exitCode;
-        if (exited)
-        {
-            // Happy path: cmd.exe exited → PTY stream will close → reader
-            // loop sees ReadAsync==0 and exits cleanly. Give it a short
-            // grace window to drain, but do NOT cancel — that would risk
-            // truncating Claude's final bytes.
-            var drained = await Task.WhenAny(readerTask, Task.Delay(Options.ReaderDrainMs));
-            if (drained != readerTask)
-            {
-                // PTY didn't close its stream within 2s of exit. Force the
-                // reader down so we can return.
-                readerCts.Cancel();
-                try { await readerTask; } catch { }
-            }
-            exitCode = pty.ExitCodeOrNull() ?? 0;
-        }
-        else
-        {
-            // PTY didn't exit. Kill, drain best-effort, surface exit code -1
-            // to signal the abnormal teardown to the caller / Completed event.
-            try { pty.Kill(); } catch { /* best-effort */ }
-            readerCts.Cancel();
-            try { await readerTask; } catch { }
-            exitCode = pty.ExitCodeOrNull() ?? -1;
-            if (exitCode == 0) exitCode = -1; // Kill path is never "success"
-        }
-
-        var raw = buffer.ToString();
-
-        // Prefer the per-session JSONL Claude writes — it survives TUI
-        // re-wraps, ANSI noise, and any reader-drain truncation. Fall back
-        // to the ANSI-stripped buffer if the file isn't there yet.
-        var jsonlText = ClaudeJsonl.TryReadLastAssistantText(req.ProjectDir, effectiveSessionId, req.Prompt);
-        var text = !string.IsNullOrWhiteSpace(jsonlText)
-            ? jsonlText!
-            : ExtractAssistantText(raw, req.Prompt);
-
-        return new AgentResult(
-            Text: text,
-            SessionId: effectiveSessionId,
-            ExitCode: exitCode,
-            RawOutput: raw);
     }
 
-    private static async Task WriteAsync(IPtyConnection pty, string s, CancellationToken ct)
+    private async Task MaybeDismissDialogAsync(PtySession session, CancellationToken ct)
     {
-        var bytes = Encoding.UTF8.GetBytes(s);
-        await pty.WriterStream.WriteAsync(bytes, 0, bytes.Length, ct);
-        await pty.WriterStream.FlushAsync(ct);
+        var dialog = DetectStartupDialog(session.Buffer);
+        if (dialog is null) return;
+
+        var keys = dialog switch
+        {
+            "trust"          => "\r",
+            "bypass-warning" => "2\r",
+            _                => null,
+        };
+        if (keys is null) return;
+
+        await session.WriteAsync(keys, ct);
+        await Sink.EmitAsync(new AgentEvent.DialogDismissed(DateTimeOffset.UtcNow, Name, dialog), ct);
+        await session.DwellAsync(Options.InitialDwellMs / 2, ct);
     }
 
     private static string ExtractAssistantText(string buf, string prompt)

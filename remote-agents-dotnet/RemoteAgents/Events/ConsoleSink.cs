@@ -24,6 +24,10 @@ public sealed class ConsoleSink : IEventSink
             case AgentEvent.Failed f:
                 Console.Error.WriteLine($"\n[{ts}] {f.AgentName} FAILED: {f.Reason}");
                 break;
+            case AgentEvent.Phase p:
+                var sink = p.Status == AgentEvent.Phase.Fail ? Console.Error : Console.Out;
+                sink.WriteLine($"[{p.AgentName}] {p.Detail}");
+                break;
         }
         return Task.CompletedTask;
     }
