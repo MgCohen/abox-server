@@ -100,24 +100,34 @@ public class ClaudeAgent : Agent
         var bufLock = new object();
         var lastChunkAt = DateTimeOffset.UtcNow;
         var exited = false;
+        // Two cancellation sources:
+        //   - readerCts: linked to caller ct. Cancelled only on Kill-path
+        //     teardown so a still-blocked Read doesn't keep the agent
+        //     hanging. On the happy path, the PTY ReaderStream closes
+        //     when cmd.exe exits → ReadAsync returns 0 → loop exits
+        //     cleanly without us ever cancelling. That guarantees no
+        //     trailing bytes get dropped from the buffer.
+        //   - sinkCts: a separate token for sink emits so we don't mark
+        //     them cancelled when we shut the reader down.
         using var readerCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         var readerTask = Task.Run(async () =>
         {
             var buf = new byte[4096];
             try
             {
-                while (!readerCts.Token.IsCancellationRequested)
+                while (true)
                 {
                     var n = await pty.ReaderStream.ReadAsync(buf, 0, buf.Length, readerCts.Token);
-                    if (n == 0) break;
+                    if (n == 0) break; // PTY closed — clean EOF, drained.
                     var chunk = Encoding.UTF8.GetString(buf, 0, n);
                     lock (bufLock) buffer.Append(chunk);
                     lastChunkAt = DateTimeOffset.UtcNow;
-                    await Sink.EmitAsync(new AgentEvent.StreamChunk(DateTimeOffset.UtcNow, Name, chunk), readerCts.Token);
+                    await Sink.EmitAsync(new AgentEvent.StreamChunk(DateTimeOffset.UtcNow, Name, chunk), CancellationToken.None);
                 }
             }
-            catch (OperationCanceledException) { /* expected on shutdown */ }
-        }, readerCts.Token);
+            catch (OperationCanceledException) { /* Kill-path teardown */ }
+            catch (IOException) { /* PTY stream torn down */ }
+        });
 
         // Give cmd.exe a moment to render its prompt, then launch claude.
         await Task.Delay(500, ct);
@@ -163,18 +173,47 @@ public class ClaudeAgent : Agent
         await Task.Delay(Options.ExitDwellMs, ct);
         await WriteAsync(pty, "exit\r", ct);
         exited = pty.WaitForExit(15_000);
-        if (!exited)
+
+        int exitCode;
+        if (exited)
         {
-            try { pty.Kill(); } catch { /* best-effort */ }
-            await Task.Delay(500, CancellationToken.None);
+            // Happy path: cmd.exe exited → PTY stream will close → reader
+            // loop sees ReadAsync==0 and exits cleanly. Give it a short
+            // grace window to drain, but do NOT cancel — that would risk
+            // truncating Claude's final bytes.
+            var drained = await Task.WhenAny(readerTask, Task.Delay(2000));
+            if (drained != readerTask)
+            {
+                // PTY didn't close its stream within 2s of exit. Force the
+                // reader down so we can return.
+                readerCts.Cancel();
+                try { await readerTask; } catch { }
+            }
+            exitCode = pty.ExitCodeOrNull() ?? 0;
         }
-        readerCts.Cancel();
-        try { await readerTask; } catch { }
+        else
+        {
+            // PTY didn't exit. Kill, drain best-effort, surface exit code -1
+            // to signal the abnormal teardown to the caller / Completed event.
+            try { pty.Kill(); } catch { /* best-effort */ }
+            readerCts.Cancel();
+            try { await readerTask; } catch { }
+            exitCode = pty.ExitCodeOrNull() ?? -1;
+            if (exitCode == 0) exitCode = -1; // Kill path is never "success"
+        }
 
         var raw = buffer.ToString();
-        var exitCode = pty.ExitCodeOrNull() ?? 0;
+
+        // Prefer the per-session JSONL Claude writes — it survives TUI
+        // re-wraps, ANSI noise, and any reader-drain truncation. Fall back
+        // to the ANSI-stripped buffer if the file isn't there yet.
+        var jsonlText = ClaudeJsonl.TryReadLastAssistantText(req.ProjectDir, effectiveSessionId, req.Prompt);
+        var text = !string.IsNullOrWhiteSpace(jsonlText)
+            ? jsonlText!
+            : ExtractAssistantText(raw, req.Prompt);
+
         return new AgentResult(
-            Text: ExtractAssistantText(raw, req.Prompt),
+            Text: text,
             SessionId: effectiveSessionId,
             ExitCode: exitCode,
             RawOutput: raw);
