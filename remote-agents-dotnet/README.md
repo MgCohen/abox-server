@@ -24,3 +24,8 @@ dotnet test
 ```
 
 Windows-only in v1 (see Q12 in the build plan).
+
+## Docs
+
+- [`docs/usage.md`](docs/usage.md) — day-to-day commands, writing flows / validators / named agents.
+- [`docs/architecture.md`](docs/architecture.md) — internals: PTY trick, layers, sessions, sinks, source-gen JSON.
