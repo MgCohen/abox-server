@@ -1,0 +1,9 @@
+# JS leftovers — the orchestrator/ tree was deleted in commit f9b79cd
+# but a few node_modules files were locked by other processes. Ignore
+# the whole leftover dir so it doesn't drift back into the repo.
+remote-agents/orchestrator/
+remote-agents/scratch/
+
+# General
+node_modules/
+*.log
