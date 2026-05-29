@@ -27,12 +27,17 @@ public static class RunCommand
         options ??= new RunCommandOptions();
         var sw = Stopwatch.StartNew();
 
-        // Windows-only v1: always go through cmd.exe /c so users can write
-        // pipes / chains in their validators (matches JS shell:true default).
+        // Always go through the platform shell so callers can write
+        // pipes / chains. cmd.exe on Windows, /bin/bash on Linux/macOS.
+        // The VM runs Linux — the bash branch is what Track B uses in
+        // production; cmd.exe is what local dev hits.
+        //
+        // Quoting differs: cmd.exe takes the whole rest-of-line as the
+        // command after /c; bash needs -c "<command>" as one arg or it
+        // treats following tokens as positional ($0, $1, ...). We use
+        // ArgumentList on bash so the runtime escapes for us.
         var psi = new ProcessStartInfo
         {
-            FileName = Path.Combine(Environment.SystemDirectory, "cmd.exe"),
-            Arguments = $"/c {command}",
             WorkingDirectory = options.Cwd ?? Environment.CurrentDirectory,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
@@ -40,6 +45,18 @@ public static class RunCommand
             UseShellExecute = false,
             CreateNoWindow = true,
         };
+
+        if (OperatingSystem.IsWindows())
+        {
+            psi.FileName = Path.Combine(Environment.SystemDirectory, "cmd.exe");
+            psi.Arguments = $"/c {command}";
+        }
+        else
+        {
+            psi.FileName = "/bin/bash";
+            psi.ArgumentList.Add("-c");
+            psi.ArgumentList.Add(command);
+        }
 
         ApplyEnv(psi, options.Env);
 
