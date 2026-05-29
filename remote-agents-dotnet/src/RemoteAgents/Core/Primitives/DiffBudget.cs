@@ -23,7 +23,7 @@ public sealed record DiffBudgetResult(
     bool Truncated);
 
 // Trim a unified diff to fit a review prompt. The diff that
-// ReviewPipeline embeds in the Codex prompt can be tens of MB for big
+// review flows embed in the Codex prompt can be tens of MB for big
 // turns — past a few hundred KB it both wastes tokens and risks
 // exceeding context. This primitive turns a raw `git diff` into a
 // bounded blob with elision markers, preserving every file's header

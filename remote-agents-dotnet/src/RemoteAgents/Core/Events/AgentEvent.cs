@@ -6,11 +6,12 @@ namespace RemoteAgents.Events;
 // not appear here — they live exclusively in the provider JSONL files
 // copied in by ProviderJsonlIngestSink.
 //
-// Phase is the flow-orchestration variant: ReviewPipeline emits it for
-// every step ("[validate] PASSED", "[commit] done", etc.) so the
-// pipeline's control flow is no longer interleaved with Console.WriteLine
-// calls. AgentName for Phase events is the bracket tag (validate, codex,
-// commit, …), reusing the slot for the entity producing the update.
+// Phase is the flow-orchestration variant: flow scripts and shared
+// helpers (Flows/Loops, Flows/Reviews) emit it for every step
+// ("[validate] PASSED", "[commit] done", etc.) so the flow's control
+// flow is no longer interleaved with Console.WriteLine calls. AgentName
+// for Phase events is the bracket tag (validate, codex, commit, …),
+// reusing the slot for the entity producing the update.
 //
 // The [JsonPolymorphic] attributes let JsonSerializer (and the source-gen
 // context) emit each variant with a "kind" discriminator field as the first
