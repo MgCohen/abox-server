@@ -19,18 +19,6 @@ public sealed class FlowContext : IAsyncDisposable
 
     internal JsonlSink? OwnedJsonl { get; init; }
 
-    // Check the working tree and abort the flow if it's dirty. Returns
-    // false (and ends the session + sets ExitCode) if the caller should
-    // bail out.
-    public async Task<bool> EnsureCleanTreeAsync(CancellationToken ct = default)
-    {
-        if (!await GitOps.IsDirtyAsync(ProjectDir, ct)) return true;
-        await Sink.PhaseFailAsync("abort", "working tree is dirty. Commit or stash first.", ct);
-        Session.End(SessionResult.AbortedDirtyTree);
-        Environment.ExitCode = 2;
-        return false;
-    }
-
     public async ValueTask DisposeAsync()
     {
         if (OwnedJsonl is not null) await OwnedJsonl.DisposeAsync();
