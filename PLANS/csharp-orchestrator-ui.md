@@ -19,23 +19,44 @@ tags: [#ui, #host, #maui, #blazor, #mobile, #tailscale]
 
 ---
 
-## Current state (2026-05-28 — branch created)
+## Current state (2026-05-28 — through C6)
 
-**Branch**: `phase-ui/host-mobile` (just forked from `phase-a/local-validation`
-at `1e76acc cleanup remote-agents/ and harden ClaudeAgent teardown`).
+**Branch**: `phase-ui/host-mobile` (forked from `phase-a/local-validation`
+at `1e76acc`).
 
-**Resume here**: Phase **C1** — scaffold `ui/` tree and second `.slnx`. C0
-(this doc) just landed.
+**Resume here**: Phase **C5** — MAUI Blazor Hybrid shells. Everything else
+(C0 → C4, C6) has landed; C5 awaiting `dotnet workload install maui` to
+complete + Android SDK setup. C2 is partial-by-design pending library v2
+on the answer-back contract.
+
+What's already running on this branch:
+- Host: REST (`/projects`, `/flows`, `/runs`, `/runs/{id}`, `/runs/{id}/cancel`, `/runs/{id}/respond`) + SignalR (`/hub/runs`).
+- FlowRunner: spawns flows via `cli/agents-dotnet.cs`, sniffs `[session-id]` from stdout, tails `sessions/<id>/transcript.jsonl`, re-emits as `AgentEvent` into a `ChannelSink` consumed by SignalR.
+- Persistence: `~/.remote-agents/runs.json` (schema-versioned, atomic write, 90-day retention). On boot, in-flight-at-shutdown runs flip to `Interrupted`.
+- Razor lib (`UI.Components`): `Home` / `RunHistory` / `RunView` pages, `HostApiClient` + `RunStreamClient`, minimal `pages.css`.
+- Blazor WASM (`UI.Web`): hosts the components, runs against `HostBaseAddress` config.
+- Always-on scripts: `ui/scripts/install-host-service.ps1` + `configure-power.ps1`.
+- ACL snippet for Tailscale in `ui/README.md`.
+
+What's still needed before any of this is useful end-to-end:
+1. Live POST `/runs` smoke (1 real Claude call) — costs subscription cycles, owner runs when ready.
+2. MAUI install + Android target build (C5).
+3. Run `ui/scripts/configure-power.ps1` + `install-host-service.ps1` on the laptop (C3 deployment).
+4. Update tailnet ACL.
+
+The branch is mergeable as-is — every commit is purely additive to
+`remote-agents-dotnet/ui/` + `PLANS/csharp-orchestrator-ui.md`. No
+existing library / flow / agent / validator / CLI file was modified.
 
 | Phase | Status | Touches existing code? |
 |---|---|---|
-| C0 — Decision capture + plan doc | ✅ this file | No |
-| C1 — `RemoteAgents.Host` (ASP.NET + ChannelSink + FlowRunner + REST/SignalR) | ✅ C1.1–C1.4 landed | No |
-| C2 — Interactive-prompt seam (partial — surface + record; answer-back routing blocked on library v2) | 🟡 | No |
-| C3 — Tailscale binding + nssm always-on | ⏸ | No (config only) |
-| C4 — `UI.Components` Razor lib + `UI.Web` Blazor WASM | ⏸ | No |
-| C5 — `UI.Maui` Blazor Hybrid (Win/Android/iOS) | ⏸ | No |
-| C6 — Run persistence (SQLite or JSON) | ⏸ | No |
+| C0 — Decision capture + plan doc | ✅ | No |
+| C1 — `RemoteAgents.Host` (ASP.NET + ChannelSink + FlowRunner + REST/SignalR) | ✅ C1.1–C1.4 | No |
+| C2 — Interactive-prompt seam (partial — surface + record; answer-back routing blocked on library v2) | 🟡 partial | No |
+| C3 — Tailscale binding + nssm always-on | ✅ scripts written; owner runs | No (config only) |
+| C4 — `UI.Components` Razor lib + `UI.Web` Blazor WASM | ✅ | No |
+| C5 — `UI.Maui` Blazor Hybrid (Win/Android/iOS) | ⏸ awaiting MAUI workload | No |
+| C6 — Run persistence (JSON, retention) | ✅ | No |
 
 **C2 partial state**: `AgentQuestion`/`NeedsInput` events already flow through `transcript.jsonl` → `ChannelSink` → SignalR with no new Host code (the library does the detection at hook-parse time). The `POST /runs/{id}/respond` endpoint and `Run.PendingResponse` field are scaffolded so the UI can be built against the locked wire shape. **Answer-back routing into a paused agent is deferred to library v2** ([`interaction-modes.md`](interaction-modes.md) Q10): the design hasn't picked between TUI keypress / `--resume` reply / file-poll / pipe yet, so Host can't pick a transport unilaterally without forcing a library change.
 
