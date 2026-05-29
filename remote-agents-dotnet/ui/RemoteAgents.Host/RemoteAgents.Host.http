@@ -1,6 +1,47 @@
-@RemoteAgents.Host_HostAddress = http://localhost:5062
+@host = http://localhost:5062
 
-GET {{RemoteAgents.Host_HostAddress}}/weatherforecast/
+### Liveness probe (nssm uses this)
+GET {{host}}/health
 Accept: application/json
 
 ###
+
+### List known projects (from <repo>/projects.json)
+GET {{host}}/projects
+Accept: application/json
+
+###
+
+### List available flows (cli/flows/*.cs minus smoke-*)
+GET {{host}}/flows
+Accept: application/json
+
+###
+
+### Start a run
+POST {{host}}/runs
+Content-Type: application/json
+
+{
+  "project": "card-framework",
+  "flow":    "claude-only",
+  "prompt":  "list the files in the project directory",
+  "args":    []
+}
+
+###
+
+### List runs (most recent first)
+GET {{host}}/runs
+Accept: application/json
+
+###
+
+### Get one run
+GET {{host}}/runs/00000000-0000-0000-0000-000000000000
+Accept: application/json
+
+###
+
+### Cancel a run
+POST {{host}}/runs/00000000-0000-0000-0000-000000000000/cancel
