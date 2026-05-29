@@ -42,6 +42,6 @@ public sealed class ClaudeOnlyFlow : IFlow
         Console.WriteLine();
         Console.WriteLine($"Transcript: {ctx.Session.Dir}");
 
-        return new FlowResult(FlowExitReason.Shipped);
+        return new FlowResult(SessionResult.Shipped);
     }
 }

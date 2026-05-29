@@ -11,7 +11,7 @@ namespace RemoteAgents.Flows;
 // gates the work, whether the fix loop runs inside an IsolationScope, and
 // the wording handed to the reviewer. Everything else was byte-identical.
 //
-// Construct one per variant (see AgentPresets/the cli shims):
+// Construct one per variant (see the cli/flows shims):
 //   new ReviewFlow("full-review",  …, new OrchestratorValidator(), "changes", …)
 //   new ReviewFlow("unity-review", …, new UnityFullValidator(), "a Unity C# change",
 //                  isolateValidation: true, …)
@@ -58,7 +58,7 @@ public sealed class ReviewFlow : IFlow
         if (await GitOps.IsDirtyAsync(ctx.ProjectDir, ct))
         {
             await ctx.Sink.PhaseFailAsync("abort", "working tree is dirty. Commit or stash first.", ct);
-            return new FlowResult(FlowExitReason.AbortedDirtyTree);
+            return new FlowResult(SessionResult.AbortedDirtyTree);
         }
 
         var claude = new ClaudeAgent { Name = "claude", Sink = ctx.Sink };
@@ -84,14 +84,14 @@ public sealed class ReviewFlow : IFlow
         }
         work = validate.LastResult;
         if (!validate.Ok)
-            return new FlowResult(FlowExitReason.ValidationFailed);
+            return new FlowResult(SessionResult.ValidationFailed);
 
         // 3. Nothing changed? skip review/commit.
         var diffText = await GitOps.DiffAsync(new GitDiffRequest(ctx.ProjectDir), ct);
         if (string.IsNullOrWhiteSpace(diffText))
         {
             await ctx.Sink.PhaseInfoAsync("done", "Claude made no file changes. Nothing to review or commit.", ct);
-            return new FlowResult(FlowExitReason.NoChanges);
+            return new FlowResult(SessionResult.NoChanges);
         }
 
         // 4. Codex review.
@@ -106,7 +106,7 @@ public sealed class ReviewFlow : IFlow
         {
             await ctx.Sink.PhaseFailAsync("abort",
                 $"Codex verdict unclear (review was {review.Text.Length} bytes). Refusing to commit.", ct);
-            return new FlowResult(FlowExitReason.VerdictUnclear);
+            return new FlowResult(SessionResult.VerdictUnclear);
         }
 
         // 5. one revision round.
@@ -121,7 +121,7 @@ public sealed class ReviewFlow : IFlow
             if (!v2.Ok)
             {
                 await ctx.Sink.PhaseFailAsync("abort", $"post-revision validation failed: {v2.Summary}", ct);
-                return new FlowResult(FlowExitReason.RevisionBrokeValidation);
+                return new FlowResult(SessionResult.RevisionBrokeValidation);
             }
         }
 
@@ -130,7 +130,7 @@ public sealed class ReviewFlow : IFlow
         if (filesToCommit.Count == 0)
         {
             await ctx.Sink.PhaseInfoAsync("done", "No files ultimately changed.", ct);
-            return new FlowResult(FlowExitReason.NoChanges);
+            return new FlowResult(SessionResult.NoChanges);
         }
 
         var commitMessage = Reviews.BuildCommitMessage(ctx.UserPrompt, review.Text);
@@ -154,6 +154,6 @@ public sealed class ReviewFlow : IFlow
         await ctx.Session.WriteArtifactAsync(SessionArtifact.CodexReview, review.Text, ct);
 
         await ctx.Sink.PhaseOkAsync("done", $"Shipped. Transcript: {ctx.Session.Dir}", ct);
-        return new FlowResult(FlowExitReason.Shipped);
+        return new FlowResult(SessionResult.Shipped);
     }
 }
