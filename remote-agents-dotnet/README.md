@@ -21,7 +21,7 @@ remote-agents-dotnet/
       Core/                    # abstractions + reusable primitives (no vendor coupling)
       Providers/               # adapters: Claude, Codex, Unity, Orchestrator
       Flows/                   # composed pipelines built on Core + Providers
-    NamedAgents/               # persona agents (Planner / Documenter / Researcher) + embedded prompts
+    NamedAgents/               # persona agents (Planner / Documenter / Researcher) + live-editable prompts
   tests/RemoteAgents.Tests/    # xUnit
   cli/
     agents-dotnet.cs           # CLI shim

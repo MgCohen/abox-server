@@ -153,7 +153,7 @@ Both agent providers blank API-key env vars in the spawned child env as defense 
 **Convention, not framework.** Three flavors:
 
 - **Flow helpers** — [`src/RemoteAgents/Flows/`](../src/RemoteAgents/Flows/) — small reusable units of work each flow script composes itself: `FlowBootstrap` (arg parsing + session/sink wiring), `Loops.ValidateAndFixAsync` (the validate→fix while-loop), `Reviews.AskCodexForVerdictAsync` (Codex review + verdict parse + artifact), `IsolationScope` (snapshot+restore for noisy validators). There is no pipeline class — each entry-point script writes its own sequence.
-- **Personas** — [`src/NamedAgents/`](../src/NamedAgents/) — static factories returning configured `ClaudeAgent` / `CodexAgent` with a role-specific prompt. System prompts live as `prompts/<name>.md` files, embedded into the dll via `<EmbeddedResource>` and loaded with `Prompts.Load("name")`. This is a separate csproj **for embedding reasons only** (no layering implication).
+- **Personas** — [`src/NamedAgents/`](../src/NamedAgents/) — static factories returning configured `ClaudeAgent` / `CodexAgent` with a role-specific prompt. System prompts live as `prompts/<name>.md` files; `Prompts.Load("name")` reads from disk on every call (walks up from CWD / `AppContext.BaseDirectory` to find `remote-agents-dotnet/src/NamedAgents/prompts/`), so editing a `.md` picks up on the next agent run with no rebuild. Separate csproj is purely an organizational choice — no layering implication.
 - **Entry-point scripts** — [`cli/flows/<name>.cs`](../cli/flows/) — `.NET 10` file-based programs. First lines are `#:project ../../src/RemoteAgents/RemoteAgents.csproj` (plus `#:project ../../src/NamedAgents/NamedAgents.csproj` if you use personas). Hand-written control flow; the library imposes none.
 - **CLI shim** — [`cli/agents-dotnet.cs`](../cli/agents-dotnet.cs) — `list / projects / run <flow> [...args]`. Spawns `dotnet run cli/flows/<flow>.cs -- <args>` with stdio inherited.
 
@@ -191,13 +191,13 @@ remote-unity-agents/
     │   │       ├── Loops.cs            #   ValidateAndFixAsync — the validate→fix while-loop
     │   │       ├── Reviews.cs          #   AskCodexForVerdictAsync + commit-message builder
     │   │       └── IsolationScope.cs   #   snapshot+restore for noisy validators (Unity batch-mode)
-    │   └── NamedAgents/                # layer 3: persona agents (separate csproj for embedded prompts)
+    │   └── NamedAgents/                # layer 3: persona agents (separate csproj for organization)
     │       ├── NamedAgents.csproj
     │       ├── Planner.cs        (Claude opus)
     │       ├── Documenter.cs     (Claude haiku)
     │       ├── Researcher.cs     (Codex gpt-5.5)
-    │       ├── Prompts.cs              # embedded-resource loader
-    │       └── prompts/*.md            # system prompts (embedded into the dll)
+    │       ├── Prompts.cs              # disk loader — walks up via RepoRoot, reads fresh each Load()
+    │       └── prompts/*.md            # system prompts (read at runtime, edit live)
     ├── tests/
     │   └── RemoteAgents.Tests/         # xUnit
     ├── cli/                            # entry-point scripts

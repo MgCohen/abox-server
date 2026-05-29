@@ -1,17 +1,30 @@
-using System.Reflection;
+using RemoteAgents.Primitives;
 
 namespace Flows.Agents;
 
+// Reads prompts/<name>.md from disk on every Load() call, so editing the
+// markdown picks up on the next agent run — no rebuild. Resolved by
+// walking up from CWD (and the executing assembly's BaseDirectory) until
+// we find a parent containing the `remote-agents-dotnet/` directory; same
+// pattern Session uses to locate sessions/.
 internal static class Prompts
 {
-    private static readonly Assembly Asm = typeof(Prompts).Assembly;
-
     public static string Load(string name)
     {
-        var resourceName = $"Flows.Agents.prompts.{name}.md";
-        using var stream = Asm.GetManifestResourceStream(resourceName)
-            ?? throw new FileNotFoundException($"Embedded prompt not found: {resourceName}");
-        using var reader = new StreamReader(stream);
-        return reader.ReadToEnd();
+        var path = ResolvePath(name)
+            ?? throw new FileNotFoundException(
+                $"Prompt not found: {name}.md. Looked for `<repo>/remote-agents-dotnet/src/NamedAgents/prompts/{name}.md` " +
+                $"starting from CWD={Environment.CurrentDirectory} and BaseDirectory={AppContext.BaseDirectory}.");
+
+        return File.ReadAllText(path);
+    }
+
+    // Public so callers can warn at startup if a prompt is missing.
+    public static string? ResolvePath(string name)
+    {
+        var repoRoot = RepoRoot.Find("remote-agents-dotnet");
+        if (repoRoot is null) return null;
+        var path = Path.Combine(repoRoot, "remote-agents-dotnet", "src", "NamedAgents", "prompts", $"{name}.md");
+        return File.Exists(path) ? path : null;
     }
 }

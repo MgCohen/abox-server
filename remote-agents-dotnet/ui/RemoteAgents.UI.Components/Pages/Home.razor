@@ -1,0 +1,125 @@
+@page "/"
+@inject HostApiClient Api
+@inject NavigationManager Nav
+
+<PageTitle>Remote Agents</PageTitle>
+
+<div class="page">
+    <h1>New run</h1>
+
+    @if (_projects is null || _flows is null)
+    {
+        <p>Loading…</p>
+    }
+    else
+    {
+        <EditForm Model="_form" OnValidSubmit="StartAsync">
+            <DataAnnotationsValidator />
+
+            <div class="field">
+                <label for="project">Project</label>
+                <select id="project" @bind="_form.Project">
+                    <option value="">— pick one —</option>
+                    @foreach (var p in _projects)
+                    {
+                        <option value="@p.Name">@p.Name <small>(@p.AbsPath)</small></option>
+                    }
+                </select>
+            </div>
+
+            <div class="field">
+                <label for="flow">Flow</label>
+                <select id="flow" @bind="_form.Flow">
+                    <option value="">— pick one —</option>
+                    @foreach (var f in _flows)
+                    {
+                        <option value="@f.Name" title="@f.Description">@f.Name</option>
+                    }
+                </select>
+                @if (!string.IsNullOrEmpty(_form.Flow))
+                {
+                    var desc = _flows.FirstOrDefault(x => x.Name == _form.Flow)?.Description;
+                    @if (!string.IsNullOrWhiteSpace(desc))
+                    {
+                        <p class="hint">@desc</p>
+                    }
+                }
+            </div>
+
+            <div class="field">
+                <label for="prompt">Prompt</label>
+                <textarea id="prompt" rows="6" placeholder="What should the agent do?" @bind="_form.Prompt"></textarea>
+            </div>
+
+            <button type="submit" disabled="@(_busy || !CanSubmit)">
+                @(_busy ? "Starting…" : "Run")
+            </button>
+
+            @if (_error is not null)
+            {
+                <p class="error">@_error</p>
+            }
+        </EditForm>
+    }
+
+    <hr />
+    <p><NavLink href="runs">Run history →</NavLink></p>
+</div>
+
+@code {
+    private ProjectInfo[]? _projects;
+    private FlowInfo[]? _flows;
+    private bool _busy;
+    private string? _error;
+
+    private sealed class FormModel
+    {
+        public string Project { get; set; } = "";
+        public string Flow    { get; set; } = "";
+        public string Prompt  { get; set; } = "";
+    }
+    private FormModel _form = new();
+
+    private bool CanSubmit =>
+        !string.IsNullOrWhiteSpace(_form.Project) &&
+        !string.IsNullOrWhiteSpace(_form.Flow) &&
+        !string.IsNullOrWhiteSpace(_form.Prompt);
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _projects = await Api.GetProjectsAsync();
+            _flows    = await Api.GetFlowsAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load: {ex.Message}";
+        }
+    }
+
+    private async Task StartAsync()
+    {
+        if (!CanSubmit) return;
+        _busy = true;
+        _error = null;
+        try
+        {
+            var run = await Api.StartRunAsync(new StartRunRequest(
+                Project: _form.Project,
+                Flow:    _form.Flow,
+                Prompt:  _form.Prompt,
+                Args:    null));
+            if (run is null) throw new InvalidOperationException("Host returned no run.");
+            Nav.NavigateTo($"runs/{run.Id}");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

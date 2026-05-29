@@ -1,0 +1,185 @@
+@page "/runs/{Id:guid}"
+@implements IAsyncDisposable
+@inject HostApiClient Api
+@inject NavigationManager Nav
+
+<PageTitle>Run @Id</PageTitle>
+
+<div class="page run-view">
+    <p><NavLink href="runs">← Runs</NavLink></p>
+
+    @if (_summary is null)
+    {
+        <p>Loading…</p>
+    }
+    else
+    {
+        <h1>@_summary.Flow <small>on @_summary.Project</small></h1>
+        <p class="meta">
+            <span class="status status-@_summary.Status.ToLowerInvariant()">@_summary.Status</span>
+            <span>started @_summary.StartedAt.ToLocalTime():HH:mm:ss</span>
+            @if (_summary.EndedAt is not null)
+            {
+                <span>· ended @_summary.EndedAt?.ToLocalTime():HH:mm:ss</span>
+            }
+            @if (_summary.ExitCode is not null)
+            {
+                <span>· exit @_summary.ExitCode</span>
+            }
+        </p>
+        <details>
+            <summary>Prompt</summary>
+            <pre class="prompt-block">@_summary.Prompt</pre>
+        </details>
+
+        @if (IsActive(_summary.Status))
+        {
+            <button class="cancel" @onclick="CancelAsync">Cancel</button>
+        }
+
+        @if (_currentQuestion is not null)
+        {
+            <div class="question-modal">
+                <h3>Agent needs input</h3>
+                <p>@_currentQuestion.Text</p>
+                <div class="choices">
+                    <button @onclick="@(() => RespondAsync("yes"))">Yes</button>
+                    <button @onclick="@(() => RespondAsync("no"))">No</button>
+                </div>
+                <input @bind="_freeformResponse" placeholder="or type a response…" />
+                <button @onclick="@(() => RespondAsync(_freeformResponse))" disabled="@(string.IsNullOrWhiteSpace(_freeformResponse))">
+                    Send
+                </button>
+                <p class="hint">v1: response is recorded only — routing into the
+                paused agent waits on library v2 (see interaction-modes.md).</p>
+            </div>
+        }
+
+        <h2>Live</h2>
+        <div class="log">
+            @foreach (var line in _lines)
+            {
+                <div class="@LineClass(line)">@line.Text</div>
+            }
+            @if (_lines.Count == 0)
+            {
+                <div class="hint">Waiting for the first event…</div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private RunSummary? _summary;
+    private RunStreamClient? _stream;
+    private CancellationTokenSource? _cts;
+    private readonly List<LogLine> _lines = new();
+    private QuestionSurface? _currentQuestion;
+    private string _freeformResponse = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _summary = await Api.GetRunAsync(Id);
+        if (_summary is null)
+        {
+            Nav.NavigateTo("runs");
+            return;
+        }
+
+        _cts = new CancellationTokenSource();
+        var hubUrl = new Uri(new Uri(Nav.BaseUri), "hub/runs").ToString();
+        _stream = new RunStreamClient(hubUrl);
+        await _stream.StartAsync(_cts.Token);
+
+        _ = Task.Run(() => ConsumeAsync(_cts.Token));
+    }
+
+    private async Task ConsumeAsync(CancellationToken ct)
+    {
+        try
+        {
+            await foreach (var evt in _stream!.StreamAsync(Id, ct))
+            {
+                Append(evt);
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            _lines.Add(new LogLine($"[stream error] {ex.Message}", LineKind.Error));
+            await InvokeAsync(StateHasChanged);
+        }
+        // Refresh summary at end so EndedAt/ExitCode/Status reflect the final state.
+        _summary = await Api.GetRunAsync(Id);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void Append(AgentEvent evt)
+    {
+        switch (evt)
+        {
+            case AgentEvent.Started s:
+                _lines.Add(new LogLine($"[{s.AgentName}] started", LineKind.Phase));
+                break;
+            case AgentEvent.StreamChunk c:
+                _lines.Add(new LogLine(c.Chunk, LineKind.Stream));
+                break;
+            case AgentEvent.DialogDismissed d:
+                _lines.Add(new LogLine($"[{d.AgentName}] dismissed dialog: {d.Match}", LineKind.Phase));
+                break;
+            case AgentEvent.Completed done:
+                _lines.Add(new LogLine($"[{done.AgentName}] completed (exit {done.ExitCode}, {done.OutputChars} chars)", LineKind.Phase));
+                break;
+            case AgentEvent.Failed fail:
+                _lines.Add(new LogLine($"[{fail.AgentName}] FAILED: {fail.Reason}", LineKind.Error));
+                break;
+            case AgentEvent.Phase phase:
+                var kind = phase.Status switch
+                {
+                    "ok"   => LineKind.Phase,
+                    "fail" => LineKind.Error,
+                    _      => LineKind.Phase,
+                };
+                _lines.Add(new LogLine($"[{phase.AgentName}] {phase.Status}: {phase.Detail}", kind));
+                break;
+        }
+    }
+
+    private async Task CancelAsync()
+    {
+        await Api.CancelRunAsync(Id);
+    }
+
+    private async Task RespondAsync(string choice)
+    {
+        if (_currentQuestion is null || string.IsNullOrWhiteSpace(choice)) return;
+        await Api.RespondAsync(Id, new RespondRequest(_currentQuestion.CorrelationId, choice));
+        _currentQuestion = null;
+        _freeformResponse = "";
+    }
+
+    private static bool IsActive(string status) =>
+        status is "Pending" or "Starting" or "Running";
+
+    public async ValueTask DisposeAsync()
+    {
+        try { _cts?.Cancel(); } catch { }
+        if (_stream is not null) await _stream.DisposeAsync();
+        _cts?.Dispose();
+    }
+
+    private sealed record LogLine(string Text, LineKind Kind);
+    private enum LineKind { Stream, Phase, Error }
+    private sealed record QuestionSurface(string Text, string? CorrelationId);
+
+    private static string LineClass(LogLine l) => l.Kind switch
+    {
+        LineKind.Stream => "log-line stream",
+        LineKind.Phase  => "log-line phase",
+        LineKind.Error  => "log-line error",
+        _               => "log-line",
+    };
+}

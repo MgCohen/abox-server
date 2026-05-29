@@ -287,7 +287,7 @@ public static class Refactorer
 }
 ```
 
-Drop the system prompt as `src/NamedAgents/prompts/refactorer.md`. The csproj has `<EmbeddedResource Include="prompts\*.md" />` so it gets picked up automatically — no manual wiring.
+Drop the system prompt as `src/NamedAgents/prompts/refactorer.md`. `Prompts.Load` reads from disk on every call (it walks up from CWD / `AppContext.BaseDirectory` to find `remote-agents-dotnet/src/NamedAgents/prompts/`), so editing the markdown takes effect on the next agent run — no rebuild.
 
 Flow usage:
 
@@ -503,7 +503,7 @@ Reality. Check `projects.json` is pointing at the populated one (paths with spac
 | Add a validator | `src/RemoteAgents/Providers/<MyProject>/<MyProject>Validator.cs` |
 | Tune Claude timings | the flow or named-agent factory — pass `ClaudeAgentOptions { IdleThresholdMs, MaxWaitMs, MaxOverallMs, ... }` |
 | Override Claude's startup dialog detection | subclass `ClaudeAgent`, override `DetectStartupDialog` |
-| Change a named agent's prompt | `src/NamedAgents/prompts/<name>.md` (then `dotnet build` to refresh the embedded resource) |
+| Change a named agent's prompt | `src/NamedAgents/prompts/<name>.md` — picked up on the next run, no rebuild |
 | Add a named agent | `src/NamedAgents/<Name>.cs` + `src/NamedAgents/prompts/<name>.md` |
 | Add a sink | `src/RemoteAgents/Core/Events/<Name>Sink.cs` implementing `IEventSink` |
 | Add a primitive | `src/RemoteAgents/Core/Primitives/<Name>.cs` |

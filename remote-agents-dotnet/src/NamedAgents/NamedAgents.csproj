@@ -11,10 +11,9 @@
     <ProjectReference Include="..\RemoteAgents\RemoteAgents.csproj" />
   </ItemGroup>
 
-  <!-- Sidecar prompts embedded so they travel with the dll. Read via
-       Assembly.GetManifestResourceStream("Flows.Agents.prompts.<name>.md"). -->
-  <ItemGroup>
-    <EmbeddedResource Include="prompts\*.md" />
-  </ItemGroup>
+  <!-- Prompts are NOT embedded. Prompts.Load(name) walks up from CWD /
+       AppContext.BaseDirectory to find `remote-agents-dotnet/src/NamedAgents/
+       prompts/<name>.md` and reads it at every call, so editing a .md picks
+       up on the next agent run with no rebuild. -->
 
 </Project>
