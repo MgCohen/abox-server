@@ -18,6 +18,11 @@ public class CodexAgent : Agent
 {
     public CodexAgentOptions Options { get; init; } = new();
 
+    // Hook lifecycle for this agent. Default is the singleton installer
+    // wrapping CodexHookConfig; replaceable via DI for tests. Agent base
+    // invokes it iff Options.Hooks is non-null.
+    public IHookInstaller<CodexAgent> HookInstaller { get; init; } = new CodexHookInstaller();
+
     public static List<string> BuildCodexArgs(string? sessionId, string projectDir, string lastMessageFile, CodexAgentOptions opts)
     {
         var args = new List<string>();
@@ -50,24 +55,14 @@ public class CodexAgent : Agent
         return args;
     }
 
-    protected override async Task<AgentResult> ExecuteAsync(AgentRunRequest req, CancellationToken ct)
+    protected override async ValueTask<IAsyncDisposable?> InstallHooksAsync(
+        AgentRunRequest req, CancellationToken ct)
     {
-        var codexConfigDir = CodexHookConfig.DefaultConfigDir();
-        if (Options.Hooks is not null)
-            CodexHookConfig.Install(codexConfigDir, Options.Hooks.ShimPath);
-
-        try
-        {
-            return await RunInternalAsync(req, ct);
-        }
-        finally
-        {
-            if (Options.Hooks is not null)
-                CodexHookConfig.Uninstall(codexConfigDir);
-        }
+        if (Options.Hooks is null) return null;
+        return await HookInstaller.InstallAsync(req, Options.Hooks.ShimPath, ct);
     }
 
-    private async Task<AgentResult> RunInternalAsync(AgentRunRequest req, CancellationToken ct)
+    protected override async Task<AgentResult> ExecuteAsync(AgentRunRequest req, CancellationToken ct)
     {
         var tmpDir = Path.Combine(Path.GetTempPath(), "agents-codex-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tmpDir);

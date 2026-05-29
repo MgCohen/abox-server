@@ -19,6 +19,11 @@ public class ClaudeAgent : Agent
 {
     public ClaudeAgentOptions Options { get; init; } = new();
 
+    // Hook lifecycle for this agent. Default is the singleton installer
+    // wrapping ClaudeHookConfig; replaceable via DI for tests. Agent base
+    // invokes it iff Options.Hooks is non-null.
+    public IHookInstaller<ClaudeAgent> HookInstaller { get; init; } = new ClaudeHookInstaller();
+
     public int Cols { get; init; } = 120;
     public int Rows { get; init; } = 40;
 
@@ -65,23 +70,14 @@ public class ClaudeAgent : Agent
         return args;
     }
 
-    protected override async Task<AgentResult> ExecuteAsync(AgentRunRequest req, CancellationToken ct)
+    protected override async ValueTask<IAsyncDisposable?> InstallHooksAsync(
+        AgentRunRequest req, CancellationToken ct)
     {
-        if (Options.Hooks is not null)
-            ClaudeHookConfig.Install(req.ProjectDir, Options.Hooks.ShimPath);
-
-        try
-        {
-            return await RunInternalAsync(req, ct);
-        }
-        finally
-        {
-            if (Options.Hooks is not null)
-                ClaudeHookConfig.Uninstall(req.ProjectDir);
-        }
+        if (Options.Hooks is null) return null;
+        return await HookInstaller.InstallAsync(req, Options.Hooks.ShimPath, ct);
     }
 
-    private async Task<AgentResult> RunInternalAsync(AgentRunRequest req, CancellationToken ct)
+    protected override async Task<AgentResult> ExecuteAsync(AgentRunRequest req, CancellationToken ct)
     {
         var sessionId = req.SessionId ?? Guid.NewGuid().ToString();
         var effectiveOpts = Options with

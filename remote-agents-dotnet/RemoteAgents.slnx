@@ -3,7 +3,6 @@
     <Project Path="src/RemoteAgents.Contracts/RemoteAgents.Contracts.csproj" />
     <Project Path="src/RemoteAgents/RemoteAgents.csproj" />
     <Project Path="src/RemoteAgents.Hosting/RemoteAgents.Hosting.csproj" />
-    <Project Path="src/NamedAgents/NamedAgents.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/RemoteAgents.Tests/RemoteAgents.Tests.csproj" />

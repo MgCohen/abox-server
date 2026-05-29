@@ -31,6 +31,7 @@ public sealed class RemoteAgentsOptions
     {
         var opts = configure?.Invoke(new ClaudeAgentOptions()) ?? new ClaudeAgentOptions();
         _services.AddSingleton(opts);
+        _services.AddSingleton<IHookInstaller<ClaudeAgent>, ClaudeHookInstaller>();
         return this;
     }
 
@@ -38,6 +39,7 @@ public sealed class RemoteAgentsOptions
     {
         var opts = configure?.Invoke(new CodexAgentOptions()) ?? new CodexAgentOptions();
         _services.AddSingleton(opts);
+        _services.AddSingleton<IHookInstaller<CodexAgent>, CodexHookInstaller>();
         return this;
     }
 
