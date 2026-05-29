@@ -4,7 +4,8 @@
        remote-agents-dotnet/ tree and are owned by RemoteAgents.slnx. -->
   <Folder Name="/lib/">
     <Project Path="../remote-agents-dotnet/src/RemoteAgents/RemoteAgents.csproj" />
-    <Project Path="../remote-agents-dotnet/src/NamedAgents/NamedAgents.csproj" />
+    <Project Path="../remote-agents-dotnet/src/RemoteAgents.Contracts/RemoteAgents.Contracts.csproj" />
+    <Project Path="../remote-agents-dotnet/src/RemoteAgents.Hosting/RemoteAgents.Hosting.csproj" />
     <Project Path="../remote-agents-dotnet/tests/RemoteAgents.Tests/RemoteAgents.Tests.csproj" />
   </Folder>
   <Folder Name="/ui/">
