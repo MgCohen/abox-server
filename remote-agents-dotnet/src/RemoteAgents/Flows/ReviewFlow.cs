@@ -1,4 +1,5 @@
 using RemoteAgents.Agents;
+using RemoteAgents.Events;
 using RemoteAgents.Primitives;
 using RemoteAgents.Sessions;
 using RemoteAgents.Validation;
