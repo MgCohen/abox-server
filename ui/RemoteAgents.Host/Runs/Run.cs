@@ -27,16 +27,11 @@ public sealed class Run
     public string? SessionId { get; set; }
     public string? SessionDir { get; set; }
 
-    // Claude's own session UUID, sniffed from the cmd.exe echo of the
-    // `claude --session-id <uuid> ...` launch line by the subprocess
-    // executor. Deleted in Phase 6 step 4 — the provider session id
-    // arrives via AgentEvent.ProviderSessionAttached now (see
-    // ProviderSession below).
-    public string? ClaudeSessionId { get; set; }
-
     // Populated by RunStateSink when an AgentEvent.ProviderSessionAttached
     // event flows through the run's sink. The single source of truth for
     // the provider-side session ref the UI surfaces via RunRecord.
+    // Replaces the legacy ClaudeSessionId that used to be stdout-sniffed
+    // by the Host's old subprocess regex path (Phase 6 step 4).
     public ProviderSessionRef? ProviderSession { get; set; }
 
     public DateTimeOffset? EndedAt { get; set; }
