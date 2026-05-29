@@ -24,11 +24,18 @@ tags: [#ui, #host, #maui, #blazor, #mobile, #tailscale]
 **Branch**: `phase-ui/host-mobile` (forked from `phase-a/local-validation`
 at `1e76acc`).
 
-**Resume here**: Phase **C5** — MAUI Blazor Hybrid shells. Everything else
-(C0 → C4, C6) has landed; C5 awaiting Administrator-elevated
-`dotnet workload install maui` (failed mid-session: UAC dismissed). Full
-install / scaffold / wire steps documented at
-[`../remote-agents-dotnet/ui/RemoteAgents.UI.Maui.README.md`](../remote-agents-dotnet/ui/RemoteAgents.UI.Maui.README.md).
+**Resume here**: everything is on disk. Remaining work is install / smoke
+on the owner's machine (in priority order):
+
+1. **Live POST `/runs` smoke** — one real Claude call to confirm the
+   stream end-to-end. Costs subscription cycles, leaves a session dir.
+2. **MAUI Android target** — install JDK 17+ and Android SDK (Android
+   Studio is the easiest path); see
+   [`../remote-agents-dotnet/ui/RemoteAgents.UI.Maui.README.md`](../remote-agents-dotnet/ui/RemoteAgents.UI.Maui.README.md).
+3. **Always-on service** — run `ui/scripts/configure-power.ps1` and
+   `ui/scripts/install-host-service.ps1` from an Admin PowerShell.
+4. **Update tailnet ACL** — snippet in `ui/README.md`.
+
 C2 is partial-by-design pending library v2 on the answer-back contract.
 
 What's already running on this branch:
@@ -57,7 +64,7 @@ existing library / flow / agent / validator / CLI file was modified.
 | C2 — Interactive-prompt seam (partial — surface + record; answer-back routing blocked on library v2) | 🟡 partial | No |
 | C3 — Tailscale binding + nssm always-on | ✅ scripts written; owner runs | No (config only) |
 | C4 — `UI.Components` Razor lib + `UI.Web` Blazor WASM | ✅ | No |
-| C5 — `UI.Maui` Blazor Hybrid (Win/Android/iOS) | 📋 documented; awaiting Administrator | No |
+| C5 — `UI.Maui` Blazor Hybrid (Win/Android/iOS) | ✅ Windows target ships clean; Android needs JDK + Android SDK | No |
 | C6 — Run persistence (JSON, retention) | ✅ | No |
 
 **C2 partial state**: `AgentQuestion`/`NeedsInput` events already flow through `transcript.jsonl` → `ChannelSink` → SignalR with no new Host code (the library does the detection at hook-parse time). The `POST /runs/{id}/respond` endpoint and `Run.PendingResponse` field are scaffolded so the UI can be built against the locked wire shape. **Answer-back routing into a paused agent is deferred to library v2** ([`interaction-modes.md`](interaction-modes.md) Q10): the design hasn't picked between TUI keypress / `--resume` reply / file-poll / pipe yet, so Host can't pick a transport unilaterally without forcing a library change.

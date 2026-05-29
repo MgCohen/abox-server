@@ -10,5 +10,6 @@
     <Project Path="ui/RemoteAgents.Host/RemoteAgents.Host.csproj" />
     <Project Path="ui/RemoteAgents.UI.Components/RemoteAgents.UI.Components.csproj" />
     <Project Path="ui/RemoteAgents.UI.Web/RemoteAgents.UI.Web.csproj" />
+    <Project Path="ui/RemoteAgents.UI.Maui/RemoteAgents.UI.Maui.csproj" />
   </Folder>
 </Solution>
