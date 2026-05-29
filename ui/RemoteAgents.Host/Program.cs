@@ -1,8 +1,11 @@
+using RemoteAgents.Flows;
 using RemoteAgents.Host.Hubs;
 using RemoteAgents.Host.Runs;
 using RemoteAgents.Hosting;
 using RemoteAgents.Primitives;
 using RemoteAgents.Runs;
+using RemoteAgents.Validation.Orchestrator;
+using RemoteAgents.Validation.Unity;
 using RemoteAgents.Wire;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,11 +22,11 @@ builder.Services.AddSingleton<IFlowExecutor, InProcessFlowExecutor>();
 builder.Services.AddSingleton<IFlowExecutor>(sp => new SubprocessFlowExecutor(
     OrchestratorPaths.FindOrThrow(),
     sp.GetRequiredService<ILogger<SubprocessFlowExecutor>>()));
-builder.Services.AddSingleton<FlowRunner>();
+builder.Services.AddSingleton<RemoteAgents.Host.Runs.FlowRunner>();
 builder.Services.AddOpenApi();
 builder.Services.AddSignalR();
 
-// Composition root for the library: flow dispatch (FlowRegistry + FlowRunner)
+// Composition root for the library: flow dispatch (FlowRegistry + RemoteAgents.Host.Runs.FlowRunner)
 // and any cross-cutting sinks. Agents are constructed by the flows that need
 // them, not resolved here — see RemoteAgentsOptions.
 builder.Services.AddRemoteAgents(_ => { });
@@ -39,6 +42,30 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
 var app = builder.Build();
 app.UseCors();
 app.MapHub<RunsHub>("/hub/runs");
+
+// Populate the in-process FlowRegistry — names match cli/flows/*.cs so
+// the InProcessFlowExecutor's CanHandle resolves to a registered IFlow
+// for the named flows below, falling back to SubprocessFlowExecutor for
+// any other flow name a client POSTs.
+{
+    var flows = app.Services.GetRequiredService<FlowRegistry>();
+    flows.Register(new ClaudeOnlyFlow());
+    flows.Register(new ReviewFlow(
+        name:            "full-review",
+        summary:         "Claude works → project checks → Codex review → commit (push opt-in).",
+        validator:       new OrchestratorValidator(),
+        projectKind:     "changes",
+        validationLabel: "all project checks passed"));
+    flows.Register(new ReviewFlow(
+        name:              "unity-review",
+        summary:           "Claude works → Unity batch-mode compile → Codex review → commit (push opt-in).",
+        validator:         new UnityFullValidator(),
+        projectKind:       "a Unity C# change",
+        validationLabel:   "Unity batch-mode compile passed",
+        isolateValidation: true,
+        progressNote:      " (Unity batch-mode, this can take minutes)",
+        fixDescriptor:     "Unity batch-mode compile"));
+}
 
 // Seed history from disk + mark active-on-shutdown runs as Interrupted.
 using (var scope = app.Services.CreateScope())
@@ -77,7 +104,7 @@ app.MapGet("/projects", () =>
 
 // ---- Flows ------------------------------------------------------------
 
-app.MapGet("/flows", (FlowRunner runner) =>
+app.MapGet("/flows", (RemoteAgents.Host.Runs.FlowRunner runner) =>
 {
     var flowsDir = Path.Combine(runner.OrchestratorRoot, "cli", "flows");
     if (!Directory.Exists(flowsDir)) return Results.Ok(Array.Empty<FlowInfo>());
@@ -109,7 +136,7 @@ app.MapGet("/flows", (FlowRunner runner) =>
 
 // ---- Runs -------------------------------------------------------------
 
-app.MapPost("/runs", (StartRunRequest req, FlowRunner runner) =>
+app.MapPost("/runs", (StartRunRequest req, RemoteAgents.Host.Runs.FlowRunner runner) =>
 {
     if (string.IsNullOrWhiteSpace(req.Project)) return Results.BadRequest(new { error = "project required" });
     if (string.IsNullOrWhiteSpace(req.Flow)) return Results.BadRequest(new { error = "flow required" });
@@ -129,7 +156,7 @@ app.MapGet("/runs/{id:guid}", (Guid id, RunRegistry registry) =>
     return hist is null ? Results.NotFound() : Results.Ok(hist);
 });
 
-app.MapPost("/runs/{id:guid}/cancel", (Guid id, FlowRunner runner) =>
+app.MapPost("/runs/{id:guid}/cancel", (Guid id, RemoteAgents.Host.Runs.FlowRunner runner) =>
 {
     var ok = runner.Cancel(id);
     return ok ? Results.Ok() : Results.NotFound();

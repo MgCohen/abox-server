@@ -75,9 +75,7 @@
                 @{
                     // Pair ToolUse with its matching ToolResult by ToolUseId
                     // so we render ONE log row instead of two stacked cards.
-                    // Unpaired ToolResults (rare — would mean orphan output)
-                    // are skipped here; the ToolUse renders with no result.
-                    var resultsByUseId = _chat.OfType<ChatEvent.ToolResult>()
+                    var resultsByUseId = _chat.OfType<AgentEvent.ToolResult>()
                         .GroupBy(r => r.ToolUseId)
                         .ToDictionary(g => g.Key, g => g.First());
                 }
@@ -85,31 +83,31 @@
                 {
                     @switch (evt)
                     {
-                        case ChatEvent.UserText u:
+                        case AgentEvent.UserText u:
                             <div class="chat-msg chat-user">
                                 <div class="chat-label">You</div>
                                 <div class="chat-body">@u.Text</div>
                             </div>
                             break;
-                        case ChatEvent.AssistantText a:
+                        case AgentEvent.AssistantText a:
                             <div class="chat-msg chat-assistant">
                                 <div class="chat-label">Claude</div>
                                 <div class="chat-body">@a.Text</div>
                             </div>
                             break;
-                        case ChatEvent.Thinking t:
+                        case AgentEvent.Thinking t:
                             <details class="chat-msg chat-thinking">
                                 <summary>Claude thought (@t.Text.Length chars)</summary>
                                 <div class="chat-body">@t.Text</div>
                             </details>
                             break;
-                        case ChatEvent.ToolUse tu:
+                        case AgentEvent.ToolUse tu:
                             <ToolRow Use="tu" Result="@(resultsByUseId.TryGetValue(tu.ToolId, out var r) ? r : null)" />
                             break;
-                        case ChatEvent.ToolResult:
+                        case AgentEvent.ToolResult:
                             // Rendered inline with its ToolUse above; skip.
                             break;
-                        case ChatEvent.Meta m:
+                        case AgentEvent.Meta m:
                             <div class="chat-msg chat-meta">
                                 <span class="chat-label">@m.Tag</span>
                                 @if (!string.IsNullOrEmpty(m.Detail))
@@ -158,7 +156,7 @@
     private RunStreamClient? _stream;
     private CancellationTokenSource? _cts;
     private readonly List<LogLine> _lines = new();
-    private readonly List<ChatEvent> _chat = new();
+    private readonly List<AgentEvent> _chat = new();
     private XtermViewer? _xterm;
     private string? _finalOutput;
     private QuestionSurface? _currentQuestion;
@@ -179,9 +177,9 @@
         _stream = new RunStreamClient(hubUrl);
         await _stream.StartAsync(_cts.Token);
 
-        // Two consumers, one per server-side stream method.
+        // One consumer — chat-content variants and orchestration events
+        // both arrive on the same stream.
         _ = Task.Run(() => ConsumeEventsAsync(_cts.Token));
-        _ = Task.Run(() => ConsumeChatAsync(_cts.Token));
     }
 
     private async Task ConsumeEventsAsync(CancellationToken ct)
@@ -203,24 +201,6 @@
         _summary = await Api.GetRunAsync(Id);
         try { _finalOutput = await Api.GetOutputAsync(Id); } catch { }
         await InvokeAsync(StateHasChanged);
-    }
-
-    private async Task ConsumeChatAsync(CancellationToken ct)
-    {
-        try
-        {
-            await foreach (var evt in _stream!.StreamChatAsync(Id, ct))
-            {
-                _chat.Add(evt);
-                await InvokeAsync(StateHasChanged);
-            }
-        }
-        catch (OperationCanceledException) { }
-        catch (Exception ex)
-        {
-            _chat.Add(new ChatEvent.Meta(DateTimeOffset.UtcNow, "", "stream-error", ex.Message));
-            await InvokeAsync(StateHasChanged);
-        }
     }
 
     private async Task AppendAsync(AgentEvent evt)
@@ -251,6 +231,18 @@
                 };
                 _lines.Add(new LogLine($"[{phase.AgentName}] {phase.Status}: {phase.Detail}", kind));
                 break;
+            // Chat-content variants land on _chat and render via the
+            // conversation panel above.
+            case AgentEvent.UserText:
+            case AgentEvent.AssistantText:
+            case AgentEvent.Thinking:
+            case AgentEvent.ToolUse:
+            case AgentEvent.ToolResult:
+            case AgentEvent.Meta:
+                _chat.Add(evt);
+                break;
+            // ProviderSessionAttached / NonInteractiveViolation: silent —
+            // server-side state mutation, UI doesn't render directly.
         }
     }
 

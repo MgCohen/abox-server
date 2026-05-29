@@ -82,5 +82,6 @@ public sealed class RunRegistry
         r.Id, r.Project, r.Flow, r.Prompt, r.Status,
         r.StartedAt, r.EndedAt, r.SessionId, r.SessionDir,
         r.ExitCode, r.FailureReason,
-        ProviderSession: r.ClaudeSessionId is { } cs ? new ProviderSessionRef("claude", cs) : null);
+        ProviderSession: r.ProviderSession
+            ?? (r.ClaudeSessionId is { } cs ? new ProviderSessionRef("claude", cs) : null));
 }

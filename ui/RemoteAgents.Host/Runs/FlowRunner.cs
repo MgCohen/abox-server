@@ -42,17 +42,19 @@ public sealed class FlowRunner
             Args = args,
             StartedAt = DateTimeOffset.UtcNow,
             Sink = new ChannelSink(),
-            Chat = new ChatChannel(),
             Cts = new CancellationTokenSource(),
             Status = RunStatus.Starting,
         };
 
-        // Resolve project dir up front — in-process needs it, subprocess
-        // uses it for the JSONL tailer's project encoding.
+        // Resolve project dir up front — in-process needs it.
         try { run.ProjectDir = ProjectRegistry.Resolve(project); }
         catch (Exception ex) { _log.LogWarning(ex, "Could not resolve project {Project}", project); }
 
         _registry.Register(run);
+
+        // Observe the run's event stream so AgentEvent.ProviderSessionAttached
+        // lands on Run.ProviderSession without the executor needing to know.
+        _ = RunStateSink.StartAsync(run, run.Cts.Token);
 
         _ = Task.Run(() => ExecuteAsync(run));
 
@@ -88,7 +90,6 @@ public sealed class FlowRunner
         finally
         {
             run.Sink.Complete();
-            run.Chat.Complete();
             try
             {
                 _registry.PromoteToHistory(run);

@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.SignalR.Client;
-using RemoteAgents.Chat;
 using RemoteAgents.Events;
 
 namespace RemoteAgents.UI.Components.Api;
@@ -10,7 +9,9 @@ namespace RemoteAgents.UI.Components.Api;
 //
 // AgentEvent is the library record from RemoteAgents.Core.Events — the
 // same one the Host emits — so the entire round-trip is statically
-// typed without manual JSON code.
+// typed without manual JSON code. Chat-content (AssistantText, UserText,
+// Thinking, ToolUse, ToolResult, Meta) rides this same channel since
+// the Phase 6 fold.
 public sealed class RunStreamClient : IAsyncDisposable
 {
     private readonly HubConnection _conn;
@@ -27,11 +28,6 @@ public sealed class RunStreamClient : IAsyncDisposable
 
     public IAsyncEnumerable<AgentEvent> StreamAsync(Guid runId, CancellationToken ct = default) =>
         _conn.StreamAsync<AgentEvent>("Stream", runId, ct);
-
-    // Structured Claude session-JSONL stream — typed assistant/tool/thinking
-    // events rendered by the UI without going through terminal emulation.
-    public IAsyncEnumerable<ChatEvent> StreamChatAsync(Guid runId, CancellationToken ct = default) =>
-        _conn.StreamAsync<ChatEvent>("StreamChat", runId, ct);
 
     public ValueTask DisposeAsync() => _conn.DisposeAsync();
 }

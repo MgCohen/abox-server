@@ -16,12 +16,11 @@ public sealed class Run
     public required string[] Args { get; init; }
     public required DateTimeOffset StartedAt { get; init; }
     public required ChannelSink Sink { get; init; }
-    public required ChatChannel Chat { get; init; }
     public required CancellationTokenSource Cts { get; init; }
 
     // Absolute path of the project the flow runs against. Resolved by
-    // ProjectRegistry when the run starts, used by ClaudeJsonlTailer to
-    // locate Claude's session JSONL.
+    // ProjectRegistry when the run starts. In-process executor needs it
+    // to construct the FlowContext.
     public string? ProjectDir { get; set; }
 
     public RunStatus Status { get; set; } = RunStatus.Pending;
@@ -29,28 +28,26 @@ public sealed class Run
     public string? SessionDir { get; set; }
 
     // Claude's own session UUID, sniffed from the cmd.exe echo of the
-    // `claude --session-id <uuid> ...` launch line. This is the filename
-    // (sans .jsonl) Claude writes to under ~/.claude/projects/<encoded>/.
-    // Distinct from our orchestrator-level SessionId, which is a
-    // timestamp-slug used as the on-disk sessions/ directory name.
+    // `claude --session-id <uuid> ...` launch line by the subprocess
+    // executor. Deleted in Phase 6 step 4 — the provider session id
+    // arrives via AgentEvent.ProviderSessionAttached now (see
+    // ProviderSession below).
     public string? ClaudeSessionId { get; set; }
+
+    // Populated by RunStateSink when an AgentEvent.ProviderSessionAttached
+    // event flows through the run's sink. The single source of truth for
+    // the provider-side session ref the UI surfaces via RunRecord.
+    public ProviderSessionRef? ProviderSession { get; set; }
+
     public DateTimeOffset? EndedAt { get; set; }
     public int? ExitCode { get; set; }
     public string? FailureReason { get; set; }
 
-    // FlowRunner internal: the transcript tailer task, started when the
-    // session-id line is sniffed from child stdout. ExecuteAsync awaits
-    // this AFTER setting EndedAt so the tailer's "is the run done?" exit
-    // condition can fire — avoids the deadlock where ReadStdoutAsync
-    // waits on the tailer which waits on EndedAt which waits on
-    // ReadStdoutAsync completing.
+    // SubprocessFlowExecutor internal: the transcript tailer task, started
+    // when the session-id line is sniffed from child stdout. ExecuteAsync
+    // awaits this AFTER setting EndedAt so the tailer's "is the run done?"
+    // exit condition can fire.
     public Task? TailerTask { get; set; }
-
-    // FlowRunner internal: the Claude session JSONL tailer task. Started
-    // alongside the transcript tailer once SessionId is sniffed. Awaited
-    // after the run process exits so any final flushes from Claude's
-    // writer get drained before the chat stream is marked complete.
-    public Task? ChatTailerTask { get; set; }
 
     // C2 forward-compat: when the agent emits an AgentQuestion (NeedsInput),
     // the UI POSTs a chosen response here. v1 just records it on the run

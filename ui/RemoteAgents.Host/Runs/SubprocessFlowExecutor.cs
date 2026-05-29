@@ -42,14 +42,13 @@ public sealed class SubprocessFlowExecutor : IFlowExecutor
 
         run.Status = RunStatus.Running;
 
-        // Start the Claude JSONL tailer immediately — it watches the
-        // projects/<encoded>/ dir for the new .jsonl file Claude
-        // creates, no UUID handshake needed. (Lives until step 4.)
-        if (run.ProjectDir is not null)
-        {
-            var chatTailer = new ClaudeJsonlTailer(run, _log);
-            run.ChatTailerTask = Task.Run(() => chatTailer.RunAsync(run.Cts.Token));
-        }
+        // The chat-content events the Host used to tail Claude's own JSONL
+        // for (assistant text / thinking / tool use) now ride out through
+        // the subprocess's transcript.jsonl as AgentEvent variants — the
+        // lib-side ClaudeJsonlEmitter inside ClaudeAgent.DriveAsync emits
+        // them, JsonlSink writes them, TailTranscriptAsync below
+        // deserialises them, and the broadcaster forwards them to clients.
+        // No separate Host-owned tailer needed.
 
         var stdoutTask = ReadStdoutAsync(proc, run);
         var stderrTask = ReadStderrAsync(proc, run);
@@ -66,18 +65,13 @@ public sealed class SubprocessFlowExecutor : IFlowExecutor
         run.ExitCode = proc.ExitCode;
         run.EndedAt = DateTimeOffset.UtcNow;
 
-        // EndedAt is now set — the tailer's "is the run done?" check
-        // can return true on its next loop iteration. Await both so we
-        // don't promote-to-history with tails still in flight.
+        // EndedAt is now set — the tailer's "is the run done?" check can
+        // return true on its next loop iteration. Await so we don't
+        // promote-to-history with the tail still in flight.
         if (run.TailerTask is not null)
         {
             try { await run.TailerTask; }
             catch (Exception ex) { _log.LogWarning(ex, "Transcript tailer fault for run {RunId}", run.Id); }
-        }
-        if (run.ChatTailerTask is not null)
-        {
-            try { await run.ChatTailerTask; }
-            catch (Exception ex) { _log.LogWarning(ex, "Chat tailer fault for run {RunId}", run.Id); }
         }
 
         run.Status = run.Cts.IsCancellationRequested
