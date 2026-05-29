@@ -109,6 +109,23 @@ app.MapPost("/runs/{id:guid}/cancel", (Guid id, FlowRunner runner) =>
     return ok ? Results.Ok() : Results.NotFound();
 });
 
+// Forward-compat for the AgentQuestion answer-back loop. The library's v2
+// contract for routing responses into a paused agent is not yet defined
+// (see PLANS/interaction-modes.md Q10), so v1 just records the choice on
+// the run. The wire shape is locked now so the UI can be built against
+// it without changing later.
+app.MapPost("/runs/{id:guid}/respond", (Guid id, RespondRequest req, RunRegistry registry) =>
+{
+    var run = registry.Get(id);
+    if (run is null) return Results.NotFound();
+    if (string.IsNullOrWhiteSpace(req.Choice)) return Results.BadRequest(new { error = "choice required" });
+
+    run.PendingQuestionCorrelationId = req.CorrelationId;
+    run.PendingResponse = req.Choice;
+    run.RespondedAt = DateTimeOffset.UtcNow;
+    return Results.Accepted();
+});
+
 app.Run();
 
 static RunSummary ToSummary(Run run) => new(

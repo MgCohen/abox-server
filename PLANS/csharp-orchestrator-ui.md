@@ -30,12 +30,14 @@ at `1e76acc cleanup remote-agents/ and harden ClaudeAgent teardown`).
 | Phase | Status | Touches existing code? |
 |---|---|---|
 | C0 — Decision capture + plan doc | ✅ this file | No |
-| C1 — `RemoteAgents.Host` (ASP.NET + ChannelSink + FlowRunner + REST/SignalR) | ⏸ | No |
-| C2 — Interactive-prompt seam (consume existing `AgentQuestion` + `InteractionMode.Interactive`) | ⏸ | No |
+| C1 — `RemoteAgents.Host` (ASP.NET + ChannelSink + FlowRunner + REST/SignalR) | ✅ C1.1–C1.4 landed | No |
+| C2 — Interactive-prompt seam (partial — surface + record; answer-back routing blocked on library v2) | 🟡 | No |
 | C3 — Tailscale binding + nssm always-on | ⏸ | No (config only) |
 | C4 — `UI.Components` Razor lib + `UI.Web` Blazor WASM | ⏸ | No |
 | C5 — `UI.Maui` Blazor Hybrid (Win/Android/iOS) | ⏸ | No |
 | C6 — Run persistence (SQLite or JSON) | ⏸ | No |
+
+**C2 partial state**: `AgentQuestion`/`NeedsInput` events already flow through `transcript.jsonl` → `ChannelSink` → SignalR with no new Host code (the library does the detection at hook-parse time). The `POST /runs/{id}/respond` endpoint and `Run.PendingResponse` field are scaffolded so the UI can be built against the locked wire shape. **Answer-back routing into a paused agent is deferred to library v2** ([`interaction-modes.md`](interaction-modes.md) Q10): the design hasn't picked between TUI keypress / `--resume` reply / file-poll / pipe yet, so Host can't pick a transport unilaterally without forcing a library change.
 
 **Load-bearing constraints**:
 - **Additive only.** No edits to any file under `remote-agents-dotnet/src/`,

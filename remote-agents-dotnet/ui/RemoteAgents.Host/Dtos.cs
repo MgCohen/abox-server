@@ -10,6 +10,8 @@ public sealed record FlowInfo(string Name, string? Description);
 
 public sealed record StartRunRequest(string Project, string Flow, string Prompt, string[]? Args);
 
+public sealed record RespondRequest(string? CorrelationId, string Choice);
+
 public sealed record RunSummary(
     Guid Id,
     string Project,
