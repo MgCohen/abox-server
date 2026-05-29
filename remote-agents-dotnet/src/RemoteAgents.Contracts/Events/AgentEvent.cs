@@ -26,6 +26,12 @@ namespace RemoteAgents.Events;
 [JsonDerivedType(typeof(Phase), "Phase")]
 [JsonDerivedType(typeof(NonInteractiveViolation), "NonInteractiveViolation")]
 [JsonDerivedType(typeof(ProviderSessionAttached), "ProviderSessionAttached")]
+[JsonDerivedType(typeof(AssistantText), "AssistantText")]
+[JsonDerivedType(typeof(UserText), "UserText")]
+[JsonDerivedType(typeof(Thinking), "Thinking")]
+[JsonDerivedType(typeof(ToolUse), "ToolUse")]
+[JsonDerivedType(typeof(ToolResult), "ToolResult")]
+[JsonDerivedType(typeof(Meta), "Meta")]
 public abstract record AgentEvent(DateTimeOffset At, string AgentName)
 {
     public sealed record Started(DateTimeOffset At, string AgentName, string Prompt, string? SessionId)
@@ -62,5 +68,34 @@ public abstract record AgentEvent(DateTimeOffset At, string AgentName)
     // ignore it. Replaces the ClaudeJsonlTailer's stdout-sniffing path.
     public sealed record ProviderSessionAttached(
         DateTimeOffset At, string AgentName, ProviderSessionRef Session)
+        : AgentEvent(At, AgentName);
+
+    // Structured chat-content events parsed from the provider's per-session
+    // transcript (today: Claude's ~/.claude/projects/<encoded>/<id>.jsonl).
+    // Emitted by ClaudeJsonlEmitter from inside ClaudeAgent.DriveAsync so
+    // the live UI gets typed assistant/tool/thinking content alongside the
+    // PTY StreamChunks, on one channel. TurnUuid is the provider-side
+    // message id; rendering pairs ToolUse + ToolResult by ToolUseId.
+    public sealed record AssistantText(DateTimeOffset At, string AgentName, string TurnUuid, string Text)
+        : AgentEvent(At, AgentName);
+
+    public sealed record UserText(DateTimeOffset At, string AgentName, string TurnUuid, string Text)
+        : AgentEvent(At, AgentName);
+
+    public sealed record Thinking(DateTimeOffset At, string AgentName, string TurnUuid, string Text)
+        : AgentEvent(At, AgentName);
+
+    public sealed record ToolUse(DateTimeOffset At, string AgentName, string TurnUuid, string ToolId, string ToolName, string InputJson)
+        : AgentEvent(At, AgentName);
+
+    public sealed record ToolResult(DateTimeOffset At, string AgentName, string TurnUuid, string ToolUseId, bool IsError, string Content)
+        : AgentEvent(At, AgentName);
+
+    // Catch-all for things we don't model yet (summary lines, system events,
+    // unknown content block types). Keeps the parser permissive.
+    // Field is "Tag" not "Kind" — "Kind" collides with the polymorphism
+    // discriminator property name and STJ silently disables polymorphism
+    // for the entire base type when any derived type has the collision.
+    public sealed record Meta(DateTimeOffset At, string AgentName, string TurnUuid, string Tag, string Detail)
         : AgentEvent(At, AgentName);
 }

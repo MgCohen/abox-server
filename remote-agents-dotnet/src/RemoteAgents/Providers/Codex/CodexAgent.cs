@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Threading.Channels;
 using RemoteAgents.Events;
 using RemoteAgents.Primitives;
+using RemoteAgents.Runs;
 
 namespace RemoteAgents.Agents;
 
@@ -112,7 +113,16 @@ public class CodexAgent : Agent
             if (extractedSessionId is null)
             {
                 var found = ScanForSessionId(e.Data);
-                if (found is not null) extractedSessionId = found;
+                if (found is not null)
+                {
+                    extractedSessionId = found;
+                    // Fire-and-forget — the channel consumer (pump) is what
+                    // serialises sink writes for chunks; provider-session
+                    // is a one-shot announcement, ordering vs StreamChunks
+                    // is acceptable best-effort.
+                    _ = Sink.EmitAsync(new AgentEvent.ProviderSessionAttached(
+                        DateTimeOffset.UtcNow, Name, new ProviderSessionRef("codex", found)));
+                }
             }
             chunks.Writer.TryWrite(e.Data + "\n");
         };
