@@ -110,8 +110,17 @@ public class ClaudeAgent : Agent
 
         // 1. Launch claude and wait for its splash to settle. cmd.exe's
         //    stdin buffers, so no boot dwell needed before the WriteLine.
+        //    The minWaitMs floor is load-bearing: there's a ~2s silent gap
+        //    between cmd.exe echoing the `claude` command and claude.exe
+        //    starting to paint, which a pure idle-only wait will mistake
+        //    for a settled TUI and proceed to type the prompt before
+        //    claude is ready to read it.
         await session.WriteLineAsync(launchLine, dct);
-        await session.WaitIdleAsync(Options.LaunchSettleIdleMs, maxWaitMs: 8_000, ct: dct);
+        await session.WaitIdleAsync(
+            Options.LaunchSettleIdleMs,
+            maxWaitMs: 8_000,
+            minWaitMs: Options.LaunchSettleMinWaitMs,
+            ct: dct);
 
         // 2. Startup dialog dismissal (trust folder / bypass warning).
         await MaybeDismissDialogAsync(session, dct);

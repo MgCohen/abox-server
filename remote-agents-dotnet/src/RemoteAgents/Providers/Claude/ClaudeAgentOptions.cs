@@ -3,9 +3,17 @@ namespace RemoteAgents.Agents;
 public sealed record ClaudeAgentOptions(
     // Idle threshold for the launch settle: after typing the `claude ...`
     // line, wait until the PTY has been quiet this long before checking
-    // for the trust/bypass dialog. Replaces the fixed-duration InitialDwellMs
-    // — content-aware, returns as soon as claude's splash stops emitting.
+    // for the trust/bypass dialog. Returns as soon as claude's splash
+    // stops emitting AND LaunchSettleMinWaitMs has elapsed.
     int LaunchSettleIdleMs = 1000,
+    // Floor for the launch settle: there's a ~2s silent gap between
+    // cmd.exe echoing the `claude` command and claude.exe starting to
+    // paint its splash. A pure idle-only wait trips inside that gap and
+    // the orchestrator then types the prompt into a PTY that claude is
+    // not yet reading. 3.5s comfortably covers the observed gap on a
+    // warm machine; cold-start can be longer but is still bounded by
+    // the 8s maxWait inside ClaudeAgent.
+    int LaunchSettleMinWaitMs = 3500,
     // Idle threshold for the response settle: after submitting the prompt,
     // wait until Claude has been quiet this long before treating the reply
     // as complete.

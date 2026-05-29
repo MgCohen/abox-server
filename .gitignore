@@ -1,3 +1,11 @@
 # General
 node_modules/
 *.log
+
+# Build artifacts (MSBuild per-project output dirs — present at
+# remote-agents-dotnet/artifacts/ and ui/artifacts/)
+artifacts/
+**/artifacts/
+
+# Claude Code project state (per-user: launch.json, settings.local.json, skills)
+.claude/

@@ -92,19 +92,32 @@ public sealed class PtySession : IAsyncDisposable, IDisposable
     // Spin until the reader has been idle for `idleThresholdMs` or we hit
     // `maxWaitMs`. Polls every `pollMs` (default 100ms — fine-grained
     // enough that scripted callers with small idle thresholds don't
-    // pay an extra poll cycle of latency). Returns true if the idle
-    // threshold was reached, false if maxWait fired first.
+    // pay an extra poll cycle of latency).
+    //
+    // `minWaitMs` is a floor: idle is not considered "reached" until at
+    // least this long has elapsed since entry. Use it when the wait
+    // straddles a known pre-output silent gap (e.g. process startup
+    // between command echo and first paint) that would otherwise look
+    // like a settled TUI. 0 (default) preserves the old behavior.
+    //
+    // Returns true if the idle threshold was reached, false if maxWait
+    // fired first.
     public async Task<bool> WaitIdleAsync(
         int idleThresholdMs,
         int maxWaitMs,
         int pollMs = 100,
+        int minWaitMs = 0,
         CancellationToken ct = default)
     {
-        var deadline = DateTimeOffset.UtcNow.AddMilliseconds(maxWaitMs);
+        var entry = DateTimeOffset.UtcNow;
+        var deadline = entry.AddMilliseconds(maxWaitMs);
+        var floor = entry.AddMilliseconds(minWaitMs);
         while (DateTimeOffset.UtcNow < deadline)
         {
             await Task.Delay(pollMs, ct);
-            if ((DateTimeOffset.UtcNow - _lastChunkAt).TotalMilliseconds > idleThresholdMs)
+            var now = DateTimeOffset.UtcNow;
+            if (now < floor) continue;
+            if ((now - _lastChunkAt).TotalMilliseconds > idleThresholdMs)
                 return true;
         }
         return false;
