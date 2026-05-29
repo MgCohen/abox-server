@@ -1,0 +1,11 @@
+<Project>
+
+  <!-- Centralize all bin/ and obj/ output under ui/artifacts/.
+       Mirrors remote-agents-dotnet/Directory.Build.props so the UI tree
+       keeps its own artifacts folder independent of the library.
+       See: https://learn.microsoft.com/en-us/dotnet/core/sdk/artifacts-output -->
+  <PropertyGroup>
+    <UseArtifactsOutput>true</UseArtifactsOutput>
+  </PropertyGroup>
+
+</Project>

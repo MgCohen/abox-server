@@ -42,6 +42,13 @@ dotnet test
 
 Windows-only in v1 (see Q12 in the build plan).
 
+## Sibling: UI
+
+The mobile / web / desktop front-end lives in [`../ui/`](../ui/) as a
+separate tree with its own solution. It depends on this library via
+`ProjectReference`; this library has no knowledge of `ui/`. The two can
+be iterated independently — building this solution does not touch the UI.
+
 ## Docs
 
 - [`docs/usage.md`](docs/usage.md) — day-to-day commands, writing flows / validators / named agents.

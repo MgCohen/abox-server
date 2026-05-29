@@ -1,34 +1,35 @@
-# RemoteAgents UI track
+# RemoteAgents UI
 
-The mobile / web / desktop front-end for the C# orchestrator. Lives entirely
-under `remote-agents-dotnet/ui/`; the rest of the orchestrator is untouched.
+Mobile / web / desktop front-end for the C# orchestrator. Sibling to
+[`../remote-agents-dotnet/`](../remote-agents-dotnet/) — the UI iterates
+independently from the library and pulls it in by `ProjectReference`.
 
-See [`PLANS/csharp-orchestrator-ui.md`](../../PLANS/csharp-orchestrator-ui.md) for the design,
+See [`../PLANS/csharp-orchestrator-ui.md`](../PLANS/csharp-orchestrator-ui.md) for the design,
 phasing, and decisions.
 
 ## Projects
 
 | Project | Role |
 |---|---|
-| `RemoteAgents.Host` | ASP.NET service exposing REST + SignalR over the existing orchestrator |
+| `RemoteAgents.Host` | ASP.NET service exposing REST + SignalR over the orchestrator library |
 | `RemoteAgents.UI.Components` | Shared Razor class library used by both web and MAUI shells |
 | `RemoteAgents.UI.Web` | Blazor WebAssembly app, served by Host |
 | `RemoteAgents.UI.Maui` | MAUI Blazor Hybrid shell for Windows + Android (deferred until C5) |
 
-The second solution file `RemoteAgents.UI.slnx` bundles these with the
-existing `src/*` + `tests/*` projects. The library's own `RemoteAgents.slnx`
-stays untouched.
+The library is referenced via `..\..\remote-agents-dotnet\src\RemoteAgents\RemoteAgents.csproj`.
+`RemoteAgents.UI.slnx` bundles the four UI projects with the library + tests
+as references (Go-To-Definition works across the boundary).
 
 ## Dev loop
 
 ```pwsh
-# from remote-agents-dotnet/
+# from the ui/ folder
 dotnet build RemoteAgents.UI.slnx
-dotnet run --project ui/RemoteAgents.Host --launch-profile http
+dotnet run --project RemoteAgents.Host --launch-profile http
 # Host listens on http://localhost:5062
 ```
 
-REST endpoints (full list in `ui/RemoteAgents.Host/RemoteAgents.Host.http`):
+REST endpoints (full list in `RemoteAgents.Host/RemoteAgents.Host.http`):
 
 - `GET  /health`
 - `GET  /projects` — from `<repo>/projects.json`
@@ -36,14 +37,14 @@ REST endpoints (full list in `ui/RemoteAgents.Host/RemoteAgents.Host.http`):
 - `POST /runs`     — spawns the flow, returns `RunSummary` (202)
 - `GET  /runs` / `GET /runs/{id}` / `POST /runs/{id}/cancel`
 - `POST /runs/{id}/respond` — scaffolded (answer-back routing pending
-  library v2; see [`interaction-modes.md`](../../PLANS/interaction-modes.md) Q10)
+  library v2; see [`../PLANS/interaction-modes.md`](../PLANS/interaction-modes.md) Q10)
 
 SignalR streaming hub: `/hub/runs`, method `Stream(runId)`
 returning `ChannelReader<AgentEvent>`.
 
 ## Always-on (Windows service + Tailscale)
 
-Phase C3 of the plan. Scripts under `ui/scripts/`:
+Phase C3 of the plan. Scripts under `scripts/`:
 
 | Script | What |
 |---|---|
@@ -61,8 +62,8 @@ choco install nssm                  # the service manager
 Install (Administrator PowerShell):
 
 ```pwsh
-.\ui\scripts\configure-power.ps1
-.\ui\scripts\install-host-service.ps1
+.\scripts\configure-power.ps1
+.\scripts\install-host-service.ps1
 ```
 
 Verify from the laptop:

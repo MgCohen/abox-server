@@ -398,15 +398,20 @@ This is a deliberate trade. Unit tests guard the deterministic pieces; smokes gu
 
 ---
 
-## 10. UI seam (for later)
+## 10. UI seam
 
-The orchestrator runs in-process. There is no daemon, no IPC, no HTTP. A UI attaches by registering a `ChannelSink` — an `IEventSink` over `System.Threading.Channels<AgentEvent>` — and reading from the channel.
+The library itself runs in-process with no daemon, no IPC, no HTTP. A consumer attaches by registering a `ChannelSink` — an `IEventSink` over `System.Threading.Channels<AgentEvent>` — and reading from the channel.
 
-For **MAUI Blazor Hybrid**: UI project takes `ProjectReference` on `RemoteAgents.csproj`. Pass `AgentEvent` instances directly to Blazor components.
+The HTTP / WebSocket surface lives **outside** this library, in the sibling [`../../ui/`](../../ui/) tree:
 
-For **Tauri 2 + React**: write a thin `RemoteAgents.Host` ASP.NET project that wraps a flow runner in HTTP/JSON-RPC + WebSocket for live events.
+- `ui/RemoteAgents.Host/` — ASP.NET wrapper exposing REST + SignalR over the library. Spawns flows as child processes, tails their `transcript.jsonl`, re-emits as `AgentEvent` over `ChannelSink`.
+- `ui/RemoteAgents.UI.Components/` — shared Razor components.
+- `ui/RemoteAgents.UI.Web/` — Blazor WebAssembly client.
+- `ui/RemoteAgents.UI.Maui/` — MAUI Blazor Hybrid shell (deferred).
 
-Either path: **don't change the library's public types** to accommodate the UI. If a future change is needed (e.g. making `AgentEvent` more serialization-friendly), it's a library decision, not a UI patch.
+The `ui/` tree depends on this library by `ProjectReference`. **This library has no knowledge of `ui/`** — `RemoteAgents.slnx` builds cleanly without any UI project present.
+
+Rule: **don't change the library's public types to accommodate the UI.** If a future change is needed (e.g. making `AgentEvent` more serialization-friendly), it's a library decision; the UI adapts.
 
 ---
 

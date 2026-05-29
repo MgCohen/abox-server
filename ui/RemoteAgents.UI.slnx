@@ -1,0 +1,16 @@
+<Solution>
+  <!-- UI solution. Library + tests appear as references so the IDE can
+       Go-To-Definition into them; they live in the sibling
+       remote-agents-dotnet/ tree and are owned by RemoteAgents.slnx. -->
+  <Folder Name="/lib/">
+    <Project Path="../remote-agents-dotnet/src/RemoteAgents/RemoteAgents.csproj" />
+    <Project Path="../remote-agents-dotnet/src/NamedAgents/NamedAgents.csproj" />
+    <Project Path="../remote-agents-dotnet/tests/RemoteAgents.Tests/RemoteAgents.Tests.csproj" />
+  </Folder>
+  <Folder Name="/ui/">
+    <Project Path="RemoteAgents.Host/RemoteAgents.Host.csproj" />
+    <Project Path="RemoteAgents.UI.Components/RemoteAgents.UI.Components.csproj" />
+    <Project Path="RemoteAgents.UI.Web/RemoteAgents.UI.Web.csproj" />
+    <Project Path="RemoteAgents.UI.Maui/RemoteAgents.UI.Maui.csproj" />
+  </Folder>
+</Solution>

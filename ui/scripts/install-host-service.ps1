@@ -21,7 +21,7 @@
 param(
     [string] $ServiceName = "RemoteAgentsHost",
     [int]    $Port = 5050,
-    [string] $RepoRoot = (Resolve-Path "$PSScriptRoot\..\..\..").Path,
+    [string] $RepoRoot = (Resolve-Path "$PSScriptRoot\..\..").Path,
     [switch] $SkipPublish
 )
 
@@ -45,8 +45,8 @@ Write-Host "Tailscale IP: $tailnetIp"
 
 # --- 2. Publish --------------------------------------------------------
 
-$hostProj = Join-Path $RepoRoot "remote-agents-dotnet\ui\RemoteAgents.Host\RemoteAgents.Host.csproj"
-$publishDir = Join-Path $RepoRoot "remote-agents-dotnet\ui\RemoteAgents.Host\publish"
+$hostProj = Join-Path $RepoRoot "ui\RemoteAgents.Host\RemoteAgents.Host.csproj"
+$publishDir = Join-Path $RepoRoot "ui\RemoteAgents.Host\publish"
 
 if (-not $SkipPublish) {
     Write-Host "Publishing $hostProj → $publishDir"
