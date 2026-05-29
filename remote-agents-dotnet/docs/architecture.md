@@ -44,7 +44,7 @@ Bottom-up. Each layer only depends on the layers below it. The folder structure 
 │  1. Core — abstractions + reusable primitives, no vendor coupling│
 │     Agents/      abstract Agent (sealed RunAsync lifecycle),     │
 │                  AgentResult, AgentRunRequest                    │
-│     Events/      AgentEvent (5 cases) · IEventSink · ConsoleSink/│
+│     Events/      AgentEvent (6 cases) · IEventSink · ConsoleSink/│
 │                  JsonlSink / CompositeSink / NoOpSink            │
 │     Pty/         PtySession, AnsiHelpers, PtyExtensions          │
 │     Primitives/  GitOps · RunCommand · FsDiff · ProjectRegistry  │
@@ -69,7 +69,7 @@ Abstractions + reusable primitives. No vendor knowledge. The folder layout:
   - `RepoRoot` / `Shell` — walk-up helpers and a Windows-quoting helper.
 - **`Pty/`** — `PtySession` (RAII over Porta.Pty), `AnsiHelpers.StripAnsi` (regex strip for parsing TUI buffers), `PtyExtensions.ExitCodeOrNull` (wraps Porta.Pty's throw-happy `ExitCode` getter).
 - **`Agents/`** — `abstract class Agent` (sealed `RunAsync` lifecycle), plus `AgentResult` and `AgentRunRequest`. The abstraction; concrete agents live in `Providers/`.
-- **`Events/`** — `AgentEvent` (5-case discriminated record), `IEventSink`, and the vendor-agnostic sinks (`ConsoleSink`, `JsonlSink`, `NoOpSink`, `CompositeSink`, plus `EventSinkExtensions` for `PhaseStart/Ok/Fail/Info` sugar).
+- **`Events/`** — `AgentEvent` (6-case discriminated record), `IEventSink`, and the vendor-agnostic sinks (`ConsoleSink`, `JsonlSink`, `NoOpSink`, `CompositeSink`, plus `EventSinkExtensions` for `PhaseStart/Ok/Fail/Info` sugar).
 - **`Sessions/`** — `Session.Start(...)` creates `sessions/<isoTs>-<slug>/` and tracks `SessionMeta` until `End(result, failureReason?)`. JSON shape lives in `SessionJsonContext` (source-gen).
 - **`Validation/`** — `IValidator` and `ValidationResult`. The contract; concrete validators live in `Providers/`.
 
@@ -109,17 +109,17 @@ Invariants:
 - **`Failed` always fires on exception**, including when the caller's `CancellationToken` was the cause — the emit uses `CancellationToken.None` so the event survives the cancellation.
 - **Successful runs go Started → (StreamChunk | DialogDismissed)\* → Completed.**
 
-The `AgentEvent` vocabulary is **deliberately small**:
+The `AgentEvent` vocabulary is **deliberately small** — six cases, five from the agent's lifecycle and one (`Phase`) for the flow's own step markers:
 
 ```csharp
 public abstract record AgentEvent(DateTimeOffset At, string AgentName)
 {
-    public sealed record Started(...)         : AgentEvent(...);
+    public sealed record Started(...)         : AgentEvent(...);   // agent lifecycle
     public sealed record StreamChunk(...)     : AgentEvent(...);
     public sealed record DialogDismissed(...) : AgentEvent(...);
     public sealed record Completed(...)       : AgentEvent(...);
     public sealed record Failed(...)          : AgentEvent(...);
-    public sealed record Phase(...)           : AgentEvent(...);  // flow-level phase markers (start/ok/fail/info)
+    public sealed record Phase(...)           : AgentEvent(...);   // flow-level phase markers (start/ok/fail/info)
 }
 ```
 
@@ -223,63 +223,65 @@ Build output is centralized via `Directory.Build.props` (`<UseArtifactsOutput>tr
 
 ## 4. Anatomy of a run
 
-What `dotnet run cli/flows/full-review.cs gear-engine "..."` does, step by step:
+What `dotnet run cli/flows/full-review.cs gear-engine "..."` does, step by step. The flow file itself is the script — every numbered step below is a line or short block in [`full-review.cs`](../cli/flows/full-review.cs), no hidden pipeline.
 
 ```
-1. SubscriptionGuard.CheckAsync()
-   ├─ refuse if ANTHROPIC_API_KEY | CLAUDE_API_KEY | OPENAI_API_KEY set
-   └─ refuse if `claude --version` / `codex --version` nonzero
+ 1. FlowBootstrap.StartAsync(args, "full-review")
+    ├─ parse <project> "<prompt>" [--push]
+    ├─ SubscriptionGuard.CheckAsync()
+    │   ├─ refuse if ANTHROPIC_API_KEY | CLAUDE_API_KEY | OPENAI_API_KEY set
+    │   └─ refuse if `claude --version` / `codex --version` nonzero
+    ├─ ProjectRegistry.Resolve("gear-engine") → "C:/Unity/Gear-Engine"
+    ├─ Session.Start(...) → sessions/<ts>-<slug>/{prompt.txt, transcript.jsonl, meta.json}
+    └─ Sink = Composite(ConsoleSink, JsonlSink, ProviderJsonlIngestSink)
 
-2. ProjectRegistry.Resolve("gear-engine") → "C:/Unity/Gear-Engine"
+ 2. ctx.EnsureCleanTreeAsync()  → bail if dirty
 
-3. Session.Start(...)
-   └─ writes sessions/<ts>-<slug>/{prompt.txt, transcript.jsonl, meta.json}
+ 3. claude.RunAsync(userPrompt, sessionId=null, projectDir)
+    ├─ Sink.EmitAsync(Started)
+    ├─ ExecuteAsync:
+    │   ├─ Porta.Pty spawns cmd.exe in projectDir, env-scrub ANTHROPIC_*/CLAUDE_*
+    │   ├─ Reader task → emits StreamChunk per buffer
+    │   ├─ Write `claude --session-id <uuid> --permission-mode acceptEdits\r`
+    │   ├─ Dwell, then DetectStartupDialog(buf) → maybe emit DialogDismissed
+    │   ├─ Write prompt + \r
+    │   ├─ session.WaitIdleAsync(IdleThresholdMs, MaxWaitMs) → settle on quiet PTY
+    │   └─ Write /exit\r, exit\r, WaitForExit
+    └─ Sink.EmitAsync(Completed(SessionId, ExitCode, OutputChars))
+    ├─ ProviderJsonlIngestSink on Completed:
+    │   └─ copy ~/.claude/projects/<encoded-cwd>/<uuid>.jsonl → session/claude-turn-1.jsonl
 
-4. GitOps.IsDirtyAsync() → bail if dirty
+ 4. Loops.ValidateAndFixAsync(claude, validator, work, projectDir, sink, maxAttempts: 3)
+    ├─ for attempt 1..N:
+    │   ├─ validator.ValidateAsync(projectDir) → ValidationResult { Ok, Summary, Errors }
+    │   └─ if !Ok: claude.RunAsync(fixPrompt, sessionId=<previous>, projectDir)
+    └─ returns ValidateAndFixResult { Ok, LastResult, LastValidation }
+    [unity-review wraps this in: await using var iso = await IsolationScope.BeginAsync(...)
+     which snapshots changed files at Begin and reverts everything else at Dispose]
 
-5. CompositeSink wires ConsoleSink + JsonlSink + ProviderJsonlIngestSink
+ 5. GitOps.DiffAsync(projectDir) → empty? End("no-changes"); else continue.
 
-6. ClaudeAgent.RunAsync(prompt, sessionId=null, projectDir)
-   ├─ Sink.EmitAsync(Started)
-   ├─ ExecuteAsync:
-   │   ├─ Porta.Pty spawns cmd.exe in projectDir, env-scrub ANTHROPIC_*/CLAUDE_*
-   │   ├─ Reader task → emits StreamChunk per buffer
-   │   ├─ Write `claude --session-id <uuid> --permission-mode acceptEdits\r`
-   │   ├─ Dwell, then DetectStartupDialog(buf) → maybe emit DialogDismissed
-   │   ├─ Write prompt + \r
-   │   ├─ Poll until IsResponseComplete(buf, lastChunkAt) → 6s idle threshold
-   │   └─ Write /exit\r, exit\r, WaitForExit
-   └─ Sink.EmitAsync(Completed(SessionId, ExitCode, OutputChars))
+ 6. Reviews.AskCodexForVerdictAsync(projectDir, sessionDir, userPrompt, ...)
+    ├─ build review prompt (project kind + validation label + diff)
+    ├─ codex.RunAsync(reviewPrompt, sessionId=null, projectDir) — read-only sandbox
+    │   ├─ Process spawns cmd.exe /c codex exec --cd <dir> -o <tmp> --json -
+    │   ├─ stdin <<< prompt
+    │   ├─ stream stdout lines: emit StreamChunk + scan for thread_id/session_id
+    │   └─ read final agent message from -o tmpfile
+    ├─ parse verdict (APPROVE | REVISE | unclear)
+    ├─ write session/codex-review.jsonl ({verdict, sessionId, text})
+    └─ return CodexVerdict { Verdict, Text, SessionId }
 
-7. ProviderJsonlIngestSink on Completed:
-   └─ copy ~/.claude/projects/<encoded-cwd>/<uuid>.jsonl → session/claude-turn-1.jsonl
+ 7. if Verdict == "unclear": End("verdict-unclear"); refuse to commit.
 
-8. OrchestratorValidator.ValidateAsync(projectDir)
-   ├─ walk **/*.cs, CSharpSyntaxTree.ParseText with FileBasedProgram feature
-   └─ return ValidationResult { Ok, Summary, Errors }
+ 8. if Verdict == "revise":
+    ├─ claude.RunAsync(feedbackPrompt, sessionId=<previous>, projectDir)
+    └─ validator.ValidateAsync(projectDir) → must still be Ok
 
-9. If !Ok: ClaudeAgent.RunAsync(fixPrompt, sessionId=<previous>, projectDir)
-   └─ resumes the same Claude session; loop up to MAX_FIX_ATTEMPTS
-
-10. GitOps.DiffAsync(projectDir) → diffText
-
-11. CodexAgent.RunAsync(reviewPrompt, sessionId=null, projectDir)
-    ├─ Process spawns cmd.exe /c codex exec --cd <dir> -o <tmp> --json -
-    ├─ stdin <<< prompt
-    ├─ stream stdout lines: emit StreamChunk + scan for thread_id/session_id
-    └─ read final agent message from -o tmpfile
-
-12. Parse verdict (APPROVE/REVISE), write codex-review.jsonl
-
-13. If REVISE: one Claude revision pass + re-validate
-
-14. FsDiff.Diff(before, after) → file list
-
-15. GitOps.CommitAsync(files, message + Codex verdict trailer, coAuthor)
-    └─ [optional with --push] GitOps.PushAsync(branch)
-
-16. Session.End("shipped")
-    └─ meta.json updated with EndedAt + DurationMs + Result
+ 9. GitOps.ChangedFilesAsync(projectDir) → empty? End("no-changes")
+10. GitOps.CommitAsync(files, Reviews.BuildCommitMessage(userPrompt, reviewText), coAuthor)
+11. if --push: GitOps.PushAsync(branch)
+12. Session.End("shipped")  → meta.json gets EndedAt + DurationMs + Result
 ```
 
 Every async call takes the CancellationToken from the top-level flow. A `Ctrl-C` on the CLI is one `CTS.Cancel()` away from tearing the whole tree down cleanly.
@@ -288,50 +290,42 @@ Every async call takes the CancellationToken from the top-level flow. A `Ctrl-C`
 
 ## 5. The PTY trick, in detail
 
-`ClaudeAgent.ExecuteAsync` (paraphrased):
+`ClaudeAgent.ExecuteAsync` (paraphrased — `PtySession` owns the reader/buffer/drain plumbing, `ClaudeAgent` just writes the script):
 
 ```csharp
-var ptyOpts = new PtyOptions
-{
-    App = @"C:\Windows\System32\cmd.exe",
-    Cwd = req.ProjectDir,
-    Environment = envWithApiKeysBlanked,
-    Cols = 120, Rows = 40,
-};
-using var pty = await PtyProvider.SpawnAsync(ptyOpts, ct);
+var pty = await SpawnPtyAsync(BuildPtyOptions(req.ProjectDir), ct);   // virtual hook for tests
+await using var session = new PtySession(
+    pty,
+    onChunk: (chunk, ct) => Sink.EmitAsync(new StreamChunk(...), ct),
+    ct);
 
-// Reader fans StreamChunks into the sink.
-var readerTask = Task.Run(async () =>
-{
-    var buf = new byte[4096];
-    while (!ct.IsCancellationRequested)
-    {
-        var n = await pty.ReaderStream.ReadAsync(buf, 0, buf.Length, ct);
-        if (n == 0) break;
-        var chunk = Encoding.UTF8.GetString(buf, 0, n);
-        await Sink.EmitAsync(new StreamChunk(...));
-    }
-});
+// Type the claude launch line into the running cmd.exe, then settle.
+await session.DwellAsync(500, ct);
+await session.WriteLineAsync($"claude {BuildClaudeArgs(...).Join(' ')}", ct);
+await session.DwellAsync(Options.InitialDwellMs, ct);
 
-// Launch claude as a command typed into the running cmd.exe.
-await Write(pty, $"claude {string.Join(' ', BuildClaudeArgs(...))}\r");
+// Startup dialog dismissal — trust folder / bypass warning.
+if (DetectStartupDialog(session.Buffer) is "trust") await session.WriteAsync("\r", ct);
 
-await Task.Delay(Options.InitialDwellMs, ct);
-if (DetectStartupDialog(BufferSnapshot()) is "trust")
-    await Write(pty, "\r");
+// Submit the user prompt, then wait for the TUI to go quiet for IdleThresholdMs
+// (capped at MaxWaitMs). This is what used to be IsResponseComplete; it's now
+// PtySession's responsibility, not a virtual hook on ClaudeAgent.
+await session.WriteAsync(req.Prompt, ct);
+await session.WriteAsync("\r", ct);
+await session.WaitIdleAsync(Options.IdleThresholdMs, Options.MaxWaitMs, ct);
 
-await Write(pty, req.Prompt + "\r");
-
-while (!IsResponseComplete(BufferSnapshot(), lastChunkAt))
-    await Task.Delay(500, ct);
-
-await Write(pty, "/exit\r");
-await Task.Delay(Options.ExitDwellMs, ct);
-await Write(pty, "exit\r");
-pty.WaitForExit(15_000);
+await session.WriteLineAsync("/exit", ct);
+await session.DwellAsync(Options.ExitDwellMs, ct);
+await session.WriteLineAsync("exit", ct);
+var exitCode = await session.ShutdownAsync(Options.WaitForExitMs, Options.ReaderDrainMs);
 ```
 
-Two virtual hooks in v1, both protected. The contract: `DetectStartupDialog` returns one of `"trust" | "bypass-warning" | null`; `IsResponseComplete` returns `bool`. Other private mechanics (the dwell budget, the `\r` writes, the `/exit` choreography) are private until a real subclass need shows up.
+Two `protected virtual` hooks in v1:
+
+- `DetectStartupDialog(buf) → "trust" | "bypass-warning" | null` — override per-project when Claude reworks the TUI dialog.
+- `SpawnPtyAsync(PtyOptions, ct) → IPtyConnection` — defaults to `PtyProvider.SpawnAsync`; tests swap in a `FakePtyConnection` so the drive loop runs against scripted bytes (see `tests/RemoteAgents.Tests/Agents/FakePty.cs`).
+
+Idle/wait/dwell/exit budgets all live on `ClaudeAgentOptions` and are passed verbatim — no subclass needed to tune them. Other mechanics (`BuildClaudeArgs`, the dwell choreography, `ExtractAssistantText`, the JSONL read) stay private to `ClaudeAgent` / `PtySession`.
 
 The Claude session UUID is generated by us, passed via `--session-id <uuid>` on a fresh run or `--resume <uuid>` on a continuation. Because we own the UUID, we always know the path to the matching `~/.claude/projects/<encoded-cwd>/<uuid>.jsonl` for T0 ingestion.
 
@@ -339,15 +333,17 @@ The Claude session UUID is generated by us, passed via `--session-id <uuid>` on 
 
 ## 6. JSON: source-gen only
 
-.NET 10 file-based programs disable reflection-based `System.Text.Json` by default. The library declares three source-gen contexts:
+.NET 10 file-based programs disable reflection-based `System.Text.Json` by default. The library declares one source-gen context per serializable shape, all `internal`, each colocated with the code that owns it:
 
-- `SessionJsonContext` — `meta.json` (pretty)
-- `EventJsonContext` — `transcript.jsonl` entries (compact, line-atomic)
-- `ProjectsJsonContext` — `projects.json` (`Dictionary<string, string>`)
+- `SessionJsonContext` (in `Core/Sessions/SessionJsonContext.cs`) — `meta.json` (pretty, for `SessionMeta`)
+- `EventJsonContext` (same file) — `transcript.jsonl` entries (compact, line-atomic, polymorphic over `AgentEvent`)
+- `ProjectsJsonContext` (in `Core/Primitives/ProjectRegistry.cs`) — `projects.json` (`Dictionary<string, string>`)
+- `GhJsonContext` (in `Core/Primitives/GhOps.cs`) — `gh pr` JSON output (`GhPrInfo`)
+- `FlowsJsonContext` (in `Flows/Reviews.cs`) — `codex-review.jsonl` (`CodexReviewArtifact`)
 
-If you add a new serializable shape inside the library, add it to the appropriate context. Don't reach for reflection-based serialization.
+The pattern is one `[JsonSerializable]` partial context per consumer, kept `internal`. If you add a new serializable shape inside the library, define a context next to it — don't grow a single library-wide context.
 
-For one-off JSON inside a flow file, hand-build the line (see how `cli/flows/unity-review.cs` writes `codex-review.jsonl` — escape `\`, `"`, `\n`, `\r`, `\t` and interpolate).
+For one-off JSON inside a flow file, add a `[JsonSerializable]` partial context in the same `.cs` file (see `Flows/Reviews.cs` for the shape) or hand-build the line.
 
 ---
 
@@ -379,7 +375,7 @@ The one exception is `IEventSink.EmitAsync` calls in `RunAsync`'s `catch` block 
 
 ## 9. Test strategy
 
-The xUnit suite (`tests/RemoteAgents.Tests/`, 52 tests) covers:
+The xUnit suite (`tests/RemoteAgents.Tests/`) covers:
 
 - Primitives, end-to-end (`GitOpsTests`, `FsDiffTests`, `ProjectRegistryTests`, `SubscriptionGuardTests`, `RunCommandTests`)
 - Agent lifecycle invariants (`AgentLifecycleTests` against fake agents)
@@ -416,7 +412,7 @@ Either path: **don't change the library's public types** to accommodate the UI. 
 | Windows-only v1 | `cmd.exe /c` callsites, Porta.Pty Windows-only path, hardcoded `C:\Program Files\Unity\Hub\Editor\` for `UnityBatchValidator`. Linux port = ~1–2d when Hetzner-VM time lands. |
 | No `IAsyncEnumerable<AgentEvent>` return | By design (Q5). Events go through sinks only. |
 | No live tool-call / token-usage events | By design (Q6). Those live in the ingested provider JSONLs. |
-| Unity batch-mode dirties the tree every run | Provider-side reality (TMP_SDF auto-regen). Flows handle it by snapshotting Claude-touched files via `GitOps.ChangedFilesAsync` before validation, then `GitOps.RestoreUnstagedExceptAsync(projectDir, claudeTouched)` after — see `unity-review.cs`. |
+| Unity batch-mode dirties the tree every run | Provider-side reality (TMP_SDF auto-regen). Flows handle it by wrapping the validate/fix loop in `IsolationScope.BeginAsync(projectDir)` — snapshot Claude-touched files at `Begin`, revert everything else at `Dispose` — see `unity-review.cs`. |
 | Claude `Completed.ExitCode == -1` | Real abnormal teardown — `pty.WaitForExit(Options.WaitForExitMs)` timed out, Kill path fired. Inspect `claude-turn-N.jsonl` and `claude-raw.txt` to see where it stalled. (Earlier behavior where clean exits also reported `-1` was a reader-drain bug; fixed.) |
 | Claude assistant text source | Primary: `~/.claude/projects/<encoded>/<sessionId>.jsonl`, parsed by `ClaudeJsonl.TryReadLastAssistantText`. Fallback: ANSI-stripped PTY buffer. The JSONL path survives TUI wrap/scroll/drain hazards; the buffer path doesn't. |
 
@@ -428,7 +424,8 @@ Either path: **don't change the library's public types** to accommodate the UI. 
 - [`../src/RemoteAgents/Core/Agents/Agent.cs`](../src/RemoteAgents/Core/Agents/Agent.cs) — the sealed lifecycle in 60 lines.
 - [`../src/RemoteAgents/Providers/Claude/ClaudeAgent.cs`](../src/RemoteAgents/Providers/Claude/ClaudeAgent.cs) — the PTY mechanics.
 - [`../src/RemoteAgents/Core/Events/AgentEvent.cs`](../src/RemoteAgents/Core/Events/AgentEvent.cs) — the five event cases.
-- [`../cli/flows/full-review.cs`](../cli/flows/full-review.cs) — the most complete example flow; copy as a starting point.
+- [`../cli/flows/full-review.cs`](../cli/flows/full-review.cs) — the most complete example flow; copy as a starting point. [`unity-review.cs`](../cli/flows/unity-review.cs) is the same script with `IsolationScope` wrapped around the validate loop.
+- [`../src/RemoteAgents/Flows/`](../src/RemoteAgents/Flows/) — `FlowBootstrap`, `Loops`, `Reviews`, `IsolationScope` — the helpers every review-style flow composes.
 - [`../../PLANS/csharp-orchestrator-prd.md`](../../PLANS/csharp-orchestrator-prd.md) — PRD (standalone-buildable from cold).
 - [`../../PLANS/csharp-orchestrator-build.md`](../../PLANS/csharp-orchestrator-build.md) — build plan + 19 confirmed decisions.
 - [`../../research/`](../../research/) — design notes from the JS-prototype era.
