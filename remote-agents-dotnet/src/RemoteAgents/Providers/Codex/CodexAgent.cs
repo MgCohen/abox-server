@@ -27,7 +27,21 @@ public class CodexAgent : Agent
         args.Add("--cd"); args.Add(projectDir);
         args.Add("-o"); args.Add(lastMessageFile);
         args.Add("--sandbox"); args.Add(opts.Sandbox);
-        args.Add("--dangerously-bypass-approvals-and-sandbox");
+        // `codex exec` is autonomous by default — no approval-prompt
+        // flag exists. The old `--dangerously-bypass-approvals-and-sandbox`
+        // also disabled hook invocation (smoke confirmed hooks.jsonl
+        // stayed empty under that mode); dropping it without replacement
+        // gives us hooks-on autonomy.
+        //
+        // `--dangerously-bypass-hook-trust` skips the per-hook trust gate
+        // for this invocation, so a freshly-installed ~/.codex/hooks.json
+        // runs without an out-of-band trust prompt.
+        args.Add("--dangerously-bypass-hook-trust");
+        // The orchestrator explicitly knows the project dir; codex's
+        // default trust-check refuses to run in non-git dirs (or
+        // first-time-seen ones). The old --dangerously-bypass-approvals
+        // flag silently covered this; now we're explicit.
+        args.Add("--skip-git-repo-check");
         args.Add("--json");
         if (!string.IsNullOrEmpty(opts.Model)) { args.Add("--model"); args.Add(opts.Model); }
 
@@ -153,6 +167,22 @@ public class CodexAgent : Agent
 
         var outcome = HookResolution.FromHooksJsonl(
             Options.Hooks?.HooksJsonlPath, new CodexHookParser(), req.Mode);
+
+        // Defense in depth: codex exec's `-o` output mirrors what would
+        // land in a Stop hook's last_assistant_message. If hooks didn't
+        // fire (config-shape issues, version regressions, or an
+        // accidentally-restored "skip hooks" flag), the sentinel /
+        // heuristic still surface from text. Source tags carry `.text`
+        // so the UI can distinguish "from hook" vs "from output file".
+        if (outcome.Question is null)
+        {
+            var fromText = StopPayloadInspector.InspectText(
+                text,
+                sentinelSource:  "codex.text.sentinel",
+                heuristicSource: "codex.text.heuristic");
+            if (fromText is not null)
+                outcome = HookResolution.ForQuestion(fromText, req.Mode);
+        }
 
         if (outcome.Status == AgentStatus.Failed && outcome.Question is not null)
         {

@@ -48,18 +48,29 @@ public static class CodexHookConfig
 
     private static string RenderHooks(string shimPath)
     {
-        var root = new JsonObject
+        // Canonical nested shape per developers.openai.com/codex/hooks:
+        //   { "hooks": { "<Event>": [{ "matcher": "*", "hooks": [{ "type": "command", "command": "..." }] }] } }
+        // The flat { "<Event>": [{ "command": "..." }] } shape used to be
+        // assumed (based on first-pass research); a real-run smoke against
+        // codex exec confirmed it's silently ignored.
+        var hooks = new JsonObject
         {
-            ["PermissionRequest"] = new JsonArray(Entry(shimPath, "codex.permission_request")),
-            ["Stop"]              = new JsonArray(Entry(shimPath, "codex.stop")),
-            ["StopFailure"]       = new JsonArray(Entry(shimPath, "codex.stop_failure")),
+            ["PermissionRequest"] = new JsonArray(MatcherEntry(shimPath, "codex.permission_request")),
+            ["Stop"]              = new JsonArray(MatcherEntry(shimPath, "codex.stop")),
+            ["StopFailure"]       = new JsonArray(MatcherEntry(shimPath, "codex.stop_failure")),
         };
+        var root = new JsonObject { ["hooks"] = hooks };
         return root.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
     }
 
-    private static JsonNode Entry(string shimPath, string source) =>
+    private static JsonNode MatcherEntry(string shimPath, string source) =>
         new JsonObject
         {
-            ["command"] = $"pwsh -NoProfile -File \"{shimPath}\" {source}",
+            ["matcher"] = "*",
+            ["hooks"]   = new JsonArray(new JsonObject
+            {
+                ["type"]    = "command",
+                ["command"] = $"pwsh -NoProfile -File \"{shimPath}\" {source}",
+            }),
         };
 }

@@ -22,14 +22,19 @@ public class CodexAgentArgBuilderTests
     }
 
     [Fact]
-    public void Includes_bypass_and_json_and_sandbox()
+    public void Includes_hook_trust_bypass_and_json_and_sandbox()
     {
         var args = CodexAgent.BuildCodexArgs(null, "C:/proj", "C:/tmp/last.txt", new CodexAgentOptions());
-        Assert.Contains("--dangerously-bypass-approvals-and-sandbox", args);
-        Assert.Contains("--json", args);
-        var i = args.IndexOf("--sandbox");
-        Assert.True(i >= 0);
-        Assert.Equal("workspace-write", args[i + 1]);
+        // The old --dangerously-bypass-approvals-and-sandbox is gone — it
+        // disabled hook invocation. exec is autonomous by default; we
+        // only need to bypass the per-hook trust gate.
+        Assert.DoesNotContain("--dangerously-bypass-approvals-and-sandbox", args);
+        Assert.Contains("--dangerously-bypass-hook-trust", args);
+        Assert.Contains("--skip-git-repo-check",          args);
+        Assert.Contains("--json",                          args);
+        var si = args.IndexOf("--sandbox");
+        Assert.True(si >= 0);
+        Assert.Equal("workspace-write", args[si + 1]);
     }
 
     [Fact]

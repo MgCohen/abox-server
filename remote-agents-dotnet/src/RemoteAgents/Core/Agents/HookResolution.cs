@@ -23,15 +23,19 @@ public static class HookResolution
             return Completed;
 
         var question = FirstQuestion(hooksJsonlPath, parser);
-        if (question is null) return Completed;
+        return question is null ? Completed : ForQuestion(question, mode);
+    }
 
-        return mode == InteractionMode.NonInteractive
+    // Map a detected question + the run's mode onto an outcome. Used by
+    // FromHooksJsonl and by providers that detect questions through other
+    // channels (e.g. CodexAgent's result.Text sentinel fallback).
+    public static Outcome ForQuestion(AgentQuestion question, InteractionMode mode) =>
+        mode == InteractionMode.NonInteractive
             ? new Outcome(
                 AgentStatus.Failed,
                 question,
                 $"agent asked a question in non-interactive mode ({question.Source}): {question.Text}")
             : new Outcome(AgentStatus.NeedsInput, question, null);
-    }
 
     private static AgentQuestion? FirstQuestion(string path, IAgentHookParser parser)
     {

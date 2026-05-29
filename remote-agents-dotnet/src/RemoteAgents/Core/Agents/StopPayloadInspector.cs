@@ -9,17 +9,18 @@ namespace RemoteAgents.Agents;
 // identical across providers. Each parser supplies its own source tags
 // for the two detection paths (sentinel vs heuristic).
 //
-// Real-run smoke (sessions/...-smoke-question-detection/) confirmed Stop
-// is the practical signal under our linear "type prompt → /exit" flow —
-// idle_prompt never fires because we don't keep the TUI alive after the
-// turn ends. The sentinel path is the high-confidence channel
-// (NonInteractive mode injects the directive that asks the model to emit
-// <<NEEDS_INPUT>>); the heuristic is best-effort for Interactive runs.
+// InspectText is the same logic stripped of the JSON payload concern —
+// any caller that already has the assistant's final text (e.g. CodexAgent
+// reads it from `-o lastMessageFile` regardless of whether hooks fire)
+// can apply the same detection as a fallback.
 public static class StopPayloadInspector
 {
     private static readonly Regex InterrogativeLead = new(
         @"\b(Could you|Should I|Which|Do you want|How would you like|Would you prefer|Can you confirm)\b",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static readonly JsonElement EmptyObject =
+        JsonDocument.Parse("{}").RootElement.Clone();
 
     public static AgentQuestion.OpenQuestion? Inspect(
         JsonElement payload,
@@ -29,25 +30,43 @@ public static class StopPayloadInspector
         if (payload.ValueKind != JsonValueKind.Object) return null;
 
         var lastMessage = GetString(payload, "last_assistant_message");
-        if (string.IsNullOrWhiteSpace(lastMessage)) return null;
+        return InspectText(lastMessage, sentinelSource, heuristicSource, payload.Clone());
+    }
 
-        var sentinelIdx = lastMessage.IndexOf(UnattendedDirective.Sentinel, StringComparison.Ordinal);
+    // Text-only path — for callers that have the assistant's final
+    // message but no structured hook payload (e.g. CodexAgent reading
+    // -o lastMessageFile when codex didn't fire hooks).
+    public static AgentQuestion.OpenQuestion? InspectText(
+        string text,
+        string sentinelSource,
+        string heuristicSource) =>
+        InspectText(text, sentinelSource, heuristicSource, EmptyObject);
+
+    private static AgentQuestion.OpenQuestion? InspectText(
+        string      text,
+        string      sentinelSource,
+        string      heuristicSource,
+        JsonElement payload)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return null;
+
+        var sentinelIdx = text.IndexOf(UnattendedDirective.Sentinel, StringComparison.Ordinal);
         if (sentinelIdx >= 0)
         {
-            var afterSentinel = lastMessage[(sentinelIdx + UnattendedDirective.Sentinel.Length)..].Trim();
+            var afterSentinel = text[(sentinelIdx + UnattendedDirective.Sentinel.Length)..].Trim();
             return new AgentQuestion.OpenQuestion(
-                Text:         afterSentinel.Length > 0 ? afterSentinel : lastMessage,
+                Text:         afterSentinel.Length > 0 ? afterSentinel : text,
                 FromSentinel: true,
-                HookPayload:  payload.Clone(),
+                HookPayload:  payload,
                 Source:       sentinelSource);
         }
 
-        if (LooksLikeQuestion(lastMessage))
+        if (LooksLikeQuestion(text))
         {
             return new AgentQuestion.OpenQuestion(
-                Text:         lastMessage,
+                Text:         text,
                 FromSentinel: false,
-                HookPayload:  payload.Clone(),
+                HookPayload:  payload,
                 Source:       heuristicSource);
         }
 

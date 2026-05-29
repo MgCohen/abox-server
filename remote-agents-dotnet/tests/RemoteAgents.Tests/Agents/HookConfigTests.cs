@@ -112,7 +112,7 @@ public class HookConfigTests : IDisposable
     // ---- Codex ----
 
     [Fact]
-    public void Codex_install_writes_hooks_with_all_events_and_shim_command()
+    public void Codex_install_writes_hooks_with_nested_matcher_and_shim_command()
     {
         var codexDir = Path.Combine(_root, ".codex");
 
@@ -122,15 +122,19 @@ public class HookConfigTests : IDisposable
         Assert.True(File.Exists(hooksPath));
 
         using var doc = JsonDocument.Parse(File.ReadAllText(hooksPath));
-        var root = doc.RootElement;
+        var hooks = doc.RootElement.GetProperty("hooks");
 
-        Assert.Equal(1, root.GetProperty("PermissionRequest").GetArrayLength());
-        Assert.Equal(1, root.GetProperty("Stop").GetArrayLength());
-        Assert.Equal(1, root.GetProperty("StopFailure").GetArrayLength());
+        Assert.Equal(1, hooks.GetProperty("PermissionRequest").GetArrayLength());
+        Assert.Equal(1, hooks.GetProperty("Stop").GetArrayLength());
+        Assert.Equal(1, hooks.GetProperty("StopFailure").GetArrayLength());
 
-        var permReq = root.GetProperty("PermissionRequest")[0].GetProperty("command").GetString()!;
-        Assert.Contains("pwsh", permReq);
-        Assert.Contains("codex.permission_request", permReq);
+        var permReq = hooks.GetProperty("PermissionRequest")[0];
+        Assert.Equal("*", permReq.GetProperty("matcher").GetString());
+        var inner = permReq.GetProperty("hooks")[0];
+        Assert.Equal("command", inner.GetProperty("type").GetString());
+        var cmd = inner.GetProperty("command").GetString()!;
+        Assert.Contains("pwsh", cmd);
+        Assert.Contains("codex.permission_request", cmd);
     }
 
     [Fact]
