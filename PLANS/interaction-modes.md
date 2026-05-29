@@ -10,8 +10,10 @@
 > signals Claude and Codex emit, and why hooks are the chosen detection
 > channel.
 >
-> **Status**: design accepted 2026-05-28 pending implementation.
-> No C# code written for this yet.
+> **Status**: design accepted 2026-05-28. Steps 1-5 of §8 implemented and
+> committed; step 6 (PTY-buffer `TuiPrompt` fallback) deferred per its
+> own conditional trigger — light it up only if real-`claude`/`codex`
+> integration shows hook misses.
 >
 > **Scope**: data layer only — the records, enums, parser interface, and
 > hook-config installer. UI / answer-back loop are explicitly deferred (§7).
