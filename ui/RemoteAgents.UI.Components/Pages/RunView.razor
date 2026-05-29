@@ -1,5 +1,4 @@
 @page "/runs/{Id:guid}"
-@using RemoteAgents.Pty
 @using RemoteAgents.UI.Components.Models
 @implements IAsyncDisposable
 @inject HostApiClient Api
@@ -68,11 +67,20 @@
         else if (_chat.Count == 0)
         {
             <p class="hint">No conversation captured. The agent may have exited
-            before writing its session JSONL — see Raw stream below.</p>
+            before writing its session JSONL — see the live terminal below.</p>
         }
         else
         {
             <div class="chat">
+                @{
+                    // Pair ToolUse with its matching ToolResult by ToolUseId
+                    // so we render ONE log row instead of two stacked cards.
+                    // Unpaired ToolResults (rare — would mean orphan output)
+                    // are skipped here; the ToolUse renders with no result.
+                    var resultsByUseId = _chat.OfType<ChatEvent.ToolResult>()
+                        .GroupBy(r => r.ToolUseId)
+                        .ToDictionary(g => g.Key, g => g.First());
+                }
                 @foreach (var evt in _chat)
                 {
                     @switch (evt)
@@ -96,22 +104,10 @@
                             </details>
                             break;
                         case ChatEvent.ToolUse tu:
-                            <div class="chat-msg chat-tool-use">
-                                <div class="chat-label">⚙ @tu.Name</div>
-                                <details>
-                                    <summary>input</summary>
-                                    <pre class="chat-json">@tu.InputJson</pre>
-                                </details>
-                            </div>
+                            <ToolRow Use="tu" Result="@(resultsByUseId.TryGetValue(tu.ToolId, out var r) ? r : null)" />
                             break;
-                        case ChatEvent.ToolResult tr:
-                            <div class="chat-msg @(tr.IsError ? "chat-tool-error" : "chat-tool-result")">
-                                <div class="chat-label">@(tr.IsError ? "✗ tool error" : "✓ tool result")</div>
-                                <details>
-                                    <summary>output (@tr.Content.Length chars)</summary>
-                                    <pre class="chat-body">@tr.Content</pre>
-                                </details>
-                            </div>
+                        case ChatEvent.ToolResult:
+                            // Rendered inline with its ToolUse above; skip.
                             break;
                         case ChatEvent.Meta m:
                             <div class="chat-msg chat-meta">
@@ -148,13 +144,10 @@
             </details>
         }
 
-        @if (_streamLen > 0)
-        {
-            <details class="raw-toggle">
-                <summary>Raw PTY stream (debug, @_streamBuf.Length chars)</summary>
-                <pre class="log-stream">@_streamText</pre>
-            </details>
-        }
+        <details class="output-toggle" open>
+            <summary>Live terminal</summary>
+            <XtermViewer @ref="_xterm" />
+        </details>
     }
 </div>
 
@@ -166,9 +159,7 @@
     private CancellationTokenSource? _cts;
     private readonly List<LogLine> _lines = new();
     private readonly List<ChatEvent> _chat = new();
-    private readonly System.Text.StringBuilder _streamBuf = new();
-    private string _streamText = "";
-    private int _streamLen => _streamBuf.Length;
+    private XtermViewer? _xterm;
     private string? _finalOutput;
     private QuestionSurface? _currentQuestion;
     private string _freeformResponse = "";
@@ -199,7 +190,7 @@
         {
             await foreach (var evt in _stream!.StreamAsync(Id, ct))
             {
-                Append(evt);
+                await AppendAsync(evt);
                 await InvokeAsync(StateHasChanged);
             }
         }
@@ -232,7 +223,7 @@
         }
     }
 
-    private void Append(AgentEvent evt)
+    private async Task AppendAsync(AgentEvent evt)
     {
         switch (evt)
         {
@@ -240,14 +231,7 @@
                 _lines.Add(new LogLine($"[{s.AgentName}] started", LineKind.Phase));
                 break;
             case AgentEvent.StreamChunk c:
-                var clean = Sanitize(c.Chunk);
-                if (clean.Length > 0)
-                {
-                    _streamBuf.Append(clean);
-                    if (_streamBuf.Length > 100_000)
-                        _streamBuf.Remove(0, _streamBuf.Length - 100_000);
-                    _streamText = _streamBuf.ToString();
-                }
+                if (_xterm is not null) await _xterm.WriteAsync(c.Chunk);
                 break;
             case AgentEvent.DialogDismissed d:
                 _lines.Add(new LogLine($"[{d.AgentName}] dismissed dialog: {d.Match}", LineKind.Phase));
@@ -285,25 +269,6 @@
 
     private static bool IsActive(string status) =>
         status is "Pending" or "Starting" or "Running";
-
-    // Aggressive cleanup for raw PTY chunks. Used only for the debug
-    // "Raw PTY stream" toggle now — the primary content comes from the
-    // Conversation section, sourced from Claude's session JSONL.
-    private string Sanitize(string s)
-    {
-        var stripped = AnsiHelpers.StripAnsi(s);
-        if (stripped.Length == 0) return "";
-
-        var sb = new System.Text.StringBuilder(stripped.Length);
-        foreach (var ch in stripped)
-        {
-            if (ch == '\t' || ch == '\n' || ch == '\v' || ch == '\f') sb.Append(ch);
-            else if (ch == '\r') sb.Append('\n');
-            else if (ch < 0x20 || ch == 0x7f) continue;
-            else sb.Append(ch);
-        }
-        return sb.ToString();
-    }
 
     public async ValueTask DisposeAsync()
     {

@@ -1,38 +1,36 @@
-using System.Threading.Channels;
 using RemoteAgents.Events;
 
 namespace RemoteAgents.Host.Sinks;
 
-// IEventSink backed by a bounded Channel<AgentEvent>. EmitAsync writes to
-// the writer; SignalR (or any consumer) tails the reader. Bounded so a
-// disconnected client can't grow unbounded memory; FullMode=Wait gives
-// natural backpressure to the emitter — fine for the Host's case where
-// the emitter is a JSONL-tailing loop, not the agent itself.
+// IEventSink that fans out to N concurrent SignalR subscribers via
+// Broadcaster<AgentEvent>, with bounded byte-sized replay so a late
+// joiner (or browser refresh / mobile reconnect) gets the run history
+// before the live tail.
+//
+// Sizing: StreamChunk.Chunk.Length (UTF-16 char count, conservative
+// proxy for byte size); all other AgentEvents = 0 so they're never
+// evicted — they're tiny and the UI wants them.
 public sealed class ChannelSink : IEventSink, IAsyncDisposable
 {
-    private readonly Channel<AgentEvent> _channel;
+    private readonly Broadcaster<AgentEvent> _broadcaster;
 
-    public ChannelSink(int capacity = 1024)
+    public ChannelSink(long maxReplayBytes = 1_048_576)
     {
-        _channel = Channel.CreateBounded<AgentEvent>(new BoundedChannelOptions(capacity)
-        {
-            FullMode = BoundedChannelFullMode.Wait,
-            SingleReader = false,
-            SingleWriter = false,
-        });
+        _broadcaster = new Broadcaster<AgentEvent>(SizeOf, maxReplayBytes);
     }
 
-    public ChannelReader<AgentEvent> Reader => _channel.Reader;
+    public Broadcaster<AgentEvent> Broadcaster => _broadcaster;
 
     public Task EmitAsync(AgentEvent evt, CancellationToken ct = default) =>
-        _channel.Writer.WriteAsync(evt, ct).AsTask();
+        _broadcaster.EmitAsync(evt, ct);
 
-    // Signal end-of-stream so subscribers' `await foreach` loops complete.
-    public void Complete() => _channel.Writer.TryComplete();
+    public void Complete() => _broadcaster.Complete();
 
-    public ValueTask DisposeAsync()
+    public ValueTask DisposeAsync() => _broadcaster.DisposeAsync();
+
+    private static int SizeOf(AgentEvent evt) => evt switch
     {
-        Complete();
-        return ValueTask.CompletedTask;
-    }
+        AgentEvent.StreamChunk c => c.Chunk.Length,
+        _                        => 0,
+    };
 }

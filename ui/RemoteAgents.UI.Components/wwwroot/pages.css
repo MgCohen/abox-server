@@ -118,16 +118,16 @@ table.runs tr.row:hover { background: #f1f5fa; }
 .log-line.error  { color: #f88; }
 .log-line.stream { color: #ddd; }
 
-.log-stream {
+.xterm-host {
+    height: 480px;
+    background: #0b0b0b;
+    border-radius: 4px;
+    padding: 0.5rem;
     margin: 0.5rem 0 0 0;
-    padding: 0;
-    color: #aaa;
-    font: inherit;
-    white-space: pre-wrap;
-    word-break: break-word;
-    border-top: 1px solid #333;
-    padding-top: 0.5rem;
 }
+.xterm-host .xterm,
+.xterm-host .xterm-viewport,
+.xterm-host .xterm-screen { height: 100% !important; }
 
 .final-output {
     background: #fafafa;
@@ -179,11 +179,11 @@ table.runs tr.row:hover { background: #f1f5fa; }
 }
 .raw-toggle summary:hover, .output-toggle summary:hover { color: #555; }
 
-.chat { display: flex; flex-direction: column; gap: 0.75rem; margin: 0.5rem 0 1rem; }
+.chat { display: flex; flex-direction: column; gap: 0.35rem; margin: 0.5rem 0 1rem; }
 .chat-msg {
-    border-radius: 8px;
-    padding: 0.75rem 1rem;
-    line-height: 1.55;
+    border-radius: 6px;
+    padding: 0.5rem 0.8rem;
+    line-height: 1.5;
 }
 .chat-label {
     font-size: 0.75rem;
@@ -202,9 +202,6 @@ table.runs tr.row:hover { background: #f1f5fa; }
 .chat-assistant { background: #f4faf4; border-left: 3px solid #2c7;    }
 .chat-thinking  { background: #f6f6f6; border-left: 3px solid #aaa; color: #555; }
 .chat-thinking summary { cursor: pointer; font-style: italic; }
-.chat-tool-use     { background: #fffaf0; border-left: 3px solid #c80; }
-.chat-tool-result  { background: #f6f6f6; border-left: 3px solid #888; }
-.chat-tool-error   { background: #fdecea; border-left: 3px solid #b00; }
 .chat-meta {
     display: flex;
     gap: 0.5rem;
@@ -214,15 +211,71 @@ table.runs tr.row:hover { background: #f1f5fa; }
     padding: 0.25rem 0.5rem;
     border-left: 2px solid #ddd;
 }
-.chat-json {
-    margin: 0.25rem 0 0;
+/* Tool log rows — overstory-style one-liner per tool invocation, paired
+   ToolUse + ToolResult. Replaces the previous stacked tool-use/tool-result
+   cards which doubled vertical noise and hid all content behind clicks. */
+.tool-row {
+    display: grid;
+    grid-template-columns: 70px 16px 90px 1fr 16px minmax(0, 180px);
+    gap: 0.5rem;
+    align-items: baseline;
+    padding: 0.2rem 0.5rem;
+    border-left: 2px solid #d8c890;
+    background: #fffaf0;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 0.82rem;
+    cursor: pointer;
+    user-select: none;
+}
+.tool-row:hover { background: #fff4dc; }
+.tool-row.expanded { background: #fff4dc; border-left-color: #c80; }
+.tool-row-time { color: #999; }
+.tool-row-icon { text-align: center; color: #c80; }
+.tool-row-name { font-weight: 600; color: #444; }
+.tool-row-summary {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #111;
+}
+.tool-row-arrow { color: #bbb; text-align: center; }
+.tool-row-result {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: right;
+    color: #2c7;
+}
+.tool-row-result.pending { color: #888; }
+.tool-row-result.error   { color: #b00; }
+
+.tool-row-detail {
+    background: #fffdf2;
+    border-left: 2px solid #c80;
     padding: 0.5rem 0.75rem;
-    background: #fffbe6;
-    border-radius: 4px;
-    font-size: 0.8rem;
+    margin-bottom: 0.25rem;
+}
+.tool-row-detail-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #888;
+    margin: 0.25rem 0 0.15rem;
+}
+.tool-row-detail-body {
+    margin: 0;
+    padding: 0.4rem 0.6rem;
+    background: #fff;
+    border-radius: 3px;
+    font-size: 0.78rem;
+    line-height: 1.45;
     white-space: pre-wrap;
     word-break: break-word;
+    max-height: 320px;
+    overflow: auto;
 }
+.tool-row-detail-body.error { background: #fdecea; color: #800; }
 
 .question-modal {
     background: #fffbe6;

@@ -1,17 +1,20 @@
 using Microsoft.AspNetCore.SignalR;
 using RemoteAgents.Events;
 using RemoteAgents.Host.Runs;
-using System.Threading.Channels;
 
 namespace RemoteAgents.Host.Hubs;
 
 // SignalR hub at /hub/runs. Clients call Stream(runId) and receive a
-// server-to-client stream of AgentEvents until the run completes (the
-// ChannelSink is marked Complete) or the client disconnects.
+// server-to-client stream of AgentEvents until the run completes or
+// the client disconnects.
 //
-// AgentEvent is polymorphic via [JsonPolymorphic] attributes on the base
-// record — SignalR's default JsonHubProtocol uses System.Text.Json under
-// the hood, so the "kind" discriminator round-trips with no extra setup.
+// IAsyncEnumerable<T> (returned by Broadcaster.Subscribe) is wire-
+// compatible with the previous ChannelReader<T> return — SignalR client
+// code calling StreamAsync<T>("Stream", runId) doesn't care which the
+// server hands back. The change to IAsyncEnumerable is what lets us
+// replay the per-run history before tailing live events: a late-joining
+// browser (refresh, second tab, mobile reconnect) catches up on the
+// alt-screen boot bytes that the live channel had already discarded.
 public sealed class RunsHub : Hub
 {
     private readonly RunRegistry _registry;
@@ -23,27 +26,21 @@ public sealed class RunsHub : Hub
         _log = log;
     }
 
-    // Server-to-client streaming method. SignalR auto-pumps the
-    // ChannelReader<T> to the calling client until it completes.
-    public ChannelReader<AgentEvent> Stream(Guid runId, CancellationToken ct)
+    public IAsyncEnumerable<AgentEvent> Stream(Guid runId, CancellationToken ct)
     {
         var run = _registry.Get(runId)
             ?? throw new HubException($"Run {runId} not found.");
 
         _log.LogInformation("Client {ConnId} subscribing to run {RunId}", Context.ConnectionId, runId);
-        return run.Sink.Reader;
+        return run.Sink.Broadcaster.Subscribe(ct);
     }
 
-    // Structured chat-event stream, sourced from Claude's per-session
-    // JSONL at ~/.claude/projects/<encoded-cwd>/<session-id>.jsonl.
-    // Same lifetime as Stream above: completes when ChatChannel.Complete
-    // is called (FlowRunner does this in its finally block).
-    public ChannelReader<ChatEvent> StreamChat(Guid runId, CancellationToken ct)
+    public IAsyncEnumerable<ChatEvent> StreamChat(Guid runId, CancellationToken ct)
     {
         var run = _registry.Get(runId)
             ?? throw new HubException($"Run {runId} not found.");
 
         _log.LogInformation("Client {ConnId} subscribing to chat stream for {RunId}", Context.ConnectionId, runId);
-        return run.Chat.Reader;
+        return run.Chat.Broadcaster.Subscribe(ct);
     }
 }
