@@ -6,6 +6,7 @@ using RemoteAgents.Primitives;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSingleton<RunRegistry>();
+builder.Services.AddSingleton<RunStore>();
 builder.Services.AddSingleton<FlowRunner>();
 builder.Services.AddOpenApi();
 builder.Services.AddSignalR();
@@ -21,6 +22,16 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
 var app = builder.Build();
 app.UseCors();
 app.MapHub<RunsHub>("/hub/runs");
+
+// Seed history from disk + mark active-on-shutdown runs as Interrupted.
+using (var scope = app.Services.CreateScope())
+{
+    var store = scope.ServiceProvider.GetRequiredService<RunStore>();
+    var registry = scope.ServiceProvider.GetRequiredService<RunRegistry>();
+    var persisted = await store.LoadAsync();
+    registry.SeedHistory(persisted);
+    app.Logger.LogInformation("Loaded {Count} persisted runs from {Path}", persisted.Length, store.FilePath);
+}
 
 if (app.Environment.IsDevelopment())
 {
@@ -88,19 +99,21 @@ app.MapPost("/runs", (StartRunRequest req, FlowRunner runner) =>
     if (string.IsNullOrWhiteSpace(req.Prompt)) return Results.BadRequest(new { error = "prompt required" });
 
     var run = runner.Start(req.Project, req.Flow, req.Prompt, req.Args ?? []);
-    return Results.Accepted($"/runs/{run.Id}", ToSummary(run));
+    return Results.Accepted($"/runs/{run.Id}", SummaryFromRun(run));
 });
 
 app.MapGet("/runs", (RunRegistry registry) =>
 {
-    var summaries = registry.List().Select(ToSummary).ToArray();
+    var summaries = registry.List().Select(SummaryFromCombined).ToArray();
     return Results.Ok(summaries);
 });
 
 app.MapGet("/runs/{id:guid}", (Guid id, RunRegistry registry) =>
 {
-    var run = registry.Get(id);
-    return run is null ? Results.NotFound() : Results.Ok(ToSummary(run));
+    var live = registry.Get(id);
+    if (live is not null) return Results.Ok(SummaryFromRun(live));
+    var hist = registry.HistorySnapshot().FirstOrDefault(p => p.Id == id);
+    return hist is null ? Results.NotFound() : Results.Ok(SummaryFromPersisted(hist));
 });
 
 app.MapPost("/runs/{id:guid}/cancel", (Guid id, FlowRunner runner) =>
@@ -128,15 +141,17 @@ app.MapPost("/runs/{id:guid}/respond", (Guid id, RespondRequest req, RunRegistry
 
 app.Run();
 
-static RunSummary ToSummary(Run run) => new(
-    run.Id,
-    run.Project,
-    run.Flow,
-    run.Prompt,
-    run.Status.ToString(),
-    run.StartedAt,
-    run.EndedAt,
-    run.SessionId,
-    run.SessionDir,
-    run.ExitCode,
-    run.FailureReason);
+static RunSummary SummaryFromRun(Run run) => new(
+    run.Id, run.Project, run.Flow, run.Prompt, run.Status.ToString(),
+    run.StartedAt, run.EndedAt, run.SessionId, run.SessionDir,
+    run.ExitCode, run.FailureReason);
+
+static RunSummary SummaryFromCombined(RunsCombined c) => new(
+    c.Id, c.Project, c.Flow, c.Prompt, c.Status,
+    c.StartedAt, c.EndedAt, c.SessionId, c.SessionDir,
+    c.ExitCode, c.FailureReason);
+
+static RunSummary SummaryFromPersisted(PersistedRun p) => new(
+    p.Id, p.Project, p.Flow, p.Prompt, p.Status,
+    p.StartedAt, p.EndedAt, p.SessionId, p.SessionDir,
+    p.ExitCode, p.FailureReason);

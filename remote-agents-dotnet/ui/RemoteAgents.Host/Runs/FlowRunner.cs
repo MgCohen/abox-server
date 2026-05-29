@@ -20,12 +20,14 @@ public sealed class FlowRunner
         RegexOptions.Compiled);
 
     private readonly RunRegistry _registry;
+    private readonly RunStore _store;
     private readonly ILogger<FlowRunner> _log;
     private readonly string _orchestratorRoot;
 
-    public FlowRunner(RunRegistry registry, ILogger<FlowRunner> log, IConfiguration config)
+    public FlowRunner(RunRegistry registry, RunStore store, ILogger<FlowRunner> log, IConfiguration config)
     {
         _registry = registry;
+        _store = store;
         _log = log;
         _orchestratorRoot = ResolveOrchestratorRoot(config)
             ?? throw new InvalidOperationException(
@@ -106,6 +108,15 @@ public sealed class FlowRunner
         finally
         {
             run.Sink.Complete();
+            try
+            {
+                _registry.PromoteToHistory(run);
+                await _store.SaveAsync(_registry.HistorySnapshot());
+            }
+            catch (Exception ex)
+            {
+                _log.LogWarning(ex, "Failed to persist run {RunId}", run.Id);
+            }
         }
     }
 
