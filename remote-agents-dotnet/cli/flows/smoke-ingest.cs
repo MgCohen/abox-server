@@ -31,7 +31,7 @@ var sink = new CompositeSink(
     ingest);
 
 // --- Claude turn ---
-var claude = new ClaudeAgent { Name = "claude", Sink = sink, Options = new ClaudeAgentOptions(InitialDwellMs: 4000) };
+var claude = new ClaudeAgent { Name = "claude", Sink = sink, Options = new ClaudeAgentOptions(LaunchSettleIdleMs: 2000) };
 var c1 = await claude.RunAsync(new AgentRunRequest("Reply with exactly the word PONG.", null, WORK_DIR));
 Console.WriteLine($"[smoke] claude session={c1.SessionId} exit={c1.ExitCode}");
 

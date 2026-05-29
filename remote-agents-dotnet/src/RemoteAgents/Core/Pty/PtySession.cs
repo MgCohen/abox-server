@@ -77,18 +77,27 @@ public sealed class PtySession : IAsyncDisposable, IDisposable
     public Task WriteLineAsync(string s, CancellationToken ct = default)
         => WriteAsync(s + "\r", ct);
 
-    // Sleep without canceling on the caller's ct's cancellation — used for
-    // scripted pacing. Cancellation propagates normally.
-    public Task DwellAsync(int milliseconds, CancellationToken ct = default)
-        => Task.Delay(milliseconds, ct);
+    // Type text into the PTY, wait `settleMs`, then press Enter.
+    // The mid-wait matters for Claude's TUI: pressing Enter while the
+    // input buffer is still settling can cause the TUI to treat the
+    // input as a bracketed paste (lands in the multi-line buffer
+    // instead of submitting). 500ms is the observed safe minimum.
+    public async Task SubmitAsync(string text, int settleMs, CancellationToken ct = default)
+    {
+        await WriteAsync(text, ct);
+        await Task.Delay(settleMs, ct);
+        await WriteAsync("\r", ct);
+    }
 
     // Spin until the reader has been idle for `idleThresholdMs` or we hit
-    // `maxWaitMs`. Polls every `pollMs`. Returns true if the idle threshold
-    // was reached, false if maxWait fired first.
+    // `maxWaitMs`. Polls every `pollMs` (default 100ms — fine-grained
+    // enough that scripted callers with small idle thresholds don't
+    // pay an extra poll cycle of latency). Returns true if the idle
+    // threshold was reached, false if maxWait fired first.
     public async Task<bool> WaitIdleAsync(
         int idleThresholdMs,
         int maxWaitMs,
-        int pollMs = 500,
+        int pollMs = 100,
         CancellationToken ct = default)
     {
         var deadline = DateTimeOffset.UtcNow.AddMilliseconds(maxWaitMs);

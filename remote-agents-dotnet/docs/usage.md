@@ -313,10 +313,10 @@ new ClaudeAgent
     Name = "tight-claude",
     Sink = sink,
     Options = new ClaudeAgentOptions(
-        InitialDwellMs:   4000,        // claude takes a moment to render
-        IdleThresholdMs: 12_000,       // wait longer for slow replies
-        MaxWaitMs:       10 * 60_000,  // hard cap per call
-        PermissionMode:  "default",    // ask before each tool call
+        LaunchSettleIdleMs: 2000,        // splash takes longer on this box
+        IdleThresholdMs:   12_000,       // wait longer for slow replies
+        MaxWaitMs:         10 * 60_000,  // hard cap per call
+        PermissionMode:    "default",    // ask before each tool call
         Model:           "haiku",
         SystemPrompt:    "Reply tersely. No prose."),
 };
@@ -353,9 +353,9 @@ public sealed class StrictClaude : ClaudeAgent
 - `DetectStartupDialog(string buf) → string?` — return `"trust"`, `"bypass-warning"`, or `null` based on the TUI buffer. Override per-project if Claude changes its UI.
 - `SpawnPtyAsync(PtyOptions, CancellationToken) → IPtyConnection` — swap the real ConPTY for a fake. This is how `ClaudeAgentDriveLoopTests` runs the drive loop against scripted bytes — see `tests/RemoteAgents.Tests/Agents/FakePty.cs` for the harness.
 
-**Timing tunables don't need a subclass.** Idle threshold, max wait, dwell budgets, and the overall deadline are all on `ClaudeAgentOptions` (§10). For long-running compile-heavy turns: bump `IdleThresholdMs` (default `6000`) and `MaxWaitMs` (default `5 * 60_000`); raise `MaxOverallMs` (default `10 * 60_000`) if those changes might let a single call exceed 10 minutes.
+**Timing tunables don't need a subclass.** Every settle threshold and budget is on `ClaudeAgentOptions` (§10): `LaunchSettleIdleMs` (post-launch quiet, default `1000`), `IdleThresholdMs` (response quiet, default `6000`), `ExitSettleIdleMs` (post-`/exit` quiet, default `500`), `MaxWaitMs` (response cap, default `5 * 60_000`), `MaxOverallMs` (whole-run deadline, default `10 * 60_000`). For long-running compile-heavy turns: bump `IdleThresholdMs` and `MaxWaitMs`; raise `MaxOverallMs` if those changes might let a single call exceed 10 minutes. On a slow box where claude's splash takes a while, bump `LaunchSettleIdleMs`.
 
-Other mechanics (`BuildClaudeArgs`, the dwell choreography, `ExtractAssistantText`, the JSONL read, the `WaitIdleAsync` polling) stay private to `ClaudeAgent` / `PtySession`. For one-off text reads from past turns, call `ClaudeJsonl.TryReadLastAssistantText(projectDir, sessionId, promptHint?)` directly — it's public.
+Other mechanics (`BuildClaudeArgs`, the `SubmitAsync` choreography, `ExtractAssistantText`, the JSONL read, the `WaitIdleAsync` polling) stay private to `ClaudeAgent` / `PtySession`. For one-off text reads from past turns, call `ClaudeJsonl.TryReadLastAssistantText(projectDir, sessionId, promptHint?)` directly — it's public.
 
 ---
 

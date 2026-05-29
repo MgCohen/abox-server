@@ -108,27 +108,24 @@ public class ClaudeAgent : Agent
                 new AgentEvent.StreamChunk(DateTimeOffset.UtcNow, Name, chunk), innerCt),
             dct);
 
-        // 1. Give cmd.exe a moment to render, then launch claude + dwell
-        //    for its first paint.
-        await session.DwellAsync(500, dct);
+        // 1. Launch claude and wait for its splash to settle. cmd.exe's
+        //    stdin buffers, so no boot dwell needed before the WriteLine.
         await session.WriteLineAsync(launchLine, dct);
-        await session.DwellAsync(Options.InitialDwellMs, dct);
+        await session.WaitIdleAsync(Options.LaunchSettleIdleMs, maxWaitMs: 8_000, ct: dct);
 
         // 2. Startup dialog dismissal (trust folder / bypass warning).
         await MaybeDismissDialogAsync(session, dct);
 
-        // 3. Type the prompt and submit.
-        await session.WriteAsync(req.Prompt, dct);
-        await session.DwellAsync(500, dct);
-        await session.WriteAsync("\r", dct);
+        // 3. Type the prompt, pause so Claude's TUI registers it as a
+        //    typed submit (not a bracketed paste), then press Enter.
+        await session.SubmitAsync(req.Prompt, settleMs: 500, ct: dct);
 
-        // 4. Wait for Claude's response to settle (no new chunks for
-        //    IdleThresholdMs, capped at MaxWaitMs).
+        // 4. Wait for Claude's response to settle.
         await session.WaitIdleAsync(Options.IdleThresholdMs, Options.MaxWaitMs, ct: dct);
 
-        // 5. Send /exit so claude prints the resume URL, then exit cmd.
+        // 5. Tell claude to leave, wait for its goodbye, then exit cmd.
         await session.WriteLineAsync("/exit", dct);
-        await session.DwellAsync(Options.ExitDwellMs, dct);
+        await session.WaitIdleAsync(Options.ExitSettleIdleMs, maxWaitMs: 5_000, ct: dct);
         await session.WriteLineAsync("exit", dct);
         var exitCode = await session.ShutdownAsync(Options.WaitForExitMs, Options.ReaderDrainMs);
 
@@ -203,7 +200,9 @@ public class ClaudeAgent : Agent
 
         await session.WriteAsync(keys, ct);
         await Sink.EmitAsync(new AgentEvent.DialogDismissed(DateTimeOffset.UtcNow, Name, dialog), ct);
-        await session.DwellAsync(Options.InitialDwellMs / 2, ct);
+        // Wait for claude to transition into its main UI before the
+        // caller starts typing the prompt.
+        await session.WaitIdleAsync(Options.LaunchSettleIdleMs, maxWaitMs: 5_000, ct: ct);
     }
 
     private static string ExtractAssistantText(string buf, string prompt)

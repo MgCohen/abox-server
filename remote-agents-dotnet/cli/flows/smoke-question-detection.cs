@@ -81,7 +81,7 @@ async Task RunPass(string provider, InteractionMode mode, string prompt, string 
         {
             Name    = "claude",
             Sink    = sink,
-            Options = new ClaudeAgentOptions(InitialDwellMs: 4000, Hooks: hooks),
+            Options = new ClaudeAgentOptions(LaunchSettleIdleMs: 2000, Hooks: hooks),
         },
         "codex" => new CodexAgent
         {

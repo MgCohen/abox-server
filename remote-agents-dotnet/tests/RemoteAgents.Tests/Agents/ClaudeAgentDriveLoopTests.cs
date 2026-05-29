@@ -32,13 +32,13 @@ public class ClaudeAgentDriveLoopTests : IDisposable
         }
     }
 
-    // Compressed dwell windows so the drive loop completes in single-digit
-    // seconds. The real defaults (2000/6000/1500/300000ms) are tuned for
-    // a human-paced Claude UI.
+    // Compressed idle thresholds so the drive loop completes in single-digit
+    // seconds. The real defaults (1000/6000/500/300000ms) are tuned for a
+    // human-paced Claude UI.
     private static ClaudeAgentOptions FastOpts() => new(
-        InitialDwellMs: 50,
+        LaunchSettleIdleMs: 50,
         IdleThresholdMs: 200,
-        ExitDwellMs: 50,
+        ExitSettleIdleMs: 50,
         MaxWaitMs: 5_000);
 
     [Fact]
@@ -84,7 +84,7 @@ public class ClaudeAgentDriveLoopTests : IDisposable
             AssistantTextLine("hi there"));
 
         var fake = new FakePtyConnection();
-        // The agent inspects the buffer after InitialDwellMs and looks
+        // The agent inspects the buffer after the launch settle and looks
         // for the trust-dialog text. Enqueue it before launch.
         fake.EnqueueRead("Do you trust this folder?\n");
         fake.OnWriteText = w => { if (w.Contains("exit\r")) fake.Exit(0); };
@@ -114,9 +114,9 @@ public class ClaudeAgentDriveLoopTests : IDisposable
         fake.EnqueueRead("some output\n");
 
         var opts = new ClaudeAgentOptions(
-            InitialDwellMs: 10,
+            LaunchSettleIdleMs: 10,
             IdleThresholdMs: 50,
-            ExitDwellMs: 10,
+            ExitSettleIdleMs: 10,
             MaxWaitMs: 500,
             // WaitForExit timeout shrunk so this test doesn't pay 15s.
             WaitForExitMs: 200,
@@ -164,9 +164,9 @@ public class ClaudeAgentDriveLoopTests : IDisposable
         // forever from the agent's perspective.
 
         var opts = new ClaudeAgentOptions(
-            InitialDwellMs: 10,
+            LaunchSettleIdleMs: 10,
             IdleThresholdMs: 50,
-            ExitDwellMs: 10,
+            ExitSettleIdleMs: 10,
             MaxWaitMs: 60_000,   // would dominate if deadline didn't fire
             WaitForExitMs: 60_000,
             ReaderDrainMs: 100,

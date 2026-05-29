@@ -1,9 +1,19 @@
 namespace RemoteAgents.Agents;
 
 public sealed record ClaudeAgentOptions(
-    int InitialDwellMs = 2000,
+    // Idle threshold for the launch settle: after typing the `claude ...`
+    // line, wait until the PTY has been quiet this long before checking
+    // for the trust/bypass dialog. Replaces the fixed-duration InitialDwellMs
+    // — content-aware, returns as soon as claude's splash stops emitting.
+    int LaunchSettleIdleMs = 1000,
+    // Idle threshold for the response settle: after submitting the prompt,
+    // wait until Claude has been quiet this long before treating the reply
+    // as complete.
     int IdleThresholdMs = 6000,
-    int ExitDwellMs = 1500,
+    // Idle threshold for the exit settle: after sending /exit, wait until
+    // claude has finished printing its goodbye (resume URL, session
+    // summary) before exiting cmd.exe. Replaces the fixed ExitDwellMs.
+    int ExitSettleIdleMs = 500,
     int MaxWaitMs = 5 * 60_000,
     // How long to wait for the PTY process to exit after we've sent /exit
     // and exit\r. Hits the Kill path if exceeded. 15s is generous for a

@@ -37,7 +37,7 @@ var agent = new ClaudeAgent
 {
     Name = "claude",
     Sink = sink,
-    Options = new ClaudeAgentOptions(InitialDwellMs: 4000),
+    Options = new ClaudeAgentOptions(LaunchSettleIdleMs: 2000),
 };
 
 try

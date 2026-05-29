@@ -31,9 +31,9 @@ public class ClaudeAgentHookIntegrationTests : IDisposable
     }
 
     private static ClaudeAgentOptions FastOpts(HookIntegrationOptions? hooks = null) => new(
-        InitialDwellMs: 50,
+        LaunchSettleIdleMs: 50,
         IdleThresholdMs: 200,
-        ExitDwellMs: 50,
+        ExitSettleIdleMs: 50,
         MaxWaitMs: 5_000,
         Hooks: hooks);
 
