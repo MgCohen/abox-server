@@ -12,8 +12,16 @@
 >
 > **Status**: design accepted 2026-05-28. Steps 1-5 of §8 implemented and
 > committed; step 6 (PTY-buffer `TuiPrompt` fallback) deferred per its
-> own conditional trigger — light it up only if real-`claude`/`codex`
-> integration shows hook misses.
+> own conditional trigger.
+>
+> **Real-run correction (2026-05-29)**: a smoke run against real `claude`
+> revealed `claude.idle_prompt` does NOT fire under our "type prompt → /exit"
+> linear flow — `claude.stop` is the dominant signal, with the same
+> `last_assistant_message` field Codex's Stop carries. Both providers now
+> share `StopPayloadInspector` for sentinel + heuristic detection. The
+> §4 mapping table is preserved for completeness but `claude.idle_prompt`
+> and `claude.elicitation_dialog` only fire when a flow keeps the TUI
+> alive — they're retained for that future case.
 >
 > **Scope**: data layer only — the records, enums, parser interface, and
 > hook-config installer. UI / answer-back loop are explicitly deferred (§7).
