@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using RemoteAgents.Agents;
 using RemoteAgents.Events;
+using RemoteAgents.Flows;
 
 namespace RemoteAgents.Hosting;
 
@@ -51,13 +52,12 @@ public sealed class RemoteAgentsOptions
         return this;
     }
 
-    // Flow registration is wired up in Phase 4 once IFlow exists. The
-    // method shape lands now so call sites in Program.cs can adopt the
-    // builder pattern; the body just registers the type as a singleton
-    // until Phase 4 introduces IFlowRegistry.
-    public RemoteAgentsOptions AddFlow<TFlow>() where TFlow : class
+    // Register an IFlow with the FlowRegistry. The CLI dispatcher and
+    // the Host both resolve flows from this single source of truth.
+    public RemoteAgentsOptions AddFlow<TFlow>() where TFlow : class, IFlow
     {
         _services.AddSingleton<TFlow>();
+        _services.AddSingleton<IFlow>(sp => sp.GetRequiredService<TFlow>());
         return this;
     }
 }
