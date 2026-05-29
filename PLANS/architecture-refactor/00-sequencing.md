@@ -1,6 +1,6 @@
 ---
 type: plan
-status: draft
+status: in-progress
 tags: [#architecture, #refactor, #sequencing]
 ---
 
@@ -9,6 +9,71 @@ tags: [#architecture, #refactor, #sequencing]
 > **Source of truth** for the order of work. Each phase ends in a working
 > build with all existing flows passing their smoke tests. Phases are
 > sized so each one can ship on its own branch.
+
+---
+
+## Current state (2026-05-29)
+
+Phases shipped end-to-end and smoke-validated against real Claude/Codex CLIs:
+
+| Phase | State | Commit | Notes |
+|---|---|---|---|
+| 0 — Baseline | shipped | (pre-existing) | plan docs landed |
+| 1 — Contracts | **shipped** | `e9ebd65` | all records moved; UI mirror deleted |
+| 2 — Composition root | **shipped** | `c197264`, `f2875ed` | see *deviation* below |
+| 3 — Agent base | **shipped** | `d5ecbc8` | typed `IHookInstaller<TAgent>`, polymorphic `AgentPresets` |
+| 4 — IFlow + decorators | **shipped (pilot)** | `acd9e5a` | `ClaudeOnlyFlow` migrated; 7 other `cli/flows/*.cs` still use the old shape |
+| 5 — Sessions & paths | **shipped** | `067378e` | `OrchestratorPaths` + typed `SessionArtifact` |
+| 6 — Host in-process executor | **scaffolded only** | `5ad297e` | `IFlowExecutor` interface lands; deep work deferred (see below) |
+| 7 — Events / sinks split | deferred | — | skipped per user direction |
+| 8 — UI client cleanup | deferred | — | skipped per user direction |
+| 9 — Rejected-options sweep | not started | — | depends on 6/7/8 |
+
+Validation smokes that passed against real CLIs after Phase 5:
+`smoke-codex.cs`, `smoke-claude.cs`, `smoke-named-agents.cs` (after assertion
+fix — commit `541c9f2`), `claude-only.cs` (Phase 4 pilot end-to-end).
+
+### Deviation from plan — `IConfiguration` binding dropped
+
+Phase 2 was originally written to bind `ClaudeAgentOptions` / `CodexAgentOptions`
+via `IOptions<>` from `appsettings.json`. During implementation this collided
+with the records-are-init-only rule: `Action<TOpts>` lambdas can't mutate
+init-only records. The composition root now takes `Func<TOpts, TOpts>?`
+and callers use `with` expressions:
+
+```csharp
+services.AddRemoteAgents(o => o.UseClaude(c => c with { Model = "opus" }));
+```
+
+This already matches the **08-composition revision** (R13 in `99-rejected.md`)
+which rejected the `IConfiguration` binding path. The Hosting assembly has
+**no** `Microsoft.Extensions.Configuration.*` dependency.
+
+### Phase 6 — deferred follow-up
+
+`IFlowExecutor` interface is in place but **no implementations** ship yet.
+The original plan said Phase 6 deletes `ClaudeJsonlTailer`, the second hub
+stream, the regex IPC, and splits `Run` → `LiveRun` + `RunRecord`. Those
+touch the agent drive loop and need their own integration runs to validate.
+Concretely deferred:
+
+- `InProcessFlowExecutor` — resolve `IFlow` from `FlowRegistry`, build
+  `FlowContext` + `ChannelSink`, drive directly.
+- `SubprocessFlowExecutor` — extract today's `Host/Runs/FlowRunner` shape.
+- `ChatEvent` fold onto `AgentEvent` (Layer 3 prereq).
+- Delete `Host/Runs/ClaudeJsonlTailer.cs` (~268 lines).
+- Split `Run` into `LiveRun` (transient host wrapper) +
+  `RunRecord` (already in contracts).
+
+### Phase 4 — flows still to migrate
+
+Only `claude-only.cs` is on the new shape. Still on direct
+`AgentRunRequest`/`Environment.ExitCode` style:
+`full-review.cs`, `unity-review.cs`, `claude-validate.cs`,
+`smoke-claude.cs`, `smoke-codex.cs`, `smoke-named-agents.cs`,
+`smoke-question-detection.cs`, `smoke-ingest.cs`.
+
+The pilot proved the shape; the rest is rote conversion.
 
 ---
 

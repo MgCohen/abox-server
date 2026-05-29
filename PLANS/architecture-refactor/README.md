@@ -1,6 +1,6 @@
 ---
 type: plan
-status: draft
+status: in-progress
 tags: [#architecture, #refactor, #remote-agents-dotnet, #layering]
 ---
 
@@ -23,9 +23,41 @@ tags: [#architecture, #refactor, #remote-agents-dotnet, #layering]
 
 ## Status (2026-05-29)
 
-Plan **drafted**, no code changed. Sourcing branch: `phase-ui/host-mobile`.
-Findings derive from the thermo-nuclear code-quality review pass over the
-unstaged diff + a depth-pass over the agent/flow/host layers.
+Plan drafted; **Phases 1–5 shipped, Phase 6 scaffolded, Phases 7–8 deferred.**
+Branch: `phase-ui/host-mobile`. 8 commits ahead of `origin/main`,
+all pushed. See [`00-sequencing.md`](00-sequencing.md) for the per-phase
+state with commit hashes and what was deferred to follow-up.
+
+Initial findings derived from the thermo-nuclear code-quality review pass
+over the unstaged diff + a depth-pass over the agent/flow/host layers.
+
+### Current-state snapshot (post-Phase 6 scaffold)
+
+- **Contracts assembly exists** at `src/RemoteAgents.Contracts/` and
+  is referenced from library, hosting, host UI, and CLI flows.
+  All wire-crossing records (AgentEvent, ChatEvent, RunRecord, the
+  three lifted enums PhaseStatus/Verdict/SessionResult, FlowArgs/
+  FlowResult, the four Wire DTOs) live there and have **no duplicates**.
+- **Hosting assembly exists** at `src/RemoteAgents.Hosting/`. The
+  `services.AddRemoteAgents(o => { o.UseClaude(...); o.UseCodex(...);
+  o.AddFlow<T>(); })` shape is real and used by `cli/flows/claude-only.cs`.
+- **Agent base class** owns the install/try/finally/scrub envelope.
+  Providers' `ExecuteAsync` is now just the drive loop body — no
+  hook scaffolding.
+- **`IHookInstaller<TAgent>`** with generic-type pairing is in place;
+  `ClaudeHookInstaller : IHookInstaller<ClaudeAgent>` and
+  `CodexHookInstaller : IHookInstaller<CodexAgent>` wrap the legacy
+  static configs and return `IAsyncDisposable` scopes.
+- **`AgentPresets`** static class (`AgentPresets.Planner.Build(sink)`,
+  `.Documenter`, `.Researcher`) replaces the `NamedAgents/` folder.
+- **`IFlow`, `FlowRegistry`, `FlowRunner`, `FlowResult`/`FlowExitReason`**
+  all in the library. `ClaudeOnlyFlow` is the pilot conversion; the
+  shim `cli/flows/claude-only.cs` is two lines of resolve + dispatch.
+- **`OrchestratorPaths`** collapses the three duplicate resolvers;
+  `Session.GetArtifactPath`/`WriteArtifactAsync`/`ReadArtifactAsync`
+  take the `SessionArtifact` enum.
+- **`IFlowExecutor`** interface scaffolded under `ui/RemoteAgents.Host/Runs/`;
+  no implementation yet (deep work deferred — see Phase 6 below).
 
 ---
 
