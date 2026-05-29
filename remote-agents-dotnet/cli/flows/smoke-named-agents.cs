@@ -36,6 +36,27 @@ var r = await researcher.RunAsync(new AgentRunRequest(
 Console.WriteLine($"\n[researcher] exit={r.ExitCode} session={r.SessionId}");
 Console.WriteLine($"  text: {r.Text.Trim()}\n");
 
-var allOk = p.ExitCode == 0 && d.ExitCode == 0 && r.ExitCode == 0;
-Console.WriteLine(allOk ? "[smoke] all three agents ran clean." : "[smoke] FAILED");
-Environment.ExitCode = allOk ? 0 : 1;
+// Pass condition: each agent produced a session id and some output.
+// Do NOT assert ExitCode == 0 — Claude through PTY returns -1 on the
+// normal /exit path because the orchestrator kills cmd.exe after sending
+// /exit (see ClaudeAgent.ShutdownAsync); only Codex's plain Process
+// shuts down with exit 0. smoke-claude.cs uses the same shape.
+static bool AgentOk(AgentResult r) =>
+    !string.IsNullOrEmpty(r.SessionId) && !string.IsNullOrWhiteSpace(r.Text);
+
+var failures = new List<string>();
+if (!AgentOk(p)) failures.Add($"planner    (session={p.SessionId ?? "null"}, text='{p.Text}')");
+if (!AgentOk(d)) failures.Add($"documenter (session={d.SessionId ?? "null"}, text='{d.Text}')");
+if (!AgentOk(r)) failures.Add($"researcher (session={r.SessionId ?? "null"}, text='{r.Text}')");
+
+if (failures.Count == 0)
+{
+    Console.WriteLine("[smoke] all three agents ran clean.");
+    Environment.ExitCode = 0;
+}
+else
+{
+    Console.WriteLine($"[smoke] FAILED — {failures.Count} agent(s) did not produce a session id + text:");
+    foreach (var f in failures) Console.WriteLine($"  - {f}");
+    Environment.ExitCode = 1;
+}
