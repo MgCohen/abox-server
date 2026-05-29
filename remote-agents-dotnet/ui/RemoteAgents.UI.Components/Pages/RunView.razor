@@ -1,6 +1,8 @@
 @page "/runs/{Id:guid}"
+@using RemoteAgents.Pty
 @implements IAsyncDisposable
 @inject HostApiClient Api
+@inject HttpClient Http
 @inject NavigationManager Nav
 
 <PageTitle>Run @Id</PageTitle>
@@ -17,10 +19,10 @@
         <h1>@_summary.Flow <small>on @_summary.Project</small></h1>
         <p class="meta">
             <span class="status status-@_summary.Status.ToLowerInvariant()">@_summary.Status</span>
-            <span>started @_summary.StartedAt.ToLocalTime():HH:mm:ss</span>
+            <span>started @_summary.StartedAt.ToLocalTime().ToString("HH:mm:ss")</span>
             @if (_summary.EndedAt is not null)
             {
-                <span>· ended @_summary.EndedAt?.ToLocalTime():HH:mm:ss</span>
+                <span>· ended @_summary.EndedAt.Value.ToLocalTime().ToString("HH:mm:ss")</span>
             }
             @if (_summary.ExitCode is not null)
             {
@@ -89,7 +91,10 @@
         }
 
         _cts = new CancellationTokenSource();
-        var hubUrl = new Uri(new Uri(Nav.BaseUri), "hub/runs").ToString();
+        // Hub URL must use the Host's base address (where /hub/runs is
+        // mapped), not the WASM origin (which serves only the bundle).
+        var hostBase = Http.BaseAddress ?? new Uri(Nav.BaseUri);
+        var hubUrl = new Uri(hostBase, "hub/runs").ToString();
         _stream = new RunStreamClient(hubUrl);
         await _stream.StartAsync(_cts.Token);
 
@@ -125,7 +130,11 @@
                 _lines.Add(new LogLine($"[{s.AgentName}] started", LineKind.Phase));
                 break;
             case AgentEvent.StreamChunk c:
-                _lines.Add(new LogLine(c.Chunk, LineKind.Stream));
+                // Strip ANSI escape sequences — raw TUI control bytes
+                // are noise in a browser-rendered log pane.
+                var clean = AnsiHelpers.StripAnsi(c.Chunk);
+                if (!string.IsNullOrWhiteSpace(clean))
+                    _lines.Add(new LogLine(clean, LineKind.Stream));
                 break;
             case AgentEvent.DialogDismissed d:
                 _lines.Add(new LogLine($"[{d.AgentName}] dismissed dialog: {d.Match}", LineKind.Phase));

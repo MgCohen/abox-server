@@ -1,16 +1,12 @@
-﻿@inherits LayoutComponentBase
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+@inherits LayoutComponentBase
+<header class="app-header">
+    <a href="" class="brand">Remote Agents</a>
+    <nav>
+        <NavLink href="" Match="NavLinkMatch.All">New run</NavLink>
+        <NavLink href="runs">History</NavLink>
+    </nav>
+</header>
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
-
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
-</div>
+<main class="app-main">
+    @Body
+</main>

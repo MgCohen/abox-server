@@ -1,122 +1,138 @@
-/* Minimal styling for the v1 UI. Visual polish is a follow-up. */
+/* Remote Agents UI — minimal styling. */
+
+.app-header {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 0.75rem 1.25rem;
+    background: #1b1f23;
+    color: #f6f6f6;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
+.app-header .brand {
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.02em;
+}
+.app-header nav { display: flex; gap: 1rem; }
+.app-header nav a {
+    color: #bbb;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+}
+.app-header nav a:hover { color: #fff; text-decoration: none; }
+.app-header nav a.active { color: #fff; background: #2c3035; }
+
+.app-main { padding: 0; }
 
 .page {
-    max-width: 800px;
-    margin: 1rem auto;
-    padding: 0 1rem;
+    max-width: 900px;
+    margin: 1.5rem auto;
+    padding: 0 1.25rem;
 }
 
-.field {
-    margin: 0.75rem 0;
-}
+h1 { margin: 0.5rem 0 0.75rem; font-size: 1.6rem; }
+h1 small { font-size: 1rem; color: #777; font-weight: 400; }
+h2 { font-size: 1.15rem; margin-top: 1.5rem; }
 
+.field { margin: 0.75rem 0; }
 .field label {
     display: block;
     font-weight: 600;
     margin-bottom: 0.25rem;
+    color: #333;
 }
-
 .field select, .field textarea, .field input {
     width: 100%;
-    padding: 0.5rem;
+    padding: 0.55rem;
     font: inherit;
-    box-sizing: border-box;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #fff;
 }
+.field textarea { font-family: ui-monospace, Menlo, Consolas, monospace; }
 
-.hint {
-    color: #666;
-    font-size: 0.875rem;
-    margin: 0.25rem 0;
+button {
+    font: inherit;
+    padding: 0.5rem 1.1rem;
+    border: 1px solid #1b6ec2;
+    border-radius: 4px;
+    background: #1b6ec2;
+    color: #fff;
+    cursor: pointer;
 }
-
-.error {
+button:hover { background: #155497; }
+button:disabled { background: #aaa; border-color: #aaa; cursor: not-allowed; }
+button.cancel {
+    background: #fff;
     color: #b00;
+    border-color: #f88;
 }
+button.cancel:hover { background: #fee; }
 
-table.runs {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 1rem;
-}
+.hint { color: #666; font-size: 0.875rem; margin: 0.25rem 0; }
+.error { color: #b00; }
 
+table.runs { width: 100%; border-collapse: collapse; margin-top: 1rem; }
 table.runs th, table.runs td {
     text-align: left;
     padding: 0.5rem;
     border-bottom: 1px solid #eee;
 }
-
-table.runs tr.row {
-    cursor: pointer;
-}
-
-table.runs tr.row:hover {
-    background: #f6f6f6;
-}
+table.runs tr.row { cursor: pointer; }
+table.runs tr.row:hover { background: #f1f5fa; }
 
 .status {
     display: inline-block;
-    padding: 0.125rem 0.5rem;
+    padding: 0.1rem 0.55rem;
     border-radius: 999px;
     font-size: 0.75rem;
     font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
 }
-
 .status-pending, .status-starting { background: #ffd; color: #663; }
 .status-running                   { background: #def; color: #036; }
 .status-completed                 { background: #dfd; color: #060; }
 .status-failed                    { background: #fdd; color: #900; }
-.status-canceled                  { background: #eee; color: #444; }
+.status-canceled, .status-interrupted { background: #eee; color: #444; }
+
+.meta { color: #666; font-size: 0.875rem; margin: 0.25rem 0 0.5rem; }
+.meta span { margin-right: 0.6rem; }
 
 .log {
     background: #111;
     color: #eee;
-    padding: 0.75rem;
+    padding: 0.75rem 0.9rem;
     border-radius: 4px;
     font-family: ui-monospace, Menlo, Consolas, monospace;
-    font-size: 0.875rem;
-    max-height: 60vh;
+    font-size: 0.85rem;
+    line-height: 1.45;
+    max-height: 65vh;
     overflow-y: auto;
     white-space: pre-wrap;
     word-break: break-word;
 }
-
+.log-line { display: block; }
 .log-line.phase  { color: #6cf; }
 .log-line.error  { color: #f88; }
 .log-line.stream { color: #ddd; }
 
 .question-modal {
     background: #fffbe6;
-    border: 1px solid #ffc;
-    border-radius: 4px;
-    padding: 1rem;
+    border: 1px solid #ffe58a;
+    border-radius: 6px;
+    padding: 1rem 1.1rem;
     margin: 1rem 0;
 }
-
-.question-modal .choices {
-    display: flex;
-    gap: 0.5rem;
-    margin: 0.5rem 0;
-}
-
-button.cancel {
-    background: #fcc;
-    border: 1px solid #f88;
-    padding: 0.25rem 0.75rem;
-    border-radius: 4px;
-    cursor: pointer;
-}
+.question-modal h3 { margin: 0 0 0.5rem; }
+.question-modal .choices { display: flex; gap: 0.5rem; margin: 0.5rem 0; }
 
 .prompt-block {
     background: #f6f6f6;
-    padding: 0.5rem;
+    padding: 0.6rem 0.75rem;
     border-radius: 4px;
     white-space: pre-wrap;
-}
-
-.meta {
-    color: #666;
-    font-size: 0.875rem;
-}
-.meta span {
-    margin-right: 0.5rem;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 0.85rem;
 }
