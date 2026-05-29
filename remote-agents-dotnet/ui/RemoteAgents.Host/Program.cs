@@ -122,6 +122,32 @@ app.MapPost("/runs/{id:guid}/cancel", (Guid id, FlowRunner runner) =>
     return ok ? Results.Ok() : Results.NotFound();
 });
 
+// What the agent actually said this turn (the library's distilled
+// claude-text.txt / codex output). Useful as the "final answer" panel
+// in the UI — the raw PTY stream is too noisy to read as is.
+app.MapGet("/runs/{id:guid}/output", async (Guid id, RunRegistry registry) =>
+{
+    var run = registry.Get(id);
+    var sessionDir = run?.SessionDir
+        ?? registry.HistorySnapshot().FirstOrDefault(p => p.Id == id)?.SessionDir;
+    if (sessionDir is null) return Results.NotFound();
+
+    var candidates = new[]
+    {
+        Path.Combine(sessionDir, "claude-text.txt"),
+        Path.Combine(sessionDir, "codex-review.txt"),
+    };
+    foreach (var path in candidates)
+    {
+        if (File.Exists(path))
+        {
+            var text = await File.ReadAllTextAsync(path);
+            return Results.Text(text, "text/plain");
+        }
+    }
+    return Results.NoContent();
+});
+
 // Forward-compat for the AgentQuestion answer-back loop. The library's v2
 // contract for routing responses into a paused agent is not yet defined
 // (see PLANS/interaction-modes.md Q10), so v1 just records the choice on

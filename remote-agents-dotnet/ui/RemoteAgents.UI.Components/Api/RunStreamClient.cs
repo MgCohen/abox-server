@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.SignalR.Client;
 using RemoteAgents.Events;
+using RemoteAgents.UI.Components.Models;
 
 namespace RemoteAgents.UI.Components.Api;
 
@@ -26,6 +27,11 @@ public sealed class RunStreamClient : IAsyncDisposable
 
     public IAsyncEnumerable<AgentEvent> StreamAsync(Guid runId, CancellationToken ct = default) =>
         _conn.StreamAsync<AgentEvent>("Stream", runId, ct);
+
+    // Structured Claude session-JSONL stream — typed assistant/tool/thinking
+    // events rendered by the UI without going through terminal emulation.
+    public IAsyncEnumerable<ChatEvent> StreamChatAsync(Guid runId, CancellationToken ct = default) =>
+        _conn.StreamAsync<ChatEvent>("StreamChat", runId, ct);
 
     public ValueTask DisposeAsync() => _conn.DisposeAsync();
 }

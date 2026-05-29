@@ -36,4 +36,12 @@ public sealed class HostApiClient
 
     public Task RespondAsync(Guid id, RespondRequest req, CancellationToken ct = default) =>
         _http.PostAsJsonAsync($"runs/{id}/respond", req, ct);
+
+    public async Task<string?> GetOutputAsync(Guid id, CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync($"runs/{id}/output", ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NoContent) return null;
+        if (!resp.IsSuccessStatusCode) return null;
+        return await resp.Content.ReadAsStringAsync(ct);
+    }
 }

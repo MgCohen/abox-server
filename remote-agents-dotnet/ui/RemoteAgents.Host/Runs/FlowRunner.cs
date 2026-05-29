@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using RemoteAgents.Events;
+using RemoteAgents.Host.Hubs;
 using RemoteAgents.Host.Sinks;
 using RemoteAgents.Primitives;
 
@@ -47,9 +48,16 @@ public sealed class FlowRunner
             Args = args,
             StartedAt = DateTimeOffset.UtcNow,
             Sink = new ChannelSink(),
+            Chat = new ChatChannel(),
             Cts = new CancellationTokenSource(),
             Status = RunStatus.Starting,
         };
+
+        // Resolve the absolute project dir so the JSONL tailer can find
+        // Claude's session file. Best-effort — if resolution fails the
+        // tailer just no-ops.
+        try { run.ProjectDir = ProjectRegistry.Resolve(project); }
+        catch (Exception ex) { _log.LogWarning(ex, "Could not resolve project {Project}", project); }
 
         _registry.Register(run);
 
@@ -79,6 +87,15 @@ public sealed class FlowRunner
 
             run.Status = RunStatus.Running;
 
+            // Start the Claude JSONL tailer immediately — it watches the
+            // projects/<encoded>/ dir for the new .jsonl file Claude
+            // creates, no UUID handshake needed.
+            if (run.ProjectDir is not null)
+            {
+                var chatTailer = new ClaudeJsonlTailer(run, _log);
+                run.ChatTailerTask = Task.Run(() => chatTailer.RunAsync(run.Cts.Token));
+            }
+
             var stdoutTask = ReadStdoutAsync(proc, run);
             var stderrTask = ReadStderrAsync(proc, run);
 
@@ -95,12 +112,17 @@ public sealed class FlowRunner
             run.EndedAt = DateTimeOffset.UtcNow;
 
             // EndedAt is now set — the tailer's "is the run done?" check
-            // can return true on its next loop iteration. Await it so we
-            // don't promote-to-history with the tail still in flight.
+            // can return true on its next loop iteration. Await both so we
+            // don't promote-to-history with tails still in flight.
             if (run.TailerTask is not null)
             {
                 try { await run.TailerTask; }
-                catch (Exception ex) { _log.LogWarning(ex, "Tailer task fault for run {RunId}", run.Id); }
+                catch (Exception ex) { _log.LogWarning(ex, "Transcript tailer fault for run {RunId}", run.Id); }
+            }
+            if (run.ChatTailerTask is not null)
+            {
+                try { await run.ChatTailerTask; }
+                catch (Exception ex) { _log.LogWarning(ex, "Chat tailer fault for run {RunId}", run.Id); }
             }
 
             run.Status = run.Cts.IsCancellationRequested
@@ -117,6 +139,7 @@ public sealed class FlowRunner
         finally
         {
             run.Sink.Complete();
+            run.Chat.Complete();
             try
             {
                 _registry.PromoteToHistory(run);

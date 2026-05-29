@@ -1,5 +1,6 @@
 #:package Microsoft.AspNetCore.SignalR.Client@10.0.7
 #:project ../../src/RemoteAgents/RemoteAgents.csproj
+#:project ../RemoteAgents.UI.Components/RemoteAgents.UI.Components.csproj
 
 // signalr-stream-smoke.cs — fire a run via Host REST, then subscribe to
 // /hub/runs Stream(runId) and print each AgentEvent as it arrives until
@@ -14,6 +15,7 @@
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.SignalR.Client;
 using RemoteAgents.Events;
+using RemoteAgents.UI.Components.Models;
 
 // File-based programs disable reflection-based STJ by default; the smoke
 // is plumbing-only and not worth wiring source-gen for. Flip it back on.
@@ -54,26 +56,55 @@ Console.WriteLine($"hub connected ({conn.ConnectionId})");
 Console.WriteLine($"streaming events for {runId} …");
 Console.WriteLine();
 
-var n = 0;
-await foreach (var evt in conn.StreamAsync<AgentEvent>("Stream", runId))
+// Run both streams concurrently. The agent-event stream is the existing
+// raw PTY pipeline; the chat-event stream is the C7 JSONL-tail pipeline.
+var nEvent = 0;
+var nChat = 0;
+
+var agentTask = Task.Run(async () =>
 {
-    n++;
-    var tag = evt.GetType().Name;
-    var payload = evt switch
+    await foreach (var evt in conn.StreamAsync<AgentEvent>("Stream", runId))
     {
-        AgentEvent.Started s         => $"prompt='{Truncate(s.Prompt, 60)}'",
-        AgentEvent.StreamChunk c     => $"chars={c.Chunk.Length}",
-        AgentEvent.DialogDismissed d => $"match='{d.Match}'",
-        AgentEvent.Phase p           => $"{p.Status}: {Truncate(p.Detail, 60)}",
-        AgentEvent.Completed done    => $"exit={done.ExitCode} chars={done.OutputChars} sid={done.SessionId}",
-        AgentEvent.Failed f          => $"{f.ExceptionType ?? "?"}: {Truncate(f.Reason, 80)}",
-        _                            => "(unknown)",
-    };
-    Console.WriteLine($"[{n:D3}] {tag,-16} {payload}");
-}
+        nEvent++;
+        var tag = evt.GetType().Name;
+        var payload = evt switch
+        {
+            AgentEvent.Started s         => $"prompt='{Truncate(s.Prompt, 60)}'",
+            AgentEvent.StreamChunk c     => $"chars={c.Chunk.Length}",
+            AgentEvent.DialogDismissed d => $"match='{d.Match}'",
+            AgentEvent.Phase p           => $"{p.Status}: {Truncate(p.Detail, 60)}",
+            AgentEvent.Completed done    => $"exit={done.ExitCode} chars={done.OutputChars}",
+            AgentEvent.Failed f          => $"{f.ExceptionType ?? "?"}: {Truncate(f.Reason, 80)}",
+            _                            => "(unknown)",
+        };
+        Console.WriteLine($"[event {nEvent:D3}] {tag,-18} {payload}");
+    }
+});
+
+var chatTask = Task.Run(async () =>
+{
+    await foreach (var evt in conn.StreamAsync<ChatEvent>("StreamChat", runId))
+    {
+        nChat++;
+        var tag = evt.GetType().Name;
+        var payload = evt switch
+        {
+            ChatEvent.UserText u      => $"text='{Truncate(u.Text, 80)}'",
+            ChatEvent.AssistantText a => $"text='{Truncate(a.Text, 80)}'",
+            ChatEvent.Thinking t      => $"chars={t.Text.Length}",
+            ChatEvent.ToolUse tu      => $"{tu.Name}({Truncate(tu.InputJson, 50)})",
+            ChatEvent.ToolResult tr   => $"useId={tr.ToolUseId} err={tr.IsError} chars={tr.Content.Length}",
+            ChatEvent.Meta m          => $"{m.Tag}: {Truncate(m.Detail, 50)}",
+            _                         => "(unknown)",
+        };
+        Console.WriteLine($"[chat  {nChat:D3}] {tag,-18} {payload}");
+    }
+});
+
+await Task.WhenAll(agentTask, chatTask);
 
 Console.WriteLine();
-Console.WriteLine($"stream ended after {n} events.");
+Console.WriteLine($"streams ended — {nEvent} agent events, {nChat} chat events.");
 
 static string Truncate(string s, int n) => s.Length <= n ? s : s[..n] + "…";
 

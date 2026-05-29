@@ -1,5 +1,6 @@
 @page "/runs/{Id:guid}"
 @using RemoteAgents.Pty
+@using RemoteAgents.UI.Components.Models
 @implements IAsyncDisposable
 @inject HostApiClient Api
 @inject HttpClient Http
@@ -57,17 +58,103 @@
             </div>
         }
 
-        <h2>Live</h2>
-        <div class="log">
-            @foreach (var line in _lines)
-            {
-                <div class="@LineClass(line)">@line.Text</div>
-            }
-            @if (_lines.Count == 0)
-            {
-                <div class="hint">Waiting for the first event…</div>
-            }
-        </div>
+        <h2>Conversation</h2>
+        @if (_chat.Count == 0 && IsActive(_summary.Status))
+        {
+            <div class="thinking">
+                <span class="dot"></span> Waiting for the first message from the agent…
+            </div>
+        }
+        else if (_chat.Count == 0)
+        {
+            <p class="hint">No conversation captured. The agent may have exited
+            before writing its session JSONL — see Raw stream below.</p>
+        }
+        else
+        {
+            <div class="chat">
+                @foreach (var evt in _chat)
+                {
+                    @switch (evt)
+                    {
+                        case ChatEvent.UserText u:
+                            <div class="chat-msg chat-user">
+                                <div class="chat-label">You</div>
+                                <div class="chat-body">@u.Text</div>
+                            </div>
+                            break;
+                        case ChatEvent.AssistantText a:
+                            <div class="chat-msg chat-assistant">
+                                <div class="chat-label">Claude</div>
+                                <div class="chat-body">@a.Text</div>
+                            </div>
+                            break;
+                        case ChatEvent.Thinking t:
+                            <details class="chat-msg chat-thinking">
+                                <summary>Claude thought (@t.Text.Length chars)</summary>
+                                <div class="chat-body">@t.Text</div>
+                            </details>
+                            break;
+                        case ChatEvent.ToolUse tu:
+                            <div class="chat-msg chat-tool-use">
+                                <div class="chat-label">⚙ @tu.Name</div>
+                                <details>
+                                    <summary>input</summary>
+                                    <pre class="chat-json">@tu.InputJson</pre>
+                                </details>
+                            </div>
+                            break;
+                        case ChatEvent.ToolResult tr:
+                            <div class="chat-msg @(tr.IsError ? "chat-tool-error" : "chat-tool-result")">
+                                <div class="chat-label">@(tr.IsError ? "✗ tool error" : "✓ tool result")</div>
+                                <details>
+                                    <summary>output (@tr.Content.Length chars)</summary>
+                                    <pre class="chat-body">@tr.Content</pre>
+                                </details>
+                            </div>
+                            break;
+                        case ChatEvent.Meta m:
+                            <div class="chat-msg chat-meta">
+                                <span class="chat-label">@m.Tag</span>
+                                @if (!string.IsNullOrEmpty(m.Detail))
+                                {
+                                    <span class="chat-body">@m.Detail</span>
+                                }
+                            </div>
+                            break;
+                    }
+                }
+            </div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(_finalOutput))
+        {
+            <details class="output-toggle">
+                <summary>Final output (distilled)</summary>
+                <pre class="final-output">@_finalOutput</pre>
+            </details>
+        }
+
+        @if (_lines.Count > 0)
+        {
+            <details class="raw-toggle">
+                <summary>Events (debug, @_lines.Count)</summary>
+                <div class="log">
+                    @foreach (var line in _lines)
+                    {
+                        <div class="@LineClass(line)">@line.Text</div>
+                    }
+                </div>
+            </details>
+        }
+
+        @if (_streamLen > 0)
+        {
+            <details class="raw-toggle">
+                <summary>Raw PTY stream (debug, @_streamBuf.Length chars)</summary>
+                <pre class="log-stream">@_streamText</pre>
+            </details>
+        }
     }
 </div>
 
@@ -78,6 +165,11 @@
     private RunStreamClient? _stream;
     private CancellationTokenSource? _cts;
     private readonly List<LogLine> _lines = new();
+    private readonly List<ChatEvent> _chat = new();
+    private readonly System.Text.StringBuilder _streamBuf = new();
+    private string _streamText = "";
+    private int _streamLen => _streamBuf.Length;
+    private string? _finalOutput;
     private QuestionSurface? _currentQuestion;
     private string _freeformResponse = "";
 
@@ -91,17 +183,17 @@
         }
 
         _cts = new CancellationTokenSource();
-        // Hub URL must use the Host's base address (where /hub/runs is
-        // mapped), not the WASM origin (which serves only the bundle).
         var hostBase = Http.BaseAddress ?? new Uri(Nav.BaseUri);
         var hubUrl = new Uri(hostBase, "hub/runs").ToString();
         _stream = new RunStreamClient(hubUrl);
         await _stream.StartAsync(_cts.Token);
 
-        _ = Task.Run(() => ConsumeAsync(_cts.Token));
+        // Two consumers, one per server-side stream method.
+        _ = Task.Run(() => ConsumeEventsAsync(_cts.Token));
+        _ = Task.Run(() => ConsumeChatAsync(_cts.Token));
     }
 
-    private async Task ConsumeAsync(CancellationToken ct)
+    private async Task ConsumeEventsAsync(CancellationToken ct)
     {
         try
         {
@@ -117,9 +209,27 @@
             _lines.Add(new LogLine($"[stream error] {ex.Message}", LineKind.Error));
             await InvokeAsync(StateHasChanged);
         }
-        // Refresh summary at end so EndedAt/ExitCode/Status reflect the final state.
         _summary = await Api.GetRunAsync(Id);
+        try { _finalOutput = await Api.GetOutputAsync(Id); } catch { }
         await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ConsumeChatAsync(CancellationToken ct)
+    {
+        try
+        {
+            await foreach (var evt in _stream!.StreamChatAsync(Id, ct))
+            {
+                _chat.Add(evt);
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            _chat.Add(new ChatEvent.Meta(DateTimeOffset.UtcNow, "", "stream-error", ex.Message));
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     private void Append(AgentEvent evt)
@@ -130,11 +240,14 @@
                 _lines.Add(new LogLine($"[{s.AgentName}] started", LineKind.Phase));
                 break;
             case AgentEvent.StreamChunk c:
-                // Strip ANSI escape sequences — raw TUI control bytes
-                // are noise in a browser-rendered log pane.
-                var clean = AnsiHelpers.StripAnsi(c.Chunk);
-                if (!string.IsNullOrWhiteSpace(clean))
-                    _lines.Add(new LogLine(clean, LineKind.Stream));
+                var clean = Sanitize(c.Chunk);
+                if (clean.Length > 0)
+                {
+                    _streamBuf.Append(clean);
+                    if (_streamBuf.Length > 100_000)
+                        _streamBuf.Remove(0, _streamBuf.Length - 100_000);
+                    _streamText = _streamBuf.ToString();
+                }
                 break;
             case AgentEvent.DialogDismissed d:
                 _lines.Add(new LogLine($"[{d.AgentName}] dismissed dialog: {d.Match}", LineKind.Phase));
@@ -172,6 +285,25 @@
 
     private static bool IsActive(string status) =>
         status is "Pending" or "Starting" or "Running";
+
+    // Aggressive cleanup for raw PTY chunks. Used only for the debug
+    // "Raw PTY stream" toggle now — the primary content comes from the
+    // Conversation section, sourced from Claude's session JSONL.
+    private string Sanitize(string s)
+    {
+        var stripped = AnsiHelpers.StripAnsi(s);
+        if (stripped.Length == 0) return "";
+
+        var sb = new System.Text.StringBuilder(stripped.Length);
+        foreach (var ch in stripped)
+        {
+            if (ch == '\t' || ch == '\n' || ch == '\v' || ch == '\f') sb.Append(ch);
+            else if (ch == '\r') sb.Append('\n');
+            else if (ch < 0x20 || ch == 0x7f) continue;
+            else sb.Append(ch);
+        }
+        return sb.ToString();
+    }
 
     public async ValueTask DisposeAsync()
     {

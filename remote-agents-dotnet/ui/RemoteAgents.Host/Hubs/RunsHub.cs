@@ -33,4 +33,17 @@ public sealed class RunsHub : Hub
         _log.LogInformation("Client {ConnId} subscribing to run {RunId}", Context.ConnectionId, runId);
         return run.Sink.Reader;
     }
+
+    // Structured chat-event stream, sourced from Claude's per-session
+    // JSONL at ~/.claude/projects/<encoded-cwd>/<session-id>.jsonl.
+    // Same lifetime as Stream above: completes when ChatChannel.Complete
+    // is called (FlowRunner does this in its finally block).
+    public ChannelReader<ChatEvent> StreamChat(Guid runId, CancellationToken ct)
+    {
+        var run = _registry.Get(runId)
+            ?? throw new HubException($"Run {runId} not found.");
+
+        _log.LogInformation("Client {ConnId} subscribing to chat stream for {RunId}", Context.ConnectionId, runId);
+        return run.Chat.Reader;
+    }
 }
