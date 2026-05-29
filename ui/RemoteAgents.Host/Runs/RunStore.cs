@@ -1,6 +1,15 @@
 using System.Text.Json;
+using RemoteAgents.Runs;
 
 namespace RemoteAgents.Host.Runs;
+
+// Versioned on-disk wrapper for the run index. RunRecord is the single
+// durable shape (was: PersistedRun) — RunStatus serializes as its name via
+// the converter on RunRecord.Status, so an existing runs.json round-trips.
+public sealed record RunsFile(int SchemaVersion, RunRecord[] Runs)
+{
+    public const int CurrentSchema = 1;
+}
 
 // JSON-file-backed persistence at ~/.remote-agents/runs.json. Atomic
 // write (write-then-rename) so a power loss can't truncate the file
@@ -32,7 +41,7 @@ public sealed class RunStore
 
     public string FilePath => _path;
 
-    public async Task<PersistedRun[]> LoadAsync(CancellationToken ct = default)
+    public async Task<RunRecord[]> LoadAsync(CancellationToken ct = default)
     {
         if (!File.Exists(_path)) return [];
         try
@@ -51,7 +60,7 @@ public sealed class RunStore
         }
     }
 
-    public async Task SaveAsync(IEnumerable<PersistedRun> runs, CancellationToken ct = default)
+    public async Task SaveAsync(IEnumerable<RunRecord> runs, CancellationToken ct = default)
     {
         await _lock.WaitAsync(ct);
         try

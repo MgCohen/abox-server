@@ -106,21 +106,17 @@ app.MapPost("/runs", (StartRunRequest req, FlowRunner runner) =>
     if (string.IsNullOrWhiteSpace(req.Prompt)) return Results.BadRequest(new { error = "prompt required" });
 
     var run = runner.Start(req.Project, req.Flow, req.Prompt, req.Args ?? []);
-    return Results.Accepted($"/runs/{run.Id}", SummaryFromRun(run));
+    return Results.Accepted($"/runs/{run.Id}", RunRegistry.ToRecord(run));
 });
 
-app.MapGet("/runs", (RunRegistry registry) =>
-{
-    var summaries = registry.List().Select(SummaryFromCombined).ToArray();
-    return Results.Ok(summaries);
-});
+app.MapGet("/runs", (RunRegistry registry) => Results.Ok(registry.List()));
 
 app.MapGet("/runs/{id:guid}", (Guid id, RunRegistry registry) =>
 {
     var live = registry.Get(id);
-    if (live is not null) return Results.Ok(SummaryFromRun(live));
+    if (live is not null) return Results.Ok(RunRegistry.ToRecord(live));
     var hist = registry.HistorySnapshot().FirstOrDefault(p => p.Id == id);
-    return hist is null ? Results.NotFound() : Results.Ok(SummaryFromPersisted(hist));
+    return hist is null ? Results.NotFound() : Results.Ok(hist);
 });
 
 app.MapPost("/runs/{id:guid}/cancel", (Guid id, FlowRunner runner) =>
@@ -174,24 +170,5 @@ app.MapPost("/runs/{id:guid}/respond", (Guid id, RespondRequest req, RunRegistry
 
 app.Run();
 
-// Phase 1 leaves the three projections in place (live Run, persisted
-// row, combined-list row). Layer 6 collapses them when Run splits into
-// LiveRun + RunRecord; until then these adapters keep the wire shape
-// stable while the field set graduates to RunRecord.
-static RunRecord SummaryFromRun(Run run) => new(
-    run.Id, run.Project, run.Flow, run.Prompt, run.Status,
-    run.StartedAt, run.EndedAt, run.SessionId, run.SessionDir,
-    run.ExitCode, run.FailureReason);
-
-static RunRecord SummaryFromCombined(RunsCombined c) => new(
-    c.Id, c.Project, c.Flow, c.Prompt, ParseStatus(c.Status),
-    c.StartedAt, c.EndedAt, c.SessionId, c.SessionDir,
-    c.ExitCode, c.FailureReason);
-
-static RunRecord SummaryFromPersisted(PersistedRun p) => new(
-    p.Id, p.Project, p.Flow, p.Prompt, ParseStatus(p.Status),
-    p.StartedAt, p.EndedAt, p.SessionId, p.SessionDir,
-    p.ExitCode, p.FailureReason);
-
-static RunStatus ParseStatus(string s) =>
-    Enum.TryParse<RunStatus>(s, ignoreCase: true, out var v) ? v : RunStatus.Pending;
+// Run → RunRecord is the single projection now (RunRegistry.ToRecord);
+// persisted history is already RunRecord. No per-shape adapters remain.
