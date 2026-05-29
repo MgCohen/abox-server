@@ -84,7 +84,11 @@ public class ClaudeAgent : Agent
     private async Task<AgentResult> RunInternalAsync(AgentRunRequest req, CancellationToken ct)
     {
         var sessionId = req.SessionId ?? Guid.NewGuid().ToString();
-        var claudeArgs = BuildClaudeArgs(sessionId, isResume: req.SessionId is not null, Options);
+        var effectiveOpts = Options with
+        {
+            SystemPrompt = UnattendedDirective.Compose(Options.SystemPrompt, req.Mode)
+        };
+        var claudeArgs = BuildClaudeArgs(sessionId, isResume: req.SessionId is not null, effectiveOpts);
         var launchLine = "claude " + string.Join(' ', claudeArgs.Select(Shell.QuoteArg));
 
         // Hard deadline: even if WaitIdle hangs, /exit is ignored, or the
@@ -140,6 +144,13 @@ public class ClaudeAgent : Agent
 
         var outcome = HookResolution.FromHooksJsonl(
             Options.Hooks?.HooksJsonlPath, new ClaudeHookParser(), req.Mode);
+
+        if (outcome.Status == AgentStatus.Failed && outcome.Question is not null)
+        {
+            await Sink.EmitAsync(new AgentEvent.NonInteractiveViolation(
+                DateTimeOffset.UtcNow, Name, outcome.Question.Source, outcome.Question.Text),
+                CancellationToken.None);
+        }
 
         return new AgentResult(
             Text:          text,

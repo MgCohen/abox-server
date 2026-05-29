@@ -23,6 +23,7 @@ namespace RemoteAgents.Events;
 [JsonDerivedType(typeof(Completed), "Completed")]
 [JsonDerivedType(typeof(Failed), "Failed")]
 [JsonDerivedType(typeof(Phase), "Phase")]
+[JsonDerivedType(typeof(NonInteractiveViolation), "NonInteractiveViolation")]
 public abstract record AgentEvent(DateTimeOffset At, string AgentName)
 {
     public sealed record Started(DateTimeOffset At, string AgentName, string Prompt, string? SessionId)
@@ -50,4 +51,12 @@ public abstract record AgentEvent(DateTimeOffset At, string AgentName)
         public const string Fail  = "fail";
         public const string Info  = "info";
     }
+
+    // Emitted when InteractionMode.NonInteractive saw the agent ask a
+    // question (a hook line resolved to NeedsInput). The agent run that
+    // produced it returns Status = Failed with FailureReason set — this
+    // event is the greppable companion in transcript.jsonl.
+    public sealed record NonInteractiveViolation(
+        DateTimeOffset At, string AgentName, string QuestionSource, string QuestionText)
+        : AgentEvent(At, AgentName);
 }

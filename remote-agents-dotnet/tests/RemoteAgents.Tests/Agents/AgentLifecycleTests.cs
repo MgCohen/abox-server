@@ -120,7 +120,7 @@ public class AgentLifecycleTests
         var t = typeof(AgentEvent);
         var nested = t.GetNestedTypes().Where(nt => nt.IsSubclassOf(t)).Select(nt => nt.Name).ToHashSet();
         Assert.Equal(
-            new HashSet<string> { "Started", "StreamChunk", "DialogDismissed", "Completed", "Failed", "Phase" },
+            new HashSet<string> { "Started", "StreamChunk", "DialogDismissed", "Completed", "Failed", "Phase", "NonInteractiveViolation" },
             nested);
     }
 }

@@ -1,4 +1,5 @@
 using RemoteAgents.Agents;
+using RemoteAgents.Events;
 
 namespace RemoteAgents.Tests.Agents;
 
@@ -169,9 +170,90 @@ public class ClaudeAgentHookIntegrationTests : IDisposable
         Assert.False(File.Exists(settingsPath), "Uninstall should remove settings.json after the run");
     }
 
+    [Fact]
+    public async Task NonInteractive_mode_appends_unattended_directive_to_launch_line()
+    {
+        var fake = new FakePtyConnection();
+        fake.OnWriteText = w => { if (w.Contains("exit\r")) fake.Exit(0); };
+        fake.EnqueueRead("ready\n");
+
+        var agent = new TestableClaudeAgent(fake) { Name = "claude", Options = FastOpts() };
+        await agent.RunAsync(new AgentRunRequest(
+            Prompt: "anything",
+            SessionId: Guid.NewGuid().ToString(),
+            ProjectDir: _projectDir,
+            Mode: InteractionMode.NonInteractive));
+
+        var captured = fake.Captured.ToString();
+        Assert.Contains("--append-system-prompt", captured);
+        Assert.Contains(UnattendedDirective.Sentinel, captured);
+    }
+
+    [Fact]
+    public async Task Interactive_mode_does_not_inject_directive()
+    {
+        var fake = new FakePtyConnection();
+        fake.OnWriteText = w => { if (w.Contains("exit\r")) fake.Exit(0); };
+        fake.EnqueueRead("ready\n");
+
+        var agent = new TestableClaudeAgent(fake) { Name = "claude", Options = FastOpts() };
+        await agent.RunAsync(new AgentRunRequest(
+            Prompt: "anything",
+            SessionId: Guid.NewGuid().ToString(),
+            ProjectDir: _projectDir,
+            Mode: InteractionMode.Interactive));
+
+        var captured = fake.Captured.ToString();
+        Assert.DoesNotContain(UnattendedDirective.Sentinel, captured);
+    }
+
+    [Fact]
+    public async Task NonInteractive_violation_event_fires_when_question_detected()
+    {
+        WriteHook("claude.idle_prompt", """{"message":"Which one?"}""");
+
+        AgentEvent.NonInteractiveViolation? violation = null;
+        var sink = new CapturingSink(evt =>
+        {
+            if (evt is AgentEvent.NonInteractiveViolation v) violation = v;
+        });
+
+        var fake = new FakePtyConnection();
+        fake.OnWriteText = w => { if (w.Contains("exit\r")) fake.Exit(0); };
+        fake.EnqueueRead("ready\n");
+
+        var agent = new TestableClaudeAgent(fake)
+        {
+            Name = "claude",
+            Sink = sink,
+            Options = FastOpts(new HookIntegrationOptions(_hooksPath, _fakeShim))
+        };
+
+        await agent.RunAsync(new AgentRunRequest(
+            Prompt: "anything",
+            SessionId: Guid.NewGuid().ToString(),
+            ProjectDir: _projectDir,
+            Mode: InteractionMode.NonInteractive));
+
+        Assert.NotNull(violation);
+        Assert.Equal("claude.idle_prompt", violation!.QuestionSource);
+        Assert.Equal("Which one?",         violation.QuestionText);
+    }
+
     private void WriteHook(string source, string payloadJson)
     {
         var line = $$"""{"source":"{{source}}","sessionId":"s","cwd":"c","payload":{{payloadJson}}}""";
         File.AppendAllText(_hooksPath, line + "\n");
+    }
+
+    private sealed class CapturingSink : IEventSink
+    {
+        private readonly Action<AgentEvent> _handler;
+        public CapturingSink(Action<AgentEvent> handler) { _handler = handler; }
+        public Task EmitAsync(AgentEvent evt, CancellationToken ct = default)
+        {
+            _handler(evt);
+            return Task.CompletedTask;
+        }
     }
 }

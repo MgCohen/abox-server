@@ -119,9 +119,10 @@ public class CodexAgent : Agent
         });
 
         // System prompt prepended to user prompt — codex has no flag for it.
-        var fullPrompt = string.IsNullOrEmpty(Options.SystemPrompt)
+        var effectiveSystemPrompt = UnattendedDirective.Compose(Options.SystemPrompt, req.Mode);
+        var fullPrompt = string.IsNullOrEmpty(effectiveSystemPrompt)
             ? req.Prompt
-            : Options.SystemPrompt + "\n\n" + req.Prompt;
+            : effectiveSystemPrompt + "\n\n" + req.Prompt;
 
         proc.Start();
         proc.BeginOutputReadLine();
@@ -152,6 +153,13 @@ public class CodexAgent : Agent
 
         var outcome = HookResolution.FromHooksJsonl(
             Options.Hooks?.HooksJsonlPath, new CodexHookParser(), req.Mode);
+
+        if (outcome.Status == AgentStatus.Failed && outcome.Question is not null)
+        {
+            await Sink.EmitAsync(new AgentEvent.NonInteractiveViolation(
+                DateTimeOffset.UtcNow, Name, outcome.Question.Source, outcome.Question.Text),
+                CancellationToken.None);
+        }
 
         return new AgentResult(
             Text:          text,

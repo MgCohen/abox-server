@@ -20,7 +20,7 @@ namespace RemoteAgents.Agents;
 // heuristic is the best-effort fallback for Interactive mode.
 public sealed class CodexHookParser : IAgentHookParser
 {
-    public const string Sentinel = "<<NEEDS_INPUT>>";
+    public const string Sentinel = UnattendedDirective.Sentinel;
 
     // Initial set — grow from real-run fixtures.
     private static readonly Regex InterrogativeLead = new(
