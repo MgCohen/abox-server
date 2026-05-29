@@ -28,22 +28,22 @@ public sealed class ClaudeHookParser : IAgentHookParser
     public AgentQuestion? TryParse(JsonElement hookLine)
     {
         if (hookLine.ValueKind != JsonValueKind.Object) return null;
-        if (!TryGetString(hookLine, "source", out var source)) return null;
+        if (!hookLine.TryGetString("source", out var source)) return null;
         if (!hookLine.TryGetProperty("payload", out var payload)) return null;
         if (payload.ValueKind != JsonValueKind.Object) return null;
 
         return source switch
         {
             "claude.permission_prompt" => new AgentQuestion.TuiPrompt(
-                Text:        GetString(payload, "message"),
-                ToolName:    GetString(payload, "tool_name"),
-                ToolInput:   GetObjectOrEmpty(payload, "tool_input"),
+                Text:        payload.GetStringOrEmpty("message"),
+                ToolName:    payload.GetStringOrEmpty("tool_name"),
+                ToolInput:   payload.GetObjectOrEmpty("tool_input"),
                 HookPayload: payload.Clone(),
                 Source:      source),
 
             "claude.idle_prompt" or "claude.elicitation_dialog" =>
                 new AgentQuestion.OpenQuestion(
-                    Text:         GetString(payload, "message"),
+                    Text:         payload.GetStringOrEmpty("message"),
                     FromSentinel: false,
                     HookPayload:  payload.Clone(),
                     Source:       source),
@@ -56,23 +56,4 @@ public sealed class ClaudeHookParser : IAgentHookParser
             _ => null,
         };
     }
-
-    private static bool TryGetString(JsonElement obj, string name, out string value)
-    {
-        if (obj.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String)
-        {
-            value = v.GetString() ?? "";
-            return true;
-        }
-        value = "";
-        return false;
-    }
-
-    private static string GetString(JsonElement obj, string name)
-        => TryGetString(obj, name, out var v) ? v : "";
-
-    private static JsonElement GetObjectOrEmpty(JsonElement obj, string name)
-        => obj.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Object
-            ? v.Clone()
-            : JsonDocument.Parse("{}").RootElement.Clone();
 }

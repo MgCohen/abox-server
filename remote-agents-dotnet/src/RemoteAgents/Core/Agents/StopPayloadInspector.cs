@@ -29,7 +29,7 @@ public static class StopPayloadInspector
     {
         if (payload.ValueKind != JsonValueKind.Object) return null;
 
-        var lastMessage = GetString(payload, "last_assistant_message");
+        var lastMessage = payload.GetStringOrEmpty("last_assistant_message");
         return InspectText(lastMessage, sentinelSource, heuristicSource, payload.Clone());
     }
 
@@ -86,8 +86,4 @@ public static class StopPayloadInspector
         return InterrogativeLead.IsMatch(tail);
     }
 
-    private static string GetString(JsonElement obj, string name) =>
-        obj.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String
-            ? v.GetString() ?? ""
-            : "";
 }
