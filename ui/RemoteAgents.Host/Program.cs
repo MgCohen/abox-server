@@ -146,8 +146,8 @@ app.MapGet("/runs/{id:guid}/output", async (Guid id, RunRegistry registry) =>
 
     var candidates = new[]
     {
-        Path.Combine(sessionDir, "claude-text.txt"),
-        Path.Combine(sessionDir, "codex-review.txt"),
+        RemoteAgents.Sessions.Session.GetArtifactPath(sessionDir, RemoteAgents.Sessions.SessionArtifact.ClaudeText),
+        RemoteAgents.Sessions.Session.GetArtifactPath(sessionDir, RemoteAgents.Sessions.SessionArtifact.CodexReview),
     };
     foreach (var path in candidates)
     {

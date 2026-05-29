@@ -1,5 +1,6 @@
 using RemoteAgents.Agents;
 using RemoteAgents.Primitives;
+using RemoteAgents.Sessions;
 
 namespace RemoteAgents.Flows;
 
@@ -26,8 +27,8 @@ public sealed class ClaudeOnlyFlow : IFlow
             ProjectDir: ctx.ProjectDir), ct);
 
         // Forensic dumps — useful while PTY timings are still being tuned.
-        await File.WriteAllTextAsync(Path.Combine(ctx.Session.Dir, "claude-raw.txt"), result.RawOutput, ct);
-        await File.WriteAllTextAsync(Path.Combine(ctx.Session.Dir, "claude-text.txt"), result.Text, ct);
+        await ctx.Session.WriteArtifactAsync(SessionArtifact.ClaudeRaw, result.RawOutput, ct);
+        await ctx.Session.WriteArtifactAsync(SessionArtifact.ClaudeText, result.Text, ct);
 
         var after = FsDiff.Snapshot(ctx.ProjectDir);
         var diff = FsDiff.Diff(before, after);

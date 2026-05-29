@@ -12,20 +12,8 @@ using System.Diagnostics;
 using RemoteAgents.Primitives;
 
 // Locate the orchestrator dir (RemoteAgents.slnx lives at its root).
-var orchestratorRoot = ResolveOrchestratorRoot()
-    ?? throw new InvalidOperationException("Could not locate remote-agents-dotnet/ — run from inside the repo.");
-var flowsDir = Path.Combine(orchestratorRoot, "cli", "flows");
-
-string? ResolveOrchestratorRoot()
-{
-    // Prefer the dir that contains the .slnx (already the orchestrator
-    // root). Fall back to the repo-root case where it lives under a
-    // remote-agents-dotnet/ subdir.
-    var slnxOwner = RepoRoot.Find("RemoteAgents.slnx");
-    if (slnxOwner is not null) return slnxOwner;
-    var repoRoot = RepoRoot.Find("remote-agents-dotnet");
-    return repoRoot is null ? null : Path.Combine(repoRoot, "remote-agents-dotnet");
-}
+var orchestratorRoot = OrchestratorPaths.FindOrThrow();
+var flowsDir = OrchestratorPaths.FlowsDir()!;
 
 var subcommand = args.Length > 0 ? args[0] : null;
 var rest = args.Skip(1).ToArray();

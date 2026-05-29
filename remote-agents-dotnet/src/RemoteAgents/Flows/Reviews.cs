@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using RemoteAgents.Agents;
 using RemoteAgents.Events;
 using RemoteAgents.Primitives;
+using RemoteAgents.Sessions;
 
 namespace RemoteAgents.Flows;
 
@@ -114,7 +115,9 @@ public static class Reviews
     {
         var artifact = new CodexReviewArtifact(verdict, sessionId, text);
         var json = JsonSerializer.Serialize(artifact, FlowsJsonContext.Default.CodexReviewArtifact);
-        await File.WriteAllTextAsync(Path.Combine(sessionDir, "codex-review.jsonl"), json + "\n", ct);
+        await File.WriteAllTextAsync(
+            Session.GetArtifactPath(sessionDir, SessionArtifact.CodexReviewJl),
+            json + "\n", ct);
     }
 
     private static string FormatReviewBlock(string text)

@@ -62,8 +62,8 @@ try
     var after = FsDiff.Snapshot(ctx.ProjectDir);
     var diff = FsDiff.Diff(before, after);
 
-    await File.WriteAllTextAsync(Path.Combine(ctx.Session.Dir, "claude-raw.txt"), result.RawOutput);
-    await File.WriteAllTextAsync(Path.Combine(ctx.Session.Dir, "claude-text.txt"), result.Text);
+    await ctx.Session.WriteArtifactAsync(SessionArtifact.ClaudeRaw, result.RawOutput);
+    await ctx.Session.WriteArtifactAsync(SessionArtifact.ClaudeText, result.Text);
 
     Console.WriteLine($"Result:         {(validationOk ? "VALIDATION PASSED" : "VALIDATION FAILED")}");
     Console.WriteLine($"Attempts:       {attempt}");

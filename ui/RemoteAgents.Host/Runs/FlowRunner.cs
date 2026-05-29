@@ -25,14 +25,12 @@ public sealed class FlowRunner
     private readonly ILogger<FlowRunner> _log;
     private readonly string _orchestratorRoot;
 
-    public FlowRunner(RunRegistry registry, RunStore store, ILogger<FlowRunner> log, IConfiguration config)
+    public FlowRunner(RunRegistry registry, RunStore store, ILogger<FlowRunner> log)
     {
         _registry = registry;
         _store = store;
         _log = log;
-        _orchestratorRoot = ResolveOrchestratorRoot(config)
-            ?? throw new InvalidOperationException(
-                "Could not locate remote-agents-dotnet/ — set RemoteAgents:OrchestratorRoot in appsettings.json or run from inside the repo.");
+        _orchestratorRoot = OrchestratorPaths.FindOrThrow();
     }
 
     public string OrchestratorRoot => _orchestratorRoot;
@@ -272,19 +270,4 @@ public sealed class FlowRunner
         }
     }
 
-    private static string? ResolveOrchestratorRoot(IConfiguration config)
-    {
-        // Explicit override wins.
-        var fromConfig = config["RemoteAgents:OrchestratorRoot"];
-        if (!string.IsNullOrWhiteSpace(fromConfig) && Directory.Exists(fromConfig))
-            return Path.GetFullPath(fromConfig);
-
-        // Walk up looking for RemoteAgents.slnx (the orchestrator's marker).
-        var slnxOwner = RepoRoot.Find("RemoteAgents.slnx");
-        if (slnxOwner is not null) return slnxOwner;
-
-        // Fallback: repo root containing remote-agents-dotnet/.
-        var repoRoot = RepoRoot.Find("remote-agents-dotnet");
-        return repoRoot is null ? null : Path.Combine(repoRoot, "remote-agents-dotnet");
-    }
 }

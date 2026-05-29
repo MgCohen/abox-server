@@ -126,8 +126,8 @@ try
         await ctx.Sink.PhaseOkAsync("push", "done.");
     }
 
-    await File.WriteAllTextAsync(Path.Combine(ctx.Session.Dir, "claude-raw.txt"), work.RawOutput);
-    await File.WriteAllTextAsync(Path.Combine(ctx.Session.Dir, "codex-review.txt"), review.Text);
+    await ctx.Session.WriteArtifactAsync(SessionArtifact.ClaudeRaw, work.RawOutput);
+    await ctx.Session.WriteArtifactAsync(SessionArtifact.CodexReview, review.Text);
 
     ctx.Session.End(SessionResult.Shipped);
     await ctx.Sink.PhaseOkAsync("done", $"Shipped. Transcript: {ctx.Session.Dir}");

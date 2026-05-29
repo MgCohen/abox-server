@@ -77,6 +77,39 @@ public sealed class Session
         WriteMeta();
     }
 
+    // Typed artifact accessors. Centralizes the basename → file mapping
+    // that used to be sprinkled across flow files. Callers reference the
+    // enum value; the basename only appears here.
+    public string GetArtifactPath(SessionArtifact artifact) =>
+        Path.Combine(Dir, ArtifactBasename(artifact));
+
+    // Static overload for callers that have a sessionDir string but not a
+    // Session instance (e.g. Reviews helpers that take sessionDir as a
+    // param). Same basename mapping — the literal filename still appears
+    // exactly once.
+    public static string GetArtifactPath(string sessionDir, SessionArtifact artifact) =>
+        Path.Combine(sessionDir, ArtifactBasename(artifact));
+
+    public Task WriteArtifactAsync(SessionArtifact artifact, string contents, CancellationToken ct = default) =>
+        File.WriteAllTextAsync(GetArtifactPath(artifact), contents, ct);
+
+    public Task<string?> ReadArtifactAsync(SessionArtifact artifact, CancellationToken ct = default)
+    {
+        var path = GetArtifactPath(artifact);
+        return File.Exists(path) ? File.ReadAllTextAsync(path, ct).ContinueWith(t => (string?)t.Result, ct)
+                                 : Task.FromResult<string?>(null);
+    }
+
+    private static string ArtifactBasename(SessionArtifact artifact) => artifact switch
+    {
+        SessionArtifact.Transcript    => "transcript.jsonl",
+        SessionArtifact.ClaudeText    => "claude-text.txt",
+        SessionArtifact.ClaudeRaw     => "claude-raw.txt",
+        SessionArtifact.CodexReview   => "codex-review.txt",
+        SessionArtifact.CodexReviewJl => "codex-review.jsonl",
+        _ => throw new ArgumentOutOfRangeException(nameof(artifact)),
+    };
+
     private void WriteMeta()
     {
         var json = JsonSerializer.Serialize(Meta, SessionJsonContext.Default.SessionMeta);
@@ -95,14 +128,7 @@ public sealed class Session
     private static string TsForFilename() =>
         DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH-mm-ss-fffZ");
 
-    private static string DefaultSessionsRoot()
-    {
-        // First look for the orchestrator dir as a sibling (the typical
-        // case when invoked from the repo root). If none, fall back to
-        // CWD/sessions/ — only happens in detached test harnesses.
-        var root = RepoRoot.Find("remote-agents-dotnet");
-        return root is null
-            ? Path.Combine(Environment.CurrentDirectory, "sessions")
-            : Path.Combine(root, "remote-agents-dotnet", "sessions");
-    }
+    private static string DefaultSessionsRoot() =>
+        OrchestratorPaths.SessionsRoot()
+        ?? Path.Combine(Environment.CurrentDirectory, "sessions");
 }
