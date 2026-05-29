@@ -1,3 +1,4 @@
+#:package Microsoft.Extensions.DependencyInjection@10.0.0
 #:project ../../src/RemoteAgents/RemoteAgents.csproj
 #:project ../../src/RemoteAgents.Hosting/RemoteAgents.Hosting.csproj
 // flows/claude-only.cs
