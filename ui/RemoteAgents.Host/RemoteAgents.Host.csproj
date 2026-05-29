@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\remote-agents-dotnet\src\RemoteAgents\RemoteAgents.csproj" />
+    <ProjectReference Include="..\..\remote-agents-dotnet\src\RemoteAgents.Hosting\RemoteAgents.Hosting.csproj" />
   </ItemGroup>
 
 </Project>
