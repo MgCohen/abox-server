@@ -1,17 +1,17 @@
 using Microsoft.Extensions.DependencyInjection;
-using RemoteAgents.Agents;
 using RemoteAgents.Events;
 using RemoteAgents.Flows;
 
 namespace RemoteAgents.Hosting;
 
-// Builder type passed to services.AddRemoteAgents(opts => ...). Records
-// the requested provider/sink/flow set into the IServiceCollection.
+// Builder type passed to services.AddRemoteAgents(opts => ...). Records the
+// requested flow + sink set into the IServiceCollection.
 //
-// No IConfiguration binding — options are records with defaults; per-host
-// overrides go through the lambda passed to UseClaude / UseCodex (callers
-// use a `with` expression so the records stay immutable). See
-// PLANS/architecture-refactor/99-rejected.md R13.
+// There is deliberately no UseClaude/UseCodex here. Agents are constructed,
+// not resolved: a flow builds the agent it needs directly, and configured /
+// named agents go through AgentPreset.Build(sink) — the one factory. The
+// container owns flow dispatch (FlowRegistry + FlowRunner) and cross-cutting
+// sinks, nothing provider-specific. See PLANS/architecture-refactor/99-rejected.md R13.
 public sealed class RemoteAgentsOptions
 {
     private readonly IServiceCollection _services;
@@ -19,29 +19,6 @@ public sealed class RemoteAgentsOptions
     internal RemoteAgentsOptions(IServiceCollection services)
     {
         _services = services;
-    }
-
-    // Register the Claude provider with its options. The optional configure
-    // delegate transforms the default record:
-    //
-    //   opts.UseClaude(o => o with { Model = "opus" });
-    //
-    // Reading from an env var at the override site is the supported way
-    // to vary a single knob per host without dragging in IConfiguration.
-    public RemoteAgentsOptions UseClaude(Func<ClaudeAgentOptions, ClaudeAgentOptions>? configure = null)
-    {
-        var opts = configure?.Invoke(new ClaudeAgentOptions()) ?? new ClaudeAgentOptions();
-        _services.AddSingleton(opts);
-        _services.AddSingleton<IHookInstaller<ClaudeAgent>, ClaudeHookInstaller>();
-        return this;
-    }
-
-    public RemoteAgentsOptions UseCodex(Func<CodexAgentOptions, CodexAgentOptions>? configure = null)
-    {
-        var opts = configure?.Invoke(new CodexAgentOptions()) ?? new CodexAgentOptions();
-        _services.AddSingleton(opts);
-        _services.AddSingleton<IHookInstaller<CodexAgent>, CodexHookInstaller>();
-        return this;
     }
 
     // Register an IEventSink with the container. The composite sink for

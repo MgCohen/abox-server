@@ -41,7 +41,7 @@ public class ClaudeAgent : Agent
     }
 
     // PTY spawn hook. Defaults to PtyProvider.SpawnAsync (real ConPTY).
-    // Override in tests with a FakePtyConnection so ExecuteAsync's drive
+    // Override in tests with a FakePtyConnection so DriveAsync's drive
     // loop can be exercised without launching `claude` for real.
     protected virtual Task<IPtyConnection> SpawnPtyAsync(PtyOptions opts, CancellationToken ct)
         => PtyProvider.SpawnAsync(opts, ct);
@@ -70,14 +70,16 @@ public class ClaudeAgent : Agent
         return args;
     }
 
-    protected override async ValueTask<IAsyncDisposable?> InstallHooksAsync(
-        AgentRunRequest req, CancellationToken ct)
-    {
-        if (Options.Hooks is null) return null;
-        return await HookInstaller.InstallAsync(req, Options.Hooks.ShimPath, ct);
-    }
+    // Hook plumbing consumed by the Agent base. Resolution + violation
+    // emission live in the base; this class only declares what to install
+    // and how to parse the resulting hooks.jsonl.
+    protected override HookIntegrationOptions? HookConfig => Options.Hooks;
+    protected override IAgentHookParser? HookParser => new ClaudeHookParser();
+    protected override Task<IAsyncDisposable> InstallHookScopeAsync(
+        AgentRunRequest req, string shimPath, CancellationToken ct)
+        => HookInstaller.InstallAsync(req, shimPath, ct);
 
-    protected override async Task<AgentResult> ExecuteAsync(AgentRunRequest req, CancellationToken ct)
+    protected override async Task<DriveResult> DriveAsync(AgentRunRequest req, CancellationToken ct)
     {
         var sessionId = req.SessionId ?? Guid.NewGuid().ToString();
         var effectiveOpts = Options with
@@ -144,24 +146,7 @@ public class ClaudeAgent : Agent
             ? jsonlText!
             : ExtractAssistantText(raw, req.Prompt);
 
-        var outcome = HookResolution.FromHooksJsonl(
-            Options.Hooks?.HooksJsonlPath, new ClaudeHookParser(), req.Mode);
-
-        if (outcome.Status == AgentStatus.Failed && outcome.Question is not null)
-        {
-            await Sink.EmitAsync(new AgentEvent.NonInteractiveViolation(
-                DateTimeOffset.UtcNow, Name, outcome.Question.Source, outcome.Question.Text),
-                CancellationToken.None);
-        }
-
-        return new AgentResult(
-            Text:          text,
-            SessionId:     sessionId,
-            ExitCode:      exitCode,
-            RawOutput:     raw,
-            Status:        outcome.Status,
-            Question:      outcome.Question,
-            FailureReason: outcome.FailureReason);
+        return new DriveResult(Text: text, SessionId: sessionId, ExitCode: exitCode, RawOutput: raw);
     }
 
     private PtyOptions BuildPtyOptions(string projectDir)

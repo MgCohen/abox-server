@@ -55,14 +55,16 @@ public class CodexAgent : Agent
         return args;
     }
 
-    protected override async ValueTask<IAsyncDisposable?> InstallHooksAsync(
-        AgentRunRequest req, CancellationToken ct)
-    {
-        if (Options.Hooks is null) return null;
-        return await HookInstaller.InstallAsync(req, Options.Hooks.ShimPath, ct);
-    }
+    // Hook plumbing consumed by the Agent base. Resolution + violation
+    // emission live in the base; this class only declares what to install
+    // and how to parse the resulting hooks.jsonl.
+    protected override HookIntegrationOptions? HookConfig => Options.Hooks;
+    protected override IAgentHookParser? HookParser => new CodexHookParser();
+    protected override Task<IAsyncDisposable> InstallHookScopeAsync(
+        AgentRunRequest req, string shimPath, CancellationToken ct)
+        => HookInstaller.InstallAsync(req, shimPath, ct);
 
-    protected override async Task<AgentResult> ExecuteAsync(AgentRunRequest req, CancellationToken ct)
+    protected override async Task<DriveResult> DriveAsync(AgentRunRequest req, CancellationToken ct)
     {
         var tmpDir = Path.Combine(Path.GetTempPath(), "agents-codex-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tmpDir);
@@ -160,40 +162,24 @@ public class CodexAgent : Agent
 
         try { Directory.Delete(tmpDir, recursive: true); } catch { /* best-effort */ }
 
-        var outcome = HookResolution.FromHooksJsonl(
-            Options.Hooks?.HooksJsonlPath, new CodexHookParser(), req.Mode);
-
         // Defense in depth: codex exec's `-o` output mirrors what would
         // land in a Stop hook's last_assistant_message. If hooks didn't
         // fire (config-shape issues, version regressions, or an
         // accidentally-restored "skip hooks" flag), the sentinel /
-        // heuristic still surface from text. Source tags carry `.text`
-        // so the UI can distinguish "from hook" vs "from output file".
-        if (outcome.Question is null)
-        {
-            var fromText = StopPayloadInspector.InspectText(
-                text,
-                sentinelSource:  "codex.text.sentinel",
-                heuristicSource: "codex.text.heuristic");
-            if (fromText is not null)
-                outcome = HookResolution.ForQuestion(fromText, req.Mode);
-        }
+        // heuristic still surface from text. The base merges this only
+        // when hooks.jsonl was silent. Source tags carry `.text` so the
+        // UI can distinguish "from hook" vs "from output file".
+        var detectedQuestion = StopPayloadInspector.InspectText(
+            text,
+            sentinelSource:  "codex.text.sentinel",
+            heuristicSource: "codex.text.heuristic");
 
-        if (outcome.Status == AgentStatus.Failed && outcome.Question is not null)
-        {
-            await Sink.EmitAsync(new AgentEvent.NonInteractiveViolation(
-                DateTimeOffset.UtcNow, Name, outcome.Question.Source, outcome.Question.Text),
-                CancellationToken.None);
-        }
-
-        return new AgentResult(
-            Text:          text,
-            SessionId:     extractedSessionId ?? "",
-            ExitCode:      proc.HasExited ? proc.ExitCode : -1,
-            RawOutput:     stdout.ToString(),
-            Status:        outcome.Status,
-            Question:      outcome.Question,
-            FailureReason: outcome.FailureReason);
+        return new DriveResult(
+            Text:             text,
+            SessionId:        extractedSessionId ?? "",
+            ExitCode:         proc.HasExited ? proc.ExitCode : -1,
+            RawOutput:        stdout.ToString(),
+            DetectedQuestion: detectedQuestion);
     }
 
     // Scan a single JSON line for any of the session-id field shapes codex

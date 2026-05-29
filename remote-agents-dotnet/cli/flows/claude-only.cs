@@ -17,11 +17,7 @@ using RemoteAgents.Hosting;
 const string FLOW_NAME = "claude-only";
 
 var services = new ServiceCollection();
-services.AddRemoteAgents(o =>
-{
-    o.UseClaude();
-    o.AddFlow<ClaudeOnlyFlow>();
-});
+services.AddRemoteAgents(o => o.AddFlow<ClaudeOnlyFlow>());
 var sp = services.BuildServiceProvider();
 
 await using var ctx = await FlowBootstrap.StartAsync(args, FLOW_NAME);

@@ -17,12 +17,12 @@ file sealed class CaptureSink : IEventSink
 // Runs to completion, emitting a couple of stream chunks + a dialog dismissal.
 file sealed class HappyAgent : Agent
 {
-    protected override async Task<AgentResult> ExecuteAsync(AgentRunRequest req, CancellationToken ct)
+    protected override async Task<DriveResult> DriveAsync(AgentRunRequest req, CancellationToken ct)
     {
         await Sink.EmitAsync(new AgentEvent.StreamChunk(DateTimeOffset.UtcNow, Name, "hello"), ct);
         await Sink.EmitAsync(new AgentEvent.DialogDismissed(DateTimeOffset.UtcNow, Name, "trust this folder"), ct);
         await Sink.EmitAsync(new AgentEvent.StreamChunk(DateTimeOffset.UtcNow, Name, " world"), ct);
-        return new AgentResult(
+        return new DriveResult(
             Text: "hello world",
             SessionId: "sess-123",
             ExitCode: 0,
@@ -30,10 +30,10 @@ file sealed class HappyAgent : Agent
     }
 }
 
-// Throws inside ExecuteAsync.
+// Throws inside DriveAsync.
 file sealed class SadAgent : Agent
 {
-    protected override Task<AgentResult> ExecuteAsync(AgentRunRequest req, CancellationToken ct)
+    protected override Task<DriveResult> DriveAsync(AgentRunRequest req, CancellationToken ct)
         => throw new InvalidOperationException("spawn failed");
 }
 

@@ -56,5 +56,8 @@ public static class HookResolution
         return null;
     }
 
-    private static readonly Outcome Completed = new(AgentStatus.Completed, null, null);
+    // The "nothing to report" outcome — no hooks configured, or hooks.jsonl
+    // held no question. Public so Agent can use it on the no-hooks path
+    // without synthesizing a parser.
+    public static readonly Outcome Completed = new(AgentStatus.Completed, null, null);
 }

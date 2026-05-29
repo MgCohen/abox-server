@@ -13,15 +13,10 @@ builder.Services.AddSingleton<FlowRunner>();
 builder.Services.AddOpenApi();
 builder.Services.AddSignalR();
 
-// Phase 2: composition root for the library. Additive — the SubprocessFlowExecutor
-// path still wires agents through child-process invocations of cli/flows scripts,
-// so registering provider options here doesn't change behavior yet. Phase 3+ moves
-// agent construction sites to consume these registrations.
-builder.Services.AddRemoteAgents(opts =>
-{
-    opts.UseClaude();
-    opts.UseCodex();
-});
+// Composition root for the library: flow dispatch (FlowRegistry + FlowRunner)
+// and any cross-cutting sinks. Agents are constructed by the flows that need
+// them, not resolved here — see RemoteAgentsOptions.
+builder.Services.AddRemoteAgents(_ => { });
 
 // CORS so a browser-served WASM bundle on a different origin can hit us.
 // Tightened to specific origins in C3 once the deploy shape is fixed.

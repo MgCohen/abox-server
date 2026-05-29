@@ -11,8 +11,8 @@ namespace RemoteAgents.Pty;
 // ClaudeAgent owns the PTY *script* (when to dwell, when to type the
 // prompt, when to send /exit); PtySession owns the *plumbing*. The
 // previous inline version mixed buffer locking, reader-task lifecycle,
-// and lastChunkAt tracking into ClaudeAgent.ExecuteAsync — moving them
-// here lets ExecuteAsync read as a sequence of high-level steps.
+// and lastChunkAt tracking into ClaudeAgent.DriveAsync — moving them
+// here lets DriveAsync read as a sequence of high-level steps.
 public sealed class PtySession : IAsyncDisposable, IDisposable
 {
     private readonly IPtyConnection _pty;
