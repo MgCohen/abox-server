@@ -66,14 +66,13 @@ public abstract class Agent
             if (hookScope is not null) await hookScope.DisposeAsync();
         }
 
-        // Resolve the run's outcome from the provider's hooks.jsonl (if any),
-        // then let a non-hook DetectedQuestion fill in only when hooks were
-        // silent — hooks win when both fire.
+        // Resolve the run's outcome from the provider's hooks.jsonl.
+        // Codex's text-only sentinel/heuristic detection writes a synthetic
+        // line into hooks.jsonl from inside DriveAsync, so this single path
+        // covers both real hook events and provider-detected questions.
         var outcome = cfg is null
             ? HookResolution.Completed
             : HookResolution.FromHooksJsonl(cfg.HooksJsonlPath, HookParser!, req.Mode);
-        if (outcome.Question is null && raw.DetectedQuestion is not null)
-            outcome = HookResolution.ForQuestion(raw.DetectedQuestion, req.Mode);
 
         if (outcome.Status == AgentStatus.Failed && outcome.Question is not null)
             await Sink.EmitAsync(new AgentEvent.NonInteractiveViolation(

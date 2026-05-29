@@ -96,7 +96,7 @@ public class CodexHookParserTests
     [InlineData("Would you prefer A or B?",                                  true )]
     public void LooksLikeQuestion_matches_interrogative_endings(string text, bool expected)
     {
-        Assert.Equal(expected, CodexHookParser.LooksLikeQuestion(text));
+        Assert.Equal(expected, StopPayloadInspector.LooksLikeQuestion(text));
     }
 
     [Fact]
@@ -104,7 +104,7 @@ public class CodexHookParserTests
     {
         // Should I leave is in the first paragraph — last paragraph is a plain "?"
         var text = "Should I leave the imports as-is?\n\nThe test passes either way.\n\nLooks good?";
-        Assert.False(CodexHookParser.LooksLikeQuestion(text));
+        Assert.False(StopPayloadInspector.LooksLikeQuestion(text));
     }
 
     private static JsonElement Wrap(string source, string payloadJson)

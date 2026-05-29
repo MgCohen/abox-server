@@ -43,8 +43,4 @@ public sealed class CodexHookParser : IAgentHookParser
         };
     }
 
-    // Kept for backwards-compat with existing test fixtures; new callers
-    // should use StopPayloadInspector.LooksLikeQuestion directly.
-    public static bool LooksLikeQuestion(string text) =>
-        StopPayloadInspector.LooksLikeQuestion(text);
 }

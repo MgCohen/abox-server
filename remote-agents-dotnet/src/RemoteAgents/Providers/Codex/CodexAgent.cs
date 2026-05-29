@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Channels;
 using RemoteAgents.Events;
 using RemoteAgents.Primitives;
@@ -172,24 +173,40 @@ public class CodexAgent : Agent
 
         try { Directory.Delete(tmpDir, recursive: true); } catch { /* best-effort */ }
 
-        // Defense in depth: codex exec's `-o` output mirrors what would
-        // land in a Stop hook's last_assistant_message. If hooks didn't
-        // fire (config-shape issues, version regressions, or an
-        // accidentally-restored "skip hooks" flag), the sentinel /
-        // heuristic still surface from text. The base merges this only
-        // when hooks.jsonl was silent. Source tags carry `.text` so the
-        // UI can distinguish "from hook" vs "from output file".
-        var detectedQuestion = StopPayloadInspector.InspectText(
-            text,
-            sentinelSource:  "codex.text.sentinel",
-            heuristicSource: "codex.text.heuristic");
+        // Codex exec's `-o` output mirrors what would land in a Stop hook's
+        // last_assistant_message. If hooks didn't fire (config-shape issues,
+        // version regressions, or an accidentally-restored "skip hooks"
+        // flag), the sentinel / heuristic still surface from text — so we
+        // append a synthetic codex.stop line and let the base resolve via
+        // the single hooks.jsonl path. Safe post-WaitForExitAsync: codex has
+        // exited, the shim can no longer fire, no writer race.
+        if (Options.Hooks is not null && !string.IsNullOrWhiteSpace(text))
+            await AppendSyntheticStopLineAsync(
+                Options.Hooks.HooksJsonlPath, extractedSessionId, req.ProjectDir, text);
 
         return new DriveResult(
-            Text:             text,
-            SessionId:        extractedSessionId ?? "",
-            ExitCode:         proc.HasExited ? proc.ExitCode : -1,
-            RawOutput:        stdout.ToString(),
-            DetectedQuestion: detectedQuestion);
+            Text:      text,
+            SessionId: extractedSessionId ?? "",
+            ExitCode:  proc.HasExited ? proc.ExitCode : -1,
+            RawOutput: stdout.ToString());
+    }
+
+    private static async Task AppendSyntheticStopLineAsync(
+        string hooksJsonlPath, string? sessionId, string cwd, string lastAssistantMessage)
+    {
+        var wrapped = new JsonObject
+        {
+            ["ts"]        = DateTimeOffset.UtcNow.ToString("o"),
+            ["source"]    = "codex.stop",
+            ["sessionId"] = sessionId ?? "",
+            ["cwd"]       = cwd,
+            ["payload"]   = new JsonObject
+            {
+                ["last_assistant_message"] = lastAssistantMessage,
+                ["_synthetic"]             = "codex.text",
+            },
+        };
+        await File.AppendAllTextAsync(hooksJsonlPath, wrapped.ToJsonString() + "\n");
     }
 
     // Scan a single JSON line for any of the session-id field shapes codex
