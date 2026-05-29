@@ -25,9 +25,11 @@ tags: [#ui, #host, #maui, #blazor, #mobile, #tailscale]
 at `1e76acc`).
 
 **Resume here**: Phase **C5** — MAUI Blazor Hybrid shells. Everything else
-(C0 → C4, C6) has landed; C5 awaiting `dotnet workload install maui` to
-complete + Android SDK setup. C2 is partial-by-design pending library v2
-on the answer-back contract.
+(C0 → C4, C6) has landed; C5 awaiting Administrator-elevated
+`dotnet workload install maui` (failed mid-session: UAC dismissed). Full
+install / scaffold / wire steps documented at
+[`../remote-agents-dotnet/ui/RemoteAgents.UI.Maui.README.md`](../remote-agents-dotnet/ui/RemoteAgents.UI.Maui.README.md).
+C2 is partial-by-design pending library v2 on the answer-back contract.
 
 What's already running on this branch:
 - Host: REST (`/projects`, `/flows`, `/runs`, `/runs/{id}`, `/runs/{id}/cancel`, `/runs/{id}/respond`) + SignalR (`/hub/runs`).
@@ -55,7 +57,7 @@ existing library / flow / agent / validator / CLI file was modified.
 | C2 — Interactive-prompt seam (partial — surface + record; answer-back routing blocked on library v2) | 🟡 partial | No |
 | C3 — Tailscale binding + nssm always-on | ✅ scripts written; owner runs | No (config only) |
 | C4 — `UI.Components` Razor lib + `UI.Web` Blazor WASM | ✅ | No |
-| C5 — `UI.Maui` Blazor Hybrid (Win/Android/iOS) | ⏸ awaiting MAUI workload | No |
+| C5 — `UI.Maui` Blazor Hybrid (Win/Android/iOS) | 📋 documented; awaiting Administrator | No |
 | C6 — Run persistence (JSON, retention) | ✅ | No |
 
 **C2 partial state**: `AgentQuestion`/`NeedsInput` events already flow through `transcript.jsonl` → `ChannelSink` → SignalR with no new Host code (the library does the detection at hook-parse time). The `POST /runs/{id}/respond` endpoint and `Run.PendingResponse` field are scaffolded so the UI can be built against the locked wire shape. **Answer-back routing into a paused agent is deferred to library v2** ([`interaction-modes.md`](interaction-modes.md) Q10): the design hasn't picked between TUI keypress / `--resume` reply / file-poll / pipe yet, so Host can't pick a transport unilaterally without forcing a library change.
