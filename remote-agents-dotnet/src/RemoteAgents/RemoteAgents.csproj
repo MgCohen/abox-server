@@ -11,4 +11,8 @@
     <PackageReference Include="Porta.Pty" Version="1.0.7" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\RemoteAgents.Contracts\RemoteAgents.Contracts.csproj" />
+  </ItemGroup>
+
 </Project>

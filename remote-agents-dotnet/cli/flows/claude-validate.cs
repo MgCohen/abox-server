@@ -14,6 +14,7 @@ using RemoteAgents.Agents;
 using RemoteAgents.Events;
 using RemoteAgents.Flows;
 using RemoteAgents.Primitives;
+using RemoteAgents.Sessions;
 using RemoteAgents.Validation;
 using RemoteAgents.Validation.Orchestrator;
 
@@ -74,12 +75,12 @@ try
     Console.WriteLine();
     Console.WriteLine($"Transcript: {ctx.Session.Dir}");
 
-    ctx.Session.End(validationOk ? "validated" : "validation-failed");
+    ctx.Session.End(validationOk ? SessionResult.Ok : SessionResult.ValidationFailed);
     Environment.ExitCode = validationOk ? 0 : 2;
 }
 catch (Exception ex)
 {
     Console.Error.WriteLine($"[{FLOW_NAME}] FAILED: {ex}");
-    ctx.Session.End("failed", failureReason: ex.Message);
+    ctx.Session.End(SessionResult.Failed, failureReason: ex.Message);
     Environment.ExitCode = 1;
 }

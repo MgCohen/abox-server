@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
-using RemoteAgents.UI.Components.Models;
+using RemoteAgents.Runs;
+using RemoteAgents.Wire;
 
 namespace RemoteAgents.UI.Components.Api;
 
@@ -18,17 +19,17 @@ public sealed class HostApiClient
     public Task<FlowInfo[]?> GetFlowsAsync(CancellationToken ct = default) =>
         _http.GetFromJsonAsync<FlowInfo[]>("flows", ct);
 
-    public Task<RunSummary[]?> GetRunsAsync(CancellationToken ct = default) =>
-        _http.GetFromJsonAsync<RunSummary[]>("runs", ct);
+    public Task<RunRecord[]?> GetRunsAsync(CancellationToken ct = default) =>
+        _http.GetFromJsonAsync<RunRecord[]>("runs", ct);
 
-    public Task<RunSummary?> GetRunAsync(Guid id, CancellationToken ct = default) =>
-        _http.GetFromJsonAsync<RunSummary>($"runs/{id}", ct);
+    public Task<RunRecord?> GetRunAsync(Guid id, CancellationToken ct = default) =>
+        _http.GetFromJsonAsync<RunRecord>($"runs/{id}", ct);
 
-    public async Task<RunSummary?> StartRunAsync(StartRunRequest req, CancellationToken ct = default)
+    public async Task<RunRecord?> StartRunAsync(StartRunRequest req, CancellationToken ct = default)
     {
         var resp = await _http.PostAsJsonAsync("runs", req, ct);
         resp.EnsureSuccessStatusCode();
-        return await resp.Content.ReadFromJsonAsync<RunSummary>(cancellationToken: ct);
+        return await resp.Content.ReadFromJsonAsync<RunRecord>(cancellationToken: ct);
     }
 
     public Task CancelRunAsync(Guid id, CancellationToken ct = default) =>

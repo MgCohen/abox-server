@@ -59,7 +59,7 @@ var passes = new (string Provider, InteractionMode Mode, string Prompt, string L
 foreach (var p in passes)
     await RunPass(p.Provider, p.Mode, p.Prompt, p.Label);
 
-session.End("ok");
+session.End(SessionResult.Ok);
 Environment.ExitCode = 0;
 
 async Task RunPass(string provider, InteractionMode mode, string prompt, string label)

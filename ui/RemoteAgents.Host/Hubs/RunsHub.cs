@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.SignalR;
+using RemoteAgents.Chat;
 using RemoteAgents.Events;
 using RemoteAgents.Host.Runs;
 

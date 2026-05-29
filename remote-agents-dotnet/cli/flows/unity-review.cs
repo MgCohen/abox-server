@@ -16,6 +16,7 @@ using RemoteAgents.Agents;
 using RemoteAgents.Events;
 using RemoteAgents.Flows;
 using RemoteAgents.Primitives;
+using RemoteAgents.Sessions;
 using RemoteAgents.Validation.Unity;
 
 const string FLOW_NAME = "unity-review";
@@ -49,7 +50,7 @@ try
     work = validate.LastResult;
     if (!validate.Ok)
     {
-        ctx.Session.End("validation-failed");
+        ctx.Session.End(SessionResult.ValidationFailed);
         Environment.ExitCode = 2;
         return;
     }
@@ -59,7 +60,7 @@ try
     if (string.IsNullOrWhiteSpace(diffText))
     {
         await ctx.Sink.PhaseInfoAsync("done", "Claude made no file changes. Nothing to review or commit.");
-        ctx.Session.End("no-changes");
+        ctx.Session.End(SessionResult.NoChanges);
         Environment.ExitCode = 0;
         return;
     }
@@ -75,7 +76,7 @@ try
     {
         await ctx.Sink.PhaseFailAsync("abort",
             $"Codex verdict unclear (review was {review.Text.Length} bytes). Refusing to commit.");
-        ctx.Session.End("verdict-unclear");
+        ctx.Session.End(SessionResult.VerdictUnclear);
         Environment.ExitCode = 2;
         return;
     }
@@ -92,7 +93,7 @@ try
         if (!v2.Ok)
         {
             await ctx.Sink.PhaseFailAsync("abort", $"post-revision validation failed: {v2.Summary}");
-            ctx.Session.End("revision-broke-validation");
+            ctx.Session.End(SessionResult.RevisionBrokeValidation);
             Environment.ExitCode = 2;
             return;
         }
@@ -103,7 +104,7 @@ try
     if (filesToCommit.Count == 0)
     {
         await ctx.Sink.PhaseInfoAsync("done", "No files ultimately changed.");
-        ctx.Session.End("no-changes");
+        ctx.Session.End(SessionResult.NoChanges);
         Environment.ExitCode = 0;
         return;
     }
@@ -128,13 +129,13 @@ try
     await File.WriteAllTextAsync(Path.Combine(ctx.Session.Dir, "claude-raw.txt"), work.RawOutput);
     await File.WriteAllTextAsync(Path.Combine(ctx.Session.Dir, "codex-review.txt"), review.Text);
 
-    ctx.Session.End("shipped");
+    ctx.Session.End(SessionResult.Shipped);
     await ctx.Sink.PhaseOkAsync("done", $"Shipped. Transcript: {ctx.Session.Dir}");
     Environment.ExitCode = 0;
 }
 catch (Exception ex)
 {
     Console.Error.WriteLine($"[{FLOW_NAME}] FAILED: {ex}");
-    ctx.Session.End("failed", failureReason: ex.Message);
+    ctx.Session.End(SessionResult.Failed, failureReason: ex.Message);
     Environment.ExitCode = 1;
 }

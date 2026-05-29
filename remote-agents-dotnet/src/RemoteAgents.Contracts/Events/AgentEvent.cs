@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using RemoteAgents.Runs;
 
 namespace RemoteAgents.Events;
 
@@ -24,6 +25,7 @@ namespace RemoteAgents.Events;
 [JsonDerivedType(typeof(Failed), "Failed")]
 [JsonDerivedType(typeof(Phase), "Phase")]
 [JsonDerivedType(typeof(NonInteractiveViolation), "NonInteractiveViolation")]
+[JsonDerivedType(typeof(ProviderSessionAttached), "ProviderSessionAttached")]
 public abstract record AgentEvent(DateTimeOffset At, string AgentName)
 {
     public sealed record Started(DateTimeOffset At, string AgentName, string Prompt, string? SessionId)
@@ -41,16 +43,10 @@ public abstract record AgentEvent(DateTimeOffset At, string AgentName)
     public sealed record Failed(DateTimeOffset At, string AgentName, string Reason, string? ExceptionType)
         : AgentEvent(At, AgentName);
 
-    // Status is one of: "start" | "ok" | "fail" | "info". ConsoleSink
-    // routes "fail" to stderr and prints the rest on stdout.
-    public sealed record Phase(DateTimeOffset At, string AgentName, string Status, string Detail)
-        : AgentEvent(At, AgentName)
-    {
-        public const string Start = "start";
-        public const string Ok    = "ok";
-        public const string Fail  = "fail";
-        public const string Info  = "info";
-    }
+    // Status is a typed PhaseStatus enum; ConsoleSink routes Fail to
+    // stderr and prints the rest on stdout.
+    public sealed record Phase(DateTimeOffset At, string AgentName, PhaseStatus Status, string Detail)
+        : AgentEvent(At, AgentName);
 
     // Emitted when InteractionMode.NonInteractive saw the agent ask a
     // question (a hook line resolved to NeedsInput). The agent run that
@@ -58,5 +54,13 @@ public abstract record AgentEvent(DateTimeOffset At, string AgentName)
     // event is the greppable companion in transcript.jsonl.
     public sealed record NonInteractiveViolation(
         DateTimeOffset At, string AgentName, string QuestionSource, string QuestionText)
+        : AgentEvent(At, AgentName);
+
+    // Emitted when the agent attaches a provider-side session reference
+    // to the run (Claude's session UUID, Codex's session id). The Host
+    // listens for this and populates RunRecord.ProviderSession; flows can
+    // ignore it. Replaces the ClaudeJsonlTailer's stdout-sniffing path.
+    public sealed record ProviderSessionAttached(
+        DateTimeOffset At, string AgentName, ProviderSessionRef Session)
         : AgentEvent(At, AgentName);
 }

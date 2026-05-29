@@ -14,8 +14,8 @@
 
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.SignalR.Client;
+using RemoteAgents.Chat;
 using RemoteAgents.Events;
-using RemoteAgents.UI.Components.Models;
 
 // File-based programs disable reflection-based STJ by default; the smoke
 // is plumbing-only and not worth wiring source-gen for. Flip it back on.

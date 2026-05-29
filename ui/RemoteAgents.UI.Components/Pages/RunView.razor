@@ -18,7 +18,7 @@
     {
         <h1>@_summary.Flow <small>on @_summary.Project</small></h1>
         <p class="meta">
-            <span class="status status-@_summary.Status.ToLowerInvariant()">@_summary.Status</span>
+            <span class="status status-@_summary.Status.ToString().ToLowerInvariant()">@_summary.Status</span>
             <span>started @_summary.StartedAt.ToLocalTime().ToString("HH:mm:ss")</span>
             @if (_summary.EndedAt is not null)
             {
@@ -154,7 +154,7 @@
 @code {
     [Parameter] public Guid Id { get; set; }
 
-    private RunSummary? _summary;
+    private RunRecord? _summary;
     private RunStreamClient? _stream;
     private CancellationTokenSource? _cts;
     private readonly List<LogLine> _lines = new();
@@ -245,9 +245,9 @@
             case AgentEvent.Phase phase:
                 var kind = phase.Status switch
                 {
-                    "ok"   => LineKind.Phase,
-                    "fail" => LineKind.Error,
-                    _      => LineKind.Phase,
+                    PhaseStatus.Ok   => LineKind.Phase,
+                    PhaseStatus.Fail => LineKind.Error,
+                    _                => LineKind.Phase,
                 };
                 _lines.Add(new LogLine($"[{phase.AgentName}] {phase.Status}: {phase.Detail}", kind));
                 break;
@@ -267,8 +267,8 @@
         _freeformResponse = "";
     }
 
-    private static bool IsActive(string status) =>
-        status is "Pending" or "Starting" or "Running";
+    private static bool IsActive(RunStatus status) =>
+        status is RunStatus.Pending or RunStatus.Starting or RunStatus.Running;
 
     public async ValueTask DisposeAsync()
     {

@@ -74,12 +74,12 @@ try
     Console.WriteLine($"[smoke] sessionRoundTripped={sessionRoundTripped}");
 
     var ok = sessionRoundTripped && verdict != "unparseable";
-    session.End(ok ? "ok" : "failed");
+    session.End(ok ? SessionResult.Ok : SessionResult.Failed);
     Environment.ExitCode = ok ? 0 : 1;
 }
 catch (Exception ex)
 {
     Console.Error.WriteLine($"[smoke] EXCEPTION: {ex}");
-    session.End("failed", failureReason: ex.Message);
+    session.End(SessionResult.Failed, failureReason: ex.Message);
     Environment.ExitCode = 1;
 }

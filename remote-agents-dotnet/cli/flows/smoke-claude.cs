@@ -69,12 +69,12 @@ try
     Console.WriteLine($"[smoke] sawPong={sawPong}");
     Console.WriteLine($"[smoke] claude session file: {sessionFile ?? "(NOT FOUND)"}");
 
-    session.End(sawPong && sessionFile is not null ? "ok" : "failed");
+    session.End(sawPong && sessionFile is not null ? SessionResult.Ok : SessionResult.Failed);
     Environment.ExitCode = sawPong && sessionFile is not null ? 0 : 1;
 }
 catch (Exception ex)
 {
     Console.Error.WriteLine($"[smoke] EXCEPTION: {ex}");
-    session.End("failed", failureReason: ex.Message);
+    session.End(SessionResult.Failed, failureReason: ex.Message);
     Environment.ExitCode = 1;
 }

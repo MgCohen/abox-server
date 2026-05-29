@@ -35,7 +35,7 @@
                         <td title="@r.StartedAt">@FormatLocal(r.StartedAt)</td>
                         <td>@r.Project</td>
                         <td>@r.Flow</td>
-                        <td><span class="status status-@r.Status.ToLowerInvariant()">@r.Status</span></td>
+                        <td><span class="status status-@r.Status.ToString().ToLowerInvariant()">@r.Status</span></td>
                         <td class="prompt">@Truncate(r.Prompt, 80)</td>
                     </tr>
                 }
@@ -45,7 +45,7 @@
 </div>
 
 @code {
-    private RunSummary[]? _runs;
+    private RunRecord[]? _runs;
 
     protected override async Task OnInitializedAsync()
     {

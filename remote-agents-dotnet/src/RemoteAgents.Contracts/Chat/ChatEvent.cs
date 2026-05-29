@@ -1,11 +1,15 @@
 using System.Text.Json.Serialization;
 
-namespace RemoteAgents.UI.Components.Models;
+namespace RemoteAgents.Chat;
 
-// Mirror of ui/RemoteAgents.Host/Hubs/ChatEvent.cs — same [JsonPolymorphic]
-// discriminator field "kind", same case names. Defined here so the WASM /
-// MAUI shells can consume the wire shape without referencing the ASP.NET
-// Host project (which would drag server-only deps into the Razor library).
+// Structured chat events parsed from Claude's session JSONL at
+// ~/.claude/projects/<encoded-cwd>/<session-id>.jsonl. One record per
+// meaningful content block on each turn; rendered by the WASM client
+// as semantic Razor components (no terminal emulation needed).
+//
+// Wire format: the [JsonPolymorphic] "kind" discriminator field is
+// the contract. Both the Host (producer) and the WASM/MAUI clients
+// (consumers) reference this single definition from RemoteAgents.Contracts.
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "kind")]
 [JsonDerivedType(typeof(AssistantText), "AssistantText")]
 [JsonDerivedType(typeof(UserText),      "UserText")]
@@ -30,6 +34,11 @@ public abstract record ChatEvent(DateTimeOffset At, string TurnUuid)
     public sealed record ToolResult(DateTimeOffset At, string TurnUuid, string ToolUseId, bool IsError, string Content)
         : ChatEvent(At, TurnUuid);
 
+    // Catch-all for things we don't model yet (summary lines, system events,
+    // unknown content block types). Keeps the parser permissive.
+    // NB: field is "Tag" not "Kind" — "Kind" collides with the polymorphism
+    // discriminator property name and STJ silently disables polymorphism
+    // for the entire base type when any derived type has the collision.
     public sealed record Meta(DateTimeOffset At, string TurnUuid, string Tag, string Detail)
         : ChatEvent(At, TurnUuid);
 }

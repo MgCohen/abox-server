@@ -1,6 +1,6 @@
 using System.Text.Json;
 using RemoteAgents.Agents;
-using RemoteAgents.Host.Hubs;
+using RemoteAgents.Chat;
 using RemoteAgents.Host.Sinks;
 
 namespace RemoteAgents.Host.Runs;

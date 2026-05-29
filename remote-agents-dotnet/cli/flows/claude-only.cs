@@ -12,6 +12,7 @@
 using RemoteAgents.Agents;
 using RemoteAgents.Flows;
 using RemoteAgents.Primitives;
+using RemoteAgents.Sessions;
 
 const string FLOW_NAME = "claude-only";
 
@@ -42,13 +43,13 @@ try
     Console.WriteLine($"Files removed:  {diff.Removed.Count}");
     foreach (var f in diff.All) Console.WriteLine($"  - {f}");
 
-    ctx.Session.End("done");
+    ctx.Session.End(SessionResult.Shipped);
     Console.WriteLine();
     Console.WriteLine($"Transcript: {ctx.Session.Dir}");
 }
 catch (Exception ex)
 {
     Console.Error.WriteLine($"[{FLOW_NAME}] FAILED: {ex}");
-    ctx.Session.End("failed", failureReason: ex.Message);
+    ctx.Session.End(SessionResult.Failed, failureReason: ex.Message);
     Environment.ExitCode = 1;
 }

@@ -54,5 +54,5 @@ Console.WriteLine($"[smoke] codex-turn-1.jsonl      exists/non-empty: {codexOk} 
 Console.WriteLine($"[smoke] transcript.jsonl        non-empty:        {transcriptOk}");
 
 var ok = claudeOk && codexOk && transcriptOk;
-session.End(ok ? "ok" : "failed");
+session.End(ok ? SessionResult.Ok : SessionResult.Failed);
 Environment.ExitCode = ok ? 0 : 1;

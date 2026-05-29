@@ -26,7 +26,7 @@ public sealed class FlowContext : IAsyncDisposable
     {
         if (!await GitOps.IsDirtyAsync(ProjectDir, ct)) return true;
         await Sink.PhaseFailAsync("abort", "working tree is dirty. Commit or stash first.", ct);
-        Session.End("aborted-dirty-tree");
+        Session.End(SessionResult.AbortedDirtyTree);
         Environment.ExitCode = 2;
         return false;
     }

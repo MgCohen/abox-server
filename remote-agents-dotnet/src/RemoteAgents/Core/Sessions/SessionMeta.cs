@@ -14,6 +14,6 @@ public sealed record SessionMeta
     public DateTimeOffset StartedAt { get; init; }
     public DateTimeOffset? EndedAt { get; set; }
     public long? DurationMs { get; set; }
-    public string? Result { get; set; }   // "ok" | "failed" | null
+    public SessionResult? Result { get; set; }
     public string? FailureReason { get; set; }
 }

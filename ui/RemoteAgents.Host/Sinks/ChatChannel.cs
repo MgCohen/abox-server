@@ -1,4 +1,4 @@
-using RemoteAgents.Host.Hubs;
+using RemoteAgents.Chat;
 
 namespace RemoteAgents.Host.Sinks;
 

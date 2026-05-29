@@ -11,13 +11,13 @@ namespace RemoteAgents.Flows;
 [JsonSerializable(typeof(CodexReviewArtifact))]
 internal sealed partial class FlowsJsonContext : JsonSerializerContext { }
 
-public sealed record CodexReviewArtifact(string Verdict, string SessionId, string Text);
+public sealed record CodexReviewArtifact(Verdict Verdict, string SessionId, string Text);
 
-public sealed record CodexVerdict(string Verdict, string Text, string SessionId)
+public sealed record CodexVerdict(Verdict Verdict, string Text, string SessionId)
 {
-    public bool IsApprove => Verdict == "approve";
-    public bool IsRevise  => Verdict == "revise";
-    public bool IsUnclear => Verdict == "unclear";
+    public bool IsApprove => Verdict == Flows.Verdict.Approve;
+    public bool IsRevise  => Verdict == Flows.Verdict.Revise;
+    public bool IsUnclear => Verdict == Flows.Verdict.Unclear;
 }
 
 // Build the review prompt, run Codex against the project's diff, parse
@@ -88,12 +88,12 @@ public static class Reviews
             "Be strict but not pedantic. Don't ask for cosmetic changes.",
         });
 
-    public static string ParseVerdict(string text)
+    public static Verdict ParseVerdict(string text)
     {
         var trimmed = text.TrimStart();
-        if (trimmed.StartsWith("APPROVE:", StringComparison.OrdinalIgnoreCase)) return "approve";
-        if (trimmed.StartsWith("REVISE:",  StringComparison.OrdinalIgnoreCase)) return "revise";
-        return "unclear";
+        if (trimmed.StartsWith("APPROVE:", StringComparison.OrdinalIgnoreCase)) return Verdict.Approve;
+        if (trimmed.StartsWith("REVISE:",  StringComparison.OrdinalIgnoreCase)) return Verdict.Revise;
+        return Verdict.Unclear;
     }
 
     public static string BuildCommitMessage(string userPrompt, string reviewText)
@@ -110,7 +110,7 @@ public static class Reviews
         });
     }
 
-    public static async Task WriteReviewArtifactAsync(string sessionDir, string verdict, string sessionId, string text, CancellationToken ct = default)
+    public static async Task WriteReviewArtifactAsync(string sessionDir, Verdict verdict, string sessionId, string text, CancellationToken ct = default)
     {
         var artifact = new CodexReviewArtifact(verdict, sessionId, text);
         var json = JsonSerializer.Serialize(artifact, FlowsJsonContext.Default.CodexReviewArtifact);

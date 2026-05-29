@@ -46,7 +46,7 @@ public class SessionAndSinksTests : IDisposable
             await sink.EmitAsync(new AgentEvent.Completed(t0.AddMilliseconds(300), "planner", "abc-123", 0, 14));
         }
 
-        session.End("ok");
+        session.End(SessionResult.Ok);
 
         // Directory shape
         Assert.True(File.Exists(session.PromptFile));
@@ -60,7 +60,7 @@ public class SessionAndSinksTests : IDisposable
         Assert.Equal("1", meta.SchemaVersion);
         Assert.Equal("test-flow", meta.FlowName);
         Assert.Equal("card-framework", meta.ProjectName);
-        Assert.Equal("ok", meta.Result);
+        Assert.Equal(SessionResult.Ok, meta.Result);
         Assert.NotNull(meta.EndedAt);
         Assert.NotNull(meta.DurationMs);
 
@@ -89,10 +89,10 @@ public class SessionAndSinksTests : IDisposable
         {
             await sink.EmitAsync(new AgentEvent.Failed(DateTimeOffset.UtcNow, "planner", "spawn failed", "InvalidOperationException"));
         }
-        session.End("failed", failureReason: "spawn failed");
+        session.End(SessionResult.Failed, failureReason: "spawn failed");
 
         var meta = JsonSerializer.Deserialize<SessionMeta>(File.ReadAllText(session.MetaFile))!;
-        Assert.Equal("failed", meta.Result);
+        Assert.Equal(SessionResult.Failed, meta.Result);
         Assert.Equal("spawn failed", meta.FailureReason);
     }
 }

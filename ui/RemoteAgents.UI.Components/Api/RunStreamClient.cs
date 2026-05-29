@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.SignalR.Client;
+using RemoteAgents.Chat;
 using RemoteAgents.Events;
-using RemoteAgents.UI.Components.Models;
 
 namespace RemoteAgents.UI.Components.Api;
 

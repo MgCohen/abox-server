@@ -1,7 +1,8 @@
-using RemoteAgents.Host;
 using RemoteAgents.Host.Hubs;
 using RemoteAgents.Host.Runs;
 using RemoteAgents.Primitives;
+using RemoteAgents.Runs;
+using RemoteAgents.Wire;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -167,17 +168,24 @@ app.MapPost("/runs/{id:guid}/respond", (Guid id, RespondRequest req, RunRegistry
 
 app.Run();
 
-static RunSummary SummaryFromRun(Run run) => new(
-    run.Id, run.Project, run.Flow, run.Prompt, run.Status.ToString(),
+// Phase 1 leaves the three projections in place (live Run, persisted
+// row, combined-list row). Layer 6 collapses them when Run splits into
+// LiveRun + RunRecord; until then these adapters keep the wire shape
+// stable while the field set graduates to RunRecord.
+static RunRecord SummaryFromRun(Run run) => new(
+    run.Id, run.Project, run.Flow, run.Prompt, run.Status,
     run.StartedAt, run.EndedAt, run.SessionId, run.SessionDir,
     run.ExitCode, run.FailureReason);
 
-static RunSummary SummaryFromCombined(RunsCombined c) => new(
-    c.Id, c.Project, c.Flow, c.Prompt, c.Status,
+static RunRecord SummaryFromCombined(RunsCombined c) => new(
+    c.Id, c.Project, c.Flow, c.Prompt, ParseStatus(c.Status),
     c.StartedAt, c.EndedAt, c.SessionId, c.SessionDir,
     c.ExitCode, c.FailureReason);
 
-static RunSummary SummaryFromPersisted(PersistedRun p) => new(
-    p.Id, p.Project, p.Flow, p.Prompt, p.Status,
+static RunRecord SummaryFromPersisted(PersistedRun p) => new(
+    p.Id, p.Project, p.Flow, p.Prompt, ParseStatus(p.Status),
     p.StartedAt, p.EndedAt, p.SessionId, p.SessionDir,
     p.ExitCode, p.FailureReason);
+
+static RunStatus ParseStatus(string s) =>
+    Enum.TryParse<RunStatus>(s, ignoreCase: true, out var v) ? v : RunStatus.Pending;

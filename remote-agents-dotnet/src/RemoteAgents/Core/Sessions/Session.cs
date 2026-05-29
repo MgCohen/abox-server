@@ -68,7 +68,7 @@ public sealed class Session
         return s;
     }
 
-    public void End(string result, string? failureReason = null)
+    public void End(SessionResult result, string? failureReason = null)
     {
         Meta.EndedAt = DateTimeOffset.UtcNow;
         Meta.DurationMs = _sw.ElapsedMilliseconds;

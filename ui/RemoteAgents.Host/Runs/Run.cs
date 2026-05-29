@@ -1,17 +1,7 @@
-using RemoteAgents.Host.Hubs;
 using RemoteAgents.Host.Sinks;
+using RemoteAgents.Runs;
 
 namespace RemoteAgents.Host.Runs;
-
-public enum RunStatus
-{
-    Pending = 0,
-    Starting,
-    Running,
-    Completed,
-    Failed,
-    Canceled,
-}
 
 // One in-flight (or recently-finished) flow execution. Identity is the
 // server-issued Id (GUID); SessionId is the library's per-run slug that

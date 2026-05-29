@@ -6,14 +6,14 @@ namespace RemoteAgents.Events;
 public static class EventSinkExtensions
 {
     public static Task PhaseStartAsync(this IEventSink sink, string agent, string detail, CancellationToken ct = default)
-        => sink.EmitAsync(new AgentEvent.Phase(DateTimeOffset.UtcNow, agent, AgentEvent.Phase.Start, detail), ct);
+        => sink.EmitAsync(new AgentEvent.Phase(DateTimeOffset.UtcNow, agent, PhaseStatus.Start, detail), ct);
 
     public static Task PhaseOkAsync(this IEventSink sink, string agent, string detail, CancellationToken ct = default)
-        => sink.EmitAsync(new AgentEvent.Phase(DateTimeOffset.UtcNow, agent, AgentEvent.Phase.Ok, detail), ct);
+        => sink.EmitAsync(new AgentEvent.Phase(DateTimeOffset.UtcNow, agent, PhaseStatus.Ok, detail), ct);
 
     public static Task PhaseFailAsync(this IEventSink sink, string agent, string detail, CancellationToken ct = default)
-        => sink.EmitAsync(new AgentEvent.Phase(DateTimeOffset.UtcNow, agent, AgentEvent.Phase.Fail, detail), ct);
+        => sink.EmitAsync(new AgentEvent.Phase(DateTimeOffset.UtcNow, agent, PhaseStatus.Fail, detail), ct);
 
     public static Task PhaseInfoAsync(this IEventSink sink, string agent, string detail, CancellationToken ct = default)
-        => sink.EmitAsync(new AgentEvent.Phase(DateTimeOffset.UtcNow, agent, AgentEvent.Phase.Info, detail), ct);
+        => sink.EmitAsync(new AgentEvent.Phase(DateTimeOffset.UtcNow, agent, PhaseStatus.Info, detail), ct);
 }
