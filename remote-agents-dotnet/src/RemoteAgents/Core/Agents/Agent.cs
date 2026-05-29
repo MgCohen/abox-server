@@ -12,25 +12,16 @@ namespace RemoteAgents.Agents;
 //   * assembling the final AgentResult
 //
 // Providers implement DriveAsync — the drive loop body, nothing else —
-// and expose their hook plumbing through HookConfig / HookParser /
-// InstallHookScopeAsync. RunAsync is sealed so subclasses cannot weaken
-// the contract.
+// and opt into hooks by returning a non-null HookIntegration. RunAsync
+// is sealed so subclasses cannot weaken the contract.
 public abstract class Agent
 {
     public required string Name { get; init; }
     public IEventSink Sink { get; init; } = NoOpSink.Instance;
 
-    // Provider hook plumbing. Default is "no hooks": the base skips
-    // install + resolution entirely and reports Completed. A provider
-    // opts in by returning a non-null HookConfig and overriding
-    // InstallHookScopeAsync; HookParser is then consulted to read
-    // hooks.jsonl after the drive loop returns.
-    protected virtual HookIntegrationOptions? HookConfig => null;
-    protected virtual IAgentHookParser? HookParser => null;
-    protected virtual Task<IAsyncDisposable> InstallHookScopeAsync(
-        AgentRunRequest req, string shimPath, CancellationToken ct)
-        => throw new NotSupportedException(
-            $"{GetType().Name} returns a HookConfig but does not override InstallHookScopeAsync.");
+    // Provider hook wiring. Null = no hooks: base skips install + resolution
+    // and reports Completed. See HookIntegration.
+    protected virtual HookIntegration? Hooks => null;
 
     public async Task<AgentResult> RunAsync(AgentRunRequest req, CancellationToken ct = default)
     {
@@ -38,9 +29,8 @@ public abstract class Agent
             new AgentEvent.Started(DateTimeOffset.UtcNow, Name, req.Prompt, req.SessionId),
             ct);
 
-        var cfg = HookConfig;
-        IAsyncDisposable? hookScope =
-            cfg is null ? null : await InstallHookScopeAsync(req, cfg.ShimPath, ct);
+        var hooks = Hooks;
+        Action? teardown = hooks?.Install(req);
 
         DriveResult raw;
         try
@@ -62,17 +52,16 @@ public abstract class Agent
         finally
         {
             // Uninstall happens regardless of success/failure/cancellation.
-            // CT.None: tearing down hooks must not be skipped by caller cancel.
-            if (hookScope is not null) await hookScope.DisposeAsync();
+            teardown?.Invoke();
         }
 
         // Resolve the run's outcome from the provider's hooks.jsonl.
         // Codex's text-only sentinel/heuristic detection writes a synthetic
         // line into hooks.jsonl from inside DriveAsync, so this single path
         // covers both real hook events and provider-detected questions.
-        var outcome = cfg is null
+        var outcome = hooks is null
             ? HookResolution.Completed
-            : HookResolution.FromHooksJsonl(cfg.HooksJsonlPath, HookParser!, req.Mode);
+            : HookResolution.FromHooksJsonl(hooks.HooksJsonlPath, hooks.Parser, req.Mode);
 
         if (outcome.Status == AgentStatus.Failed && outcome.Question is not null)
             await Sink.EmitAsync(new AgentEvent.NonInteractiveViolation(

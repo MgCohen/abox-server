@@ -20,11 +20,6 @@ public class CodexAgent : Agent
 {
     public CodexAgentOptions Options { get; init; } = new();
 
-    // Hook lifecycle for this agent. Default is the singleton installer
-    // wrapping CodexHookConfig; replaceable via DI for tests. Agent base
-    // invokes it iff Options.Hooks is non-null.
-    public IHookInstaller<CodexAgent> HookInstaller { get; init; } = new CodexHookInstaller();
-
     public static List<string> BuildCodexArgs(string? sessionId, string projectDir, string lastMessageFile, CodexAgentOptions opts)
     {
         var args = new List<string>();
@@ -57,14 +52,21 @@ public class CodexAgent : Agent
         return args;
     }
 
-    // Hook plumbing consumed by the Agent base. Resolution + violation
-    // emission live in the base; this class only declares what to install
-    // and how to parse the resulting hooks.jsonl.
-    protected override HookIntegrationOptions? HookConfig => Options.Hooks;
-    protected override IAgentHookParser? HookParser => new CodexHookParser();
-    protected override Task<IAsyncDisposable> InstallHookScopeAsync(
-        AgentRunRequest req, string shimPath, CancellationToken ct)
-        => HookInstaller.InstallAsync(req, shimPath, ct);
+    // Hook wiring consumed by the Agent base. Resolution + violation
+    // emission live in the base; this getter declares what to install,
+    // how to tear it down, and how to parse the resulting hooks.jsonl.
+    // Codex hooks are user-global (~/.codex/hooks.json) — ignores
+    // req.ProjectDir and resolves the config dir from the user profile.
+    protected override HookIntegration? Hooks => Options.Hooks is null ? null
+        : new HookIntegration(
+            HooksJsonlPath: Options.Hooks.HooksJsonlPath,
+            Parser:         new CodexHookParser(),
+            Install:        _ =>
+            {
+                var configDir = CodexHookConfig.DefaultConfigDir();
+                CodexHookConfig.Install(configDir, Options.Hooks.ShimPath);
+                return () => CodexHookConfig.Uninstall(configDir);
+            });
 
     protected override async Task<DriveResult> DriveAsync(AgentRunRequest req, CancellationToken ct)
     {

@@ -20,11 +20,6 @@ public class ClaudeAgent : Agent
 {
     public ClaudeAgentOptions Options { get; init; } = new();
 
-    // Hook lifecycle for this agent. Default is the singleton installer
-    // wrapping ClaudeHookConfig; replaceable via DI for tests. Agent base
-    // invokes it iff Options.Hooks is non-null.
-    public IHookInstaller<ClaudeAgent> HookInstaller { get; init; } = new ClaudeHookInstaller();
-
     public int Cols { get; init; } = 120;
     public int Rows { get; init; } = 40;
 
@@ -71,14 +66,18 @@ public class ClaudeAgent : Agent
         return args;
     }
 
-    // Hook plumbing consumed by the Agent base. Resolution + violation
-    // emission live in the base; this class only declares what to install
-    // and how to parse the resulting hooks.jsonl.
-    protected override HookIntegrationOptions? HookConfig => Options.Hooks;
-    protected override IAgentHookParser? HookParser => new ClaudeHookParser();
-    protected override Task<IAsyncDisposable> InstallHookScopeAsync(
-        AgentRunRequest req, string shimPath, CancellationToken ct)
-        => HookInstaller.InstallAsync(req, shimPath, ct);
+    // Hook wiring consumed by the Agent base. Resolution + violation
+    // emission live in the base; this getter declares what to install,
+    // how to tear it down, and how to parse the resulting hooks.jsonl.
+    protected override HookIntegration? Hooks => Options.Hooks is null ? null
+        : new HookIntegration(
+            HooksJsonlPath: Options.Hooks.HooksJsonlPath,
+            Parser:         new ClaudeHookParser(),
+            Install:        req =>
+            {
+                ClaudeHookConfig.Install(req.ProjectDir, Options.Hooks.ShimPath);
+                return () => ClaudeHookConfig.Uninstall(req.ProjectDir);
+            });
 
     protected override async Task<DriveResult> DriveAsync(AgentRunRequest req, CancellationToken ct)
     {
