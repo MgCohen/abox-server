@@ -70,12 +70,41 @@ public class ClaudeHookParserTests
         Assert.Equal("claude.elicitation_dialog", q.Source);
     }
 
-    [Theory]
-    [InlineData("claude.stop")]
-    [InlineData("claude.stop_failure")]
-    public void Stop_events_return_null(string source)
+    [Fact]
+    public void Stop_with_plain_completion_returns_null()
     {
-        var line = Wrap(source, """{"last_assistant_message":"done"}""");
+        var line = Wrap("claude.stop", """{"last_assistant_message":"PONG"}""");
+        Assert.Null(_parser.TryParse(line));
+    }
+
+    [Fact]
+    public void Stop_with_sentinel_maps_to_open_question_from_sentinel()
+    {
+        var line = Wrap("claude.stop",
+            """{"last_assistant_message":"Looked at the configs.\n<<NEEDS_INPUT>>\nWhich region default?"}""");
+
+        var q = Assert.IsType<AgentQuestion.OpenQuestion>(_parser.TryParse(line));
+        Assert.True(q.FromSentinel);
+        Assert.Equal("claude.stop.sentinel", q.Source);
+        Assert.Equal("Which region default?", q.Text);
+    }
+
+    [Fact]
+    public void Stop_with_interrogative_heuristic_maps_to_open_question()
+    {
+        var line = Wrap("claude.stop",
+            """{"last_assistant_message":"I see two ways.\n\nWhich would you prefer?"}""");
+
+        var q = Assert.IsType<AgentQuestion.OpenQuestion>(_parser.TryParse(line));
+        Assert.False(q.FromSentinel);
+        Assert.Equal("claude.stop.heuristic", q.Source);
+    }
+
+    [Fact]
+    public void Stop_failure_returns_null_even_with_question_text()
+    {
+        var line = Wrap("claude.stop_failure",
+            """{"last_assistant_message":"Could you confirm the path?"}""");
         Assert.Null(_parser.TryParse(line));
     }
 

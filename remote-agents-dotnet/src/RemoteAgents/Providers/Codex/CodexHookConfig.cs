@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace RemoteAgents.Agents;
 
@@ -11,14 +12,16 @@ namespace RemoteAgents.Agents;
 // Codex's repo-local .codex/config.toml hook entries are silently
 // skipped by interactive sessions today (openai/codex#17532), so we ship
 // hooks at the user-global path. The shape used here mirrors
-// PLANS/interaction-modes.md §5; revisit if step 4's integration run
-// shows Codex expects the TOML form or a nested "hooks" wrapper.
+// PLANS/interaction-modes.md §5; revisit if integration shows Codex
+// expects the TOML form or a nested "hooks" wrapper.
+//
+// JsonNode (no reflection) — file-based runtime compatibility, see
+// ClaudeHookConfig for the rationale.
 public static class CodexHookConfig
 {
     public const string HooksRelative    = "hooks.json";
     private const string BackupSuffix    = ".ra-bak";
 
-    // codexConfigDir is typically ~/.codex (resolved by the caller).
     public static void Install(string codexConfigDir, string shimPath)
     {
         Directory.CreateDirectory(codexConfigDir);
@@ -45,16 +48,18 @@ public static class CodexHookConfig
 
     private static string RenderHooks(string shimPath)
     {
-        var hooks = new
+        var root = new JsonObject
         {
-            PermissionRequest = new[] { Entry(shimPath, "codex.permission_request") },
-            Stop              = new[] { Entry(shimPath, "codex.stop") },
-            StopFailure       = new[] { Entry(shimPath, "codex.stop_failure") },
+            ["PermissionRequest"] = new JsonArray(Entry(shimPath, "codex.permission_request")),
+            ["Stop"]              = new JsonArray(Entry(shimPath, "codex.stop")),
+            ["StopFailure"]       = new JsonArray(Entry(shimPath, "codex.stop_failure")),
         };
-
-        return JsonSerializer.Serialize(hooks, new JsonSerializerOptions { WriteIndented = true });
+        return root.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
     }
 
-    private static object Entry(string shimPath, string source) =>
-        new { command = $"pwsh -NoProfile -File \"{shimPath}\" {source}" };
+    private static JsonNode Entry(string shimPath, string source) =>
+        new JsonObject
+        {
+            ["command"] = $"pwsh -NoProfile -File \"{shimPath}\" {source}",
+        };
 }

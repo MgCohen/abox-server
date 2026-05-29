@@ -6,14 +6,23 @@ namespace RemoteAgents.Agents;
 // recognizes (set by the append shim):
 //
 //   claude.permission_prompt    → TuiPrompt   (tool-use modal)
-//   claude.idle_prompt          → OpenQuestion (turn ended, waiting on text)
+//   claude.idle_prompt          → OpenQuestion (turn ended, waiting on text;
+//                                  only fires when the TUI stays alive past
+//                                  the turn — doesn't trigger under our
+//                                  /exit-driven linear flow)
 //   claude.elicitation_dialog   → OpenQuestion (MCP elicitation)
-//   claude.stop / claude.stop_failure → null (clean turn end)
+//   claude.stop                 → OpenQuestion via StopPayloadInspector,
+//                                  shared with Codex — payload carries
+//                                  last_assistant_message which is where the
+//                                  sentinel and interrogative heuristics
+//                                  actually fire under our flow
+//   claude.stop_failure         → null
 //
-// Field paths follow Claude Code's documented Notification hook payload
-// (see research/agent-hooks.md). Payloads evolve; this parser tolerates
-// missing fields by emitting empty strings rather than throwing — the
-// AgentQuestion record is always constructible from a recognized source.
+// Real-run smoke (sessions/...-smoke-question-detection/) confirmed Stop
+// is the dominant signal under our orchestrator's "type prompt → /exit"
+// flow; idle_prompt and elicitation_dialog only fire if the TUI is left
+// alive — they're kept here for completeness against future flows that
+// don't /exit.
 public sealed class ClaudeHookParser : IAgentHookParser
 {
     public AgentQuestion? TryParse(JsonElement hookLine)
@@ -23,27 +32,29 @@ public sealed class ClaudeHookParser : IAgentHookParser
         if (!hookLine.TryGetProperty("payload", out var payload)) return null;
         if (payload.ValueKind != JsonValueKind.Object) return null;
 
-        switch (source)
+        return source switch
         {
-            case "claude.permission_prompt":
-                return new AgentQuestion.TuiPrompt(
-                    Text:        GetString(payload, "message"),
-                    ToolName:    GetString(payload, "tool_name"),
-                    ToolInput:   GetObjectOrEmpty(payload, "tool_input"),
-                    HookPayload: payload.Clone(),
-                    Source:      source);
+            "claude.permission_prompt" => new AgentQuestion.TuiPrompt(
+                Text:        GetString(payload, "message"),
+                ToolName:    GetString(payload, "tool_name"),
+                ToolInput:   GetObjectOrEmpty(payload, "tool_input"),
+                HookPayload: payload.Clone(),
+                Source:      source),
 
-            case "claude.idle_prompt":
-            case "claude.elicitation_dialog":
-                return new AgentQuestion.OpenQuestion(
+            "claude.idle_prompt" or "claude.elicitation_dialog" =>
+                new AgentQuestion.OpenQuestion(
                     Text:         GetString(payload, "message"),
                     FromSentinel: false,
                     HookPayload:  payload.Clone(),
-                    Source:       source);
+                    Source:       source),
 
-            default:
-                return null;
-        }
+            "claude.stop" => StopPayloadInspector.Inspect(
+                payload,
+                sentinelSource:  "claude.stop.sentinel",
+                heuristicSource: "claude.stop.heuristic"),
+
+            _ => null,
+        };
     }
 
     private static bool TryGetString(JsonElement obj, string name, out string value)
