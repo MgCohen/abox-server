@@ -9,6 +9,16 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSingleton<RunRegistry>();
 builder.Services.AddSingleton<RunStore>();
+
+// Flow executors — registration order = CanHandle priority. Step 2 lands
+// both implementations but only the subprocess one wins because the
+// FlowRegistry is left empty; step 3 flips the order and populates the
+// registry to switch the Host onto the in-process path.
+builder.Services.AddSingleton<FlowRegistry>();
+builder.Services.AddSingleton<IFlowExecutor, InProcessFlowExecutor>();
+builder.Services.AddSingleton<IFlowExecutor>(sp => new SubprocessFlowExecutor(
+    OrchestratorPaths.FindOrThrow(),
+    sp.GetRequiredService<ILogger<SubprocessFlowExecutor>>()));
 builder.Services.AddSingleton<FlowRunner>();
 builder.Services.AddOpenApi();
 builder.Services.AddSignalR();

@@ -56,19 +56,53 @@ public static class FlowBootstrap
         await SubscriptionGuard.CheckAsync(ct);
 
         var projectDir = ProjectRegistry.Resolve(projectName);
+
+        return BuildContext(flowName, projectName, projectDir, userPrompt, shouldPush,
+            extraSinks: [new ConsoleSink()],
+            withBootBanner: true);
+    }
+
+    // In-process flavor: the Host has already resolved the project dir and
+    // parsed the prompt out of the REST body, and supplies its run-scoped
+    // sink (typically a ChannelSink wrapped in RunStateSink). We fold the
+    // injected sinks into the composite alongside JsonlSink + the provider
+    // JSONL ingest sink — no ConsoleSink, since the Host has no terminal
+    // to print to.
+    public static async Task<FlowContext> StartInProcessAsync(
+        string flowName,
+        string projectName,
+        string projectDir,
+        string userPrompt,
+        bool shouldPush,
+        IEnumerable<IEventSink> injectedSinks,
+        CancellationToken ct = default)
+    {
+        await SubscriptionGuard.CheckAsync(ct);
+        return BuildContext(flowName, projectName, projectDir, userPrompt, shouldPush,
+            extraSinks: injectedSinks,
+            withBootBanner: false);
+    }
+
+    private static FlowContext BuildContext(
+        string flowName, string projectName, string projectDir, string userPrompt,
+        bool shouldPush, IEnumerable<IEventSink> extraSinks, bool withBootBanner)
+    {
         var session = Session.Start(new StartSessionRequest(
             ProjectDir: projectDir,
             ProjectName: projectName,
             UserPrompt: userPrompt,
             FlowName: flowName));
 
-        PrintBootBanner(session.Id, flowName, projectName, projectDir, userPrompt, shouldPush);
+        if (withBootBanner)
+            PrintBootBanner(session.Id, flowName, projectName, projectDir, userPrompt, shouldPush);
 
         var jsonl = new JsonlSink(session.TranscriptFile);
-        var sink = new CompositeSink(
-            new ConsoleSink(),
-            jsonl,
-            new ProviderJsonlIngestSink(session.Dir, projectDir));
+        var sinks = new List<IEventSink>();
+        sinks.AddRange(extraSinks);
+        sinks.Add(jsonl);
+        sinks.Add(new ProviderJsonlIngestSink(session.Dir, projectDir));
+
+        var sink = new CompositeSink([.. sinks]);
 
         return new FlowContext
         {
