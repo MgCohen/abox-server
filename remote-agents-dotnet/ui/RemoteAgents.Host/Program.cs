@@ -1,4 +1,5 @@
 using RemoteAgents.Host;
+using RemoteAgents.Host.Hubs;
 using RemoteAgents.Host.Runs;
 using RemoteAgents.Primitives;
 
@@ -7,8 +8,19 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddSingleton<RunRegistry>();
 builder.Services.AddSingleton<FlowRunner>();
 builder.Services.AddOpenApi();
+builder.Services.AddSignalR();
+
+// CORS so a browser-served WASM bundle on a different origin can hit us.
+// Tightened to specific origins in C3 once the deploy shape is fixed.
+builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
+    .SetIsOriginAllowed(_ => true)
+    .AllowAnyHeader()
+    .AllowAnyMethod()
+    .AllowCredentials()));
 
 var app = builder.Build();
+app.UseCors();
+app.MapHub<RunsHub>("/hub/runs");
 
 if (app.Environment.IsDevelopment())
 {
