@@ -94,6 +94,15 @@ public sealed class FlowRunner
             run.ExitCode = proc.ExitCode;
             run.EndedAt = DateTimeOffset.UtcNow;
 
+            // EndedAt is now set — the tailer's "is the run done?" check
+            // can return true on its next loop iteration. Await it so we
+            // don't promote-to-history with the tail still in flight.
+            if (run.TailerTask is not null)
+            {
+                try { await run.TailerTask; }
+                catch (Exception ex) { _log.LogWarning(ex, "Tailer task fault for run {RunId}", run.Id); }
+            }
+
             run.Status = run.Cts.IsCancellationRequested
                 ? RunStatus.Canceled
                 : proc.ExitCode == 0 ? RunStatus.Completed : RunStatus.Failed;
@@ -151,7 +160,6 @@ public sealed class FlowRunner
 
     private async Task ReadStdoutAsync(Process proc, Run run)
     {
-        Task? tailerTask = null;
         string? line;
         while ((line = await proc.StandardOutput.ReadLineAsync(run.Cts.Token)) is not null)
         {
@@ -162,15 +170,15 @@ public sealed class FlowRunner
                 {
                     run.SessionId = m.Groups["id"].Value;
                     run.SessionDir = Path.Combine(_orchestratorRoot, "sessions", run.SessionId);
-                    tailerTask = Task.Run(() => TailTranscriptAsync(run));
+                    run.TailerTask = Task.Run(() => TailTranscriptAsync(run));
                     _log.LogInformation("Run {RunId} bound to session {SessionId}", run.Id, run.SessionId);
                 }
             }
             // Console output beyond the session-id line is informational —
             // the structured events come from the transcript tailer, not stdout.
         }
-
-        if (tailerTask is not null) await tailerTask;
+        // Tailer is NOT awaited here — ExecuteAsync awaits it after EndedAt
+        // is set so the tailer's exit condition can actually fire.
     }
 
     private async Task ReadStderrAsync(Process proc, Run run)

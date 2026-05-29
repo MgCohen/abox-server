@@ -34,6 +34,14 @@ public sealed class Run
     public int? ExitCode { get; set; }
     public string? FailureReason { get; set; }
 
+    // FlowRunner internal: the transcript tailer task, started when the
+    // session-id line is sniffed from child stdout. ExecuteAsync awaits
+    // this AFTER setting EndedAt so the tailer's "is the run done?" exit
+    // condition can fire — avoids the deadlock where ReadStdoutAsync
+    // waits on the tailer which waits on EndedAt which waits on
+    // ReadStdoutAsync completing.
+    public Task? TailerTask { get; set; }
+
     // C2 forward-compat: when the agent emits an AgentQuestion (NeedsInput),
     // the UI POSTs a chosen response here. v1 just records it on the run
     // for inspection — flow-side answer-back wiring is deferred until the
