@@ -14,14 +14,48 @@
 > committed; step 6 (PTY-buffer `TuiPrompt` fallback) deferred per its
 > own conditional trigger.
 >
-> **Real-run correction (2026-05-29)**: a smoke run against real `claude`
-> revealed `claude.idle_prompt` does NOT fire under our "type prompt → /exit"
-> linear flow — `claude.stop` is the dominant signal, with the same
-> `last_assistant_message` field Codex's Stop carries. Both providers now
-> share `StopPayloadInspector` for sentinel + heuristic detection. The
-> §4 mapping table is preserved for completeness but `claude.idle_prompt`
-> and `claude.elicitation_dialog` only fire when a flow keeps the TUI
-> alive — they're retained for that future case.
+> **Real-run correction (2026-05-29, Claude)**: a smoke run against real
+> `claude` revealed `claude.idle_prompt` does NOT fire under our "type
+> prompt → /exit" linear flow — `claude.stop` is the dominant signal, with
+> the same `last_assistant_message` field Codex's Stop carries. Both
+> providers now share `StopPayloadInspector` for sentinel + heuristic
+> detection. The §4 mapping table is preserved for completeness but
+> `claude.idle_prompt` and `claude.elicitation_dialog` only fire when a
+> flow keeps the TUI alive — they're retained for that future case.
+>
+> **Real-run correction (2026-05-29, Codex)**: smoke against `codex exec`
+> surfaced three issues:
+>
+> 1. **`--dangerously-bypass-approvals-and-sandbox` silently disables
+>    hook invocation entirely.** Replaced with
+>    `--dangerously-bypass-hook-trust` + `--skip-git-repo-check` —
+>    `codex exec` is autonomous by default, so no approval flag is needed.
+> 2. **Flat `{Event: [{command}]}` hooks shape is silently ignored.**
+>    Rewrote `~/.codex/hooks.json` in the canonical nested
+>    `{hooks: {Event: [{matcher: "*", hooks: [{type, command}]}]}}` form
+>    per [docs](https://developers.openai.com/codex/hooks).
+> 3. **Even with the fixes, Codex hooks still don't fire reliably in our
+>    setup** — `hooks.jsonl` stays empty across runs. Possibly
+>    [#19199](https://github.com/openai/codex/issues/19199)-class regression
+>    or a remaining config edge case; investigation deferred.
+>
+> Mitigation: `CodexAgent` now applies a **Text-sentinel fallback** —
+> after hook resolution returns Completed, `StopPayloadInspector.InspectText`
+> scans `result.Text` (codex's `-o` output) for the sentinel /
+> interrogative heuristic. Source tags `codex.text.sentinel` /
+> `codex.text.heuristic` distinguish output-driven detection from
+> hook-driven. Smoke confirms this catches the model's `<<NEEDS_INPUT>>`
+> emission end-to-end even with hooks dark.
+>
+> **Verified working end-to-end** (cli/flows/smoke-question-detection.cs):
+>
+> | pass | Status | Question source |
+> |---|---|---|
+> | claude × Interactive × PONG       | Completed | — |
+> | claude × NonInteractive × PONG    | Completed | — |
+> | claude × NonInteractive × ambig   | Failed    | `claude.stop.sentinel` |
+> | codex × NonInteractive × PONG     | Completed | — |
+> | codex × NonInteractive × ambig    | Failed    | `codex.text.sentinel`  |
 >
 > **Scope**: data layer only — the records, enums, parser interface, and
 > hook-config installer. UI / answer-back loop are explicitly deferred (§7).
@@ -134,6 +168,8 @@ public record AgentRunRequest(
 | `codex.permission_request` | Codex `PermissionRequest` |
 | `codex.stop.sentinel` | Codex `Stop` payload contained `<<NEEDS_INPUT>>` |
 | `codex.stop.heuristic` | Codex `Stop` payload matched `?` + interrogative-lead |
+| `codex.text.sentinel` | Codex `result.Text` (the `-o` output file) contained `<<NEEDS_INPUT>>` — fallback when codex hooks didn't fire |
+| `codex.text.heuristic` | Codex `result.Text` matched `?` + interrogative-lead — fallback |
 | `pty.tui_fallback` | ANSI-buffer fallback (hooks missed it) |
 
 ---
