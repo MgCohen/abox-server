@@ -9,9 +9,12 @@ namespace RemoteAgents.Agents;
 // process — that's what keeps the call on Max subscription billing instead
 // of the API path. Q12: Windows-only v1 (cmd.exe /c).
 //
-// Non-sealed (Q7) with two virtual hooks for v1 (Q8): DetectStartupDialog
-// and IsResponseComplete. The PTY plumbing (buffer, reader task,
-// drain/kill) lives in PtySession; this class only owns the script.
+// Non-sealed (Q7) with two protected virtual hooks: DetectStartupDialog
+// (so projects can recognize new TUI dialog wording) and SpawnPtyAsync
+// (so tests can swap in a fake PTY). Idle/wait/dwell budgets live on
+// ClaudeAgentOptions, not on virtual hooks. The PTY plumbing (buffer,
+// reader task, idle-wait, drain/kill) lives in PtySession; this class
+// only owns the script.
 public class ClaudeAgent : Agent
 {
     public ClaudeAgentOptions Options { get; init; } = new();
@@ -63,6 +66,22 @@ public class ClaudeAgent : Agent
     }
 
     protected override async Task<AgentResult> ExecuteAsync(AgentRunRequest req, CancellationToken ct)
+    {
+        if (Options.Hooks is not null)
+            ClaudeHookConfig.Install(req.ProjectDir, Options.Hooks.ShimPath);
+
+        try
+        {
+            return await RunInternalAsync(req, ct);
+        }
+        finally
+        {
+            if (Options.Hooks is not null)
+                ClaudeHookConfig.Uninstall(req.ProjectDir);
+        }
+    }
+
+    private async Task<AgentResult> RunInternalAsync(AgentRunRequest req, CancellationToken ct)
     {
         var sessionId = req.SessionId ?? Guid.NewGuid().ToString();
         var claudeArgs = BuildClaudeArgs(sessionId, isResume: req.SessionId is not null, Options);
@@ -119,7 +138,17 @@ public class ClaudeAgent : Agent
             ? jsonlText!
             : ExtractAssistantText(raw, req.Prompt);
 
-        return new AgentResult(Text: text, SessionId: sessionId, ExitCode: exitCode, RawOutput: raw);
+        var outcome = HookResolution.FromHooksJsonl(
+            Options.Hooks?.HooksJsonlPath, new ClaudeHookParser(), req.Mode);
+
+        return new AgentResult(
+            Text:          text,
+            SessionId:     sessionId,
+            ExitCode:      exitCode,
+            RawOutput:     raw,
+            Status:        outcome.Status,
+            Question:      outcome.Question,
+            FailureReason: outcome.FailureReason);
     }
 
     private PtyOptions BuildPtyOptions(string projectDir)
@@ -134,6 +163,8 @@ public class ClaudeAgent : Agent
         }
         env["ANTHROPIC_API_KEY"] = "";
         env["CLAUDE_API_KEY"] = "";
+        if (Options.Hooks is not null)
+            env["REMOTEAGENTS_HOOKS_JSONL"] = Options.Hooks.HooksJsonlPath;
 
         return new PtyOptions
         {

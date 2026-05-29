@@ -21,4 +21,9 @@ public sealed record ClaudeAgentOptions(
     int MaxOverallMs = 10 * 60_000,
     string PermissionMode = "acceptEdits",
     string? Model = null,
-    string? SystemPrompt = null);
+    string? SystemPrompt = null,
+    // Opt-in hook integration. When non-null, the agent installs
+    // .claude/settings.json hooks pointing at ShimPath, sets
+    // REMOTEAGENTS_HOOKS_JSONL on the PTY, and resolves AgentResult.Status
+    // / Question from the resulting hooks.jsonl. See HookIntegrationOptions.
+    HookIntegrationOptions? Hooks = null);

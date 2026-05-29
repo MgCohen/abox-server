@@ -38,6 +38,23 @@ public class CodexAgent : Agent
 
     protected override async Task<AgentResult> ExecuteAsync(AgentRunRequest req, CancellationToken ct)
     {
+        var codexConfigDir = CodexHookConfig.DefaultConfigDir();
+        if (Options.Hooks is not null)
+            CodexHookConfig.Install(codexConfigDir, Options.Hooks.ShimPath);
+
+        try
+        {
+            return await RunInternalAsync(req, ct);
+        }
+        finally
+        {
+            if (Options.Hooks is not null)
+                CodexHookConfig.Uninstall(codexConfigDir);
+        }
+    }
+
+    private async Task<AgentResult> RunInternalAsync(AgentRunRequest req, CancellationToken ct)
+    {
         var tmpDir = Path.Combine(Path.GetTempPath(), "agents-codex-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tmpDir);
         var lastMessageFile = Path.Combine(tmpDir, "last.txt");
@@ -59,6 +76,8 @@ public class CodexAgent : Agent
         // Defense in depth: blank OPENAI_API_KEY in the child env so codex
         // can't accidentally fall through to API billing.
         psi.Environment["OPENAI_API_KEY"] = "";
+        if (Options.Hooks is not null)
+            psi.Environment["REMOTEAGENTS_HOOKS_JSONL"] = Options.Hooks.HooksJsonlPath;
 
         using var proc = new Process { StartInfo = psi, EnableRaisingEvents = true };
         var stdout = new StringBuilder();
@@ -131,11 +150,17 @@ public class CodexAgent : Agent
 
         try { Directory.Delete(tmpDir, recursive: true); } catch { /* best-effort */ }
 
+        var outcome = HookResolution.FromHooksJsonl(
+            Options.Hooks?.HooksJsonlPath, new CodexHookParser(), req.Mode);
+
         return new AgentResult(
-            Text: text,
-            SessionId: extractedSessionId ?? "",
-            ExitCode: proc.HasExited ? proc.ExitCode : -1,
-            RawOutput: stdout.ToString());
+            Text:          text,
+            SessionId:     extractedSessionId ?? "",
+            ExitCode:      proc.HasExited ? proc.ExitCode : -1,
+            RawOutput:     stdout.ToString(),
+            Status:        outcome.Status,
+            Question:      outcome.Question,
+            FailureReason: outcome.FailureReason);
     }
 
     // Scan a single JSON line for any of the session-id field shapes codex
