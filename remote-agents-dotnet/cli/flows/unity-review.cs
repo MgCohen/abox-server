@@ -29,7 +29,7 @@ if (!await ctx.EnsureCleanTreeAsync()) return;
 try
 {
     var claude = new ClaudeAgent { Name = "claude", Sink = ctx.Sink };
-    var validator = new UnityBatchValidator();
+    var validator = new UnityFullValidator();
 
     // 1. Claude does the work
     var work = await claude.RunAsync(new AgentRunRequest(ctx.UserPrompt, null, ctx.ProjectDir));

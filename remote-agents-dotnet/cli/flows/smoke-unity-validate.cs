@@ -15,9 +15,9 @@ if (args.Length < 1)
 var projectDir = ProjectRegistry.Resolve(args[0]);
 Console.WriteLine($"[smoke] projectDir = {projectDir}");
 
-var v = new UnityBatchValidator();
-Console.WriteLine($"[smoke] unityExePath = {v.UnityExePath}");
-Console.WriteLine("[smoke] running validator (may take several minutes)...");
+var v = new UnityCompileValidator();
+Console.WriteLine($"[smoke] unityExePath = {UnityChecks.FindUnityForProject(projectDir) ?? "<auto>"}");
+Console.WriteLine("[smoke] running compile preflight (may take a minute)...");
 
 var sw = System.Diagnostics.Stopwatch.StartNew();
 var result = await v.ValidateAsync(projectDir);
