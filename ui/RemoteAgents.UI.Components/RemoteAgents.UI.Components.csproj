@@ -13,11 +13,10 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.7" />
-    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.7" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\remote-agents-dotnet\src\RemoteAgents\RemoteAgents.csproj" />
+    <ProjectReference Include="..\..\remote-agents-dotnet\src\RemoteAgents.Contracts\RemoteAgents.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

@@ -90,7 +90,7 @@
         try
         {
             _projects = await Api.GetProjectsAsync();
-            _flows    = await Api.GetFlowsAsync();
+            _flows    = await Api.GetCatalogAsync();
         }
         catch (Exception ex)
         {
@@ -105,13 +105,13 @@
         _error = null;
         try
         {
-            var run = await Api.StartRunAsync(new StartRunRequest(
+            var snap = await Api.StartFlowAsync(new StartRunRequest(
                 Project: _form.Project,
                 Flow:    _form.Flow,
                 Prompt:  _form.Prompt,
                 Args:    null));
-            if (run is null) throw new InvalidOperationException("Host returned no run.");
-            Nav.NavigateTo($"runs/{run.Id}");
+            if (snap is null) throw new InvalidOperationException("Host returned no flow snapshot.");
+            Nav.NavigateTo($"runs/{snap.Id}");
         }
         catch (Exception ex)
         {

@@ -1,5 +1,4 @@
 @page "/runs/{Id:guid}"
-@using RemoteAgents.UI.Components.Models
 @implements IAsyncDisposable
 @inject HostApiClient Api
 @inject HttpClient Http
@@ -10,274 +9,128 @@
 <div class="page run-view">
     <p><NavLink href="runs">← Runs</NavLink></p>
 
-    @if (_summary is null)
+    @if (_snap is null)
     {
         <p>Loading…</p>
     }
     else
     {
-        <h1>@_summary.Flow <small>on @_summary.Project</small></h1>
+        <h1>@_snap.Name</h1>
         <p class="meta">
-            <span class="status status-@_summary.Status.ToString().ToLowerInvariant()">@_summary.Status</span>
-            <span>started @_summary.StartedAt.ToLocalTime().ToString("HH:mm:ss")</span>
-            @if (_summary.EndedAt is not null)
-            {
-                <span>· ended @_summary.EndedAt.Value.ToLocalTime().ToString("HH:mm:ss")</span>
-            }
-            @if (_summary.ExitCode is not null)
-            {
-                <span>· exit @_summary.ExitCode</span>
-            }
+            <span class="status status-@_snap.Phase.ToString().ToLowerInvariant()">@_snap.Phase</span>
+            <span>v@_snap.Version</span>
         </p>
-        <details>
-            <summary>Prompt</summary>
-            <pre class="prompt-block">@_summary.Prompt</pre>
-        </details>
 
-        @if (IsActive(_summary.Status))
+        @if (IsActive(_snap.Phase))
         {
             <button class="cancel" @onclick="CancelAsync">Cancel</button>
         }
 
-        @if (_currentQuestion is not null)
+        @if (_snap.PendingQuestion is not null)
         {
             <div class="question-modal">
                 <h3>Agent needs input</h3>
-                <p>@_currentQuestion.Text</p>
-                <div class="choices">
-                    <button @onclick="@(() => RespondAsync("yes"))">Yes</button>
-                    <button @onclick="@(() => RespondAsync("no"))">No</button>
-                </div>
-                <input @bind="_freeformResponse" placeholder="or type a response…" />
-                <button @onclick="@(() => RespondAsync(_freeformResponse))" disabled="@(string.IsNullOrWhiteSpace(_freeformResponse))">
+                <p>@_snap.PendingQuestion</p>
+                <input @bind="_answer" placeholder="type a response…" />
+                <button @onclick="AnswerAsync" disabled="@(string.IsNullOrWhiteSpace(_answer))">
                     Send
                 </button>
-                <p class="hint">v1: response is recorded only — routing into the
-                paused agent waits on library v2 (see interaction-modes.md).</p>
             </div>
         }
 
-        <h2>Conversation</h2>
-        @if (_chat.Count == 0 && IsActive(_summary.Status))
+        <h2>Steps</h2>
+        @if (_snap.Steps.Length == 0)
         {
-            <div class="thinking">
-                <span class="dot"></span> Waiting for the first message from the agent…
-            </div>
-        }
-        else if (_chat.Count == 0)
-        {
-            <p class="hint">No conversation captured. The agent may have exited
-            before writing its session JSONL — see the live terminal below.</p>
+            <p class="hint">No steps yet.</p>
         }
         else
         {
-            <div class="chat">
-                @{
-                    // Pair ToolUse with its matching ToolResult by ToolUseId
-                    // so we render ONE log row instead of two stacked cards.
-                    var resultsByUseId = _chat.OfType<AgentEvent.ToolResult>()
-                        .GroupBy(r => r.ToolUseId)
-                        .ToDictionary(g => g.Key, g => g.First());
-                }
-                @foreach (var evt in _chat)
+            <ol class="steps">
+                @foreach (var step in _snap.Steps)
                 {
-                    @switch (evt)
-                    {
-                        case AgentEvent.UserText u:
-                            <div class="chat-msg chat-user">
-                                <div class="chat-label">You</div>
-                                <div class="chat-body">@u.Text</div>
-                            </div>
-                            break;
-                        case AgentEvent.AssistantText a:
-                            <div class="chat-msg chat-assistant">
-                                <div class="chat-label">Claude</div>
-                                <div class="chat-body">@a.Text</div>
-                            </div>
-                            break;
-                        case AgentEvent.Thinking t:
-                            <details class="chat-msg chat-thinking">
-                                <summary>Claude thought (@t.Text.Length chars)</summary>
-                                <div class="chat-body">@t.Text</div>
-                            </details>
-                            break;
-                        case AgentEvent.ToolUse tu:
-                            <ToolRow Use="tu" Result="@(resultsByUseId.TryGetValue(tu.ToolId, out var r) ? r : null)" />
-                            break;
-                        case AgentEvent.ToolResult:
-                            // Rendered inline with its ToolUse above; skip.
-                            break;
-                        case AgentEvent.Meta m:
-                            <div class="chat-msg chat-meta">
-                                <span class="chat-label">@m.Tag</span>
-                                @if (!string.IsNullOrEmpty(m.Detail))
-                                {
-                                    <span class="chat-body">@m.Detail</span>
-                                }
-                            </div>
-                            break;
-                    }
+                    <li class="step status-@step.Status.ToString().ToLowerInvariant()">
+                        <span class="step-name">@step.Name</span>
+                        <span class="step-status">@step.Status</span>
+                        <span class="step-time">
+                            @step.StartedAt.ToLocalTime().ToString("HH:mm:ss")
+                            @if (step.EndedAt is not null)
+                            {
+                                <span>→ @step.EndedAt.Value.ToLocalTime().ToString("HH:mm:ss")</span>
+                            }
+                        </span>
+                        @if (!string.IsNullOrEmpty(step.Summary))
+                        {
+                            <div class="step-summary">@step.Summary</div>
+                        }
+                        @if (!string.IsNullOrEmpty(step.Error))
+                        {
+                            <div class="step-error">@step.Error</div>
+                        }
+                    </li>
                 }
-            </div>
+            </ol>
         }
-
-        @if (!string.IsNullOrWhiteSpace(_finalOutput))
-        {
-            <details class="output-toggle">
-                <summary>Final output (distilled)</summary>
-                <pre class="final-output">@_finalOutput</pre>
-            </details>
-        }
-
-        @if (_lines.Count > 0)
-        {
-            <details class="raw-toggle">
-                <summary>Events (debug, @_lines.Count)</summary>
-                <div class="log">
-                    @foreach (var line in _lines)
-                    {
-                        <div class="@LineClass(line)">@line.Text</div>
-                    }
-                </div>
-            </details>
-        }
-
-        <details class="output-toggle" open>
-            <summary>Live terminal</summary>
-            <XtermViewer @ref="_xterm" />
-        </details>
     }
 </div>
 
 @code {
     [Parameter] public Guid Id { get; set; }
 
-    private RunRecord? _summary;
-    private RunStreamClient? _stream;
+    private FlowSnapshot? _snap;
     private CancellationTokenSource? _cts;
-    private readonly List<LogLine> _lines = new();
-    private readonly List<AgentEvent> _chat = new();
-    private XtermViewer? _xterm;
-    private string? _finalOutput;
-    private QuestionSurface? _currentQuestion;
-    private string _freeformResponse = "";
+    private string _answer = "";
 
     protected override async Task OnInitializedAsync()
     {
-        _summary = await Api.GetRunAsync(Id);
-        if (_summary is null)
+        _snap = await Api.GetFlowAsync(Id);
+        if (_snap is null)
         {
             Nav.NavigateTo("runs");
             return;
         }
 
-        _cts = new CancellationTokenSource();
-        var hostBase = Http.BaseAddress ?? new Uri(Nav.BaseUri);
-        var hubUrl = new Uri(hostBase, "hub/runs").ToString();
-        _stream = new RunStreamClient(hubUrl);
-        await _stream.StartAsync(_cts.Token);
-
-        // One consumer — chat-content variants and orchestration events
-        // both arrive on the same stream.
-        _ = Task.Run(() => ConsumeEventsAsync(_cts.Token));
+        // Stream live updates only while the flow is active. Finished flows
+        // already have a complete snapshot — no SSE needed.
+        if (IsActive(_snap.Phase))
+        {
+            _cts = new CancellationTokenSource();
+            _ = Task.Run(() => ConsumeAsync(_cts.Token));
+        }
     }
 
-    private async Task ConsumeEventsAsync(CancellationToken ct)
+    private async Task ConsumeAsync(CancellationToken ct)
     {
+        var client = new FlowStreamClient(Http);
         try
         {
-            await foreach (var evt in _stream!.StreamAsync(Id, ct))
+            await foreach (var snap in client.StreamAsync(Id, ct))
             {
-                await AppendAsync(evt);
+                _snap = snap;
                 await InvokeAsync(StateHasChanged);
             }
         }
         catch (OperationCanceledException) { }
-        catch (Exception ex)
-        {
-            _lines.Add(new LogLine($"[stream error] {ex.Message}", LineKind.Error));
-            await InvokeAsync(StateHasChanged);
-        }
-        _summary = await Api.GetRunAsync(Id);
-        try { _finalOutput = await Api.GetOutputAsync(Id); } catch { }
-        await InvokeAsync(StateHasChanged);
-    }
-
-    private async Task AppendAsync(AgentEvent evt)
-    {
-        switch (evt)
-        {
-            case AgentEvent.Started s:
-                _lines.Add(new LogLine($"[{s.AgentName}] started", LineKind.Phase));
-                break;
-            case AgentEvent.StreamChunk c:
-                if (_xterm is not null) await _xterm.WriteAsync(c.Chunk);
-                break;
-            case AgentEvent.DialogDismissed d:
-                _lines.Add(new LogLine($"[{d.AgentName}] dismissed dialog: {d.Match}", LineKind.Phase));
-                break;
-            case AgentEvent.Completed done:
-                _lines.Add(new LogLine($"[{done.AgentName}] completed (exit {done.ExitCode}, {done.OutputChars} chars)", LineKind.Phase));
-                break;
-            case AgentEvent.Failed fail:
-                _lines.Add(new LogLine($"[{fail.AgentName}] FAILED: {fail.Reason}", LineKind.Error));
-                break;
-            case AgentEvent.Phase phase:
-                var kind = phase.Status switch
-                {
-                    PhaseStatus.Ok   => LineKind.Phase,
-                    PhaseStatus.Fail => LineKind.Error,
-                    _                => LineKind.Phase,
-                };
-                _lines.Add(new LogLine($"[{phase.AgentName}] {phase.Status}: {phase.Detail}", kind));
-                break;
-            // Chat-content variants land on _chat and render via the
-            // conversation panel above.
-            case AgentEvent.UserText:
-            case AgentEvent.AssistantText:
-            case AgentEvent.Thinking:
-            case AgentEvent.ToolUse:
-            case AgentEvent.ToolResult:
-            case AgentEvent.Meta:
-                _chat.Add(evt);
-                break;
-            // ProviderSessionAttached / NonInteractiveViolation: silent —
-            // server-side state mutation, UI doesn't render directly.
-        }
     }
 
     private async Task CancelAsync()
     {
-        await Api.CancelRunAsync(Id);
+        await Api.CancelFlowAsync(Id);
     }
 
-    private async Task RespondAsync(string choice)
+    private async Task AnswerAsync()
     {
-        if (_currentQuestion is null || string.IsNullOrWhiteSpace(choice)) return;
-        await Api.RespondAsync(Id, new RespondRequest(_currentQuestion.CorrelationId, choice));
-        _currentQuestion = null;
-        _freeformResponse = "";
+        if (string.IsNullOrWhiteSpace(_answer)) return;
+        await Api.AnswerFlowAsync(Id, _answer);
+        _answer = "";
     }
 
-    private static bool IsActive(RunStatus status) =>
-        status is RunStatus.Pending or RunStatus.Starting or RunStatus.Running;
+    private static bool IsActive(FlowPhase phase) =>
+        phase is FlowPhase.Pending or FlowPhase.Running or FlowPhase.Paused;
 
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         try { _cts?.Cancel(); } catch { }
-        if (_stream is not null) await _stream.DisposeAsync();
         _cts?.Dispose();
+        return ValueTask.CompletedTask;
     }
-
-    private sealed record LogLine(string Text, LineKind Kind);
-    private enum LineKind { Stream, Phase, Error }
-    private sealed record QuestionSurface(string Text, string? CorrelationId);
-
-    private static string LineClass(LogLine l) => l.Kind switch
-    {
-        LineKind.Stream => "log-line stream",
-        LineKind.Phase  => "log-line phase",
-        LineKind.Error  => "log-line error",
-        _               => "log-line",
-    };
 }

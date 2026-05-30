@@ -1,12 +1,13 @@
 using System.Net.Http.Json;
-using RemoteAgents.Runs;
+using RemoteAgents.Flows;
 using RemoteAgents.Wire;
 
 namespace RemoteAgents.UI.Components.Api;
 
-// Typed wrapper around RemoteAgents.Host's REST surface. Injected via
-// DI; one instance per Blazor app. The HttpClient's BaseAddress is set
-// by the host shell (UI.Web Program.cs / UI.Maui MauiProgram.cs).
+// Typed wrapper around RemoteAgents.Host's REST surface. Workstream B
+// switched the wire shape from RunRecord+SignalR to FlowSnapshot+SSE
+// (D1–D4). The catalog of available flow definitions lives at /catalog;
+// the runtime registry (active + recent runs) at /flows.
 public sealed class HostApiClient
 {
     private readonly HttpClient _http;
@@ -16,36 +17,25 @@ public sealed class HostApiClient
     public Task<ProjectInfo[]?> GetProjectsAsync(CancellationToken ct = default) =>
         _http.GetFromJsonAsync<ProjectInfo[]>("projects", ct);
 
-    // The catalog of available flow definitions ("what can I run").
-    // /flows now hosts the runtime registry (active + recent runs);
-    // catalog moved to /catalog in Workstream B.
-    public Task<FlowInfo[]?> GetFlowsAsync(CancellationToken ct = default) =>
+    public Task<FlowInfo[]?> GetCatalogAsync(CancellationToken ct = default) =>
         _http.GetFromJsonAsync<FlowInfo[]>("catalog", ct);
 
-    public Task<RunRecord[]?> GetRunsAsync(CancellationToken ct = default) =>
-        _http.GetFromJsonAsync<RunRecord[]>("runs", ct);
+    public Task<FlowSnapshot[]?> GetFlowsAsync(CancellationToken ct = default) =>
+        _http.GetFromJsonAsync<FlowSnapshot[]>("flows", ct);
 
-    public Task<RunRecord?> GetRunAsync(Guid id, CancellationToken ct = default) =>
-        _http.GetFromJsonAsync<RunRecord>($"runs/{id}", ct);
+    public Task<FlowSnapshot?> GetFlowAsync(Guid id, CancellationToken ct = default) =>
+        _http.GetFromJsonAsync<FlowSnapshot>($"flows/{id}", ct);
 
-    public async Task<RunRecord?> StartRunAsync(StartRunRequest req, CancellationToken ct = default)
+    public async Task<FlowSnapshot?> StartFlowAsync(StartRunRequest req, CancellationToken ct = default)
     {
-        var resp = await _http.PostAsJsonAsync("runs", req, ct);
+        var resp = await _http.PostAsJsonAsync("flows", req, ct);
         resp.EnsureSuccessStatusCode();
-        return await resp.Content.ReadFromJsonAsync<RunRecord>(cancellationToken: ct);
+        return await resp.Content.ReadFromJsonAsync<FlowSnapshot>(cancellationToken: ct);
     }
 
-    public Task CancelRunAsync(Guid id, CancellationToken ct = default) =>
-        _http.PostAsync($"runs/{id}/cancel", content: null, ct);
+    public Task CancelFlowAsync(Guid id, CancellationToken ct = default) =>
+        _http.PostAsync($"flows/{id}/cancel", content: null, ct);
 
-    public Task RespondAsync(Guid id, RespondRequest req, CancellationToken ct = default) =>
-        _http.PostAsJsonAsync($"runs/{id}/respond", req, ct);
-
-    public async Task<string?> GetOutputAsync(Guid id, CancellationToken ct = default)
-    {
-        var resp = await _http.GetAsync($"runs/{id}/output", ct);
-        if (resp.StatusCode == System.Net.HttpStatusCode.NoContent) return null;
-        if (!resp.IsSuccessStatusCode) return null;
-        return await resp.Content.ReadAsStringAsync(ct);
-    }
+    public Task AnswerFlowAsync(Guid id, string choice, CancellationToken ct = default) =>
+        _http.PostAsJsonAsync($"flows/{id}/answer", new RespondRequest(null, choice), ct);
 }
