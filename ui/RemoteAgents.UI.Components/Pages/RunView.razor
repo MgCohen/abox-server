@@ -60,11 +60,11 @@
                         </span>
                         @if (!string.IsNullOrEmpty(step.Summary))
                         {
-                            <div class="step-summary">@step.Summary</div>
+                            <pre class="step-summary">@step.Summary</pre>
                         }
                         @if (!string.IsNullOrEmpty(step.Error))
                         {
-                            <div class="step-error">@step.Error</div>
+                            <pre class="step-error">@step.Error</pre>
                         }
                     </li>
                 }

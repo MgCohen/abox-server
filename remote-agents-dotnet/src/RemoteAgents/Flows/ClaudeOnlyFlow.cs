@@ -23,5 +23,7 @@ public sealed class ClaudeOnlyFlow : Flow
     public override string Name => "claude-only";
 
     protected override Task ExecuteAsync(CancellationToken ct) =>
-        Step("claude", () => _claude.RunAsync(new AgentRunRequest(_prompt, null, _projectDir), ct));
+        Step("claude",
+            () => _claude.RunAsync(new AgentRunRequest(_prompt, null, _projectDir), ct),
+            r => r.Text);
 }

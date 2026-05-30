@@ -92,10 +92,13 @@ public abstract class Flow
         catch (Exception ex)               { MarkTerminal(i, StepStatus.Failed, ex.Message); throw; }
     }
 
-    protected async Task<T> Step<T>(string name, Func<Task<T>> work)
+    // `summarize` lets each flow pull a one-shot text summary off the
+    // step's result and put it on the snapshot for the UI to render.
+    // Null = nothing to show.
+    protected async Task<T> Step<T>(string name, Func<Task<T>> work, Func<T, string?>? summarize = null)
     {
         var i = AddRunning(name);
-        try { var r = await work(); MarkCompleted(i); return r; }
+        try { var r = await work(); MarkCompleted(i, summarize?.Invoke(r)); return r; }
         catch (OperationCanceledException) { MarkTerminal(i, StepStatus.Canceled, null); throw; }
         catch (Exception ex)               { MarkTerminal(i, StepStatus.Failed, ex.Message); throw; }
     }
@@ -126,9 +129,14 @@ public abstract class Flow
         return _steps.Count - 1;
     }
 
-    private void MarkCompleted(int i)
+    private void MarkCompleted(int i, string? summary = null)
     {
-        _steps[i] = _steps[i] with { Status = StepStatus.Completed, EndedAt = DateTimeOffset.UtcNow };
+        _steps[i] = _steps[i] with
+        {
+            Status   = StepStatus.Completed,
+            EndedAt  = DateTimeOffset.UtcNow,
+            Summary  = summary,
+        };
         Bump();
     }
 

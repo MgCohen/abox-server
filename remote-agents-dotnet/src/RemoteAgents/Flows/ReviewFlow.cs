@@ -54,7 +54,8 @@ public sealed class ReviewFlow : Flow
         });
 
         var work = await Step("claude",
-            () => _claude.RunAsync(new AgentRunRequest(_prompt, null, _projectDir), ct));
+            () => _claude.RunAsync(new AgentRunRequest(_prompt, null, _projectDir), ct),
+            r => r.Text);
 
         await using (var iso = _opts.IsolateValidation
             ? await IsolationScope.BeginAsync(_projectDir, ct)
@@ -63,7 +64,8 @@ public sealed class ReviewFlow : Flow
             for (var attempt = 1; attempt <= _opts.MaxFixAttempts; attempt++)
             {
                 var v = await Step($"validate-{attempt}",
-                    () => _validator.ValidateAsync(_projectDir, ct));
+                    () => _validator.ValidateAsync(_projectDir, ct),
+                    r => r.Ok ? $"PASSED — {r.Summary}" : $"FAILED — {r.Summary}");
                 if (v.Ok) break;
                 if (attempt == _opts.MaxFixAttempts)
                     throw new InvalidOperationException(
@@ -72,7 +74,8 @@ public sealed class ReviewFlow : Flow
                 var desc = string.IsNullOrEmpty(_opts.FixDescriptor) ? "" : $" ({_opts.FixDescriptor})";
                 var fixPrompt = $"Validation{desc} failed. Address these issues:\n\n{v.Errors}";
                 work = await Step($"fix-{attempt}",
-                    () => _claude.RunAsync(new AgentRunRequest(fixPrompt, work.SessionId, _projectDir), ct));
+                    () => _claude.RunAsync(new AgentRunRequest(fixPrompt, work.SessionId, _projectDir), ct),
+                    r => r.Text);
             }
         }
 
@@ -82,7 +85,8 @@ public sealed class ReviewFlow : Flow
 
         var verdict = await Step("review",
             () => Reviews.AskAgentForVerdictAsync(_reviewer, _projectDir, _prompt,
-                _opts.ProjectKind, _opts.ValidationLabel, ct));
+                _opts.ProjectKind, _opts.ValidationLabel, ct),
+            r => r.Text);
 
         if (verdict.Verdict == Verdict.Unclear)
             throw new InvalidOperationException(
@@ -93,10 +97,12 @@ public sealed class ReviewFlow : Flow
             work = await Step("revise",
                 () => _claude.RunAsync(new AgentRunRequest(
                     $"Code reviewer feedback — please address:\n\n{verdict.Text}",
-                    work.SessionId, _projectDir), ct));
+                    work.SessionId, _projectDir), ct),
+                r => r.Text);
 
             var v2 = await Step("re-validate",
-                () => _validator.ValidateAsync(_projectDir, ct));
+                () => _validator.ValidateAsync(_projectDir, ct),
+                r => r.Ok ? $"PASSED — {r.Summary}" : $"FAILED — {r.Summary}");
             if (!v2.Ok)
                 throw new InvalidOperationException($"Post-revision validation failed: {v2.Summary}");
         }
