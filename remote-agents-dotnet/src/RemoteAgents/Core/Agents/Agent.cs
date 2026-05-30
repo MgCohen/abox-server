@@ -19,7 +19,7 @@ namespace RemoteAgents.Agents;
 // expose their typed options via BaseOptions, and opt into hooks by
 // returning a non-null HookIntegration. RunAsync is sealed so subclasses
 // cannot weaken the contract.
-public abstract class Agent
+public abstract class Agent : IAgent
 {
     // Default name comes from the provider type (passed via the subclass
     // constructor). Callers can still override via object initializer
