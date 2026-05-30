@@ -3,7 +3,7 @@
 //
 // Thin shim — the flow body lives in src/RemoteAgents/Flows/ClaudeOnlyFlow.cs.
 // A single-flow CLI script builds its flow directly and dispatches through
-// FlowRunner; the FlowRegistry/DI path is for the Host, which resolves many
+// FlowRunner; the FlowCatalog/DI path is for the Host, which resolves many
 // flows by name.
 //
 // Usage:

@@ -15,9 +15,9 @@ builder.Services.AddSingleton<RunStore>();
 
 // Flow executors — registration order = CanHandle priority. Step 2 lands
 // both implementations but only the subprocess one wins because the
-// FlowRegistry is left empty; step 3 flips the order and populates the
+// FlowCatalog is left empty; step 3 flips the order and populates the
 // registry to switch the Host onto the in-process path.
-builder.Services.AddSingleton<FlowRegistry>();
+builder.Services.AddSingleton<FlowCatalog>();
 builder.Services.AddSingleton<IFlowExecutor, InProcessFlowExecutor>();
 builder.Services.AddSingleton<IFlowExecutor>(sp => new SubprocessFlowExecutor(
     OrchestratorPaths.FindOrThrow(),
@@ -26,7 +26,7 @@ builder.Services.AddSingleton<RemoteAgents.Host.Runs.FlowRunner>();
 builder.Services.AddOpenApi();
 builder.Services.AddSignalR();
 
-// Composition root for the library: flow dispatch (FlowRegistry + RemoteAgents.Host.Runs.FlowRunner)
+// Composition root for the library: flow dispatch (FlowCatalog + RemoteAgents.Host.Runs.FlowRunner)
 // and any cross-cutting sinks. Agents are constructed by the flows that need
 // them, not resolved here — see RemoteAgentsOptions.
 builder.Services.AddRemoteAgents(_ => { });
@@ -43,12 +43,12 @@ var app = builder.Build();
 app.UseCors();
 app.MapHub<RunsHub>("/hub/runs");
 
-// Populate the in-process FlowRegistry — names match cli/flows/*.cs so
+// Populate the in-process FlowCatalog — names match cli/flows/*.cs so
 // the InProcessFlowExecutor's CanHandle resolves to a registered IFlow
 // for the named flows below, falling back to SubprocessFlowExecutor for
 // any other flow name a client POSTs.
 {
-    var flows = app.Services.GetRequiredService<FlowRegistry>();
+    var flows = app.Services.GetRequiredService<FlowCatalog>();
     flows.Register(new ClaudeOnlyFlow());
     flows.Register(new ReviewFlow(new ReviewFlowOptions(
         Name:            "full-review",

@@ -10,7 +10,7 @@ namespace RemoteAgents.Hosting;
 // There is deliberately no UseClaude/UseCodex here. Agents are constructed,
 // not resolved: a flow builds the agent it needs directly, and configured /
 // named agents go through AgentPreset.Build(sink) — the one factory. The
-// container owns flow dispatch (FlowRegistry + FlowRunner) and cross-cutting
+// container owns flow dispatch (FlowCatalog + FlowRunner) and cross-cutting
 // sinks, nothing provider-specific. See PLANS/architecture-refactor/99-rejected.md R13.
 public sealed class RemoteAgentsOptions
 {
@@ -29,7 +29,7 @@ public sealed class RemoteAgentsOptions
         return this;
     }
 
-    // Register an IFlow with the FlowRegistry. The CLI dispatcher and
+    // Register an IFlow with the FlowCatalog. The CLI dispatcher and
     // the Host both resolve flows from this single source of truth.
     public RemoteAgentsOptions AddFlow<TFlow>() where TFlow : class, IFlow
     {

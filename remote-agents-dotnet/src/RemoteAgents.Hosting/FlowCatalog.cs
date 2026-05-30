@@ -3,11 +3,14 @@ using RemoteAgents.Flows;
 
 namespace RemoteAgents.Hosting;
 
-// In-memory IFlow registry. The CLI dispatcher and the Host's in-process
-// executor both resolve by name through this single source of truth —
-// replaces the duplicate file-system globs in cli/agents-dotnet.cs and
-// Host/Program.cs.
-public sealed class FlowRegistry
+// In-memory name → IFlow catalog. The CLI dispatcher and the Host's
+// in-process executor both resolve flow definitions by name through this
+// single source of truth.
+//
+// Note: this is distinct from the runtime FlowRegistry introduced in
+// Workstream B which maps Guid run-ids → live Flow aggregates. Different
+// concept, different name.
+public sealed class FlowCatalog
 {
     private readonly ConcurrentDictionary<string, IFlow> _flows = new(StringComparer.OrdinalIgnoreCase);
 

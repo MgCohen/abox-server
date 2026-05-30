@@ -17,9 +17,9 @@ public static class ServiceCollectionExtensions
         Action<RemoteAgentsOptions> configure)
     {
         services.AddSingleton<Flows.FlowRunner>();
-        services.AddSingleton<FlowRegistry>(sp =>
+        services.AddSingleton<FlowCatalog>(sp =>
         {
-            var reg = new FlowRegistry();
+            var reg = new FlowCatalog();
             foreach (var flow in sp.GetServices<Flows.IFlow>())
                 reg.Register(flow);
             return reg;

@@ -12,14 +12,14 @@ namespace RemoteAgents.Host.Runs;
 // into the FlowContext's CompositeSink so every AgentEvent the lib emits
 // lands on the same broadcaster the SignalR clients subscribe to.
 //
-// CanHandle is keyed on FlowRegistry.Get(name); flows not registered in
+// CanHandle is keyed on FlowCatalog.Get(name); flows not registered in
 // the Host's process fall back to SubprocessFlowExecutor.
 public sealed class InProcessFlowExecutor : IFlowExecutor
 {
-    private readonly FlowRegistry _flows;
+    private readonly FlowCatalog _flows;
     private readonly ILogger<InProcessFlowExecutor> _log;
 
-    public InProcessFlowExecutor(FlowRegistry flows, ILogger<InProcessFlowExecutor> log)
+    public InProcessFlowExecutor(FlowCatalog flows, ILogger<InProcessFlowExecutor> log)
     {
         _flows = flows;
         _log = log;
@@ -35,7 +35,7 @@ public sealed class InProcessFlowExecutor : IFlowExecutor
 
         var flow = _flows.Get(run.Flow)
             ?? throw new InvalidOperationException(
-                $"Run {run.Id}: flow '{run.Flow}' not registered with FlowRegistry. " +
+                $"Run {run.Id}: flow '{run.Flow}' not registered with FlowCatalog. " +
                 "Either register it in Program.cs or accept the subprocess fallback.");
 
         await using var ctx = await FlowBootstrap.StartInProcessAsync(
