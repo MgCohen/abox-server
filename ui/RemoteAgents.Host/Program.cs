@@ -1,7 +1,10 @@
 using System.Text.Json;
+using RemoteAgents.Agents;
 using RemoteAgents.Flows;
 using RemoteAgents.Hosting;
 using RemoteAgents.Primitives;
+using RemoteAgents.Providers.Claude;
+using RemoteAgents.Providers.Codex;
 using RemoteAgents.Validation.Orchestrator;
 using RemoteAgents.Validation.Unity;
 using RemoteAgents.Wire;
@@ -16,9 +19,9 @@ builder.Services.AddSingleton<FlowRegistry>();
 
 builder.Services.AddOpenApi();
 
-// Composition root for the library: FlowCatalog + any cross-cutting sinks.
-// Agents are constructed by the flows that need them — see RemoteAgentsOptions.
-builder.Services.AddRemoteAgents(_ => { });
+// Composition root for the library: just FlowCatalog. Agents are
+// constructed per-flow via the catalog factories below.
+builder.Services.AddRemoteAgents();
 
 // CORS so a browser-served WASM bundle on a different origin can hit us.
 // Transport security in v1 is Tailscale-only (see plan non-goals).
@@ -31,25 +34,51 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
 var app = builder.Build();
 app.UseCors();
 
-// Populate the FlowCatalog — names match cli/flows/*.cs.
+// Populate the FlowCatalog. Each entry is (name, description, factory).
+// Factory is invoked per POST /flows — agents are fresh per invocation
+// (per D5: tools constructor-injected per flow, no shared singletons).
 {
+    // Codex options used when codex plays the reviewer role: read-only
+    // sandbox so it can't edit the tree under review, 5-min timeout for
+    // long review prompts.
+    var reviewerCodex = new CodexAgentOptions(Sandbox: "read-only", JsonStreamTimeoutMs: 5 * 60_000);
+
     var flows = app.Services.GetRequiredService<FlowCatalog>();
-    flows.Register(new ClaudeOnlyFlow());
-    flows.Register(new ReviewFlow(new ReviewFlowOptions(
-        Name:            "full-review",
-        Summary:         "Claude works → project checks → Codex review → commit (push opt-in).",
-        Validator:       new OrchestratorValidator(),
-        ProjectKind:     "changes",
-        ValidationLabel: "all project checks passed")));
-    flows.Register(new ReviewFlow(new ReviewFlowOptions(
-        Name:              "unity-review",
-        Summary:           "Claude works → Unity batch-mode compile → Codex review → commit (push opt-in).",
-        Validator:         new UnityFullValidator(),
-        ProjectKind:       "a Unity C# change",
-        ValidationLabel:   "Unity batch-mode compile passed",
-        IsolateValidation: true,
-        ProgressNote:      " (Unity batch-mode, this can take minutes)",
-        FixDescriptor:     "Unity batch-mode compile")));
+
+    flows.Register("claude-only",
+        "Claude runs against the project. No validation, no review, no git.",
+        spec => new ClaudeOnlyFlow(new ClaudeAgent(), spec.ProjectDir, spec.Prompt));
+
+    flows.Register("claude-validate",
+        "Claude works → orchestrator validator → fix loop. No review, no commit.",
+        spec => new ClaudeValidateFlow(
+            new ClaudeAgent(), new OrchestratorValidator(), spec.ProjectDir, spec.Prompt));
+
+    flows.Register("full-review",
+        "Claude works → project checks → Codex review → commit (push opt-in).",
+        spec => new ReviewFlow(
+            claude:     new ClaudeAgent(),
+            reviewer:   new CodexAgent { Options = reviewerCodex },
+            validator:  new OrchestratorValidator(),
+            opts:       new ReviewFlowOptions(
+                Name:            "full-review",
+                ProjectKind:     "changes",
+                ValidationLabel: "all project checks passed"),
+            projectDir: spec.ProjectDir, prompt: spec.Prompt, shouldPush: spec.ShouldPush));
+
+    flows.Register("unity-review",
+        "Claude works → Unity batch-mode compile → Codex review → commit (push opt-in).",
+        spec => new ReviewFlow(
+            claude:     new ClaudeAgent(),
+            reviewer:   new CodexAgent { Options = reviewerCodex },
+            validator:  new UnityFullValidator(),
+            opts:       new ReviewFlowOptions(
+                Name:              "unity-review",
+                ProjectKind:       "a Unity C# change",
+                ValidationLabel:   "Unity batch-mode compile passed",
+                IsolateValidation: true,
+                FixDescriptor:     "Unity batch-mode compile"),
+            projectDir: spec.ProjectDir, prompt: spec.Prompt, shouldPush: spec.ShouldPush));
 }
 
 if (app.Environment.IsDevelopment())
@@ -82,7 +111,7 @@ app.MapGet("/projects", () =>
 app.MapGet("/catalog", (FlowCatalog catalog) =>
     Results.Ok(catalog.All()
         .OrderBy(f => f.Name)
-        .Select(f => new FlowInfo(f.Name, f.Summary))
+        .Select(f => new FlowInfo(f.Name, f.Description))
         .ToArray()));
 
 // ---- Runtime Flows (snapshot + SSE surface) ---------------------------
@@ -93,15 +122,17 @@ app.MapPost("/flows", (StartRunRequest req, FlowRegistry registry, FlowCatalog c
     if (string.IsNullOrWhiteSpace(req.Flow))    return Results.BadRequest(new { error = "flow required" });
     if (string.IsNullOrWhiteSpace(req.Prompt))  return Results.BadRequest(new { error = "prompt required" });
 
-    var iflow = catalog.Get(req.Flow);
-    if (iflow is null) return Results.BadRequest(new { error = $"unknown flow '{req.Flow}'" });
+    var def = catalog.Get(req.Flow);
+    if (def is null) return Results.BadRequest(new { error = $"unknown flow '{req.Flow}'" });
 
     string projectDir;
     try { projectDir = ProjectRegistry.Resolve(req.Project); }
     catch (Exception ex) { return Results.BadRequest(new { error = ex.Message }); }
 
-    var adapter = new LegacyFlowAdapter(iflow, req.Project, projectDir, req.Prompt, req.Args ?? []);
-    var id = registry.Start(adapter);
+    var args = req.Args ?? [];
+    var spec = new FlowSpec(req.Project, projectDir, req.Prompt, args, args.Contains("--push"));
+    var flow = def.Factory(spec);
+    var id = registry.Start(flow);
     var snap = registry.Get(id)!;
     return Results.Accepted($"/flows/{id}", snap);
 });

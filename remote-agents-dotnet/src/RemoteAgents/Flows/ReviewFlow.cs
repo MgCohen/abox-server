@@ -1,144 +1,124 @@
 using RemoteAgents.Agents;
-using RemoteAgents.Events;
 using RemoteAgents.Primitives;
-using RemoteAgents.Providers.Claude;
-using RemoteAgents.Providers.Codex;
-using RemoteAgents.Sessions;
 using RemoteAgents.Validation;
 
 namespace RemoteAgents.Flows;
 
-// Configuration for a ReviewFlow variant. Collapses the 8 parallel
-// ctor params the flow used to take into one record so call sites
-// document the variant by name and ReviewFlow only carries one field.
+// Configuration for a ReviewFlow variant (full-review vs unity-review).
+// Captures the differences: which validator gates the work, whether the
+// fix loop runs inside an IsolationScope, and the wording handed to the
+// reviewer.
 public sealed record ReviewFlowOptions(
     string      Name,
-    string?     Summary,
-    IValidator  Validator,
     string      ProjectKind,
     string      ValidationLabel,
     bool        IsolateValidation = false,
-    string      ProgressNote      = "",
     string      FixDescriptor     = "",
     int         MaxFixAttempts    = 3,
     string      CoAuthor          = "Claude Opus 4.7 + Codex gpt-5.5");
 
-// Claude works → validate/fix loop → Codex reviews the diff → optional
-// revision pass → commit (push opt-in). The single body behind both
-// `full-review` and `unity-review`: those differ only in which validator
-// gates the work, whether the fix loop runs inside an IsolationScope, and
-// the wording handed to the reviewer. Everything else was byte-identical.
-//
-// Construct one per variant (see the cli/flows shims):
-//   new ReviewFlow(new ReviewFlowOptions(
-//     Name: "full-review", Summary: …, Validator: new OrchestratorValidator(),
-//     ProjectKind: "changes", ValidationLabel: …))
-public sealed class ReviewFlow(ReviewFlowOptions opts) : IFlow
+// Claude works → validate/fix loop → reviewer reviews the diff → optional
+// revision pass → commit (push opt-in). One Step per completion boundary.
+public sealed class ReviewFlow : Flow
 {
-    public string Name => opts.Name;
-    public string? Summary => opts.Summary;
+    private readonly IAgent             _claude;
+    private readonly IAgent             _reviewer;
+    private readonly IValidator         _validator;
+    private readonly ReviewFlowOptions  _opts;
+    private readonly string             _projectDir;
+    private readonly string             _prompt;
+    private readonly bool               _shouldPush;
 
-    public async Task<FlowResult> RunAsync(FlowContext ctx, FlowArgs args, CancellationToken ct)
+    public ReviewFlow(
+        IAgent claude, IAgent reviewer, IValidator validator,
+        ReviewFlowOptions opts,
+        string projectDir, string prompt, bool shouldPush)
     {
-        if (await GitOps.IsDirtyAsync(ctx.ProjectDir, ct))
+        _claude     = claude;
+        _reviewer   = reviewer;
+        _validator  = validator;
+        _opts       = opts;
+        _projectDir = projectDir;
+        _prompt     = prompt;
+        _shouldPush = shouldPush;
+    }
+
+    public override string Name => _opts.Name;
+
+    protected override async Task ExecuteAsync(CancellationToken ct)
+    {
+        await Step("guard", async () =>
         {
-            await ctx.Sink.PhaseFailAsync("abort", "working tree is dirty. Commit or stash first.", ct);
-            return new FlowResult(SessionResult.AbortedDirtyTree);
-        }
+            if (await GitOps.IsDirtyAsync(_projectDir, ct))
+                throw new InvalidOperationException("Working tree is dirty. Commit or stash first.");
+        });
 
-        var claude = new ClaudeAgent { Sink = ctx.Sink };
+        var work = await Step("claude",
+            () => _claude.RunAsync(new AgentRunRequest(_prompt, null, _projectDir), ct));
 
-        // 1. Claude does the work.
-        var work = await claude.RunAsync(new AgentRunRequest(ctx.UserPrompt, null, ctx.ProjectDir), ct);
-        await ctx.Sink.PhaseOkAsync("claude", $"turn 1 done (session={work.SessionId})", ct);
-
-        // 2. validate + fix loop. Isolated for validators that dirty the
-        //    tree on every run (Unity batch-mode regenerates TMP_SDF /
-        //    .meta / Library); the scope reverts that noise at exit.
-        ValidateAndFixResult validate;
-        await using (var iso = opts.IsolateValidation
-            ? await IsolationScope.BeginAsync(ctx.ProjectDir, ctx.Sink, ct)
+        await using (var iso = _opts.IsolateValidation
+            ? await IsolationScope.BeginAsync(_projectDir, ct)
             : null)
         {
-            validate = await Loops.ValidateAndFixAsync(
-                claude, opts.Validator, work, ctx.ProjectDir, ctx.Sink,
-                maxAttempts:   opts.MaxFixAttempts,
-                progressNote:  opts.ProgressNote,
-                fixDescriptor: opts.FixDescriptor,
-                ct:            ct);
-        }
-        work = validate.LastResult;
-        if (!validate.Ok)
-            return new FlowResult(SessionResult.ValidationFailed);
-
-        // 3. Nothing changed? skip review/commit.
-        var diffText = await GitOps.DiffAsync(new GitDiffRequest(ctx.ProjectDir), ct);
-        if (string.IsNullOrWhiteSpace(diffText))
-        {
-            await ctx.Sink.PhaseInfoAsync("done", "Claude made no file changes. Nothing to review or commit.", ct);
-            return new FlowResult(SessionResult.NoChanges);
-        }
-
-        // 4. Codex review.
-        var reviewer = new CodexAgent { Sink = ctx.Sink, Options = Reviews.DefaultReviewerOptions };
-        var review = await Reviews.AskCodexForVerdictAsync(
-            reviewer, ctx.ProjectDir, ctx.Session.Dir, ctx.UserPrompt,
-            projectKind:     opts.ProjectKind,
-            validationLabel: opts.ValidationLabel,
-            ct:              ct);
-
-        if (review.IsUnclear)
-        {
-            await ctx.Sink.PhaseFailAsync("abort",
-                $"Codex verdict unclear (review was {review.Text.Length} bytes). Refusing to commit.", ct);
-            return new FlowResult(SessionResult.VerdictUnclear);
-        }
-
-        // 5. one revision round.
-        if (review.IsRevise)
-        {
-            await ctx.Sink.PhaseStartAsync("revise", "sending reviewer feedback to Claude...", ct);
-            work = await claude.RunAsync(new AgentRunRequest(
-                $"Code reviewer feedback — please address:\n\n{review.Text}",
-                work.SessionId, ctx.ProjectDir), ct);
-
-            var v2 = await opts.Validator.ValidateAsync(ctx.ProjectDir, ct);
-            if (!v2.Ok)
+            for (var attempt = 1; attempt <= _opts.MaxFixAttempts; attempt++)
             {
-                await ctx.Sink.PhaseFailAsync("abort", $"post-revision validation failed: {v2.Summary}", ct);
-                return new FlowResult(SessionResult.RevisionBrokeValidation);
+                var v = await Step($"validate-{attempt}",
+                    () => _validator.ValidateAsync(_projectDir, ct));
+                if (v.Ok) break;
+                if (attempt == _opts.MaxFixAttempts)
+                    throw new InvalidOperationException(
+                        $"Validation never passed after {_opts.MaxFixAttempts} attempts: {v.Summary}");
+
+                var desc = string.IsNullOrEmpty(_opts.FixDescriptor) ? "" : $" ({_opts.FixDescriptor})";
+                var fixPrompt = $"Validation{desc} failed. Address these issues:\n\n{v.Errors}";
+                work = await Step($"fix-{attempt}",
+                    () => _claude.RunAsync(new AgentRunRequest(fixPrompt, work.SessionId, _projectDir), ct));
             }
         }
 
-        // 6. commit (+ optional push).
-        var filesToCommit = await GitOps.ChangedFilesAsync(ctx.ProjectDir, ct);
-        if (filesToCommit.Count == 0)
+        // Nothing changed? skip review/commit.
+        var diffText = await GitOps.DiffAsync(new GitDiffRequest(_projectDir), ct);
+        if (string.IsNullOrWhiteSpace(diffText)) return;
+
+        var verdict = await Step("review",
+            () => Reviews.AskAgentForVerdictAsync(_reviewer, _projectDir, _prompt,
+                _opts.ProjectKind, _opts.ValidationLabel, ct));
+
+        if (verdict.Verdict == Verdict.Unclear)
+            throw new InvalidOperationException(
+                $"Reviewer verdict unclear (review was {verdict.Text.Length} bytes). Refusing to commit.");
+
+        if (verdict.Verdict == Verdict.Revise)
         {
-            await ctx.Sink.PhaseInfoAsync("done", "No files ultimately changed.", ct);
-            return new FlowResult(SessionResult.NoChanges);
+            work = await Step("revise",
+                () => _claude.RunAsync(new AgentRunRequest(
+                    $"Code reviewer feedback — please address:\n\n{verdict.Text}",
+                    work.SessionId, _projectDir), ct));
+
+            var v2 = await Step("re-validate",
+                () => _validator.ValidateAsync(_projectDir, ct));
+            if (!v2.Ok)
+                throw new InvalidOperationException($"Post-revision validation failed: {v2.Summary}");
         }
 
-        var commitMessage = Reviews.BuildCommitMessage(ctx.UserPrompt, review.Text);
-        await ctx.Sink.PhaseStartAsync("commit", $"{filesToCommit.Count} files...", ct);
-        await GitOps.CommitAsync(new GitCommitRequest(
-            ProjectDir: ctx.ProjectDir,
-            Message:    commitMessage,
-            Files:      filesToCommit,
-            CoAuthor:   opts.CoAuthor), ct);
-        await ctx.Sink.PhaseOkAsync("commit", "done.", ct);
-
-        if (ctx.ShouldPush)
+        await Step("commit", async () =>
         {
-            var branch = await GitOps.CurrentBranchAsync(ctx.ProjectDir, ct);
-            await ctx.Sink.PhaseStartAsync("push", $"origin {branch}...", ct);
-            await GitOps.PushAsync(new GitPushRequest(ctx.ProjectDir, Branch: branch), ct);
-            await ctx.Sink.PhaseOkAsync("push", "done.", ct);
+            var files = await GitOps.ChangedFilesAsync(_projectDir, ct);
+            if (files.Count == 0) return;
+            await GitOps.CommitAsync(new GitCommitRequest(
+                ProjectDir: _projectDir,
+                Message:    Reviews.BuildCommitMessage(_prompt, verdict.Text, _opts.CoAuthor),
+                Files:      files,
+                CoAuthor:   _opts.CoAuthor), ct);
+        });
+
+        if (_shouldPush)
+        {
+            await Step("push", async () =>
+            {
+                var branch = await GitOps.CurrentBranchAsync(_projectDir, ct);
+                await GitOps.PushAsync(new GitPushRequest(_projectDir, Branch: branch), ct);
+            });
         }
-
-        await ctx.Session.WriteArtifactAsync(SessionArtifact.ClaudeRaw, work.RawOutput, ct);
-        await ctx.Session.WriteArtifactAsync(SessionArtifact.CodexReview, review.Text, ct);
-
-        await ctx.Sink.PhaseOkAsync("done", $"Shipped. Transcript: {ctx.Session.Dir}", ct);
-        return new FlowResult(SessionResult.Shipped);
     }
 }

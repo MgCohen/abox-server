@@ -1,28 +1,35 @@
-using System.Collections.Concurrent;
 using RemoteAgents.Flows;
 
 namespace RemoteAgents.Hosting;
 
-// In-memory name → IFlow catalog. The CLI dispatcher and the Host's
-// in-process executor both resolve flow definitions by name through this
-// single source of truth.
+// Per-invocation Flow construction inputs. The runtime FlowRegistry's
+// caller (POST /flows) builds one of these from the REST body, hands it
+// to the factory, and gets back a fresh Flow aggregate.
+public sealed record FlowSpec(string Project, string ProjectDir, string Prompt, string[] Args, bool ShouldPush);
+
+// One entry in the catalog. Name + human-readable description (for the
+// /catalog endpoint) + the factory that builds a fresh Flow for each
+// invocation (per D5 — tools are injected per-flow, not shared singletons).
+public sealed record FlowDef(string Name, string Description, Func<FlowSpec, Flow> Factory);
+
+// Name → flow-definition registry. The Host's POST /flows resolves by
+// name, the GET /catalog endpoint enumerates this.
 //
-// Note: this is distinct from the runtime FlowRegistry introduced in
-// Workstream B which maps Guid run-ids → live Flow aggregates. Different
-// concept, different name.
+// Distinct from RemoteAgents.Hosting.FlowRegistry (runtime, Guid-keyed
+// live + history).
 public sealed class FlowCatalog
 {
-    private readonly ConcurrentDictionary<string, IFlow> _flows = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, FlowDef> _flows = new(StringComparer.OrdinalIgnoreCase);
 
-    public void Register(IFlow flow)
+    public void Register(string name, string description, Func<FlowSpec, Flow> factory)
     {
-        if (string.IsNullOrEmpty(flow.Name))
-            throw new ArgumentException("flow.Name is required", nameof(flow));
-        _flows[flow.Name] = flow;
+        if (string.IsNullOrEmpty(name))
+            throw new ArgumentException("flow name is required", nameof(name));
+        _flows[name] = new FlowDef(name, description, factory);
     }
 
-    public IFlow? Get(string name) =>
-        _flows.TryGetValue(name, out var f) ? f : null;
+    public FlowDef? Get(string name) =>
+        _flows.TryGetValue(name, out var def) ? def : null;
 
-    public IReadOnlyCollection<IFlow> All() => _flows.Values.ToArray();
+    public IReadOnlyCollection<FlowDef> All() => _flows.Values.ToArray();
 }

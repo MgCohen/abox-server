@@ -1,48 +1,27 @@
 using RemoteAgents.Agents;
-using RemoteAgents.Primitives;
-using RemoteAgents.Providers.Claude;
-using RemoteAgents.Sessions;
 
 namespace RemoteAgents.Flows;
 
-// Baseline flow. Spin up Claude inside a PTY against the requested
-// project, capture whatever changed, return the result. No validation,
+// Baseline flow. Claude runs against the requested project, no validation,
 // no review, no git.
 //
-// Phase 4 pilot — first flow migrated to the IFlow contract. The
-// `cli/flows/claude-only.cs` script becomes a thin shim that resolves
-// this flow from the registry and calls RunAsync.
-public sealed class ClaudeOnlyFlow : IFlow
+// Native Flow per D5: tools constructor-injected, one Step per
+// completion boundary.
+public sealed class ClaudeOnlyFlow : Flow
 {
-    public string Name => "claude-only";
-    public string? Summary => "Hand it a project + prompt. Claude runs; the diff is captured. No validation, no review, no git.";
+    private readonly IAgent _claude;
+    private readonly string _projectDir;
+    private readonly string _prompt;
 
-    public async Task<FlowResult> RunAsync(FlowContext ctx, FlowArgs args, CancellationToken ct)
+    public ClaudeOnlyFlow(IAgent claude, string projectDir, string prompt)
     {
-        var before = FsDiff.Snapshot(ctx.ProjectDir);
-
-        var claude = new ClaudeAgent { Sink = ctx.Sink };
-        var result = await claude.RunAsync(new AgentRunRequest(
-            Prompt: ctx.UserPrompt,
-            SessionId: null,
-            ProjectDir: ctx.ProjectDir), ct);
-
-        // Forensic dumps — useful while PTY timings are still being tuned.
-        await ctx.Session.WriteArtifactAsync(SessionArtifact.ClaudeRaw, result.RawOutput, ct);
-        await ctx.Session.WriteArtifactAsync(SessionArtifact.ClaudeText, result.Text, ct);
-
-        var after = FsDiff.Snapshot(ctx.ProjectDir);
-        var diff = FsDiff.Diff(before, after);
-
-        Console.WriteLine();
-        Console.WriteLine($"Claude session: {result.SessionId}");
-        Console.WriteLine($"Files changed:  {diff.Changed.Count}");
-        Console.WriteLine($"Files added:    {diff.Added.Count}");
-        Console.WriteLine($"Files removed:  {diff.Removed.Count}");
-        foreach (var f in diff.All) Console.WriteLine($"  - {f}");
-        Console.WriteLine();
-        Console.WriteLine($"Transcript: {ctx.Session.Dir}");
-
-        return new FlowResult(SessionResult.Shipped);
+        _claude     = claude;
+        _projectDir = projectDir;
+        _prompt     = prompt;
     }
+
+    public override string Name => "claude-only";
+
+    protected override Task ExecuteAsync(CancellationToken ct) =>
+        Step("claude", () => _claude.RunAsync(new AgentRunRequest(_prompt, null, _projectDir), ct));
 }
