@@ -1,8 +1,10 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using RemoteAgents.Events;
 using RemoteAgents.Host.Sinks;
+using RemoteAgents.Primitives;
 using RemoteAgents.Runs;
 
 namespace RemoteAgents.Host.Runs;
@@ -24,6 +26,12 @@ public sealed class SubprocessFlowExecutor : IFlowExecutor
 
     private readonly string _orchestratorRoot;
     private readonly ILogger<SubprocessFlowExecutor> _log;
+
+    // Per-run transcript-tailer task, keyed by Run.Id. Lifted off Run
+    // itself (was Run.TailerTask) because only this executor's
+    // ExecuteAsync ever wrote to or awaited the field — the in-process
+    // executor and any future transport have no use for it.
+    private readonly ConcurrentDictionary<Guid, Task> _tailers = new();
 
     public SubprocessFlowExecutor(string orchestratorRoot, ILogger<SubprocessFlowExecutor> log)
     {
@@ -68,9 +76,9 @@ public sealed class SubprocessFlowExecutor : IFlowExecutor
         // EndedAt is now set — the tailer's "is the run done?" check can
         // return true on its next loop iteration. Await so we don't
         // promote-to-history with the tail still in flight.
-        if (run.TailerTask is not null)
+        if (_tailers.TryRemove(run.Id, out var tailer))
         {
-            try { await run.TailerTask; }
+            try { await tailer; }
             catch (Exception ex) { _log.LogWarning(ex, "Transcript tailer fault for run {RunId}", run.Id); }
         }
 
@@ -100,10 +108,9 @@ public sealed class SubprocessFlowExecutor : IFlowExecutor
 
         // Belt-and-suspenders: explicitly blank any API-key envs the parent
         // service might have inherited. Library's SubscriptionGuard would
-        // refuse if set, but better to also strip at boundary.
-        psi.Environment["ANTHROPIC_API_KEY"] = "";
-        psi.Environment["CLAUDE_API_KEY"] = "";
-        psi.Environment["OPENAI_API_KEY"] = "";
+        // refuse if set, but better to also strip at boundary. The key list
+        // is shared with the providers' own scrub via EnvScrub.
+        foreach (var k in EnvScrub.SubscriptionKeys) psi.Environment[k] = "";
 
         return psi;
     }
@@ -120,7 +127,7 @@ public sealed class SubprocessFlowExecutor : IFlowExecutor
                 {
                     run.SessionId = m.Groups["id"].Value;
                     run.SessionDir = Path.Combine(_orchestratorRoot, "sessions", run.SessionId);
-                    run.TailerTask = Task.Run(() => TailTranscriptAsync(run));
+                    _tailers[run.Id] = Task.Run(() => TailTranscriptAsync(run));
                     _log.LogInformation("Run {RunId} bound to session {SessionId}", run.Id, run.SessionId);
                 }
             }
@@ -152,12 +159,6 @@ public sealed class SubprocessFlowExecutor : IFlowExecutor
             path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
         using var reader = new StreamReader(fs);
 
-        var jsonOpts = new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = null,
-            ReadCommentHandling = JsonCommentHandling.Skip,
-        };
-
         while (true)
         {
             var line = await reader.ReadLineAsync(run.Cts.Token);
@@ -169,8 +170,11 @@ public sealed class SubprocessFlowExecutor : IFlowExecutor
             }
             if (line.Length == 0) continue;
 
+            // Source-gen path — same EventJsonContext the library used to
+            // write this line. Was reflection-based Deserialize<AgentEvent>
+            // — one reflection parse per streamed event.
             AgentEvent? evt = null;
-            try { evt = JsonSerializer.Deserialize<AgentEvent>(line, jsonOpts); }
+            try { evt = JsonSerializer.Deserialize(line, EventJsonContext.Default.AgentEvent); }
             catch (JsonException jex)
             {
                 _log.LogWarning(jex, "Bad transcript line for run {RunId}: {Line}", run.Id, line);

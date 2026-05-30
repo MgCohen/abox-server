@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using RemoteAgents.Runs;
 
 namespace RemoteAgents.Host.Runs;
@@ -11,6 +12,13 @@ public sealed record RunsFile(int SchemaVersion, RunRecord[] Runs)
     public const int CurrentSchema = 1;
 }
 
+// Source-gen context for RunStore's pretty on-disk JSON. Replaces the
+// reflection-based JsonSerializer.Deserialize<RunsFile>/Serialize call
+// pair the store used to use.
+[JsonSourceGenerationOptions(WriteIndented = true, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
+[JsonSerializable(typeof(RunsFile))]
+internal sealed partial class RunStoreJsonContext : JsonSerializerContext { }
+
 // JSON-file-backed persistence at ~/.remote-agents/runs.json. Atomic
 // write (write-then-rename) so a power loss can't truncate the file
 // halfway. v1 keeps everything in memory and only re-serializes on
@@ -18,12 +26,6 @@ public sealed record RunsFile(int SchemaVersion, RunRecord[] Runs)
 // in a year (low hundreds). Swap for SQLite when that stops being true.
 public sealed class RunStore
 {
-    private static readonly JsonSerializerOptions JsonOpts = new()
-    {
-        WriteIndented = true,
-        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
-    };
-
     private readonly string _path;
     private readonly SemaphoreSlim _lock = new(1, 1);
     private readonly ILogger<RunStore> _log;
@@ -47,7 +49,7 @@ public sealed class RunStore
         try
         {
             var json = await File.ReadAllTextAsync(_path, ct);
-            var file = JsonSerializer.Deserialize<RunsFile>(json, JsonOpts);
+            var file = JsonSerializer.Deserialize(json, RunStoreJsonContext.Default.RunsFile);
             if (file is null) return [];
             if (file.SchemaVersion != RunsFile.CurrentSchema)
                 _log.LogWarning("runs.json schema {Got} != current {Want} — best-effort load", file.SchemaVersion, RunsFile.CurrentSchema);
@@ -74,7 +76,7 @@ public sealed class RunStore
                 .ToArray();
 
             var file = new RunsFile(RunsFile.CurrentSchema, kept);
-            var json = JsonSerializer.Serialize(file, JsonOpts);
+            var json = JsonSerializer.Serialize(file, RunStoreJsonContext.Default.RunsFile);
 
             var tmp = _path + ".tmp";
             await File.WriteAllTextAsync(tmp, json, ct);

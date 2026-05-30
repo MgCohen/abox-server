@@ -48,7 +48,7 @@ public sealed class DotnetValidator : IValidator
                 Errors: "");
         }
 
-        var targetArg = target!.Path is null ? "" : " " + Quote(target.Path);
+        var targetArg = target!.Path is null ? "" : " " + Shell.QuoteArg(target.Path);
 
         var build = await RunCommand.RunAsync(
             $"dotnet build{targetArg} --nologo --configuration {_opts.Configuration}",
@@ -162,10 +162,4 @@ public sealed class DotnetValidator : IValidator
         return sb.ToString().TrimEnd();
     }
 
-    private static readonly char[] QuoteTriggers = { ' ', '\t', '"' };
-    private static string Quote(string s)
-    {
-        if (s.IndexOfAny(QuoteTriggers) < 0) return s;
-        return "\"" + s.Replace("\"", "\\\"") + "\"";
-    }
 }

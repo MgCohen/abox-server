@@ -70,16 +70,15 @@ public static class GhOps
             var parts = new List<string>
             {
                 "gh pr create",
-                "--title", Quote(req.Title),
-                "--body-file", Quote(bodyFile),
+                "--title", Shell.QuoteArg(req.Title),
+                "--body-file", Shell.QuoteArg(bodyFile),
             };
-            if (req.Head is not null) { parts.Add("--head"); parts.Add(Quote(req.Head)); }
-            if (req.Base_ is not null) { parts.Add("--base"); parts.Add(Quote(req.Base_)); }
+            if (req.Head is not null) { parts.Add("--head"); parts.Add(Shell.QuoteArg(req.Head)); }
+            if (req.Base_ is not null) { parts.Add("--base"); parts.Add(Shell.QuoteArg(req.Base_)); }
             if (req.Draft) parts.Add("--draft");
 
-            var res = await RunCommand.RunAsync(string.Join(' ', parts), new RunCommandOptions(Cwd: req.ProjectDir), ct);
-            if (res.ExitCode != 0)
-                throw new InvalidOperationException($"gh pr create failed: {(string.IsNullOrEmpty(res.Stderr) ? res.Stdout : res.Stderr)}");
+            var res = (await RunCommand.RunAsync(string.Join(' ', parts), new RunCommandOptions(Cwd: req.ProjectDir), ct))
+                .EnsureOk("gh pr create");
 
             // gh prints the PR URL on stdout on success — return it so
             // callers can log / surface it.
@@ -100,12 +99,10 @@ public static class GhOps
         await File.WriteAllTextAsync(bodyFile, req.Body, ct);
         try
         {
-            var res = await RunCommand.RunAsync(
-                $"gh pr comment {Quote(req.Selector)} --body-file {Quote(bodyFile)}",
-                new RunCommandOptions(Cwd: req.ProjectDir), ct);
-            if (res.ExitCode != 0)
-                throw new InvalidOperationException($"gh pr comment failed: {(string.IsNullOrEmpty(res.Stderr) ? res.Stdout : res.Stderr)}");
-            return res;
+            return (await RunCommand.RunAsync(
+                $"gh pr comment {Shell.QuoteArg(req.Selector)} --body-file {Shell.QuoteArg(bodyFile)}",
+                new RunCommandOptions(Cwd: req.ProjectDir), ct))
+                .EnsureOk("gh pr comment");
         }
         finally
         {
@@ -119,7 +116,7 @@ public static class GhOps
     public static async Task<GhPrInfo?> PrViewAsync(GhPrViewRequest req, CancellationToken ct = default)
     {
         const string fields = "number,state,title,url,headRefName,baseRefName,isDraft";
-        var sel = req.Selector is null ? "" : " " + Quote(req.Selector);
+        var sel = req.Selector is null ? "" : " " + Shell.QuoteArg(req.Selector);
         var res = await RunCommand.RunAsync(
             $"gh pr view{sel} --json {fields}",
             new RunCommandOptions(Cwd: req.ProjectDir), ct);
@@ -131,16 +128,10 @@ public static class GhOps
             // "not found" — not a primitive error.
             if (res.Stderr.Contains("no pull requests found", StringComparison.OrdinalIgnoreCase))
                 return null;
-            throw new InvalidOperationException($"gh pr view failed: {(string.IsNullOrEmpty(res.Stderr) ? res.Stdout : res.Stderr)}");
+            throw new InvalidOperationException($"gh pr view failed: {res.ErrorText}");
         }
 
         return JsonSerializer.Deserialize(res.Stdout, GhJsonContext.Default.GhPrInfo);
     }
 
-    private static readonly char[] QuoteTriggers = { ' ', '\t', '"' };
-    private static string Quote(string s)
-    {
-        if (s.IndexOfAny(QuoteTriggers) < 0) return s;
-        return "\"" + s.Replace("\"", "\\\"") + "\"";
-    }
 }

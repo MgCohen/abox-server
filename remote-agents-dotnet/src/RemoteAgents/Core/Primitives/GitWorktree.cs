@@ -48,13 +48,11 @@ public static class GitWorktree
 
         var parts = new List<string> { "git worktree add" };
         if (req.Force) parts.Add("--force");
-        if (req.CreateBranch) { parts.Add("-b"); parts.Add(QuoteIdent(req.Branch)); parts.Add(QuotePath(req.Path)); if (req.StartPoint is not null) parts.Add(QuoteIdent(req.StartPoint)); }
-        else { parts.Add(QuotePath(req.Path)); parts.Add(QuoteIdent(req.Branch)); }
+        if (req.CreateBranch) { parts.Add("-b"); parts.Add(Shell.QuoteArg(req.Branch)); parts.Add(Shell.QuoteArg(req.Path)); if (req.StartPoint is not null) parts.Add(Shell.QuoteArg(req.StartPoint)); }
+        else { parts.Add(Shell.QuoteArg(req.Path)); parts.Add(Shell.QuoteArg(req.Branch)); }
 
-        var res = await RunCommand.RunAsync(string.Join(' ', parts), new RunCommandOptions(Cwd: req.RepoDir), ct);
-        if (res.ExitCode != 0)
-            throw new InvalidOperationException($"git worktree add failed: {(string.IsNullOrEmpty(res.Stderr) ? res.Stdout : res.Stderr)}");
-        return res;
+        return (await RunCommand.RunAsync(string.Join(' ', parts), new RunCommandOptions(Cwd: req.RepoDir), ct))
+            .EnsureOk("git worktree add");
     }
 
     public static async Task<RunCommandResult> RemoveAsync(GitWorktreeRemoveRequest req, CancellationToken ct = default)
@@ -64,21 +62,18 @@ public static class GitWorktree
 
         var parts = new List<string> { "git worktree remove" };
         if (req.Force) parts.Add("--force");
-        parts.Add(QuotePath(req.Path));
+        parts.Add(Shell.QuoteArg(req.Path));
 
-        var res = await RunCommand.RunAsync(string.Join(' ', parts), new RunCommandOptions(Cwd: req.RepoDir), ct);
-        if (res.ExitCode != 0)
-            throw new InvalidOperationException($"git worktree remove failed: {(string.IsNullOrEmpty(res.Stderr) ? res.Stdout : res.Stderr)}");
-        return res;
+        return (await RunCommand.RunAsync(string.Join(' ', parts), new RunCommandOptions(Cwd: req.RepoDir), ct))
+            .EnsureOk("git worktree remove");
     }
 
     // Parse `git worktree list --porcelain`. Records are separated by
     // blank lines; each record starts with a `worktree <path>` line.
     public static async Task<IReadOnlyList<GitWorktreeEntry>> ListAsync(string repoDir, CancellationToken ct = default)
     {
-        var res = await RunCommand.RunAsync("git worktree list --porcelain", new RunCommandOptions(Cwd: repoDir), ct);
-        if (res.ExitCode != 0)
-            throw new InvalidOperationException($"git worktree list failed: {(string.IsNullOrEmpty(res.Stderr) ? res.Stdout : res.Stderr)}");
+        var res = (await RunCommand.RunAsync("git worktree list --porcelain", new RunCommandOptions(Cwd: repoDir), ct))
+            .EnsureOk("git worktree list");
 
         var entries = new List<GitWorktreeEntry>();
         string? path = null, head = null, branch = null, locked = null;
@@ -125,16 +120,8 @@ public static class GitWorktree
 
     public static async Task<RunCommandResult> PruneAsync(string repoDir, CancellationToken ct = default)
     {
-        var res = await RunCommand.RunAsync("git worktree prune", new RunCommandOptions(Cwd: repoDir), ct);
-        if (res.ExitCode != 0)
-            throw new InvalidOperationException($"git worktree prune failed: {(string.IsNullOrEmpty(res.Stderr) ? res.Stdout : res.Stderr)}");
-        return res;
+        return (await RunCommand.RunAsync("git worktree prune", new RunCommandOptions(Cwd: repoDir), ct))
+            .EnsureOk("git worktree prune");
     }
 
-    // Path quoting: same shape as GitOps.Quote, copied to keep the two
-    // primitives independent. Branch names share the rule.
-    private static string QuotePath(string s) => Needs(s) ? "\"" + s.Replace("\"", "\\\"") + "\"" : s;
-    private static string QuoteIdent(string s) => Needs(s) ? "\"" + s.Replace("\"", "\\\"") + "\"" : s;
-    private static bool Needs(string s) => s.IndexOfAny(QuoteTriggers) >= 0;
-    private static readonly char[] QuoteTriggers = { ' ', '\t', '"' };
 }

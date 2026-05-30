@@ -1,6 +1,5 @@
 using System.Text;
 using System.Text.Json;
-using RemoteAgents.Sessions;
 
 namespace RemoteAgents.Events;
 

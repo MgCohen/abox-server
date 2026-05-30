@@ -1,5 +1,4 @@
 using System.Text.Json.Serialization;
-using RemoteAgents.Events;
 
 namespace RemoteAgents.Sessions;
 
@@ -8,9 +7,6 @@ namespace RemoteAgents.Sessions;
 [JsonSerializable(typeof(SessionMeta))]
 internal sealed partial class SessionJsonContext : JsonSerializerContext { }
 
-// Compact JSON for transcript.jsonl (one event per line). Polymorphism +
-// the "kind" discriminator are declared on AgentEvent itself, so we only
-// register the base type here.
-[JsonSourceGenerationOptions(WriteIndented = false, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
-[JsonSerializable(typeof(AgentEvent))]
-internal sealed partial class EventJsonContext : JsonSerializerContext { }
+// EventJsonContext moved to RemoteAgents.Contracts so the Host can share
+// the same source-gen context for AgentEvent (used by JsonlSink to write
+// transcript.jsonl AND by SubprocessFlowExecutor to read it back).

@@ -20,7 +20,7 @@ public sealed record RunRecord(
     string                Project,
     string                Flow,
     string                Prompt,
-    [property: JsonConverter(typeof(JsonStringEnumConverter))]
+    [property: JsonConverter(typeof(JsonStringEnumConverter<RunStatus>))]
     RunStatus             Status,
     DateTimeOffset        StartedAt,
     DateTimeOffset?       EndedAt,

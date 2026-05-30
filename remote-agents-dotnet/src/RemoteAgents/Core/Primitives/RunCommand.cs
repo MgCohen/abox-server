@@ -15,7 +15,19 @@ public sealed record RunCommandResult(
     string Stdout,
     string Stderr,
     bool TimedOut,
-    long DurationMs);
+    long DurationMs)
+{
+    // Picks the most useful error text: Stderr when present, otherwise
+    // Stdout. Many CLIs we wrap (git, gh, dotnet) leave Stderr empty and
+    // print failure messages on Stdout; the inverse is also common.
+    public string ErrorText => string.IsNullOrEmpty(Stderr) ? Stdout : Stderr;
+
+    // Throws InvalidOperationException with `<op> failed: <ErrorText>` on
+    // non-zero exit, otherwise returns this. Replaces ~15 hand-rolled
+    // throw-on-nonzero blocks scattered through GitOps/GhOps.
+    public RunCommandResult EnsureOk(string op) =>
+        ExitCode == 0 ? this : throw new InvalidOperationException($"{op} failed: {ErrorText}");
+}
 
 public static class RunCommand
 {

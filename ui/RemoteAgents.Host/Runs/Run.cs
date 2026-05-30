@@ -38,12 +38,6 @@ public sealed class Run
     public int? ExitCode { get; set; }
     public string? FailureReason { get; set; }
 
-    // SubprocessFlowExecutor internal: the transcript tailer task, started
-    // when the session-id line is sniffed from child stdout. ExecuteAsync
-    // awaits this AFTER setting EndedAt so the tailer's "is the run done?"
-    // exit condition can fire.
-    public Task? TailerTask { get; set; }
-
     // C2 forward-compat: when the agent emits an AgentQuestion (NeedsInput),
     // the UI POSTs a chosen response here. v1 just records it on the run
     // for inspection — flow-side answer-back wiring is deferred until the

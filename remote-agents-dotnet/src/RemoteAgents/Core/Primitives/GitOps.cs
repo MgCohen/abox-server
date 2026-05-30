@@ -86,7 +86,7 @@ public static class GitOps
     public static async Task<string> DiffAsync(GitDiffRequest req, CancellationToken ct = default)
     {
         var flag = req.Staged ? "--staged" : "";
-        var pathArg = req.Paths is { Count: > 0 } ? " -- " + string.Join(' ', req.Paths.Select(Quote)) : "";
+        var pathArg = req.Paths is { Count: > 0 } ? " -- " + string.Join(' ', req.Paths.Select(Shell.QuoteArg)) : "";
         var res = await RunCommand.RunAsync($"git diff {flag}{pathArg}", new RunCommandOptions(Cwd: req.ProjectDir), ct);
         return res.Stdout;
     }
@@ -103,11 +103,9 @@ public static class GitOps
         if (req.Files is null || req.Files.Count == 0)
             throw new ArgumentException("GitOps.AddAsync: files list required (no implicit \"add all\")", nameof(req));
 
-        var quoted = string.Join(' ', req.Files.Select(Quote));
-        var res = await RunCommand.RunAsync($"git add {quoted}", new RunCommandOptions(Cwd: req.ProjectDir), ct);
-        if (res.ExitCode != 0)
-            throw new InvalidOperationException($"git add failed: {(string.IsNullOrEmpty(res.Stderr) ? res.Stdout : res.Stderr)}");
-        return res;
+        var quoted = string.Join(' ', req.Files.Select(Shell.QuoteArg));
+        return (await RunCommand.RunAsync($"git add {quoted}", new RunCommandOptions(Cwd: req.ProjectDir), ct))
+            .EnsureOk("git add");
     }
 
     public static async Task<RunCommandResult> CommitAsync(GitCommitRequest req, CancellationToken ct = default)
@@ -122,14 +120,10 @@ public static class GitOps
             ? req.Message.Trim()
             : $"{req.Message.Trim()}\n\nCo-Authored-By: {req.CoAuthor} <noreply@anthropic.com>";
 
-        var res = await RunCommand.RunAsync(
+        return (await RunCommand.RunAsync(
             "git commit -F -",
             new RunCommandOptions(Cwd: req.ProjectDir, Input: fullMessage),
-            ct);
-
-        if (res.ExitCode != 0)
-            throw new InvalidOperationException($"git commit failed: {(string.IsNullOrEmpty(res.Stderr) ? res.Stdout : res.Stderr)}");
-        return res;
+            ct)).EnsureOk("git commit");
     }
 
     public static async Task<RunCommandResult> PushAsync(GitPushRequest req, CancellationToken ct = default)
@@ -142,10 +136,8 @@ public static class GitOps
         parts.Add(req.Remote);
         if (req.Branch is not null) parts.Add(req.Branch);
 
-        var res = await RunCommand.RunAsync(string.Join(' ', parts), new RunCommandOptions(Cwd: req.ProjectDir), ct);
-        if (res.ExitCode != 0)
-            throw new InvalidOperationException($"git push failed: {(string.IsNullOrEmpty(res.Stderr) ? res.Stdout : res.Stderr)}");
-        return res;
+        return (await RunCommand.RunAsync(string.Join(' ', parts), new RunCommandOptions(Cwd: req.ProjectDir), ct))
+            .EnsureOk("git push");
     }
 
     public static async Task<string> CurrentBranchAsync(string projectDir, CancellationToken ct = default)
@@ -218,8 +210,8 @@ public static class GitOps
             if (keep.Contains(norm)) continue;
 
             string cmd = entry.Code == "??"
-                ? $"git clean -f -- {Quote(entry.Path)}"
-                : $"git checkout -- {Quote(entry.Path)}";
+                ? $"git clean -f -- {Shell.QuoteArg(entry.Path)}"
+                : $"git checkout -- {Shell.QuoteArg(entry.Path)}";
 
             var res = await RunCommand.RunAsync(cmd, new RunCommandOptions(Cwd: projectDir), ct);
             if (res.ExitCode == 0) reverted.Add(entry.Path);
@@ -235,10 +227,8 @@ public static class GitOps
         parts.Add(req.Remote);
         if (req.Branch is not null) parts.Add(req.Branch);
 
-        var res = await RunCommand.RunAsync(string.Join(' ', parts), new RunCommandOptions(Cwd: req.ProjectDir), ct);
-        if (res.ExitCode != 0)
-            throw new InvalidOperationException($"git fetch failed: {(string.IsNullOrEmpty(res.Stderr) ? res.Stdout : res.Stderr)}");
-        return res;
+        return (await RunCommand.RunAsync(string.Join(' ', parts), new RunCommandOptions(Cwd: req.ProjectDir), ct))
+            .EnsureOk("git fetch");
     }
 
     public static async Task<RunCommandResult> PullAsync(GitPullRequest req, CancellationToken ct = default)
@@ -252,10 +242,8 @@ public static class GitOps
         parts.Add(req.Remote);
         if (req.Branch is not null) parts.Add(req.Branch);
 
-        var res = await RunCommand.RunAsync(string.Join(' ', parts), new RunCommandOptions(Cwd: req.ProjectDir), ct);
-        if (res.ExitCode != 0)
-            throw new InvalidOperationException($"git pull failed: {(string.IsNullOrEmpty(res.Stderr) ? res.Stdout : res.Stderr)}");
-        return res;
+        return (await RunCommand.RunAsync(string.Join(' ', parts), new RunCommandOptions(Cwd: req.ProjectDir), ct))
+            .EnsureOk("git pull");
     }
 
     public static async Task<RunCommandResult> CheckoutAsync(GitCheckoutRequest req, CancellationToken ct = default)
@@ -265,13 +253,11 @@ public static class GitOps
 
         var parts = new List<string> { "git checkout" };
         if (req.CreateBranch) parts.Add("-b");
-        parts.Add(Quote(req.Ref));
-        if (req.CreateBranch && req.StartPoint is not null) parts.Add(Quote(req.StartPoint));
+        parts.Add(Shell.QuoteArg(req.Ref));
+        if (req.CreateBranch && req.StartPoint is not null) parts.Add(Shell.QuoteArg(req.StartPoint));
 
-        var res = await RunCommand.RunAsync(string.Join(' ', parts), new RunCommandOptions(Cwd: req.ProjectDir), ct);
-        if (res.ExitCode != 0)
-            throw new InvalidOperationException($"git checkout failed: {(string.IsNullOrEmpty(res.Stderr) ? res.Stdout : res.Stderr)}");
-        return res;
+        return (await RunCommand.RunAsync(string.Join(' ', parts), new RunCommandOptions(Cwd: req.ProjectDir), ct))
+            .EnsureOk("git checkout");
     }
 
     public static async Task<RunCommandResult> BranchCreateAsync(GitBranchCreateRequest req, CancellationToken ct = default)
@@ -279,20 +265,18 @@ public static class GitOps
         if (string.IsNullOrWhiteSpace(req.Name))
             throw new ArgumentException("git branch: name required", nameof(req));
 
-        var parts = new List<string> { "git branch", Quote(req.Name) };
-        if (req.StartPoint is not null) parts.Add(Quote(req.StartPoint));
+        var parts = new List<string> { "git branch", Shell.QuoteArg(req.Name) };
+        if (req.StartPoint is not null) parts.Add(Shell.QuoteArg(req.StartPoint));
 
-        var res = await RunCommand.RunAsync(string.Join(' ', parts), new RunCommandOptions(Cwd: req.ProjectDir), ct);
-        if (res.ExitCode != 0)
-            throw new InvalidOperationException($"git branch create failed: {(string.IsNullOrEmpty(res.Stderr) ? res.Stdout : res.Stderr)}");
+        var res = (await RunCommand.RunAsync(string.Join(' ', parts), new RunCommandOptions(Cwd: req.ProjectDir), ct))
+            .EnsureOk("git branch create");
 
         if (req.TrackRemote is not null)
         {
-            var setUp = await RunCommand.RunAsync(
-                $"git branch --set-upstream-to={Quote(req.TrackRemote + "/" + req.Name)} {Quote(req.Name)}",
-                new RunCommandOptions(Cwd: req.ProjectDir), ct);
-            if (setUp.ExitCode != 0)
-                throw new InvalidOperationException($"git branch --set-upstream-to failed: {(string.IsNullOrEmpty(setUp.Stderr) ? setUp.Stdout : setUp.Stderr)}");
+            (await RunCommand.RunAsync(
+                $"git branch --set-upstream-to={Shell.QuoteArg(req.TrackRemote + "/" + req.Name)} {Shell.QuoteArg(req.Name)}",
+                new RunCommandOptions(Cwd: req.ProjectDir), ct))
+                .EnsureOk("git branch --set-upstream-to");
         }
         return res;
     }
@@ -303,19 +287,16 @@ public static class GitOps
             throw new InvalidOperationException($"branch-delete: refusing to delete {req.Name} via this primitive");
 
         var flag = req.Force ? "-D" : "-d";
-        var res = await RunCommand.RunAsync($"git branch {flag} {Quote(req.Name)}", new RunCommandOptions(Cwd: req.ProjectDir), ct);
-        if (res.ExitCode != 0)
-            throw new InvalidOperationException($"git branch delete failed: {(string.IsNullOrEmpty(res.Stderr) ? res.Stdout : res.Stderr)}");
-        return res;
+        return (await RunCommand.RunAsync($"git branch {flag} {Shell.QuoteArg(req.Name)}", new RunCommandOptions(Cwd: req.ProjectDir), ct))
+            .EnsureOk("git branch delete");
     }
 
     // Local branches, in `git branch` order. The current branch is not
     // marked with "*" — call CurrentBranchAsync for that.
     public static async Task<IReadOnlyList<string>> BranchListAsync(string projectDir, CancellationToken ct = default)
     {
-        var res = await RunCommand.RunAsync("git branch --list", new RunCommandOptions(Cwd: projectDir), ct);
-        if (res.ExitCode != 0)
-            throw new InvalidOperationException($"git branch --list failed: {(string.IsNullOrEmpty(res.Stderr) ? res.Stdout : res.Stderr)}");
+        var res = (await RunCommand.RunAsync("git branch --list", new RunCommandOptions(Cwd: projectDir), ct))
+            .EnsureOk("git branch --list");
 
         var branches = new List<string>();
         foreach (var raw in res.Stdout.Split('\n'))
@@ -340,13 +321,11 @@ public static class GitOps
         var parts = new List<string> { "git merge" };
         if (req.FfOnly) parts.Add("--ff-only");
         if (req.NoFf) parts.Add("--no-ff");
-        if (req.Message is not null) { parts.Add("-m"); parts.Add(Quote(req.Message)); }
-        parts.Add(Quote(req.Ref));
+        if (req.Message is not null) { parts.Add("-m"); parts.Add(Shell.QuoteArg(req.Message)); }
+        parts.Add(Shell.QuoteArg(req.Ref));
 
-        var res = await RunCommand.RunAsync(string.Join(' ', parts), new RunCommandOptions(Cwd: req.ProjectDir), ct);
-        if (res.ExitCode != 0)
-            throw new InvalidOperationException($"git merge failed: {(string.IsNullOrEmpty(res.Stderr) ? res.Stdout : res.Stderr)}");
-        return res;
+        return (await RunCommand.RunAsync(string.Join(' ', parts), new RunCommandOptions(Cwd: req.ProjectDir), ct))
+            .EnsureOk("git merge");
     }
 
     public static async Task<RunCommandResult> RebaseAsync(GitRebaseRequest req, CancellationToken ct = default)
@@ -355,13 +334,11 @@ public static class GitOps
             throw new ArgumentException("git rebase: upstream required", nameof(req));
 
         var parts = new List<string> { "git rebase" };
-        if (req.Onto is not null) { parts.Add("--onto"); parts.Add(Quote(req.Onto)); }
-        parts.Add(Quote(req.Upstream));
+        if (req.Onto is not null) { parts.Add("--onto"); parts.Add(Shell.QuoteArg(req.Onto)); }
+        parts.Add(Shell.QuoteArg(req.Upstream));
 
-        var res = await RunCommand.RunAsync(string.Join(' ', parts), new RunCommandOptions(Cwd: req.ProjectDir), ct);
-        if (res.ExitCode != 0)
-            throw new InvalidOperationException($"git rebase failed: {(string.IsNullOrEmpty(res.Stderr) ? res.Stdout : res.Stderr)}");
-        return res;
+        return (await RunCommand.RunAsync(string.Join(' ', parts), new RunCommandOptions(Cwd: req.ProjectDir), ct))
+            .EnsureOk("git rebase");
     }
 
     public static async Task<IReadOnlyList<GitLogEntry>> LogAsync(GitLogRequest req, CancellationToken ct = default)
@@ -372,11 +349,10 @@ public static class GitOps
         // it. We rewrite the documented `%H %s` shape to `%H%x09%s`.
         var format = string.IsNullOrEmpty(req.Format) ? "%H%x09%s" : req.Format.Replace(" ", "%x09");
         var parts = new List<string> { "git log", $"--max-count={req.MaxCount}", $"--pretty=format:{format}" };
-        if (req.Range is not null) parts.Add(Quote(req.Range));
+        if (req.Range is not null) parts.Add(Shell.QuoteArg(req.Range));
 
-        var res = await RunCommand.RunAsync(string.Join(' ', parts), new RunCommandOptions(Cwd: req.ProjectDir), ct);
-        if (res.ExitCode != 0)
-            throw new InvalidOperationException($"git log failed: {(string.IsNullOrEmpty(res.Stderr) ? res.Stdout : res.Stderr)}");
+        var res = (await RunCommand.RunAsync(string.Join(' ', parts), new RunCommandOptions(Cwd: req.ProjectDir), ct))
+            .EnsureOk("git log");
 
         var entries = new List<GitLogEntry>();
         foreach (var raw in res.Stdout.Split('\n'))
@@ -391,12 +367,4 @@ public static class GitOps
     }
 
     private static string NormalizeSlashes(string s) => s.Replace('\\', '/');
-
-    private static readonly Regex SafePath = new(@"^[A-Za-z0-9_./-]+$", RegexOptions.Compiled);
-
-    private static string Quote(string s)
-    {
-        if (SafePath.IsMatch(s)) return s;
-        return "\"" + s.Replace("\"", "\\\"") + "\"";
-    }
 }
