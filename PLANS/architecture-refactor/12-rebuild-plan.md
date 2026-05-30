@@ -1,4 +1,4 @@
-# 12 — Rebuild Plan (handover to a local agent)
+# 12 — In-Place Refactor Plan (handover to a local agent)
 
 > **Status:** actionable plan. Synthesizes the architecture decisions made in the
 > design session that produced `10-core-layer-audit.md` and `11-before-after.md`.
@@ -6,6 +6,29 @@
 > should be able to execute it. Read the "Reading context" and "Decisions locked"
 > sections first; they exist so you do **not** re-litigate choices that were
 > already explored and settled.
+
+---
+
+## Execution mode: IN-PLACE REFACTOR
+
+**This is an in-place refactor of the existing codebase, not a from-scratch
+rebuild.** A clean rebuild may happen later as a separate effort; it is **not**
+this task.
+
+Concretely, that means:
+- **Edit, move, and delete the existing files** named in this plan. Do **not**
+  stand up a new solution/project beside the current one.
+- Work **incrementally on the existing branch**: each workstream (and ideally
+  each step within it) is its own commit that **builds and passes tests** before
+  the next. Never leave the tree non-compiling between commits.
+- **Preserve behavior** except where decisions D1–D4 explicitly change the UI
+  transport. The prototype's empirical behavior (timings, dialog strings, CLI
+  flags — see the behavioral oracle below) must survive the refactor unchanged.
+- The decisions and target shapes below are the destination; reach them by
+  **transforming the current code toward them**, not by rewriting wholesale.
+- The future clean rebuild is why the "behavioral oracle" capture is still worth
+  doing now — it is the reusable input for that later effort — but during *this*
+  task it doubles as your behavior-equivalence reference.
 
 ---
 
@@ -412,8 +435,10 @@ public sealed class ClaudeStep : Step
 
 ## Suggested sequencing
 
-1. **Tag `prototype-v0`** and mine the behavioral oracle facts into a short
-   `design/behavioral-oracle.md` (timings, flags, dialog strings, formats).
+1. **Tag the pre-refactor commit** (e.g. `prototype-v0`) as a restore point, and
+   mine the behavioral oracle facts into a short `design/behavioral-oracle.md`
+   (timings, flags, dialog strings, formats) — your behavior-equivalence
+   reference for this refactor and the input for the later clean rebuild.
 2. **Workstream A** — `Flow`/`Step` + normalized lifecycle (foundation; behavior
    of a single flow unchanged).
 3. **Workstream B** — snapshot DTO + `FlowRegistry` + REST/SSE; delete
