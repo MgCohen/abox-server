@@ -81,10 +81,13 @@ public sealed class ReviewFlow : Flow
         var diffText = await GitOps.DiffAsync(new GitDiffRequest(_projectDir), ct);
         if (string.IsNullOrWhiteSpace(diffText)) return;
 
+        // Returns parsed ReviewVerdict (not AgentResult), so use Step<T>
+        // with both projections to forward Summary and Transcript.
         var verdict = await Step("review",
             () => Reviews.AskAgentForVerdictAsync(_reviewer, _projectDir, _prompt,
                 _opts.ProjectKind, _opts.ValidationLabel, ct),
-            r => r.Text);
+            r => r.Text,
+            r => r.Transcript);
 
         if (verdict.Verdict == Verdict.Unclear)
             throw new InvalidOperationException(

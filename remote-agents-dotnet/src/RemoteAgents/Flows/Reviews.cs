@@ -6,7 +6,15 @@ namespace RemoteAgents.Flows;
 
 // Reviewer's verdict. Provider-agnostic (D9): any IAgent can play the
 // reviewer role; this record just carries the parsed result.
-public sealed record ReviewVerdict(Verdict Verdict, string SessionId, string Text);
+//
+// Transcript forwards the underlying AgentResult.Transcript so the
+// flow's review step can surface "what the reviewer did" on the
+// snapshot — same shape as Claude's claude/fix/revise steps.
+public sealed record ReviewVerdict(
+    Verdict       Verdict,
+    string        SessionId,
+    string        Text,
+    AgentTurn[]?  Transcript = null);
 
 // Build the review prompt, run any IAgent against the project's diff, parse
 // the APPROVE/REVISE verdict. Pure orchestration over the agent contract —
@@ -28,7 +36,7 @@ public static class Reviews
         var diffText = await GitOps.DiffAsync(new GitDiffRequest(projectDir), ct);
         var reviewPrompt = BuildReviewPrompt(userPrompt, diffText, projectKind, validationLabel);
         var review = await reviewer.RunAsync(new AgentRunRequest(reviewPrompt, null, projectDir), ct);
-        return new ReviewVerdict(ParseVerdict(review.Text), review.SessionId, review.Text);
+        return new ReviewVerdict(ParseVerdict(review.Text), review.SessionId, review.Text, review.Transcript);
     }
 
     public static string BuildReviewPrompt(string userPrompt, string diffText, string projectKind, string validationLabel)

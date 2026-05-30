@@ -140,10 +140,11 @@ public class CodexAgent : Agent
                 ctx.HooksJsonlPath, extractedSessionId, req.ProjectDir, text);
 
         return new DriveResult(
-            Text:      text,
-            SessionId: extractedSessionId ?? "",
-            ExitCode:  exitCode,
-            RawOutput: session.RawStdout);
+            Text:       text,
+            SessionId:  extractedSessionId ?? "",
+            ExitCode:   exitCode,
+            RawOutput:  session.RawStdout,
+            Transcript: CodexJsonl.ExtractTranscript(session.RawStdout));
     }
 
     private static async Task AppendSyntheticStopLineAsync(

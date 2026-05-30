@@ -93,13 +93,23 @@ public abstract class Flow
         catch (Exception ex)               { MarkTerminal(i, StepStatus.Failed, ex.Message); throw; }
     }
 
-    // `summarize` lets each flow pull a one-shot text summary off the
-    // step's result and put it on the snapshot for the UI to render.
-    // Null = nothing to show.
-    protected async Task<T> Step<T>(string name, Func<Task<T>> work, Func<T, string?>? summarize = null)
+    // `summarize` pulls a one-shot text summary off the step's result.
+    // `transcribe` pulls the agent's full turn list (for IAgent-derived
+    // results that carry one — e.g. ReviewVerdict.Transcript). Both
+    // optional — null = nothing to show.
+    protected async Task<T> Step<T>(
+        string name,
+        Func<Task<T>> work,
+        Func<T, string?>? summarize = null,
+        Func<T, AgentTurn[]?>? transcribe = null)
     {
         var i = AddRunning(name);
-        try { var r = await work(); MarkCompleted(i, summarize?.Invoke(r)); return r; }
+        try
+        {
+            var r = await work();
+            MarkCompleted(i, summarize?.Invoke(r), transcribe?.Invoke(r));
+            return r;
+        }
         catch (OperationCanceledException) { MarkTerminal(i, StepStatus.Canceled, null); throw; }
         catch (Exception ex)               { MarkTerminal(i, StepStatus.Failed, ex.Message); throw; }
     }
