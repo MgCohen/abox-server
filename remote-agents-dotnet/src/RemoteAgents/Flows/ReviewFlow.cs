@@ -53,9 +53,8 @@ public sealed class ReviewFlow : Flow
                 throw new InvalidOperationException("Working tree is dirty. Commit or stash first.");
         });
 
-        var work = await Step("claude",
-            () => _claude.RunAsync(new AgentRunRequest(_prompt, null, _projectDir), ct),
-            r => r.Text);
+        var work = await AgentStep("claude",
+            () => _claude.RunAsync(new AgentRunRequest(_prompt, null, _projectDir), ct));
 
         await using (var iso = _opts.IsolateValidation
             ? await IsolationScope.BeginAsync(_projectDir, ct)
@@ -73,9 +72,8 @@ public sealed class ReviewFlow : Flow
 
                 var desc = string.IsNullOrEmpty(_opts.FixDescriptor) ? "" : $" ({_opts.FixDescriptor})";
                 var fixPrompt = $"Validation{desc} failed. Address these issues:\n\n{v.Errors}";
-                work = await Step($"fix-{attempt}",
-                    () => _claude.RunAsync(new AgentRunRequest(fixPrompt, work.SessionId, _projectDir), ct),
-                    r => r.Text);
+                work = await AgentStep($"fix-{attempt}",
+                    () => _claude.RunAsync(new AgentRunRequest(fixPrompt, work.SessionId, _projectDir), ct));
             }
         }
 
@@ -94,11 +92,10 @@ public sealed class ReviewFlow : Flow
 
         if (verdict.Verdict == Verdict.Revise)
         {
-            work = await Step("revise",
+            work = await AgentStep("revise",
                 () => _claude.RunAsync(new AgentRunRequest(
                     $"Code reviewer feedback — please address:\n\n{verdict.Text}",
-                    work.SessionId, _projectDir), ct),
-                r => r.Text);
+                    work.SessionId, _projectDir), ct));
 
             var v2 = await Step("re-validate",
                 () => _validator.ValidateAsync(_projectDir, ct),

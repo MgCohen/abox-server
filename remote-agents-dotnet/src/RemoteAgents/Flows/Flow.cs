@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
+using RemoteAgents.Agents;
 
 namespace RemoteAgents.Flows;
 
@@ -103,6 +104,23 @@ public abstract class Flow
         catch (Exception ex)               { MarkTerminal(i, StepStatus.Failed, ex.Message); throw; }
     }
 
+    // Specialization for IAgent-backed steps. Captures Summary (r.Text)
+    // AND Transcript (r.Transcript) in one call so flows don't repeat
+    // the same projection at every site. Non-agent steps (validate, git)
+    // keep using Step<T> with summarize.
+    protected async Task<AgentResult> AgentStep(string name, Func<Task<AgentResult>> work)
+    {
+        var i = AddRunning(name);
+        try
+        {
+            var r = await work();
+            MarkCompleted(i, r.Text, r.Transcript);
+            return r;
+        }
+        catch (OperationCanceledException) { MarkTerminal(i, StepStatus.Canceled, null); throw; }
+        catch (Exception ex)               { MarkTerminal(i, StepStatus.Failed, ex.Message); throw; }
+    }
+
     // Pause and wait for an external Resolve. NOT durable across orchestrator
     // restarts — the TCS lives in-process. See non-goals in 12-rebuild-plan.md.
     protected async Task<string> AskAsync(string question)
@@ -124,18 +142,19 @@ public abstract class Flow
 
     private int AddRunning(string name)
     {
-        _steps.Add(new StepEntry(name, StepStatus.Running, DateTimeOffset.UtcNow, null, null, null));
+        _steps.Add(new StepEntry(name, StepStatus.Running, DateTimeOffset.UtcNow, null, null, null, null));
         Bump();
         return _steps.Count - 1;
     }
 
-    private void MarkCompleted(int i, string? summary = null)
+    private void MarkCompleted(int i, string? summary = null, AgentTurn[]? transcript = null)
     {
         _steps[i] = _steps[i] with
         {
-            Status   = StepStatus.Completed,
-            EndedAt  = DateTimeOffset.UtcNow,
-            Summary  = summary,
+            Status     = StepStatus.Completed,
+            EndedAt    = DateTimeOffset.UtcNow,
+            Summary    = summary,
+            Transcript = transcript,
         };
         Bump();
     }
@@ -157,9 +176,10 @@ internal sealed record StepEntry(
     DateTimeOffset  StartedAt,
     DateTimeOffset? EndedAt,
     string?         Summary,
-    string?         Error)
+    string?         Error,
+    AgentTurn[]?    Transcript = null)
 {
-    public StepDto ToDto() => new(Name, Status, StartedAt, EndedAt, Summary, Error);
+    public StepDto ToDto() => new(Name, Status, StartedAt, EndedAt, Summary, Error, Transcript);
 }
 
 internal sealed record PendingQuestion(string Question, TaskCompletionSource<string> Tcs);

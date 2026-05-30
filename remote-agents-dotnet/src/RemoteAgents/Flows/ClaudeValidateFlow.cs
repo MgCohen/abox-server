@@ -29,9 +29,8 @@ public sealed class ClaudeValidateFlow : Flow
 
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
-        var work = await Step("claude",
-            () => _claude.RunAsync(new AgentRunRequest(_prompt, null, _projectDir), ct),
-            r => r.Text);
+        var work = await AgentStep("claude",
+            () => _claude.RunAsync(new AgentRunRequest(_prompt, null, _projectDir), ct));
 
         for (var attempt = 1; attempt <= MaxFixAttempts; attempt++)
         {
@@ -44,9 +43,8 @@ public sealed class ClaudeValidateFlow : Flow
                     $"Validation never passed after {MaxFixAttempts} attempts: {v.Summary}");
 
             var fixPrompt = $"Validation failed. Address these issues:\n\n{v.Errors}";
-            work = await Step($"fix-{attempt}",
-                () => _claude.RunAsync(new AgentRunRequest(fixPrompt, work.SessionId, _projectDir), ct),
-                r => r.Text);
+            work = await AgentStep($"fix-{attempt}",
+                () => _claude.RunAsync(new AgentRunRequest(fixPrompt, work.SessionId, _projectDir), ct));
         }
     }
 }
