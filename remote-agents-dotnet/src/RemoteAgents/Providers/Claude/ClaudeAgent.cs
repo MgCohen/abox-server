@@ -147,7 +147,16 @@ public class ClaudeAgent : Agent
             ? jsonlText!
             : ExtractAssistantText(raw, req.Prompt);
 
-        return new DriveResult(Text: text, SessionId: sessionId, ExitCode: exitCode, RawOutput: raw);
+        // Full ordered turn list from the same JSONL. Null when the file
+        // isn't there yet (rare); the snapshot just shows Summary only.
+        var transcript = ClaudeJsonl.TryReadLastTurnTranscript(req.ProjectDir, sessionId, req.Prompt);
+
+        return new DriveResult(
+            Text:       text,
+            SessionId:  sessionId,
+            ExitCode:   exitCode,
+            RawOutput:  raw,
+            Transcript: transcript);
     }
 
     private PtyOptions BuildPtyOptions(string projectDir, string? hooksJsonlPath)

@@ -59,7 +59,8 @@ public abstract class Agent : IAgent
             RawOutput:     raw.RawOutput,
             Status:        outcome.Status,
             Question:      outcome.Question,
-            FailureReason: outcome.FailureReason);
+            FailureReason: outcome.FailureReason,
+            Transcript:    raw.Transcript);
     }
 
     protected abstract Task<DriveResult> DriveAsync(AgentDriveContext ctx, CancellationToken ct);

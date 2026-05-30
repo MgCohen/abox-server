@@ -13,4 +13,5 @@ public sealed record AgentResult(
     string          RawOutput,
     AgentStatus     Status         = AgentStatus.Completed,
     AgentQuestion?  Question       = null,
-    string?         FailureReason  = null);
+    string?         FailureReason  = null,
+    AgentTurn[]?    Transcript     = null);
