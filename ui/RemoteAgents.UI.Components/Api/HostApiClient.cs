@@ -16,8 +16,11 @@ public sealed class HostApiClient
     public Task<ProjectInfo[]?> GetProjectsAsync(CancellationToken ct = default) =>
         _http.GetFromJsonAsync<ProjectInfo[]>("projects", ct);
 
+    // The catalog of available flow definitions ("what can I run").
+    // /flows now hosts the runtime registry (active + recent runs);
+    // catalog moved to /catalog in Workstream B.
     public Task<FlowInfo[]?> GetFlowsAsync(CancellationToken ct = default) =>
-        _http.GetFromJsonAsync<FlowInfo[]>("flows", ct);
+        _http.GetFromJsonAsync<FlowInfo[]>("catalog", ct);
 
     public Task<RunRecord[]?> GetRunsAsync(CancellationToken ct = default) =>
         _http.GetFromJsonAsync<RunRecord[]>("runs", ct);
