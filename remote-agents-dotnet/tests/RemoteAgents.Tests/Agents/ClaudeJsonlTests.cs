@@ -1,3 +1,4 @@
+using RemoteAgents.Agents;
 using RemoteAgents.Providers.Claude;
 
 namespace RemoteAgents.Tests.Agents;
@@ -166,6 +167,76 @@ public class ClaudeJsonlTests : IDisposable
 
         var result = ClaudeJsonl.TryReadLastAssistantText(_projectDir, _sessionId, "Just compile.");
         Assert.Equal("", result);
+    }
+
+    // ── TryReadLastTurnTranscript ──────────────────────────────────────
+
+    [Fact]
+    public void TryReadLastTurnTranscript_missing_file_returns_null()
+    {
+        Assert.Null(ClaudeJsonl.TryReadLastTurnTranscript(_projectDir, _sessionId));
+    }
+
+    [Fact]
+    public void TryReadLastTurnTranscript_returns_text_thinking_tool_use_and_tool_result_in_order()
+    {
+        File.WriteAllLines(_jsonlPath, new[]
+        {
+            UserLine("Compile please."),
+            AssistantMixedLine(thinking: "Need to run dotnet build.", text: "Compiling.", toolName: "Bash"),
+            UserToolResultLine("Build succeeded."),
+            AssistantTextLine("All green."),
+        });
+
+        var turns = ClaudeJsonl.TryReadLastTurnTranscript(_projectDir, _sessionId, "Compile please.");
+
+        Assert.NotNull(turns);
+        Assert.Equal(5, turns!.Length);
+        Assert.Equal(AgentTurnKind.Thinking,   turns[0].Kind);
+        Assert.Equal("Need to run dotnet build.", turns[0].Body);
+        Assert.Equal(AgentTurnKind.Text,       turns[1].Kind);
+        Assert.Equal("Compiling.",             turns[1].Body);
+        Assert.Equal(AgentTurnKind.ToolUse,    turns[2].Kind);
+        Assert.Contains("\"name\":\"Bash\"",   turns[2].Body);
+        Assert.Equal(AgentTurnKind.ToolResult, turns[3].Kind);
+        Assert.Equal("Build succeeded.",       turns[3].Body);
+        Assert.Equal(AgentTurnKind.Text,       turns[4].Kind);
+        Assert.Equal("All green.",             turns[4].Body);
+    }
+
+    [Fact]
+    public void TryReadLastTurnTranscript_keeps_full_tool_input_args()
+    {
+        var bigInput = "{\"file_path\":\"foo.cs\",\"content\":\"" + new string('x', 4000) + "\"}";
+        var line = "{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"content\":["
+                 + "{\"type\":\"tool_use\",\"name\":\"Write\",\"input\":" + bigInput + "}"
+                 + "]}}";
+        File.WriteAllLines(_jsonlPath, new[] { UserLine("Write the file."), line });
+
+        var turns = ClaudeJsonl.TryReadLastTurnTranscript(_projectDir, _sessionId, "Write the file.");
+
+        Assert.Single(turns!);
+        Assert.Equal(AgentTurnKind.ToolUse, turns![0].Kind);
+        // Full bytes preserved — no truncation.
+        Assert.Contains(new string('x', 4000), turns[0].Body);
+    }
+
+    [Fact]
+    public void TryReadLastTurnTranscript_anchors_on_prompt_hint_across_resume()
+    {
+        File.WriteAllLines(_jsonlPath, new[]
+        {
+            UserLine("Previous prompt."),
+            AssistantTextLine("Old answer."),
+            UserLine("New prompt."),
+            AssistantTextLine("New answer."),
+        });
+
+        var turns = ClaudeJsonl.TryReadLastTurnTranscript(_projectDir, _sessionId, "New prompt.");
+
+        Assert.NotNull(turns);
+        Assert.Single(turns!);
+        Assert.Equal("New answer.", turns![0].Body);
     }
 
     // ── line builders ──────────────────────────────────────────────────

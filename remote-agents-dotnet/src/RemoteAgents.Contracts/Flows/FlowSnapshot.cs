@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using RemoteAgents.Agents;
 
 namespace RemoteAgents.Flows;
 
@@ -20,7 +21,8 @@ public sealed record StepDto(
     DateTimeOffset     StartedAt,
     DateTimeOffset?    EndedAt,
     string?            Summary,
-    string?            Error);
+    string?            Error,
+    AgentTurn[]?       Transcript = null);
 
 // One atomic read of a flow's full state. Versioned so REST can ETag and
 // SSE can coalesce (D1+D2+D3). The UI never holds anything but a sequence
