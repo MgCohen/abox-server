@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 using RemoteAgents.Primitives;
 using RemoteAgents.Validation;
 
-namespace RemoteAgents.Providers.Dotnet;
+namespace RemoteAgents.Validation.Dotnet;
 
 public sealed record DotnetValidatorOptions(
     // Path (relative to projectDir, or absolute) to a .sln/.slnx/.csproj

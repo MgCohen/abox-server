@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using RemoteAgents.Primitives;
 
-namespace RemoteAgents.Providers.Unity;
+namespace RemoteAgents.Validation.Unity;
 
 // Shared options. Defaults track Scaffold's validate-changes.ps1:
 //   - Auto-discover the Unity install for the project (ProjectVersion.txt

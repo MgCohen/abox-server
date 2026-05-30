@@ -1,4 +1,4 @@
-using RemoteAgents.Providers.Dotnet;
+using RemoteAgents.Validation.Dotnet;
 
 namespace RemoteAgents.Tests.Providers;
 

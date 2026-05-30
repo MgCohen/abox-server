@@ -2,7 +2,7 @@ using RemoteAgents.Agents;
 using System.Text;
 using RemoteAgents.Validation;
 
-namespace RemoteAgents.Providers.Unity;
+namespace RemoteAgents.Validation.Unity;
 
 public sealed record UnityFullValidatorOptions(
     UnityChecksOptions Checks,

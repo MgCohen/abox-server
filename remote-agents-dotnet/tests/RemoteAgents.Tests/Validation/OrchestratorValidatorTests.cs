@@ -1,4 +1,4 @@
-using RemoteAgents.Providers.Orchestrator;
+using RemoteAgents.Validation.Orchestrator;
 
 namespace RemoteAgents.Tests.Validation;
 
