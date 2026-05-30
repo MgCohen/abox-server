@@ -1,4 +1,5 @@
-namespace RemoteAgents.Agents;
+using RemoteAgents.Agents;
+namespace RemoteAgents.Providers.Claude;
 
 // Claude's first-run TUI dialogs that block the prompt. DetectStartupDialog
 // classifies the splash buffer into one of these so MaybeDismissDialogAsync

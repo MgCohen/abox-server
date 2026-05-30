@@ -1,6 +1,7 @@
+using RemoteAgents.Agents;
 using RemoteAgents.Agents.Hooks;
 
-namespace RemoteAgents.Agents;
+namespace RemoteAgents.Providers.Claude;
 
 public sealed record ClaudeAgentOptions(
     // Idle threshold for the launch settle: after typing the `claude ...`

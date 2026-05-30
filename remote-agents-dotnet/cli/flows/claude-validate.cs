@@ -16,7 +16,7 @@ using RemoteAgents.Flows;
 using RemoteAgents.Primitives;
 using RemoteAgents.Sessions;
 using RemoteAgents.Validation;
-using RemoteAgents.Validation.Orchestrator;
+using RemoteAgents.Providers.Orchestrator;
 
 const string FLOW_NAME = "claude-validate";
 const int MAX_FIX_ATTEMPTS = 3;

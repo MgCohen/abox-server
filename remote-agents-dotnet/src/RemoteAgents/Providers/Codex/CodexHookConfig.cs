@@ -1,7 +1,8 @@
+using RemoteAgents.Agents;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-namespace RemoteAgents.Agents;
+namespace RemoteAgents.Providers.Codex;
 
 // Writes / removes ~/.codex/hooks.json (or a caller-supplied codexConfigDir)
 // pointing Codex's PermissionRequest + Stop + StopFailure hooks at the

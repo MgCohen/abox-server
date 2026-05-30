@@ -1,6 +1,7 @@
+using RemoteAgents.Agents;
 using RemoteAgents.Agents.Hooks;
 
-namespace RemoteAgents.Agents;
+namespace RemoteAgents.Providers.Codex;
 
 public sealed record CodexAgentOptions(
     string Sandbox = "workspace-write",

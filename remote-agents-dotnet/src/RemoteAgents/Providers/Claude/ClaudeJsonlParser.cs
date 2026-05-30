@@ -1,8 +1,9 @@
+using RemoteAgents.Agents;
 using System.Text;
 using System.Text.Json;
 using RemoteAgents.Events;
 
-namespace RemoteAgents.Agents;
+namespace RemoteAgents.Providers.Claude;
 
 // Pure parser for one line of Claude's per-session JSONL
 // (~/.claude/projects/<encoded-cwd>/<session-id>.jsonl). Maps each

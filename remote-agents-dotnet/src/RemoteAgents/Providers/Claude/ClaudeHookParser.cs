@@ -1,7 +1,8 @@
+using RemoteAgents.Agents;
 using System.Text.Json;
 using RemoteAgents.Agents.Hooks;
 
-namespace RemoteAgents.Agents;
+namespace RemoteAgents.Providers.Claude;
 
 // Hook-line parser for Claude Code. Source tags this implementation
 // recognizes (set by the append shim):

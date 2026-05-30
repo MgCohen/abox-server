@@ -1,8 +1,9 @@
+using RemoteAgents.Agents;
 using System.Text;
 using System.Text.Json;
 using RemoteAgents.Events;
 
-namespace RemoteAgents.Agents;
+namespace RemoteAgents.Providers.Claude;
 
 // Reads the per-session JSONL Claude Code writes to
 // `~/.claude/projects/<encoded-cwd>/<sessionId>.jsonl`.

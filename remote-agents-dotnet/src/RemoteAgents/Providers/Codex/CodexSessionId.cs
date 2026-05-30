@@ -1,6 +1,7 @@
+using RemoteAgents.Agents;
 using System.Text.Json;
 
-namespace RemoteAgents.Agents;
+namespace RemoteAgents.Providers.Codex;
 
 // Codex's session-id parser. Codex has emitted the id under several
 // different field shapes across versions — this class walks the known

@@ -1,4 +1,5 @@
 using RemoteAgents.Events;
+using RemoteAgents.Providers.Claude;
 
 namespace RemoteAgents.Tests.Sessions;
 

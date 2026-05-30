@@ -1,3 +1,4 @@
+using RemoteAgents.Providers.Claude;
 using RemoteAgents.Agents;
 using RemoteAgents.Events;
 

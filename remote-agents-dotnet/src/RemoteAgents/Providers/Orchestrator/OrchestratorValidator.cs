@@ -1,9 +1,10 @@
+using RemoteAgents.Agents;
 using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using RemoteAgents.Validation;
 
-namespace RemoteAgents.Validation.Orchestrator;
+namespace RemoteAgents.Providers.Orchestrator;
 
 // Syntax-only Roslyn parse over every .cs file under
 // remote-agents-dotnet/. Intentionally narrow — we don't reach for

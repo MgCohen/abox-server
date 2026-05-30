@@ -1,5 +1,6 @@
 using System.Text.Json;
 using RemoteAgents.Agents;
+using RemoteAgents.Providers.Claude;
 
 namespace RemoteAgents.Tests.Agents;
 

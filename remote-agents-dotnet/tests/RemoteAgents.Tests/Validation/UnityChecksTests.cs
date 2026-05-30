@@ -1,4 +1,4 @@
-using RemoteAgents.Validation.Unity;
+using RemoteAgents.Providers.Unity;
 
 namespace RemoteAgents.Tests.Validation;
 

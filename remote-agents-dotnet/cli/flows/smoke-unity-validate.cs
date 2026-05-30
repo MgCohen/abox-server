@@ -3,7 +3,7 @@
 // Unity project before we burn Claude+Codex turns on the full pipeline.
 
 using RemoteAgents.Primitives;
-using RemoteAgents.Validation.Unity;
+using RemoteAgents.Providers.Unity;
 
 if (args.Length < 1)
 {

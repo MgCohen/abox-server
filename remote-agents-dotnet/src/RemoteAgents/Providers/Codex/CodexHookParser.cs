@@ -1,7 +1,8 @@
+using RemoteAgents.Agents;
 using System.Text.Json;
 using RemoteAgents.Agents.Hooks;
 
-namespace RemoteAgents.Agents;
+namespace RemoteAgents.Providers.Codex;
 
 // Hook-line parser for Codex. Source tags this implementation recognizes
 // (set by the append shim):

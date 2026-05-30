@@ -1,3 +1,4 @@
+using RemoteAgents.Agents;
 using System.Text;
 using System.Text.RegularExpressions;
 using RemoteAgents.Primitives;

@@ -1,6 +1,7 @@
+using RemoteAgents.Agents;
 using RemoteAgents.Validation;
 
-namespace RemoteAgents.Validation.Unity;
+namespace RemoteAgents.Providers.Unity;
 
 // Fast preflight: Unity launched in batch-mode with -quit. Catches
 // syntax errors and missing references in ~30s + actual compile time

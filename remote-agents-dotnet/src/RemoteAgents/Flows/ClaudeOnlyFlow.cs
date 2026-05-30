@@ -1,5 +1,6 @@
 using RemoteAgents.Agents;
 using RemoteAgents.Primitives;
+using RemoteAgents.Providers.Claude;
 using RemoteAgents.Sessions;
 
 namespace RemoteAgents.Flows;

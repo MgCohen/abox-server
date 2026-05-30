@@ -1,4 +1,6 @@
 using System.Text.Json;
+using RemoteAgents.Providers.Codex;
+using RemoteAgents.Providers.Claude;
 using RemoteAgents.Agents;
 
 namespace RemoteAgents.Tests.Agents;

@@ -1,7 +1,8 @@
+using RemoteAgents.Agents;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-namespace RemoteAgents.Agents;
+namespace RemoteAgents.Providers.Claude;
 
 // Writes / removes the project-local .claude/settings.json that points
 // Claude Code's Notification + Stop + StopFailure hooks at the

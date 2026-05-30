@@ -1,6 +1,7 @@
 using System.Text.Json;
 using RemoteAgents.Agents;
 using RemoteAgents.Agents.Hooks;
+using RemoteAgents.Providers.Codex;
 
 namespace RemoteAgents.Tests.Agents;
 

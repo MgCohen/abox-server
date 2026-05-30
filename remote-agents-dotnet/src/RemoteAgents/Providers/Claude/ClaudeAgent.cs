@@ -1,3 +1,4 @@
+using RemoteAgents.Agents;
 using Porta.Pty;
 using RemoteAgents.Agents.Hooks;
 using RemoteAgents.Events;
@@ -5,7 +6,7 @@ using RemoteAgents.Primitives;
 using RemoteAgents.Pty;
 using RemoteAgents.Runs;
 
-namespace RemoteAgents.Agents;
+namespace RemoteAgents.Providers.Claude;
 
 // Drives `claude` CLI inside ConPTY so isatty() === true in the child
 // process — that's what keeps the call on Max subscription billing instead

@@ -156,7 +156,7 @@ public sealed class FakePtyConnection : IPtyConnection
 
 // Subclass that swaps PtyProvider.SpawnAsync for a caller-supplied
 // FakePtyConnection. Used only by tests.
-public sealed class TestableClaudeAgent : RemoteAgents.Agents.ClaudeAgent
+public sealed class TestableClaudeAgent : RemoteAgents.Providers.Claude.ClaudeAgent
 {
     private readonly FakePtyConnection _fake;
     public TestableClaudeAgent(FakePtyConnection fake) { _fake = fake; }

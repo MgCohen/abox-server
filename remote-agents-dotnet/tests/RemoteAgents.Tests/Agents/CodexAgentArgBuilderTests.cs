@@ -1,3 +1,4 @@
+using RemoteAgents.Providers.Codex;
 using RemoteAgents.Agents;
 
 namespace RemoteAgents.Tests.Agents;

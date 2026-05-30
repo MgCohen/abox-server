@@ -1,6 +1,8 @@
 using RemoteAgents.Agents;
 using RemoteAgents.Events;
 using RemoteAgents.Primitives;
+using RemoteAgents.Providers.Claude;
+using RemoteAgents.Providers.Codex;
 using RemoteAgents.Sessions;
 using RemoteAgents.Validation;
 

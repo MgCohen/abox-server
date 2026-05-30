@@ -1,5 +1,7 @@
 using RemoteAgents.Agents;
 using RemoteAgents.Events;
+using RemoteAgents.Providers.Claude;
+using RemoteAgents.Providers.Codex;
 
 namespace RemoteAgents.Hosting;
 

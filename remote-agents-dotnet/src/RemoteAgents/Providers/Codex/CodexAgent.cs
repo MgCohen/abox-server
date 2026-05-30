@@ -1,3 +1,4 @@
+using RemoteAgents.Agents;
 using System.Diagnostics;
 using System.Text.Json.Nodes;
 using RemoteAgents.Agents.Hooks;
@@ -6,7 +7,7 @@ using RemoteAgents.Primitives;
 using RemoteAgents.Pty;
 using RemoteAgents.Runs;
 
-namespace RemoteAgents.Agents;
+namespace RemoteAgents.Providers.Codex;
 
 // Drives `codex exec` non-interactively. codex exec is officially supported
 // on ChatGPT subscriptions (since April 2026), so no PTY trick needed — a

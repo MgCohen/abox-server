@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using RemoteAgents.Agents;
 using RemoteAgents.Events;
 using RemoteAgents.Primitives;
+using RemoteAgents.Providers.Codex;
 using RemoteAgents.Sessions;
 
 namespace RemoteAgents.Flows;

@@ -1,6 +1,7 @@
+using RemoteAgents.Agents;
 using RemoteAgents.Events;
 
-namespace RemoteAgents.Agents;
+namespace RemoteAgents.Providers.Claude;
 
 // Live-tails Claude's per-session JSONL (~/.claude/projects/<encoded>/<id>.jsonl)
 // and emits each parsed line through the supplied IEventSink as AgentEvent
