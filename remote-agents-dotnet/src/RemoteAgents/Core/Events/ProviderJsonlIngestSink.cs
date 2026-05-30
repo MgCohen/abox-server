@@ -1,7 +1,6 @@
 using RemoteAgents.Agents;
-using RemoteAgents.Events;
 
-namespace RemoteAgents.Providers.Claude;
+namespace RemoteAgents.Events;
 
 // T0 from the logging plan: on each agent Completed event, copy the
 // provider's own session JSONL (Claude or Codex) into the orchestrator
