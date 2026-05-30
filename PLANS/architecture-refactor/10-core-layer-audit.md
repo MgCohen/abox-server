@@ -32,10 +32,12 @@ wire to the UI. All `file:line` references below are against branch
 base + providers (see [`02-agents.md`](02-agents.md)); the layer numbering
 comes from [`README.md`](README.md).
 
-This doc has two passes:
+This doc has three passes:
 - **Part 1 (Findings 1–6)** — the agent/flow/PTY structure vs. the Layer-2 plan.
-- **Part 2 (Findings 7–14)** — a duplication / data-class / reflection / SRP /
-  cross-layer-consistency sweep.
+- **Part 2 (Findings 7–14)** — duplication / data-class / reflection / SRP /
+  cross-layer-consistency, in the agent layer.
+- **Part 3 (Findings 15–22)** — the same sweep across Flows, Sessions,
+  Primitives, Events, and the Host (`ui/RemoteAgents.Host`).
 
 ---
 
@@ -64,8 +66,18 @@ removes Finding 1's root cause; the two **hook parsers are near-duplicates**;
 **shell-quoting is reimplemented in 5 places** and **JSON-element accessors
 in 6**; the **validator namespaces are inconsistent**; `UnityChecks` is a
 370-line static **god-class**; and Codex's session-id parser is **misfiled on
-the agent**. One clean result worth recording: **reflection is a non-issue** —
-serialization is fully source-generated, nothing reflects on any hot path.
+the agent**. In the core library, **reflection is a non-issue** — serialization
+is fully source-generated.
+
+Part 3 carries the sweep outward: the `git`/`gh` primitives repeat a
+**throw-on-nonzero-exit idiom ~15×** and bring **shell-quoting to 6 diverging
+implementations**; `Reviews` has **two near-identical verdict records**; the
+core `Session` and a Host endpoint **bake in provider-named artifacts**; a
+"provider JSONL" sink is **misfiled and knows both providers' on-disk paths**;
+`Run` is a **live/durable/transport god-object**; and — the one that breaks the
+core's clean record — the **Host deserializes every transcript line with
+reflection** (`SubprocessFlowExecutor`), a per-event hot path, plus a second
+reflection path in `RunStore`.
 
 ---
 
@@ -419,18 +431,163 @@ the Claude ones, so `CodexAgent` only drives. Pairs naturally with the
   keeping it is defensible — but it's the kind of "string label whose
   consumer is hypothetical" worth not multiplying.
 
-## Non-finding worth recording — reflection is clean
+## Non-finding worth recording — reflection is clean (in the core library)
 
 Checked explicitly because it's an easy thing to fear on a hot path:
-**there is none.** All serialization goes through source-generated
-`JsonSerializerContext`s (`SessionJsonContext`, `EventJsonContext`,
-`GhJsonContext`, `ProjectsJsonContext`, `FlowsJsonContext`); JSON reading is
-hand-rolled over `JsonElement`. No `Activator`, no `dynamic`, no
-reflection-based (de)serialization anywhere. The only `GetType()` calls are
-`GetType().Name` for an exception/error label (`Agent.cs:57`,
-`OrchestratorValidator.cs:62`) — cold error-formatting, not a hot path.
-This is consistent with the `.NET 10` file-based-runtime constraint noted in
-`ClaudeHookConfig.cs:12-14`. No action; recorded so it isn't re-investigated.
+in `src/RemoteAgents` **there is none.** All serialization goes through
+source-generated `JsonSerializerContext`s (`SessionJsonContext`,
+`EventJsonContext`, `GhJsonContext`, `ProjectsJsonContext`,
+`FlowsJsonContext`); JSON reading is hand-rolled over `JsonElement`. No
+`Activator`, no `dynamic`, no reflection-based (de)serialization anywhere.
+The only `GetType()` calls are `GetType().Name` for an exception/error label
+(`Agent.cs:57`, `OrchestratorValidator.cs:62`) — cold error-formatting, not
+a hot path. This is consistent with the `.NET 10` file-based-runtime
+constraint noted in `ClaudeHookConfig.cs:12-14`. No action in the core.
+
+**Scope caveat:** this holds for the *library*. The **Host** (`ui/`) does
+*not* keep the discipline — it has two reflection-based JSON paths, one of
+them on the per-event hot path. See Finding 20.
+
+# Part 3 — Flows / Sessions / Primitives / Events / Host
+
+Extends the sweep past the agent layer. Same categories
+(duplication / data-class folding / reflection / SRP / cross-layer
+consistency); same constraints (R6 byte-identical, no new direction).
+
+## Finding 15 — The `RunCommand` exit-check + error-text idiom is repeated ~15×
+
+Every `GitOps`/`GhOps` verb ends with the identical block:
+
+```csharp
+if (res.ExitCode != 0)
+    throw new InvalidOperationException(
+        $"git X failed: {(string.IsNullOrEmpty(res.Stderr) ? res.Stdout : res.Stderr)}");
+```
+
+It appears ~12× in `GitOps.cs` (e.g. `:108,130,146,239,256,272,286,307,
+347,362,378`) and 3× in `GhOps.cs` (`:82,107,134`); the same
+`IsNullOrEmpty(Stderr) ? Stdout : Stderr` "pick the error text" fallback
+also recurs in `DotnetValidator.ExtractBuildErrors/ExtractTestErrors`
+(`:138-139,160-161`).
+
+**Target.** Put the idiom on the result: `RunCommandResult.ErrorText =>
+IsNullOrEmpty(Stderr) ? Stdout : Stderr` and a
+`RunCommandResult EnsureOk(string op)` that throws with it. Callers become
+`(await RunCommand.RunAsync(...)).EnsureOk("git push")` — deletes ~15
+hand-written throws.
+
+## Finding 16 — Shell-quoting is now 6 implementations — and they disagree
+
+Extends Finding 10. `GitOps` has its *own* quoter (`GitOps.cs:395-401`)
+using a `SafePath` **allowlist regex** (`^[A-Za-z0-9_./-]+$`), whereas
+`Shell.QuoteArg` / `GhOps` / `GitWorktree` / `DotnetValidator` use an
+`IndexOfAny(QuoteTriggers)` **denylist**. So it's not just six copies of
+the same logic — the rules *differ*, which is a latent correctness
+divergence (a path safe under one is quoted differently under another).
+
+**Target.** One `Shell.QuoteArg` (pick the allowlist — it's the safer
+default); delete the five copies. If git genuinely needs ident-vs-path
+variants, make them named `Shell` overloads.
+
+## Finding 17 — Two near-identical verdict records in `Reviews`
+
+`CodexReviewArtifact(Verdict, SessionId, Text)` (`Reviews.cs:15`) and
+`CodexVerdict(Verdict, Text, SessionId)` (`:17`) hold the same three fields
+in a different order; `CodexVerdict` just adds `IsApprove/IsRevise/IsUnclear`
+helpers. The artifact is serialized, the verdict is returned — but they're
+the same data.
+
+**Target.** One record (keep `CodexVerdict`, serialize it directly), or make
+the artifact a thin projection. Data-class fold.
+
+## Finding 18 — Provider-named artifacts are baked into the core `Session`
+
+`SessionArtifact` enumerates `ClaudeText`, `ClaudeRaw`, `CodexReview`,
+`CodexReviewJl` and maps them to `claude-text.txt` / `codex-review.txt`
+(`Session.cs:103-111`). The core session layer knows provider names — the
+same R12 leak as Finding 5, one layer down. `Program.cs:175-179` then
+hard-codes those provider-specific artifacts in a REST endpoint, so adding
+a third provider means editing the core enum *and* the Host.
+
+**Target.** Generic artifact identity (e.g. a `(kind, basename)` the
+provider supplies), or move provider artifacts to the provider. The core
+`Session` should own `transcript.jsonl`/`meta.json`/`prompt.txt` and nothing
+provider-named.
+
+## Finding 19 — `ProviderJsonlIngestSink` is misfiled and concentrates both providers' path knowledge
+
+The sink lives under `Providers/Claude/` but declares `namespace
+RemoteAgents.Events` and handles **both** providers: `TryFindClaudeJsonl`
+(`.claude/projects/<encoded-cwd>/<id>.jsonl`) and `TryFindCodexJsonl`
+(`.codex/sessions/**/rollout-*-<id>.jsonl`) (`:57-75`), tagged with
+stringly-typed `"claude"`/`"codex"` `kind` literals (`:38,41`). "Where
+provider X writes its session transcript" is provider knowledge that should
+live with each provider (the agent already knows its own session id), not in
+a shared sink filed under one provider's folder.
+
+**Target.** Let each provider expose its own "locate session JSONL" (or
+emit the path on `ProviderSessionAttached`); the sink just copies. Refile it
+out of `Providers/Claude/` to match its `Events` namespace.
+
+## Finding 20 — The Host reintroduces reflection JSON — one path on the event hot path
+
+The library is strictly source-gen (Part 2 non-finding). The Host is not:
+
+- **Hot path.** `SubprocessFlowExecutor.TailTranscriptAsync` deserializes
+  **every transcript line** with reflection-based
+  `JsonSerializer.Deserialize<AgentEvent>(line, jsonOpts)`
+  (`SubprocessFlowExecutor.cs:155-173`) — one reflection parse per agent
+  event — even though the library *wrote* those lines through the
+  source-gen `EventJsonContext` (`JsonlSink.cs:30`). Write side uses the
+  context; read side throws it away.
+- **Persistence.** `RunStore` (`:50,77`) serializes/deserializes
+  `RunsFile`/`RunRecord` with a bare `JsonSerializer` + ad-hoc
+  `JsonSerializerOptions`, no context.
+
+**Why it matters.** It's the exact discipline the core enforces, silently
+dropped at the assembly boundary; the hot one runs a reflection parse per
+streamed event.
+
+**Target.** Promote `EventJsonContext` (AgentEvent) and add a `RunRecord`
+context in the **contracts assembly** so both library and Host share one
+source-gen context; the Host uses it on both paths. (The cleaner end state
+is the in-process executor, which skips the tail entirely — but that's the
+plan's deferred Phase 6; this fix stands alone and helps the subprocess path
+that exists today.)
+
+## Finding 21 — `Run` is a live/durable/transport god-object
+
+`Run` (`Run.cs`) carries four lifetimes at once: live execution state
+(`Cts`, `Sink`, `Status`, `ExitCode`), durable identity (`SessionId`,
+`SessionDir`), **subprocess-transport internals** (`TailerTask`, `:45` —
+meaningless for the in-process executor), and UI forward-compat
+(`PendingQuestion*`). This is the README's own "live vs persistent state in
+one class" smell; the run-projection collapse (this branch's Phase-6 work)
+fixed the *wire* shape (`RunRecord`) but left `Run` itself a union.
+
+**Target.** At minimum lift the transport-only field (`TailerTask`) out —
+only `SubprocessFlowExecutor` sets it, so it belongs in that executor's own
+per-run state, not on the shared `Run`.
+
+## Finding 22 — Three separate subprocess-driving implementations
+
+The "spawn a process, pump stdout/stderr, enforce a timeout, kill the tree,
+collect output" dance exists three times with three shapes:
+
+- `RunCommand.RunAsync` — buffered into `StringBuilder`s (`RunCommand.cs:63-93`).
+- `CodexAgent.DriveAsync` — streamed through a `Channel` (Findings 2/13).
+- `SubprocessFlowExecutor.ExecuteAsync` — streamed through line readers
+  (`SubprocessFlowExecutor.cs:36-137`).
+
+Each re-derives the linked-CTS timeout + `Kill(entireProcessTree)` + drain
+logic.
+
+**Target.** The `SubprocessSession` from Finding 2 is the shared core;
+`RunCommand` becomes its buffered facade, `CodexAgent` and the Host executor
+its streaming consumers. (Larger move — list it so the three are recognized
+as one primitive, not three.)
+
+---
 
 ## Consolidated checklist
 
@@ -463,15 +620,31 @@ New gaps this audit adds (Part 2):
 - [ ] Move `CodexAgent.ScanForSessionId` into a `CodexSessionId` parser.
 - [ ] Delete `CodexHookParser.Sentinel` + `.LooksLikeQuestion`; fix fixtures.
 
+New gaps this audit adds (Part 3):
+
+- [ ] `RunCommandResult.ErrorText` + `EnsureOk(op)`; collapse the ~15 `git/gh`
+      throw blocks.
+- [ ] Collapse all shell-quoting to one `Shell.QuoteArg` (resolve the
+      allowlist-vs-denylist divergence).
+- [ ] Fold `CodexReviewArtifact`/`CodexVerdict` into one record.
+- [ ] De-provider the `SessionArtifact` enum + the `Program.cs` artifact endpoint.
+- [ ] Give each provider its own "locate session JSONL"; refile
+      `ProviderJsonlIngestSink` out of `Providers/Claude/`.
+- [ ] Share one source-gen `JsonSerializerContext` (AgentEvent + RunRecord) in
+      Contracts; Host uses it on the tail + persistence paths.
+- [ ] Lift `Run.TailerTask` (and other transport-only fields) off `Run`.
+
 ## Suggested sequencing
 
 1. **Fold `AgentOptions` + finish Layer 2** (Findings 7 + 1) — do these
    together: the base record is what lets `Compose`/`Hooks`/env-scrub move
    to the base. Mechanical, closes 3 shipped-criteria gaps, no behavior
    change. Do first.
-2. **Cheap DRY sweep** (Findings 9 + 10 + 8) — shared `JsonEl` accessors,
-   one `Shell.QuoteArg`, the `JsonHookParser` base. Low-risk, high
-   line-count payoff, unblocks nothing but makes later moves smaller.
+2. **Cheap DRY sweep** (Findings 9 + 10 + 16 + 8 + 15 + 17) — shared `JsonEl`
+   accessors, one `Shell.QuoteArg` (resolving the allowlist/denylist split),
+   the `JsonHookParser` base, `RunCommandResult.EnsureOk`, the verdict-record
+   fold. Low-risk, high line-count payoff, unblocks nothing but makes later
+   moves smaller.
 3. **`SubprocessSession` + move `ScanForSessionId`** (Findings 2 + 13) —
    makes providers symmetric, shrinks both `DriveAsync` bodies; isolated to
    the agent layer.
@@ -482,9 +655,21 @@ New gaps this audit adds (Part 2):
 6. **Boundary + naming enforcement** (Findings 4 + 11) — align namespaces to
    folders, unify validator namespaces, add the arch test. Locks the gains
    in; do once namespaces are already being touched.
-7. **Opportunistic cleanups** (Findings 5, 6, 14) — `Name` defaulting,
-   `enum StartupDialog`, `ReviewFlowOptions`, dead compat-member deletion.
+7. **Host source-gen JSON** (Finding 20) — share one `JsonSerializerContext`
+   (AgentEvent + RunRecord) from Contracts; removes reflection from the event
+   hot path and the persistence path. Independent of the agent work; can run
+   in parallel.
+8. **De-provider the session/sink layer** (Findings 18 + 19) — generic
+   `SessionArtifact`, each provider locates its own JSONL, refile the ingest
+   sink. Pairs with the boundary work in step 6.
+9. **Opportunistic cleanups** (Findings 5, 6, 14, 21, 22) — `Name` defaulting,
+   `enum StartupDialog`, `ReviewFlowOptions`, dead compat-member deletion,
+   lift `Run.TailerTask` off `Run`. (Finding 22 — unifying the three
+   subprocess drivers — rides on the Finding 2 `SubprocessSession` work in
+   step 3.)
 
 All steps hold R6: smoke outputs stay byte-identical (these are structural
 moves, not behavior changes). Items flagged "shipped-vs-plan" (Findings 1,
 14's `AgentName`) close existing plan decisions rather than opening new ones.
+The cross-process IPC in `SubprocessFlowExecutor` (regex session-id sniff +
+poll-tail) is the plan's deferred **Phase 6** — noted, not re-raised here.
