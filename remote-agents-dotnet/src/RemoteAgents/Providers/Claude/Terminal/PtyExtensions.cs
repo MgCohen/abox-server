@@ -1,6 +1,6 @@
 using Porta.Pty;
 
-namespace RemoteAgents.Pty;
+namespace RemoteAgents.Providers.Claude.Terminal;
 
 public static class PtyExtensions
 {

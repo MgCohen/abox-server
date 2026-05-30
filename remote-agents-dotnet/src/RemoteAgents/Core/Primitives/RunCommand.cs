@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using RemoteAgents.Pty;
 
 namespace RemoteAgents.Primitives;
 

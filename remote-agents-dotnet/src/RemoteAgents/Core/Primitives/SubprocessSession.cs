@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Threading.Channels;
 
-namespace RemoteAgents.Pty;
+namespace RemoteAgents.Primitives;
 
 // Subprocess peer to PtySession. Owns the boilerplate every direct-
 // subprocess driver was reinventing: spawn, stdout/stderr pump (into

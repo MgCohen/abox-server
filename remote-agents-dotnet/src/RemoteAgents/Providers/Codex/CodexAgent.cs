@@ -4,7 +4,6 @@ using System.Text.Json.Nodes;
 using RemoteAgents.Agents.Hooks;
 using RemoteAgents.Events;
 using RemoteAgents.Primitives;
-using RemoteAgents.Pty;
 using RemoteAgents.Runs;
 
 namespace RemoteAgents.Providers.Codex;

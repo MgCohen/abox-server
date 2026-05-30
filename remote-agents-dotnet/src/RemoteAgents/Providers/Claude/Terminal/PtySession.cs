@@ -1,7 +1,7 @@
 using System.Text;
 using Porta.Pty;
 
-namespace RemoteAgents.Pty;
+namespace RemoteAgents.Providers.Claude.Terminal;
 
 // Wraps an IPtyConnection with the boilerplate every PTY-driven agent
 // needs: a background reader task that fills a shared buffer and forwards

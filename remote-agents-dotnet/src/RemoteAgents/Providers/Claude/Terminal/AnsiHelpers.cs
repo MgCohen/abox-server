@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace RemoteAgents.Pty;
+namespace RemoteAgents.Providers.Claude.Terminal;
 
 public static class AnsiHelpers
 {

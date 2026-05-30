@@ -3,7 +3,7 @@ using System.Management;
 using System.Runtime.InteropServices;
 using System.Text;
 using Porta.Pty;
-using RemoteAgents.Pty;
+using RemoteAgents.Providers.Claude.Terminal;
 
 namespace RemoteAgents.Tests.Pty;
 

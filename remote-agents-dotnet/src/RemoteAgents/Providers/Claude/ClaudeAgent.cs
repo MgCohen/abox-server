@@ -3,7 +3,7 @@ using Porta.Pty;
 using RemoteAgents.Agents.Hooks;
 using RemoteAgents.Events;
 using RemoteAgents.Primitives;
-using RemoteAgents.Pty;
+using RemoteAgents.Providers.Claude.Terminal;
 using RemoteAgents.Runs;
 
 namespace RemoteAgents.Providers.Claude;
