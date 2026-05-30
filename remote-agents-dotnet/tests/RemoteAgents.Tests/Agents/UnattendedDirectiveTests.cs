@@ -39,10 +39,4 @@ public class UnattendedDirectiveTests
     {
         Assert.Contains(UnattendedDirective.Sentinel, UnattendedDirective.SystemPromptAddendum);
     }
-
-    [Fact]
-    public void Codex_parser_sentinel_matches_directive_sentinel()
-    {
-        Assert.Equal(UnattendedDirective.Sentinel, CodexHookParser.Sentinel);
-    }
 }

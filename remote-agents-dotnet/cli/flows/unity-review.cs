@@ -22,15 +22,15 @@ const string FLOW_NAME = "unity-review";
 await using var ctx = await FlowBootstrap.StartAsync(args, FLOW_NAME);
 if (ctx is null) return;
 
-var flow = new ReviewFlow(
-    name:              FLOW_NAME,
-    summary:           "Claude works → Unity batch-mode compile → Codex review → commit (push opt-in).",
-    validator:         new UnityFullValidator(),
-    projectKind:       "a Unity C# change",
-    validationLabel:   "Unity batch-mode compile passed",
-    isolateValidation: true,
-    progressNote:      " (Unity batch-mode, this can take minutes)",
-    fixDescriptor:     "Unity batch-mode compile");
+var flow = new ReviewFlow(new ReviewFlowOptions(
+    Name:              FLOW_NAME,
+    Summary:           "Claude works → Unity batch-mode compile → Codex review → commit (push opt-in).",
+    Validator:         new UnityFullValidator(),
+    ProjectKind:       "a Unity C# change",
+    ValidationLabel:   "Unity batch-mode compile passed",
+    IsolateValidation: true,
+    ProgressNote:      " (Unity batch-mode, this can take minutes)",
+    FixDescriptor:     "Unity batch-mode compile"));
 
 var result = await new FlowRunner().RunAsync(
     flow, ctx, new FlowArgs(ctx.ProjectName, ctx.UserPrompt, [], ctx.ShouldPush));

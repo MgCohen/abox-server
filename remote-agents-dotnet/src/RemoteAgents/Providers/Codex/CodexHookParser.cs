@@ -16,8 +16,6 @@ namespace RemoteAgents.Agents;
 // under the same field name and benefit from the same detection rules.
 public sealed class CodexHookParser : IAgentHookParser
 {
-    public const string Sentinel = UnattendedDirective.Sentinel;
-
     public AgentQuestion? TryParse(JsonElement hookLine)
     {
         if (hookLine.ValueKind != JsonValueKind.Object) return null;

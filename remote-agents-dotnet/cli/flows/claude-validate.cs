@@ -30,7 +30,7 @@ try
 {
     var before = FsDiff.Snapshot(ctx.ProjectDir);
 
-    var claude = new ClaudeAgent { Name = "claude", Sink = ctx.Sink };
+    var claude = new ClaudeAgent { Sink = ctx.Sink };
 
     // ── 1. initial Claude run ─────────────────────────────────────────
     var result = await claude.RunAsync(new AgentRunRequest(ctx.UserPrompt, null, ctx.ProjectDir));

@@ -31,12 +31,12 @@ var sink = new CompositeSink(
     ingest);
 
 // --- Claude turn ---
-var claude = new ClaudeAgent { Name = "claude", Sink = sink, Options = new ClaudeAgentOptions(LaunchSettleIdleMs: 2000) };
+var claude = new ClaudeAgent { Sink = sink, Options = new ClaudeAgentOptions(LaunchSettleIdleMs: 2000) };
 var c1 = await claude.RunAsync(new AgentRunRequest("Reply with exactly the word PONG.", null, WORK_DIR));
 Console.WriteLine($"[smoke] claude session={c1.SessionId} exit={c1.ExitCode}");
 
 // --- Codex turn ---
-var codex = new CodexAgent { Name = "codex", Sink = sink, Options = new CodexAgentOptions(JsonStreamTimeoutMs: 5 * 60_000) };
+var codex = new CodexAgent { Sink = sink, Options = new CodexAgentOptions(JsonStreamTimeoutMs: 5 * 60_000) };
 var c2 = await codex.RunAsync(new AgentRunRequest("Reply with exactly the word OK.", null, WORK_DIR));
 Console.WriteLine($"[smoke] codex session={c2.SessionId} exit={c2.ExitCode}");
 

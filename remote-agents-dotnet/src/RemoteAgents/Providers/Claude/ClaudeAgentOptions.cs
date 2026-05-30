@@ -44,4 +44,5 @@ public sealed record ClaudeAgentOptions(
     // .claude/settings.json hooks pointing at ShimPath, sets
     // REMOTEAGENTS_HOOKS_JSONL on the PTY, and resolves AgentResult.Status
     // / Question from the resulting hooks.jsonl. See HookIntegrationOptions.
-    HookIntegrationOptions? Hooks = null);
+    HookIntegrationOptions? Hooks = null)
+    : AgentOptions(Model, SystemPrompt, Hooks);

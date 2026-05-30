@@ -18,7 +18,10 @@ namespace RemoteAgents.Agents;
 // may want to swap in a different model or different sandbox policy.
 public class CodexAgent : Agent
 {
+    public CodexAgent() : base("codex") { }
+
     public CodexAgentOptions Options { get; init; } = new();
+    protected override AgentOptions BaseOptions => Options;
 
     public static List<string> BuildCodexArgs(string? sessionId, string projectDir, string lastMessageFile, CodexAgentOptions opts)
     {
@@ -68,8 +71,9 @@ public class CodexAgent : Agent
                 return () => CodexHookConfig.Uninstall(configDir);
             });
 
-    protected override async Task<DriveResult> DriveAsync(AgentRunRequest req, CancellationToken ct)
+    protected override async Task<DriveResult> DriveAsync(AgentDriveContext ctx, CancellationToken ct)
     {
+        var req = ctx.Request;
         var tmpDir = Path.Combine(Path.GetTempPath(), "agents-codex-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tmpDir);
         var lastMessageFile = Path.Combine(tmpDir, "last.txt");
@@ -88,11 +92,12 @@ public class CodexAgent : Agent
             UseShellExecute = false,
             CreateNoWindow = true,
         };
-        // Defense in depth: blank OPENAI_API_KEY in the child env so codex
-        // can't accidentally fall through to API billing.
-        psi.Environment["OPENAI_API_KEY"] = "";
-        if (Options.Hooks is not null)
-            psi.Environment["REMOTEAGENTS_HOOKS_JSONL"] = Options.Hooks.HooksJsonlPath;
+        // Defense in depth: blank the API-key vars (centralized in EnvScrub)
+        // on the child env so codex can't accidentally fall through to API
+        // billing if SubscriptionGuard ever regresses.
+        foreach (var k in EnvScrub.SubscriptionKeys) psi.Environment[k] = "";
+        if (ctx.HooksJsonlPath is not null)
+            psi.Environment["REMOTEAGENTS_HOOKS_JSONL"] = ctx.HooksJsonlPath;
 
         using var proc = new Process { StartInfo = psi, EnableRaisingEvents = true };
         var stdout = new StringBuilder();
@@ -115,7 +120,7 @@ public class CodexAgent : Agent
             stdout.AppendLine(e.Data);
             if (extractedSessionId is null)
             {
-                var found = ScanForSessionId(e.Data);
+                var found = CodexSessionId.Scan(e.Data);
                 if (found is not null)
                 {
                     extractedSessionId = found;
@@ -143,10 +148,11 @@ public class CodexAgent : Agent
         });
 
         // System prompt prepended to user prompt — codex has no flag for it.
-        var effectiveSystemPrompt = UnattendedDirective.Compose(Options.SystemPrompt, req.Mode);
-        var fullPrompt = string.IsNullOrEmpty(effectiveSystemPrompt)
+        // ctx.SystemPrompt has already had UnattendedDirective.Compose
+        // applied by the base.
+        var fullPrompt = string.IsNullOrEmpty(ctx.SystemPrompt)
             ? req.Prompt
-            : effectiveSystemPrompt + "\n\n" + req.Prompt;
+            : ctx.SystemPrompt + "\n\n" + req.Prompt;
 
         proc.Start();
         proc.BeginOutputReadLine();
@@ -182,9 +188,9 @@ public class CodexAgent : Agent
         // append a synthetic codex.stop line and let the base resolve via
         // the single hooks.jsonl path. Safe post-WaitForExitAsync: codex has
         // exited, the shim can no longer fire, no writer race.
-        if (Options.Hooks is not null && !string.IsNullOrWhiteSpace(text))
+        if (ctx.HooksJsonlPath is not null && !string.IsNullOrWhiteSpace(text))
             await AppendSyntheticStopLineAsync(
-                Options.Hooks.HooksJsonlPath, extractedSessionId, req.ProjectDir, text);
+                ctx.HooksJsonlPath, extractedSessionId, req.ProjectDir, text);
 
         return new DriveResult(
             Text:      text,
@@ -209,51 +215,5 @@ public class CodexAgent : Agent
             },
         };
         await File.AppendAllTextAsync(hooksJsonlPath, wrapped.ToJsonString() + "\n");
-    }
-
-    // Scan a single JSON line for any of the session-id field shapes codex
-    // has used across versions. Returns null if none found.
-    public static string? ScanForSessionId(string line)
-    {
-        line = line.Trim();
-        if (line.Length == 0 || line[0] != '{') return null;
-
-        JsonDocument doc;
-        try { doc = JsonDocument.Parse(line); }
-        catch { return null; }
-
-        using (doc)
-        {
-            var root = doc.RootElement;
-            foreach (var key in new[] { "thread_id", "session_id", "sessionId" })
-            {
-                if (root.TryGetProperty(key, out var v) && v.ValueKind == JsonValueKind.String)
-                {
-                    var s = v.GetString();
-                    if (s is not null && s.Length >= 8) return s;
-                }
-            }
-            foreach (var (parent, child) in new[] { ("thread", "id"), ("session", "id") })
-            {
-                if (root.TryGetProperty(parent, out var p) && p.ValueKind == JsonValueKind.Object &&
-                    p.TryGetProperty(child, out var v) && v.ValueKind == JsonValueKind.String)
-                {
-                    var s = v.GetString();
-                    if (s is not null && s.Length >= 8) return s;
-                }
-            }
-            if (root.TryGetProperty("payload", out var payload) && payload.ValueKind == JsonValueKind.Object)
-            {
-                foreach (var key in new[] { "thread_id", "session_id" })
-                {
-                    if (payload.TryGetProperty(key, out var v) && v.ValueKind == JsonValueKind.String)
-                    {
-                        var s = v.GetString();
-                        if (s is not null && s.Length >= 8) return s;
-                    }
-                }
-            }
-        }
-        return null;
     }
 }

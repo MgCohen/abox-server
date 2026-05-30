@@ -20,7 +20,7 @@ public sealed class ClaudeOnlyFlow : IFlow
     {
         var before = FsDiff.Snapshot(ctx.ProjectDir);
 
-        var claude = new ClaudeAgent { Name = "claude", Sink = ctx.Sink };
+        var claude = new ClaudeAgent { Sink = ctx.Sink };
         var result = await claude.RunAsync(new AgentRunRequest(
             Prompt: ctx.UserPrompt,
             SessionId: null,

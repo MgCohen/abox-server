@@ -12,4 +12,5 @@ public sealed record CodexAgentOptions(
     // ~/.codex/hooks.json pointing at ShimPath, sets REMOTEAGENTS_HOOKS_JSONL
     // on the spawned codex process, and resolves AgentResult.Status / Question
     // from the resulting hooks.jsonl. See HookIntegrationOptions.
-    HookIntegrationOptions? Hooks = null);
+    HookIntegrationOptions? Hooks = null)
+    : AgentOptions(Model, SystemPrompt, Hooks);

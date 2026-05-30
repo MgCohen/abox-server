@@ -18,21 +18,24 @@ namespace RemoteAgents.Agents;
 // only owns the script.
 public class ClaudeAgent : Agent
 {
+    public ClaudeAgent() : base("claude") { }
+
     public ClaudeAgentOptions Options { get; init; } = new();
+    protected override AgentOptions BaseOptions => Options;
 
     public int Cols { get; init; } = 120;
     public int Rows { get; init; } = 40;
 
     // Hooks — override per-project if Claude changes its UI.
-    protected virtual string? DetectStartupDialog(string buf)
+    protected virtual StartupDialog? DetectStartupDialog(string buf)
     {
         var plain = AnsiHelpers.StripAnsi(buf);
         if (plain.Contains("Bypass Permissions mode", StringComparison.Ordinal) ||
             plain.Contains("Yes, I accept", StringComparison.Ordinal))
-            return "bypass-warning";
+            return StartupDialog.BypassWarning;
         if (plain.Contains("trust this folder", StringComparison.OrdinalIgnoreCase) ||
             plain.Contains("Is this a project you", StringComparison.OrdinalIgnoreCase))
-            return "trust";
+            return StartupDialog.Trust;
         return null;
     }
 
@@ -79,13 +82,11 @@ public class ClaudeAgent : Agent
                 return () => ClaudeHookConfig.Uninstall(req.ProjectDir);
             });
 
-    protected override async Task<DriveResult> DriveAsync(AgentRunRequest req, CancellationToken ct)
+    protected override async Task<DriveResult> DriveAsync(AgentDriveContext ctx, CancellationToken ct)
     {
+        var req = ctx.Request;
         var sessionId = req.SessionId ?? Guid.NewGuid().ToString();
-        var effectiveOpts = Options with
-        {
-            SystemPrompt = UnattendedDirective.Compose(Options.SystemPrompt, req.Mode)
-        };
+        var effectiveOpts = Options with { SystemPrompt = ctx.SystemPrompt };
         var claudeArgs = BuildClaudeArgs(sessionId, isResume: req.SessionId is not null, effectiveOpts);
         var launchLine = "claude " + string.Join(' ', claudeArgs.Select(Shell.QuoteArg));
 
@@ -114,7 +115,7 @@ public class ClaudeAgent : Agent
         var emitter = new ClaudeJsonlEmitter(req.ProjectDir, sessionId, Name, Sink);
         var emitterTask = Task.Run(() => emitter.RunAsync(emitterCts.Token), dct);
 
-        var pty = await SpawnPtyAsync(BuildPtyOptions(req.ProjectDir), dct);
+        var pty = await SpawnPtyAsync(BuildPtyOptions(req.ProjectDir, ctx.HooksJsonlPath), dct);
         await using var session = new PtySession(
             pty,
             onChunk: (chunk, innerCt) => Sink.EmitAsync(
@@ -171,20 +172,19 @@ public class ClaudeAgent : Agent
         return new DriveResult(Text: text, SessionId: sessionId, ExitCode: exitCode, RawOutput: raw);
     }
 
-    private PtyOptions BuildPtyOptions(string projectDir)
+    private PtyOptions BuildPtyOptions(string projectDir, string? hooksJsonlPath)
     {
-        // PtyOptions.Environment is passed verbatim — explicitly blank out
-        // the API-key vars to keep subscription billing intact (defense in
-        // depth: SubscriptionGuard already refused to start if any were set).
+        // PtyOptions.Environment is passed verbatim — blank the API-key
+        // vars (centralized in EnvScrub) on the child as defense in depth
+        // against a SubscriptionGuard regression.
         var env = new Dictionary<string, string>();
         foreach (System.Collections.DictionaryEntry kv in Environment.GetEnvironmentVariables())
         {
             if (kv.Key is string k && kv.Value is string v) env[k] = v;
         }
-        env["ANTHROPIC_API_KEY"] = "";
-        env["CLAUDE_API_KEY"] = "";
-        if (Options.Hooks is not null)
-            env["REMOTEAGENTS_HOOKS_JSONL"] = Options.Hooks.HooksJsonlPath;
+        foreach (var k in EnvScrub.SubscriptionKeys) env[k] = "";
+        if (hooksJsonlPath is not null)
+            env["REMOTEAGENTS_HOOKS_JSONL"] = hooksJsonlPath;
 
         return new PtyOptions
         {
@@ -204,14 +204,18 @@ public class ClaudeAgent : Agent
 
         var keys = dialog switch
         {
-            "trust"          => "\r",
-            "bypass-warning" => "2\r",
-            _                => null,
+            StartupDialog.Trust          => "\r",
+            StartupDialog.BypassWarning  => "2\r",
+            _                            => null,
         };
         if (keys is null) return;
 
         await session.WriteAsync(keys, ct);
-        await Sink.EmitAsync(new AgentEvent.DialogDismissed(DateTimeOffset.UtcNow, Name, dialog), ct);
+        // Emit the wire-stable label so transcript readers don't need to
+        // care about the enum's serialization. (Match wording matches the
+        // old stringly-typed return for back-compat.)
+        string label = dialog == StartupDialog.Trust ? "trust" : "bypass-warning";
+        await Sink.EmitAsync(new AgentEvent.DialogDismissed(DateTimeOffset.UtcNow, Name, label), ct);
         // Wait for claude to transition into its main UI before the
         // caller starts typing the prompt.
         await session.WaitIdleAsync(Options.LaunchSettleIdleMs, maxWaitMs: 5_000, ct: ct);

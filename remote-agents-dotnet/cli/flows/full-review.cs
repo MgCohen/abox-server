@@ -18,12 +18,12 @@ const string FLOW_NAME = "full-review";
 await using var ctx = await FlowBootstrap.StartAsync(args, FLOW_NAME);
 if (ctx is null) return;
 
-var flow = new ReviewFlow(
-    name:            FLOW_NAME,
-    summary:         "Claude works → project checks → Codex review → commit (push opt-in).",
-    validator:       new OrchestratorValidator(),
-    projectKind:     "changes",
-    validationLabel: "all project checks passed");
+var flow = new ReviewFlow(new ReviewFlowOptions(
+    Name:            FLOW_NAME,
+    Summary:         "Claude works → project checks → Codex review → commit (push opt-in).",
+    Validator:       new OrchestratorValidator(),
+    ProjectKind:     "changes",
+    ValidationLabel: "all project checks passed"));
 
 var result = await new FlowRunner().RunAsync(
     flow, ctx, new FlowArgs(ctx.ProjectName, ctx.UserPrompt, [], ctx.ShouldPush));

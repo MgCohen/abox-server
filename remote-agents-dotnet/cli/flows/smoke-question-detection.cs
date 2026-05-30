@@ -79,13 +79,11 @@ async Task RunPass(string provider, InteractionMode mode, string prompt, string 
     {
         "claude" => new ClaudeAgent
         {
-            Name    = "claude",
             Sink    = sink,
             Options = new ClaudeAgentOptions(LaunchSettleIdleMs: 2000, Hooks: hooks),
         },
         "codex" => new CodexAgent
         {
-            Name    = "codex",
             Sink    = sink,
             Options = new CodexAgentOptions(JsonStreamTimeoutMs: 5 * 60_000, Hooks: hooks),
         },

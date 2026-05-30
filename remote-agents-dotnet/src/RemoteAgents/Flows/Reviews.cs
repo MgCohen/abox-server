@@ -9,12 +9,12 @@ using RemoteAgents.Sessions;
 namespace RemoteAgents.Flows;
 
 [JsonSourceGenerationOptions(WriteIndented = false, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
-[JsonSerializable(typeof(CodexReviewArtifact))]
+[JsonSerializable(typeof(CodexVerdict))]
 internal sealed partial class FlowsJsonContext : JsonSerializerContext { }
 
-public sealed record CodexReviewArtifact(Verdict Verdict, string SessionId, string Text);
-
-public sealed record CodexVerdict(Verdict Verdict, string Text, string SessionId)
+// Field order matches the historical codex-review.jsonl shape
+// (Verdict, SessionId, Text) so the on-disk artifact stays byte-stable.
+public sealed record CodexVerdict(Verdict Verdict, string SessionId, string Text)
 {
     public bool IsApprove => Verdict == Flows.Verdict.Approve;
     public bool IsRevise  => Verdict == Flows.Verdict.Revise;
@@ -37,34 +37,35 @@ public static class Reviews
         "^(APPROVE|REVISE):\\s*",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    // Default options for the codex reviewer. Read-only sandbox so the
+    // reviewer can't accidentally edit the tree it's reviewing; 5-minute
+    // JSON stream timeout because review prompts are long. Callers can
+    // pass their own pre-built reviewer to override.
+    public static CodexAgentOptions DefaultReviewerOptions { get; } =
+        new(Sandbox: "read-only", JsonStreamTimeoutMs: 5 * 60_000);
+
     public static async Task<CodexVerdict> AskCodexForVerdictAsync(
+        CodexAgent reviewer,
         string projectDir,
         string sessionDir,
         string userPrompt,
         string projectKind,
         string validationLabel,
-        IEventSink sink,
-        CodexAgentOptions? codexOptions = null,
         CancellationToken ct = default)
     {
         var diffText = await GitOps.DiffAsync(new GitDiffRequest(projectDir), ct);
         var reviewPrompt = BuildReviewPrompt(userPrompt, diffText, projectKind, validationLabel);
 
-        await sink.PhaseStartAsync("codex", $"reviewing diff ({diffText.Length} bytes)...", ct);
+        await reviewer.Sink.PhaseStartAsync("codex", $"reviewing diff ({diffText.Length} bytes)...", ct);
 
-        var codex = new CodexAgent
-        {
-            Name = "codex",
-            Sink = sink,
-            Options = codexOptions ?? new CodexAgentOptions(Sandbox: "read-only", JsonStreamTimeoutMs: 5 * 60_000),
-        };
-        var review = await codex.RunAsync(new AgentRunRequest(reviewPrompt, null, projectDir), ct);
+        var review = await reviewer.RunAsync(new AgentRunRequest(reviewPrompt, null, projectDir), ct);
         var verdict = ParseVerdict(review.Text);
 
-        await sink.PhaseInfoAsync("codex", FormatReviewBlock(review.Text), ct);
-        await WriteReviewArtifactAsync(sessionDir, verdict, review.SessionId, review.Text, ct);
+        var result = new CodexVerdict(verdict, review.SessionId, review.Text);
+        await reviewer.Sink.PhaseInfoAsync("codex", FormatReviewBlock(review.Text), ct);
+        await WriteReviewArtifactAsync(sessionDir, result, ct);
 
-        return new CodexVerdict(verdict, review.Text, review.SessionId);
+        return result;
     }
 
     public static string BuildReviewPrompt(string userPrompt, string diffText, string projectKind, string validationLabel)
@@ -111,10 +112,9 @@ public static class Reviews
         });
     }
 
-    public static async Task WriteReviewArtifactAsync(string sessionDir, Verdict verdict, string sessionId, string text, CancellationToken ct = default)
+    public static async Task WriteReviewArtifactAsync(string sessionDir, CodexVerdict verdict, CancellationToken ct = default)
     {
-        var artifact = new CodexReviewArtifact(verdict, sessionId, text);
-        var json = JsonSerializer.Serialize(artifact, FlowsJsonContext.Default.CodexReviewArtifact);
+        var json = JsonSerializer.Serialize(verdict, FlowsJsonContext.Default.CodexVerdict);
         await File.WriteAllTextAsync(
             Session.GetArtifactPath(sessionDir, SessionArtifact.CodexReviewJl),
             json + "\n", ct);

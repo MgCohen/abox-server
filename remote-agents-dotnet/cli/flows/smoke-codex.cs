@@ -47,7 +47,6 @@ var sink = new CompositeSink(
 
 var agent = new CodexAgent
 {
-    Name = "codex",
     Sink = sink,
     Options = new CodexAgentOptions(JsonStreamTimeoutMs: 5 * 60_000),
 };

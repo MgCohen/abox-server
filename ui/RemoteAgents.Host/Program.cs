@@ -50,21 +50,21 @@ app.MapHub<RunsHub>("/hub/runs");
 {
     var flows = app.Services.GetRequiredService<FlowRegistry>();
     flows.Register(new ClaudeOnlyFlow());
-    flows.Register(new ReviewFlow(
-        name:            "full-review",
-        summary:         "Claude works → project checks → Codex review → commit (push opt-in).",
-        validator:       new OrchestratorValidator(),
-        projectKind:     "changes",
-        validationLabel: "all project checks passed"));
-    flows.Register(new ReviewFlow(
-        name:              "unity-review",
-        summary:           "Claude works → Unity batch-mode compile → Codex review → commit (push opt-in).",
-        validator:         new UnityFullValidator(),
-        projectKind:       "a Unity C# change",
-        validationLabel:   "Unity batch-mode compile passed",
-        isolateValidation: true,
-        progressNote:      " (Unity batch-mode, this can take minutes)",
-        fixDescriptor:     "Unity batch-mode compile"));
+    flows.Register(new ReviewFlow(new ReviewFlowOptions(
+        Name:            "full-review",
+        Summary:         "Claude works → project checks → Codex review → commit (push opt-in).",
+        Validator:       new OrchestratorValidator(),
+        ProjectKind:     "changes",
+        ValidationLabel: "all project checks passed")));
+    flows.Register(new ReviewFlow(new ReviewFlowOptions(
+        Name:              "unity-review",
+        Summary:           "Claude works → Unity batch-mode compile → Codex review → commit (push opt-in).",
+        Validator:         new UnityFullValidator(),
+        ProjectKind:       "a Unity C# change",
+        ValidationLabel:   "Unity batch-mode compile passed",
+        IsolateValidation: true,
+        ProgressNote:      " (Unity batch-mode, this can take minutes)",
+        FixDescriptor:     "Unity batch-mode compile")));
 }
 
 // Seed history from disk + mark active-on-shutdown runs as Interrupted.

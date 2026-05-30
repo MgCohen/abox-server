@@ -35,7 +35,6 @@ var sink = new CompositeSink(
 
 var agent = new ClaudeAgent
 {
-    Name = "claude",
     Sink = sink,
     Options = new ClaudeAgentOptions(LaunchSettleIdleMs: 2000),
 };

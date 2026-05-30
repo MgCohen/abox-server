@@ -1,4 +1,5 @@
 using RemoteAgents.Events;
+using RemoteAgents.Primitives;
 
 namespace RemoteAgents.Agents;
 
@@ -9,15 +10,31 @@ namespace RemoteAgents.Agents;
 //   * the install/try/finally/uninstall envelope around hooks
 //   * hook resolution (hooks.jsonl → Status / Question / FailureReason)
 //   * NonInteractiveViolation emission
+//   * UnattendedDirective.Compose — composed once, handed to DriveAsync via
+//     AgentDriveContext.SystemPrompt; providers never recompose
 //   * assembling the final AgentResult
 //
 // Providers implement DriveAsync — the drive loop body, nothing else —
-// and opt into hooks by returning a non-null HookIntegration. RunAsync
-// is sealed so subclasses cannot weaken the contract.
+// expose their typed options via BaseOptions, and opt into hooks by
+// returning a non-null HookIntegration. RunAsync is sealed so subclasses
+// cannot weaken the contract.
 public abstract class Agent
 {
-    public required string Name { get; init; }
+    // Default name comes from the provider type (passed via the subclass
+    // constructor). Callers can still override via object initializer
+    // (`new ClaudeAgent { Name = "planner" }`) — init runs after the ctor.
+    protected Agent(string defaultName) { Name = defaultName; }
+
+    public string Name { get; init; }
     public IEventSink Sink { get; init; } = NoOpSink.Instance;
+
+    // Provider's typed options viewed as AgentOptions — gives the base
+    // generic access to SystemPrompt + Hooks without knowing the
+    // provider-specific fields. Defaults to empty so test fakes don't
+    // need to wire one up.
+    protected virtual AgentOptions BaseOptions => EmptyOptions;
+    private static readonly AgentOptions EmptyOptions = new EmptyAgentOptions();
+    private sealed record EmptyAgentOptions() : AgentOptions(null, null, null);
 
     // Provider hook wiring. Null = no hooks: base skips install + resolution
     // and reports Completed. See HookIntegration.
@@ -37,7 +54,11 @@ public abstract class Agent
         {
             try
             {
-                raw = await DriveAsync(req, ct);
+                var ctx = new AgentDriveContext(
+                    Request:        req,
+                    SystemPrompt:   UnattendedDirective.Compose(BaseOptions.SystemPrompt, req.Mode),
+                    HooksJsonlPath: hooks?.HooksJsonlPath);
+                raw = await DriveAsync(ctx, ct);
             }
             catch (Exception ex)
             {
@@ -93,5 +114,5 @@ public abstract class Agent
     // the response. Providers return the raw bytes; the base attaches the
     // hook-derived Status / Question. This is the only method a provider
     // must implement.
-    protected abstract Task<DriveResult> DriveAsync(AgentRunRequest req, CancellationToken ct);
+    protected abstract Task<DriveResult> DriveAsync(AgentDriveContext ctx, CancellationToken ct);
 }

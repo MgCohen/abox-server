@@ -2,19 +2,15 @@ namespace RemoteAgents.Primitives;
 
 // Refuse to start a flow if API-key env vars are set (would defeat
 // subscription billing) or if claude/codex CLIs aren't on PATH. Q17.
+//
+// The forbidden-vars list lives on EnvScrub — same set the providers
+// blank on the child env as defense in depth.
 public static class SubscriptionGuard
 {
-    private static readonly string[] ForbiddenEnvVars =
-    [
-        "ANTHROPIC_API_KEY",
-        "CLAUDE_API_KEY",
-        "OPENAI_API_KEY",
-    ];
-
     public static async Task CheckAsync(CancellationToken ct = default)
     {
         var bad = new List<string>();
-        foreach (var v in ForbiddenEnvVars)
+        foreach (var v in EnvScrub.SubscriptionKeys)
         {
             if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable(v))) bad.Add(v);
         }

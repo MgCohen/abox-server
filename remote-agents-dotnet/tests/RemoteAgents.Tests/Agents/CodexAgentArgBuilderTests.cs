@@ -65,36 +65,36 @@ public class CodexAgentSessionIdScannerTests
 {
     [Fact]
     public void Finds_thread_id_at_root() =>
-        Assert.Equal("abc12345-thread", CodexAgent.ScanForSessionId("{\"thread_id\":\"abc12345-thread\"}"));
+        Assert.Equal("abc12345-thread", CodexSessionId.Scan("{\"thread_id\":\"abc12345-thread\"}"));
 
     [Fact]
     public void Finds_session_id_at_root() =>
-        Assert.Equal("abc12345-sess", CodexAgent.ScanForSessionId("{\"session_id\":\"abc12345-sess\"}"));
+        Assert.Equal("abc12345-sess", CodexSessionId.Scan("{\"session_id\":\"abc12345-sess\"}"));
 
     [Fact]
     public void Finds_camel_case_sessionId() =>
-        Assert.Equal("abc12345-camel", CodexAgent.ScanForSessionId("{\"sessionId\":\"abc12345-camel\"}"));
+        Assert.Equal("abc12345-camel", CodexSessionId.Scan("{\"sessionId\":\"abc12345-camel\"}"));
 
     [Fact]
     public void Finds_nested_thread_id_in_thread_object() =>
-        Assert.Equal("abc12345-nested", CodexAgent.ScanForSessionId("{\"thread\":{\"id\":\"abc12345-nested\"}}"));
+        Assert.Equal("abc12345-nested", CodexSessionId.Scan("{\"thread\":{\"id\":\"abc12345-nested\"}}"));
 
     [Fact]
     public void Finds_payload_session_id() =>
-        Assert.Equal("abc12345-payload", CodexAgent.ScanForSessionId("{\"payload\":{\"session_id\":\"abc12345-payload\"}}"));
+        Assert.Equal("abc12345-payload", CodexSessionId.Scan("{\"payload\":{\"session_id\":\"abc12345-payload\"}}"));
 
     [Fact]
     public void Returns_null_for_non_json_lines()
     {
-        Assert.Null(CodexAgent.ScanForSessionId(""));
-        Assert.Null(CodexAgent.ScanForSessionId("not json"));
-        Assert.Null(CodexAgent.ScanForSessionId("{\"foo\":\"bar\"}"));
+        Assert.Null(CodexSessionId.Scan(""));
+        Assert.Null(CodexSessionId.Scan("not json"));
+        Assert.Null(CodexSessionId.Scan("{\"foo\":\"bar\"}"));
     }
 
     [Fact]
     public void Rejects_too_short_ids()
     {
         // 7 chars — below the 8-char floor
-        Assert.Null(CodexAgent.ScanForSessionId("{\"thread_id\":\"abc1234\"}"));
+        Assert.Null(CodexSessionId.Scan("{\"thread_id\":\"abc1234\"}"));
     }
 }

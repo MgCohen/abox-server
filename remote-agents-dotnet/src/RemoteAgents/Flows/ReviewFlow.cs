@@ -6,6 +6,21 @@ using RemoteAgents.Validation;
 
 namespace RemoteAgents.Flows;
 
+// Configuration for a ReviewFlow variant. Collapses the 8 parallel
+// ctor params the flow used to take into one record so call sites
+// document the variant by name and ReviewFlow only carries one field.
+public sealed record ReviewFlowOptions(
+    string      Name,
+    string?     Summary,
+    IValidator  Validator,
+    string      ProjectKind,
+    string      ValidationLabel,
+    bool        IsolateValidation = false,
+    string      ProgressNote      = "",
+    string      FixDescriptor     = "",
+    int         MaxFixAttempts    = 3,
+    string      CoAuthor          = "Claude Opus 4.7 + Codex gpt-5.5");
+
 // Claude works → validate/fix loop → Codex reviews the diff → optional
 // revision pass → commit (push opt-in). The single body behind both
 // `full-review` and `unity-review`: those differ only in which validator
@@ -13,46 +28,13 @@ namespace RemoteAgents.Flows;
 // the wording handed to the reviewer. Everything else was byte-identical.
 //
 // Construct one per variant (see the cli/flows shims):
-//   new ReviewFlow("full-review",  …, new OrchestratorValidator(), "changes", …)
-//   new ReviewFlow("unity-review", …, new UnityFullValidator(), "a Unity C# change",
-//                  isolateValidation: true, …)
-public sealed class ReviewFlow : IFlow
+//   new ReviewFlow(new ReviewFlowOptions(
+//     Name: "full-review", Summary: …, Validator: new OrchestratorValidator(),
+//     ProjectKind: "changes", ValidationLabel: …))
+public sealed class ReviewFlow(ReviewFlowOptions opts) : IFlow
 {
-    private readonly IValidator _validator;
-    private readonly string _projectKind;
-    private readonly string _validationLabel;
-    private readonly bool   _isolateValidation;
-    private readonly string _progressNote;
-    private readonly string _fixDescriptor;
-    private readonly int    _maxFixAttempts;
-    private readonly string _coAuthor;
-
-    public string Name { get; }
-    public string? Summary { get; }
-
-    public ReviewFlow(
-        string      name,
-        string?     summary,
-        IValidator  validator,
-        string      projectKind,
-        string      validationLabel,
-        bool        isolateValidation = false,
-        string      progressNote = "",
-        string      fixDescriptor = "",
-        int         maxFixAttempts = 3,
-        string      coAuthor = "Claude Opus 4.7 + Codex gpt-5.5")
-    {
-        Name               = name;
-        Summary            = summary;
-        _validator         = validator;
-        _projectKind       = projectKind;
-        _validationLabel   = validationLabel;
-        _isolateValidation = isolateValidation;
-        _progressNote      = progressNote;
-        _fixDescriptor     = fixDescriptor;
-        _maxFixAttempts    = maxFixAttempts;
-        _coAuthor          = coAuthor;
-    }
+    public string Name => opts.Name;
+    public string? Summary => opts.Summary;
 
     public async Task<FlowResult> RunAsync(FlowContext ctx, FlowArgs args, CancellationToken ct)
     {
@@ -62,7 +44,7 @@ public sealed class ReviewFlow : IFlow
             return new FlowResult(SessionResult.AbortedDirtyTree);
         }
 
-        var claude = new ClaudeAgent { Name = "claude", Sink = ctx.Sink };
+        var claude = new ClaudeAgent { Sink = ctx.Sink };
 
         // 1. Claude does the work.
         var work = await claude.RunAsync(new AgentRunRequest(ctx.UserPrompt, null, ctx.ProjectDir), ct);
@@ -72,15 +54,15 @@ public sealed class ReviewFlow : IFlow
         //    tree on every run (Unity batch-mode regenerates TMP_SDF /
         //    .meta / Library); the scope reverts that noise at exit.
         ValidateAndFixResult validate;
-        await using (var iso = _isolateValidation
+        await using (var iso = opts.IsolateValidation
             ? await IsolationScope.BeginAsync(ctx.ProjectDir, ctx.Sink, ct)
             : null)
         {
             validate = await Loops.ValidateAndFixAsync(
-                claude, _validator, work, ctx.ProjectDir, ctx.Sink,
-                maxAttempts:   _maxFixAttempts,
-                progressNote:  _progressNote,
-                fixDescriptor: _fixDescriptor,
+                claude, opts.Validator, work, ctx.ProjectDir, ctx.Sink,
+                maxAttempts:   opts.MaxFixAttempts,
+                progressNote:  opts.ProgressNote,
+                fixDescriptor: opts.FixDescriptor,
                 ct:            ct);
         }
         work = validate.LastResult;
@@ -96,11 +78,11 @@ public sealed class ReviewFlow : IFlow
         }
 
         // 4. Codex review.
+        var reviewer = new CodexAgent { Sink = ctx.Sink, Options = Reviews.DefaultReviewerOptions };
         var review = await Reviews.AskCodexForVerdictAsync(
-            ctx.ProjectDir, ctx.Session.Dir, ctx.UserPrompt,
-            projectKind:     _projectKind,
-            validationLabel: _validationLabel,
-            sink:            ctx.Sink,
+            reviewer, ctx.ProjectDir, ctx.Session.Dir, ctx.UserPrompt,
+            projectKind:     opts.ProjectKind,
+            validationLabel: opts.ValidationLabel,
             ct:              ct);
 
         if (review.IsUnclear)
@@ -118,7 +100,7 @@ public sealed class ReviewFlow : IFlow
                 $"Code reviewer feedback — please address:\n\n{review.Text}",
                 work.SessionId, ctx.ProjectDir), ct);
 
-            var v2 = await _validator.ValidateAsync(ctx.ProjectDir, ct);
+            var v2 = await opts.Validator.ValidateAsync(ctx.ProjectDir, ct);
             if (!v2.Ok)
             {
                 await ctx.Sink.PhaseFailAsync("abort", $"post-revision validation failed: {v2.Summary}", ct);
@@ -140,7 +122,7 @@ public sealed class ReviewFlow : IFlow
             ProjectDir: ctx.ProjectDir,
             Message:    commitMessage,
             Files:      filesToCommit,
-            CoAuthor:   _coAuthor), ct);
+            CoAuthor:   opts.CoAuthor), ct);
         await ctx.Sink.PhaseOkAsync("commit", "done.", ct);
 
         if (ctx.ShouldPush)
