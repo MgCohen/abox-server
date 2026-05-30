@@ -19,6 +19,24 @@ branch: claude/orchestrator-refactor-audit-gLDB9
 > flow-of-flows (R1/R10), no provider strings (R12), no plugin discovery
 > (R2/R11), no `IConfiguration` (R13), no behavior change (R6).
 
+**Reading context (cold-read).** `remote-agents-dotnet` is the *orchestrator*
+— a local, single-host C# library + CLI that drives the `claude` and `codex`
+agent CLIs against a project repo on **subscription** billing (no API keys),
+running them through *flows* (claude-only, full-review, unity-review). The
+core library is one assembly, `src/RemoteAgents/`, organized into `Core/`
+(Agents, Pty, Events, Sessions, Primitives, Validation), `Providers/`
+(Claude, Codex, Unity, Dotnet, Orchestrator), and `Flows/`. A second
+assembly, `src/RemoteAgents.Contracts/`, holds the records that cross the
+wire to the UI. All `file:line` references below are against branch
+`claude/orchestrator-refactor-audit-gLDB9`. "Layer 2" = the agent
+base + providers (see [`02-agents.md`](02-agents.md)); the layer numbering
+comes from [`README.md`](README.md).
+
+This doc has two passes:
+- **Part 1 (Findings 1–6)** — the agent/flow/PTY structure vs. the Layer-2 plan.
+- **Part 2 (Findings 7–14)** — a duplication / data-class / reflection / SRP /
+  cross-layer-consistency sweep.
+
 ---
 
 ## TL;DR
@@ -39,6 +57,15 @@ Separately, two structural gaps the plan didn't fully name:
 - **The "hooks" concern is spread across 11 files in two folders with no
   cohesive sub-domain.** It works, but there's no single owner a reader can
   point at for "how does question detection happen."
+
+Part 2 adds: the two agent **options records duplicate a shared trio**
+(`Model`/`SystemPrompt`/`Hooks`) that, folded into a base record, also
+removes Finding 1's root cause; the two **hook parsers are near-duplicates**;
+**shell-quoting is reimplemented in 5 places** and **JSON-element accessors
+in 6**; the **validator namespaces are inconsistent**; `UnityChecks` is a
+370-line static **god-class**; and Codex's session-id parser is **misfiled on
+the agent**. One clean result worth recording: **reflection is a non-issue** —
+serialization is fully source-generated, nothing reflects on any hot path.
 
 ---
 
@@ -256,6 +283,155 @@ exact drift R12 exists to prevent.
 
 ---
 
+# Part 2 — duplication, data-class folding, reflection, SRP, cross-layer consistency
+
+## Finding 7 — Agent options duplicate a shared trio; folding it also removes Finding 1's root cause
+
+`ClaudeAgentOptions` (`ClaudeAgentOptions.cs:40-47`) and `CodexAgentOptions`
+(`CodexAgentOptions.cs:9-15`) share three fields verbatim: `Model`,
+`SystemPrompt`, `Hooks`. Everything else is genuinely provider-specific
+(Claude's PTY-timing knobs; Codex's `Sandbox`/`JsonStreamTimeoutMs`).
+
+There is no shared base, so the `Agent` base **cannot read `SystemPrompt`
+or `Hooks` generically** — which is precisely *why* `Compose` and the hook
+wiring had to stay in each provider (Finding 1). The duplication and the
+unfinished Layer-2 extraction are the same root cause.
+
+**Target.** `abstract record AgentOptions(string? Model, string? SystemPrompt,
+HookIntegrationOptions? Hooks)`; both records inherit and add their own
+fields. The base then composes the system prompt from `Options.SystemPrompt`
+and reads `Options.Hooks` directly — closing Finding 1 and folding the trio
+in one move. (Stays clear of R13: still plain records with defaults, no
+`IConfiguration`.)
+
+## Finding 8 — The two hook parsers are near-duplicates
+
+`ClaudeHookParser` and `CodexHookParser` share an identical skeleton
+(validate object → read `source` → read `payload` → `switch (source)`),
+identical `permission_*` → `TuiPrompt` and `*.stop` →
+`StopPayloadInspector.Inspect` arms (differing only in the source-string
+literals), and **three byte-identical private helpers** — `TryGetString`,
+`GetString`, `GetObjectOrEmpty` (`ClaudeHookParser.cs:60-78`,
+`CodexHookParser.cs:51-69`). The only real difference is Claude's extra
+`idle_prompt`/`elicitation_dialog` arm.
+
+**Target.** A `JsonHookParser` base owning the skeleton + helpers; each
+provider supplies only its `source switch`. (At minimum, hoist the JSON
+helpers — see Finding 9.)
+
+## Finding 9 — JSON-element accessor helpers reimplemented across 6 files
+
+The `TryGetProperty` + `ValueKind` dance for "get string / get object /
+get-or-empty" is copy-pasted in `ClaudeHookParser`, `CodexHookParser`,
+`StopPayloadInspector` (`GetString`, `:89`), `CodexAgent.ScanForSessionId`
+(`:197-239`), `ClaudeJsonlParser`, and `ClaudeJsonl`. Separately,
+`JsonDocument.Parse("{}").RootElement.Clone()` is re-parsed **per call** in
+both parsers' `GetObjectOrEmpty`, while `StopPayloadInspector` caches the
+same value as a static `EmptyObject` (`:22-23`) — inconsistent, and the
+per-call version allocates on a parse path.
+
+**Target.** One `JsonEl` extension set (`GetStr(name)`, `GetObj(name)`,
+`TryStr(name, out)`) plus one shared cached empty object. Folds a few
+hundred lines of repetitive access and removes the per-call `"{}"` parse.
+
+## Finding 10 — Shell-quoting reimplemented in 5 places
+
+There is a canonical `Shell.QuoteArg` (`Shell.cs:7`), yet the same
+`IndexOfAny(QuoteTriggers)` quote logic is re-implemented as private
+helpers in `DotnetValidator.cs:166` (`Quote`), `GhOps.cs:141` (`Quote`),
+`GitOps.cs:397` (`Quote`), and `GitWorktree.cs:136-138`
+(`QuotePath`/`QuoteIdent`/`Needs`).
+
+**Target.** Delete the four copies; everyone calls `Shell.QuoteArg`. If
+git-ident vs path quoting genuinely differ, express that as named overloads
+on `Shell`, not as per-file privates.
+
+## Finding 11 — The validator layer breaks its own namespace pattern
+
+Three validators, three namespace conventions:
+
+| Validator | Namespace |
+|---|---|
+| `UnityFullValidator`, `UnityCompileValidator` | `RemoteAgents.Validation.Unity` |
+| `OrchestratorValidator` | `RemoteAgents.Validation.Orchestrator` |
+| **`DotnetValidator`** | **`RemoteAgents.Providers.Dotnet`** ← odd one out |
+
+Same kind of type (`IValidator`), filed under two different top-level
+namespaces. This is the cross-layer-consistency smell directly: a reader
+greps `Validation.*` and silently misses the dotnet one.
+
+**Target.** Pick one convention — `RemoteAgents.Validation.<Kind>` reads
+best given two of three already use it — and align the third (and its
+folder). Ties into Finding 4 (namespace↔folder alignment + arch test).
+
+## Finding 12 — `UnityChecks` is a 370-line static god-class
+
+`UnityChecks` (`Providers/Unity/UnityChecks.cs`) is one `static class` that
+owns: compile, EditMode tests, PlayMode tests, analyzers, NUnit XML
+parsing, Unity-exe resolution, compiler-error extraction, diagnostic
+extraction, plus tail/indent text helpers (surface listed at
+`:69-368`). That's several unrelated responsibilities behind one static
+door. It's also one instance of a broader pattern-break: the agent layer is
+seam-rich (`IValidator`, `IEventSink`, `IHookInstaller`), but the
+infrastructure flows depend on — `UnityChecks`, `GitOps`, `Reviews`,
+`Loops` — is `static`, so nothing downstream of it can be unit-tested
+without real Unity/git/codex. DI was applied to agents and skipped under
+them.
+
+**Target.** Split into focused units: a Unity-process runner, an NUnit
+result parser, a diagnostics extractor. Each `IValidator` composes the
+pieces it needs; each piece is independently testable. (`ParseNUnitResults`
+and `ExtractDiagnostics` are already `public static` — they're asking to be
+their own types.)
+
+## Finding 13 — Codex session-id parsing is misfiled on the agent
+
+`CodexAgent.ScanForSessionId` (`CodexAgent.cs:197-239`) is a public static
+JSON scanner that walks several historical session-id field shapes. That's
+*parsing*, not *driving* — and it's the Codex peer of `ClaudeJsonl` /
+`ClaudeJsonlParser`, which **are** their own classes. The asymmetry means
+`CodexAgent` does two jobs (drive a subprocess **and** parse its event
+stream) while `ClaudeAgent` delegates parsing out.
+
+**Target.** Move it to a `CodexSessionId` (or `CodexJsonl`) parser next to
+the Claude ones, so `CodexAgent` only drives. Pairs naturally with the
+`SubprocessSession` extraction (Finding 2).
+
+## Finding 14 — Dead/compat members and one repurposed field
+
+- **Dead compat members.** `CodexHookParser.Sentinel` (`:19`) just
+  re-exports `UnattendedDirective.Sentinel`; `CodexHookParser.LooksLikeQuestion`
+  (`:48`) is a back-compat shim delegating to `StopPayloadInspector`. Both
+  are "kept for existing test fixtures" — delete and update the fixtures to
+  call the canonical owners.
+- **Repurposed field.** `AgentEvent.AgentName` does double duty: real agent
+  identity for agent events, but "the bracket tag (validate, codex,
+  commit…)" for `Phase` events — the comment at `AgentEvent.cs:13-15`
+  apologizes for the overload. This is exactly the smell R7 decided to fix
+  by splitting `AgentEvent` / `FlowEvent` (owned by
+  [`03-events-and-sinks.md`](03-events-and-sinks.md)); the split is not yet
+  on this branch. Same shipped-vs-plan category as Finding 1 — flag, don't
+  re-decide.
+- **Speculative label (watch, don't necessarily cut).** `AgentQuestion.Source`
+  carries dotted tags (`"claude.stop.sentinel"`, …) justified by "for the
+  UI to weight confidence *later*" (`AgentQuestion.cs:17-19`). Today's only
+  consumer is debugging/`NonInteractiveViolation` text. It's cheap, so
+  keeping it is defensible — but it's the kind of "string label whose
+  consumer is hypothetical" worth not multiplying.
+
+## Non-finding worth recording — reflection is clean
+
+Checked explicitly because it's an easy thing to fear on a hot path:
+**there is none.** All serialization goes through source-generated
+`JsonSerializerContext`s (`SessionJsonContext`, `EventJsonContext`,
+`GhJsonContext`, `ProjectsJsonContext`, `FlowsJsonContext`); JSON reading is
+hand-rolled over `JsonElement`. No `Activator`, no `dynamic`, no
+reflection-based (de)serialization anywhere. The only `GetType()` calls are
+`GetType().Name` for an exception/error label (`Agent.cs:57`,
+`OrchestratorValidator.cs:62`) — cold error-formatting, not a hot path.
+This is consistent with the `.NET 10` file-based-runtime constraint noted in
+`ClaudeHookConfig.cs:12-14`. No action; recorded so it isn't re-investigated.
+
 ## Consolidated checklist
 
 Layer-2 criteria to close (from `02-agents.md`):
@@ -264,7 +440,7 @@ Layer-2 criteria to close (from `02-agents.md`):
 - [ ] `*_API_KEY` literals in at most one source file (`EnvScrub`).
 - [ ] `Reviews.AskCodexForVerdictAsync` contains no `new CodexAgent(...)`.
 
-New gaps this audit adds:
+New gaps this audit adds (Part 1):
 
 - [ ] Extract `SubprocessSession` (Codex peer to `PtySession`); pull
       deadline/CTS + JSONL-emitter sidecar out of `ClaudeAgent.DriveAsync`.
@@ -275,17 +451,40 @@ New gaps this audit adds:
 - [ ] Default agent `Name` from type/preset; drop `Name="claude"` at call sites.
 - [ ] `enum StartupDialog`; `ReviewFlowOptions` record.
 
+New gaps this audit adds (Part 2):
+
+- [ ] `abstract record AgentOptions(Model, SystemPrompt, Hooks)`; both option
+      records inherit (also closes Finding 1).
+- [ ] `JsonHookParser` base for the two parsers + one shared `JsonEl` accessor
+      set + one cached empty object.
+- [ ] Delete the 4 shell-quote copies; everyone calls `Shell.QuoteArg`.
+- [ ] Align validator namespaces to one `RemoteAgents.Validation.*` convention.
+- [ ] Split `UnityChecks` into runner / NUnit-parser / diagnostics-extractor.
+- [ ] Move `CodexAgent.ScanForSessionId` into a `CodexSessionId` parser.
+- [ ] Delete `CodexHookParser.Sentinel` + `.LooksLikeQuestion`; fix fixtures.
+
 ## Suggested sequencing
 
-1. **Finish Layer 2** (Finding 1) — mechanical, closes 3 shipped-criteria
-   gaps, no behavior change. Do first.
-2. **`SubprocessSession`** (Finding 2) — makes providers symmetric, shrinks
-   both `DriveAsync` bodies; isolated to the agent layer.
-3. **Hooks consolidation** (Finding 3) — highest reader-clarity payoff;
+1. **Fold `AgentOptions` + finish Layer 2** (Findings 7 + 1) — do these
+   together: the base record is what lets `Compose`/`Hooks`/env-scrub move
+   to the base. Mechanical, closes 3 shipped-criteria gaps, no behavior
+   change. Do first.
+2. **Cheap DRY sweep** (Findings 9 + 10 + 8) — shared `JsonEl` accessors,
+   one `Shell.QuoteArg`, the `JsonHookParser` base. Low-risk, high
+   line-count payoff, unblocks nothing but makes later moves smaller.
+3. **`SubprocessSession` + move `ScanForSessionId`** (Findings 2 + 13) —
+   makes providers symmetric, shrinks both `DriveAsync` bodies; isolated to
+   the agent layer.
+4. **Hooks consolidation** (Finding 3) — highest reader-clarity payoff;
    bigger surface, so after the layer is otherwise clean.
-4. **Boundary enforcement** (Finding 4) — locks the gains in; cheap as an
-   arch-test, do once the namespaces are being touched anyway.
-5. **Findings 5–6** — opportunistic cleanups alongside the above.
+5. **`UnityChecks` split** (Finding 12) — isolated to the validation layer;
+   independent of the agent work, can run in parallel.
+6. **Boundary + naming enforcement** (Findings 4 + 11) — align namespaces to
+   folders, unify validator namespaces, add the arch test. Locks the gains
+   in; do once namespaces are already being touched.
+7. **Opportunistic cleanups** (Findings 5, 6, 14) — `Name` defaulting,
+   `enum StartupDialog`, `ReviewFlowOptions`, dead compat-member deletion.
 
 All steps hold R6: smoke outputs stay byte-identical (these are structural
-moves, not behavior changes).
+moves, not behavior changes). Items flagged "shipped-vs-plan" (Findings 1,
+14's `AgentName`) close existing plan decisions rather than opening new ones.
