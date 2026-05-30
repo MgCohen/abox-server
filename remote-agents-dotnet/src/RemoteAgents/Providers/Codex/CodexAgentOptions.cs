@@ -1,3 +1,5 @@
+using RemoteAgents.Agents.Hooks;
+
 namespace RemoteAgents.Agents;
 
 public sealed record CodexAgentOptions(

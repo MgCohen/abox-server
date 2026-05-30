@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json.Nodes;
+using RemoteAgents.Agents.Hooks;
 using RemoteAgents.Events;
 using RemoteAgents.Primitives;
 using RemoteAgents.Pty;

@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace RemoteAgents.Agents;
+namespace RemoteAgents.Agents.Hooks;
 
 // Reads <sessionDir>/hooks.jsonl, runs each line through the provider's
 // parser, and maps the first detected question + the run's InteractionMode

@@ -1,4 +1,4 @@
-namespace RemoteAgents.Agents;
+namespace RemoteAgents.Agents.Hooks;
 
 // Provider-supplied hook wiring. Returned by Agent.Hooks when the provider
 // opts in; null = no hooks (base reports Completed).

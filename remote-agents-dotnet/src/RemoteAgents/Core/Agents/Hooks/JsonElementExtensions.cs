@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace RemoteAgents.Agents;
+namespace RemoteAgents.Agents.Hooks;
 
 // Shared accessor helpers for JsonElement reads — formerly duplicated
 // across ClaudeHookParser, CodexHookParser, and StopPayloadInspector.

@@ -1,4 +1,4 @@
-namespace RemoteAgents.Agents;
+namespace RemoteAgents.Agents.Hooks;
 
 // Opt-in hook plumbing for an agent run. When attached to
 // ClaudeAgentOptions / CodexAgentOptions, the agent installs the provider's

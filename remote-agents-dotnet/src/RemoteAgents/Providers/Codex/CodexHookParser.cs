@@ -1,4 +1,5 @@
 using System.Text.Json;
+using RemoteAgents.Agents.Hooks;
 
 namespace RemoteAgents.Agents;
 

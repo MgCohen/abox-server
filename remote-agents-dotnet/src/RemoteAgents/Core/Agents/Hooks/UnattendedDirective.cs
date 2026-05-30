@@ -1,4 +1,4 @@
-namespace RemoteAgents.Agents;
+namespace RemoteAgents.Agents.Hooks;
 
 // Text appended to the agent's system prompt when InteractionMode is
 // NonInteractive (the default). Tells the model that there is no user

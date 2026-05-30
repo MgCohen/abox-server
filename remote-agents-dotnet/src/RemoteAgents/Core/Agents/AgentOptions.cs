@@ -1,3 +1,5 @@
+using RemoteAgents.Agents.Hooks;
+
 namespace RemoteAgents.Agents;
 
 // Shared base for the per-provider options records. Owns the trio every

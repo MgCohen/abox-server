@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
-namespace RemoteAgents.Agents;
+namespace RemoteAgents.Agents.Hooks;
 
 // Inspect the assistant's final message inside a Stop-hook payload and
 // decide whether it represents a question. Both Claude's Notification:Stop

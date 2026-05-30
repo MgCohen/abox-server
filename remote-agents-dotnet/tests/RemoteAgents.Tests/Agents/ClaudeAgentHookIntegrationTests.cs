@@ -1,4 +1,5 @@
 using RemoteAgents.Agents;
+using RemoteAgents.Agents.Hooks;
 using RemoteAgents.Events;
 
 namespace RemoteAgents.Tests.Agents;

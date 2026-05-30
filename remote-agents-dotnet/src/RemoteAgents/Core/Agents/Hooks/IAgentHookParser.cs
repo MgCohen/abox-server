@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace RemoteAgents.Agents;
+namespace RemoteAgents.Agents.Hooks;
 
 // Provider-specific parser that turns one wrapped hook line (as written
 // by the orchestrator's append shim to <sessionDir>/hooks.jsonl) into an

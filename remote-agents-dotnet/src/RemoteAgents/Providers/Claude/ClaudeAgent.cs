@@ -1,4 +1,5 @@
 using Porta.Pty;
+using RemoteAgents.Agents.Hooks;
 using RemoteAgents.Events;
 using RemoteAgents.Primitives;
 using RemoteAgents.Pty;
