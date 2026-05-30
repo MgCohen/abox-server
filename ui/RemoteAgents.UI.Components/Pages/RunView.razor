@@ -62,6 +62,21 @@
                         {
                             <pre class="step-summary">@step.Summary</pre>
                         }
+                        @if (step.Transcript is { Length: > 0 } turns)
+                        {
+                            <details class="step-transcript">
+                                <summary>Transcript (@turns.Length turns)</summary>
+                                <ol class="turns">
+                                    @foreach (var turn in turns)
+                                    {
+                                        <li class="turn turn-@turn.Kind.ToString().ToLowerInvariant()">
+                                            <span class="turn-kind">@turn.Kind</span>
+                                            <pre class="turn-body">@turn.Body</pre>
+                                        </li>
+                                    }
+                                </ol>
+                            </details>
+                        }
                         @if (!string.IsNullOrEmpty(step.Error))
                         {
                             <pre class="step-error">@step.Error</pre>
