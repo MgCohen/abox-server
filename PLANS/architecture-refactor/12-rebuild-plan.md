@@ -148,6 +148,13 @@ prototype.
 
 > Do this first. Workstreams B/C/D build on these types.
 
+**Concurrency model (locked).** Steps within a single flow run **serially**:
+each `await Step(...)` completes before the next is added. `Bump()` is not
+thread-safe and does not need to be, because `_steps` mutation and `Version++`
+only happen from the flow's own async continuation. If a future flow ever needs
+parallel sub-tasks, model it as a single composite Step whose internal `Task.WhenAll`
+collapses to one snapshot bump on completion — do not race `Step(...)` calls.
+
 **Goal.** Replace the anemic `Run` (poked from outside) with a rich `Flow`
 aggregate whose `Step`s own and transition their own normalized state.
 
@@ -174,7 +181,7 @@ public abstract class Flow
 
     // Raised at every completion boundary (step done / question raised / phase change).
     public event Action<FlowSnapshot>? Changed;
-    public IAsyncEnumerable<FlowSnapshot> Changes(CancellationToken ct) { /* channel-backed */ }
+    public IAsyncEnumerable<FlowSnapshot> Changes(CancellationToken ct) { /* channel-backed; see policy below */ }
 
     // The unit of progress. Each call advances the snapshot by one step.
     protected async Task<T> Step<T>(string name, Func<Task<T>> work)
@@ -200,6 +207,10 @@ public abstract class Flow
         return answer;
     }
     internal void Resolve(string answer) => _pending?.Tcs.TrySetResult(answer);
+    // Paused flows are NOT durable across orchestrator restarts (see non-goals).
+    // The TCS lives in-process; a restart drops every in-flight `await AskAsync`.
+    // The answer payload is a string today; structured answers (choices, file picks)
+    // are out of scope — revisit if a real hook needs it.
 
     public abstract Task RunAsync(CancellationToken ct);
 
@@ -318,6 +329,14 @@ app.MapGet("/flows/{id:guid}/events", async (Guid id, HttpContext ctx, FlowRegis
 **This is NOT the stream we delete.** The old `Broadcaster` multicast *thousands*
 of raw terminal-byte events in real time with replay eviction. The new SSE pushes
 a *handful* of whole **snapshots** per flow, only at completion boundaries.
+
+**Channel policy (locked).** `Flow.Changes` is backed by a bounded channel of
+capacity 1 with **coalesce-to-latest** semantics: a slow consumer never blocks
+the publisher and never sees stale intermediate versions — it sees the latest
+snapshot. Version monotonicity makes this safe (the client only needs the
+*current* state; skipped intermediates carry no information the latest snapshot
+doesn't already contain). No SSE `Last-Event-ID` replay in v1 (see non-goals); a
+reconnecting client receives the current snapshot on connect and proceeds.
 
 **Delete.**
 - `ui/RemoteAgents.Host/Sinks/Broadcaster.cs`
@@ -439,15 +458,21 @@ public sealed class ClaudeStep : Step
    mine the behavioral oracle facts into a short `design/behavioral-oracle.md`
    (timings, flags, dialog strings, formats) — your behavior-equivalence
    reference for this refactor and the input for the later clean rebuild.
-2. **Workstream A** — `Flow`/`Step` + normalized lifecycle (foundation; behavior
+2. **Step 1.5 — Lock the `IAgent` interface (signatures only).** Workstream A's
+   example flows call `_impl.RunAsync(prompt, ct)` / `_reviewer.ReviewAsync(ct)`;
+   Workstream D delivers the implementations. Fix the interface shape now (in
+   `Core/Agents/IAgent.cs`) so A and D can proceed independently and the
+   example flows compile from day one. No bodies, no PTY, no Codex specifics —
+   just the contract.
+3. **Workstream A** — `Flow`/`Step` + normalized lifecycle (foundation; behavior
    of a single flow unchanged).
-3. **Workstream B** — snapshot DTO + `FlowRegistry` + REST/SSE; delete
+4. **Workstream B** — snapshot DTO + `FlowRegistry` + REST/SSE; delete
    Broadcaster/ChannelSink/RunsHub; add the source-gen JSON context.
-4. **Workstream C** — delete `SubprocessFlowExecutor`; thin the Host to the
+5. **Workstream C** — delete `SubprocessFlowExecutor`; thin the Host to the
    registry surface.
-5. **Workstream D** — extract the terminal utility; shrink `ClaudeAgent`/
+6. **Workstream D** — extract the terminal utility; shrink `ClaudeAgent`/
    `ClaudeStep`; normalize trust/bypass; collapse hooks into `NeedsInput`.
-6. Port flows one at a time (`claude-only` first), validating each against
+7. Port flows one at a time (`claude-only` first), validating each against
    `prototype-v0`'s behavior before moving on.
 
 Each step must build and pass tests before the next. Do not batch.
@@ -466,6 +491,29 @@ Each step must build and pass tests before the next. Do not batch.
   (carried over from `99-rejected.md`).
 - **Provider = type identity**, not a runtime `"claude"`/`"codex"` string at call
   sites.
+- **No durable paused flows.** A `Paused` flow lives only in-process; an
+  orchestrator restart drops every in-flight `AskAsync`. The history store
+  persists *finished* snapshots only. Durable pause/resume is a possible v2 (would
+  need either replay-from-completed-steps or a serializable continuation
+  representation) but is explicitly out of scope here.
+- **No "future steps" in the snapshot.** The step list is past + current only;
+  `RunAsync` is an imperative recipe, and the upcoming steps are buried in C#
+  control flow. A flow planner that pre-declares its step graph is out of scope.
+- **No SSE `Last-Event-ID` replay in v1.** Reconnecting clients get the current
+  snapshot on connect and proceed; with coalesce-to-latest channel semantics and
+  monotonic `Version`, missed intermediates carry no information. A ring-buffer
+  + `Last-Event-ID` replay is the obvious v2 upgrade if a use case appears.
+- **No step-artifact store in v1.** `GET /flows/{id}/steps/{name}/log` is the
+  intended surface, but choosing the backing store (disk path layout, size cap,
+  eviction policy) is deferred — Workstream B should land the endpoint as a
+  stub or omit it until a concrete need lands. Snapshot `Summary`/`Error` are
+  the only step-level outputs the UI consumes in v1.
+- **Transport security = Tailscale only.** No app-layer authn/authz on the
+  REST/SSE surface. The PC is reachable from the phone exclusively over the
+  Tailnet; the orchestrator binds to the Tailscale interface (or loopback +
+  Tailscale serve) and assumes every caller is the owner. If exposure ever
+  expands beyond the Tailnet, that is a separate, explicit decision — do not
+  add app-layer auth piecemeal.
 
 ---
 
@@ -482,6 +530,7 @@ Each step must build and pass tests before the next. Do not batch.
 | `ui/RemoteAgents.Host/Runs/Run.cs` | → `Flow`/`StepEntry` aggregate (A) |
 | `ui/RemoteAgents.Host/Runs/RunStore.cs` | → `IHistoryStore` (snapshots) (B) |
 | `ui/RemoteAgents.UI.Components/Api/RunStreamClient.cs` | → SSE/poll client over `FlowSnapshot` (B) |
+| `Core/Agents/IAgent.cs` | **new** — interface locked in step 1.5; `RunAsync`/`ReviewAsync` signatures only (A/D shared contract) |
 | `Core/Agents/Agent.cs` | base trimmed; lifecycle merges into `Step` (A/D) |
 | `Providers/Claude/ClaudeAgent.cs` | split: thin adapter + `Providers/Claude/Terminal/*` (D) |
 | `Providers/Codex/CodexAgent.cs` | split: thin adapter + subprocess driver (D) |
