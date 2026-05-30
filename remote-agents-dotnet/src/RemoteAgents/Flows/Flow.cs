@@ -3,8 +3,7 @@ using System.Threading.Channels;
 
 namespace RemoteAgents.Flows;
 
-// Stateful aggregate that owns its own lifecycle (D5). Replaces the anemic
-// Host.Run + the static IFlow definitions in one shape: a Flow IS the
+// Stateful aggregate that owns its own lifecycle (D5). A Flow IS the
 // recipe (concrete subclass) AND the runtime state (Phase, Version, steps,
 // pending question).
 //

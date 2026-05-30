@@ -12,7 +12,7 @@ namespace RemoteAgents.Hosting;
 // can cancel by id without holding a reference. Finished flows are
 // promoted to IHistoryStore and removed from the live map.
 //
-// Distinct from FlowCatalog (the name → IFlow definition lookup); this is
+// Distinct from FlowCatalog (the name → Flow factory lookup); this is
 // the Guid → live Flow runtime store the plan describes.
 public sealed class FlowRegistry
 {

@@ -15,8 +15,7 @@ public sealed record FlowDef(string Name, string Description, Func<FlowSpec, Flo
 // Name → flow-definition registry. The Host's POST /flows resolves by
 // name, the GET /catalog endpoint enumerates this.
 //
-// Distinct from RemoteAgents.Hosting.FlowRegistry (runtime, Guid-keyed
-// live + history).
+// Distinct from FlowRegistry (runtime, Guid-keyed live + history).
 public sealed class FlowCatalog
 {
     private readonly Dictionary<string, FlowDef> _flows = new(StringComparer.OrdinalIgnoreCase);
