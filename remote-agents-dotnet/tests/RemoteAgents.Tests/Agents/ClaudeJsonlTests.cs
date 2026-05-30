@@ -222,6 +222,29 @@ public class ClaudeJsonlTests : IDisposable
     }
 
     [Fact]
+    public void TryReadLastTurnTranscript_drops_orchestrator_slash_command_ceremony()
+    {
+        // After the real exchange, the orchestrator types /exit. Claude Code
+        // injects user-text caveat blocks for that. Those are not "what the
+        // agent did" — they should not appear in the transcript.
+        File.WriteAllLines(_jsonlPath, new[]
+        {
+            UserLine("Real prompt."),
+            AssistantTextLine("Real answer."),
+            UserLine("<local-command-caveat>Caveat about local commands.</local-command-caveat>"),
+            UserLine("<command-name>/exit</command-name>"),
+            UserLine("<local-command-stdout>Bye!</local-command-stdout>"),
+        });
+
+        var turns = ClaudeJsonl.TryReadLastTurnTranscript(_projectDir, _sessionId, "Real prompt.");
+
+        Assert.NotNull(turns);
+        Assert.Single(turns!);
+        Assert.Equal(AgentTurnKind.Text, turns![0].Kind);
+        Assert.Equal("Real answer.",     turns[0].Body);
+    }
+
+    [Fact]
     public void TryReadLastTurnTranscript_anchors_on_prompt_hint_across_resume()
     {
         File.WriteAllLines(_jsonlPath, new[]

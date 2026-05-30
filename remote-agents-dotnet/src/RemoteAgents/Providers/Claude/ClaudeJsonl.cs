@@ -83,16 +83,22 @@ public static class ClaudeJsonl
         var turns = new List<AgentTurn>();
         for (int i = Math.Max(0, anchor + 1); i < lines.Count; i++)
         {
-            if (!TryParseEntry(lines[i], out _, out var blocks)) continue;
+            if (!TryParseEntry(lines[i], out var role, out var blocks)) continue;
             foreach (var b in blocks)
             {
-                var kind = b.Type switch
+                // Role-aware filter: an assistant turn contributes its
+                // text/thinking/tool_use; a user turn contributes only
+                // tool_result blocks (which are protocol-level tool
+                // outputs, not user input). This drops the orchestrator's
+                // /exit ceremony and Claude Code's slash-command caveats
+                // that get appended as user-text after the real work.
+                var kind = (role, b.Type) switch
                 {
-                    "text"        => AgentTurnKind.Text,
-                    "thinking"    => AgentTurnKind.Thinking,
-                    "tool_use"    => AgentTurnKind.ToolUse,
-                    "tool_result" => AgentTurnKind.ToolResult,
-                    _             => (AgentTurnKind?)null,
+                    ("assistant", "text")        => AgentTurnKind.Text,
+                    ("assistant", "thinking")    => AgentTurnKind.Thinking,
+                    ("assistant", "tool_use")    => AgentTurnKind.ToolUse,
+                    (_,           "tool_result") => AgentTurnKind.ToolResult,
+                    _                            => (AgentTurnKind?)null,
                 };
                 if (kind is null) continue;
                 turns.Add(new AgentTurn(kind.Value, b.Body));
