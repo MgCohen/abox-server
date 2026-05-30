@@ -1,7 +1,5 @@
-using RemoteAgents.Agents;
 using System.Text;
 using System.Text.Json;
-using RemoteAgents.Events;
 
 namespace RemoteAgents.Providers.Claude;
 
@@ -24,7 +22,10 @@ public static class ClaudeJsonl
     // probe with File.Exists.
     public static string PathFor(string projectDir, string sessionId)
     {
-        var encoded = ProviderJsonlIngestSink.EncodeCwd(projectDir);
+        // Claude Code's on-disk encoding for its `projects/` folder names —
+        // backslash, forward slash, and colon all collapse to a dash.
+        // Example: C:\Unity\CardFramework → C--Unity-CardFramework.
+        var encoded = projectDir.Replace('\\', '-').Replace('/', '-').Replace(':', '-');
         return Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             ".claude", "projects", encoded, sessionId + ".jsonl");

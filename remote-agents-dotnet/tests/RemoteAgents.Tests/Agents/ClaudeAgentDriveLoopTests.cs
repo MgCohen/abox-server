@@ -1,5 +1,4 @@
 using RemoteAgents.Agents;
-using RemoteAgents.Events;
 using RemoteAgents.Providers.Claude;
 
 namespace RemoteAgents.Tests.Agents;
@@ -77,30 +76,28 @@ public class ClaudeAgentDriveLoopTests : IDisposable
     }
 
     [Fact]
-    public async Task trust_dialog_is_dismissed_with_enter()
+    public async Task trust_dialog_dismissal_writes_enter_to_pty()
     {
         var sessionId = Guid.NewGuid().ToString();
         StageClaudeJsonl(sessionId,
             UserLine("hi"),
             AssistantTextLine("hi there"));
 
+        var writes = new List<string>();
         var fake = new FakePtyConnection();
-        // The agent inspects the buffer after the launch settle and looks
-        // for the trust-dialog text. Enqueue it before launch.
         fake.EnqueueRead("Do you trust this folder?\n");
-        fake.OnWriteText = w => { if (w.Contains("exit\r")) fake.Exit(0); };
-
-        AgentEvent.DialogDismissed? dismissed = null;
-        var sink = new CapturingSink(evt =>
+        fake.OnWriteText = w =>
         {
-            if (evt is AgentEvent.DialogDismissed d) dismissed = d;
-        });
+            writes.Add(w);
+            if (w.Contains("exit\r")) fake.Exit(0);
+        };
 
-        var agent = new TestableClaudeAgent(fake) { Name = "claude", Sink = sink, Options = FastOpts() };
+        var agent = new TestableClaudeAgent(fake) { Name = "claude", Options = FastOpts() };
         await agent.RunAsync(new AgentRunRequest("hi", sessionId, _projectDir));
 
-        Assert.NotNull(dismissed);
-        Assert.Equal("trust", dismissed!.Match);
+        // Dismissal observable = the bare "\r" keystroke landed on the PTY
+        // as its own write between the launch line and the prompt submit.
+        Assert.Contains("\r", writes);
     }
 
     [Fact]
@@ -204,14 +201,4 @@ public class ClaudeAgentDriveLoopTests : IDisposable
     private static string Q(string s)
         => "\"" + s.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
 
-    private sealed class CapturingSink : IEventSink
-    {
-        private readonly Action<AgentEvent> _handler;
-        public CapturingSink(Action<AgentEvent> handler) { _handler = handler; }
-        public Task EmitAsync(AgentEvent evt, CancellationToken ct = default)
-        {
-            _handler(evt);
-            return Task.CompletedTask;
-        }
-    }
 }

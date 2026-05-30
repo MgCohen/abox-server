@@ -1,10 +1,8 @@
 using RemoteAgents.Agents;
 using Porta.Pty;
 using RemoteAgents.Agents.Hooks;
-using RemoteAgents.Events;
 using RemoteAgents.Primitives;
 using RemoteAgents.Providers.Claude.Terminal;
-using RemoteAgents.Runs;
 
 namespace RemoteAgents.Providers.Claude;
 
@@ -92,12 +90,6 @@ public class ClaudeAgent : Agent
         var claudeArgs = BuildClaudeArgs(sessionId, isResume: req.SessionId is not null, effectiveOpts);
         var launchLine = "claude " + string.Join(' ', claudeArgs.Select(Shell.QuoteArg));
 
-        // Announce the provider session id on the channel before the PTY
-        // starts so a SignalR listener attaching after Started has the
-        // ProviderSessionRef sitting in replay.
-        await Sink.EmitAsync(new AgentEvent.ProviderSessionAttached(
-            DateTimeOffset.UtcNow, Name, new ProviderSessionRef("claude", sessionId)), ct);
-
         // Hard deadline: even if WaitIdle hangs, /exit is ignored, or the
         // PTY never EOFs, this CTS fires and PtySession's DisposeAsync
         // (Cancel reader → Kill PTY → close Job Object) tears everything
@@ -108,21 +100,8 @@ public class ClaudeAgent : Agent
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, deadlineCts.Token);
         var dct = linkedCts.Token;
 
-        // Live-tail Claude's per-session JSONL into the sink as typed chat
-        // events (AssistantText / Thinking / ToolUse / ToolResult / ...).
-        // emitterCts is signaled by US (after the PTY has fully drained)
-        // so the emitter gets a chance to read the final flush before
-        // exiting; dct kills it on hard deadline / external cancel.
-        using var emitterCts = CancellationTokenSource.CreateLinkedTokenSource(dct);
-        var emitter = new ClaudeJsonlEmitter(req.ProjectDir, sessionId, Name, Sink);
-        var emitterTask = Task.Run(() => emitter.RunAsync(emitterCts.Token), dct);
-
         var pty = await SpawnPtyAsync(BuildPtyOptions(req.ProjectDir, ctx.HooksJsonlPath), dct);
-        await using var session = new PtySession(
-            pty,
-            onChunk: (chunk, innerCt) => Sink.EmitAsync(
-                new AgentEvent.StreamChunk(DateTimeOffset.UtcNow, Name, chunk), innerCt),
-            dct);
+        await using var session = new PtySession(pty, onChunk: null, dct);
 
         // 1. Launch claude and wait for its splash to settle. cmd.exe's
         //    stdin buffers, so no boot dwell needed before the WriteLine.
@@ -155,11 +134,8 @@ public class ClaudeAgent : Agent
         var exitCode = await session.ShutdownAsync(Options.WaitForExitMs, Options.ReaderDrainMs);
 
         // Grace window for Claude's final-flush JSONL writes after the PTY
-        // closes (it sometimes lags by ~100ms), then stop the emitter and
-        // wait for it to drain. Swallow faults — the emitter is best-effort.
+        // closes (it sometimes lags by ~100ms).
         try { await Task.Delay(400, dct); } catch (OperationCanceledException) { }
-        emitterCts.Cancel();
-        try { await emitterTask; } catch { /* shutdown / IO transients */ }
 
         var raw = session.Buffer;
 
@@ -213,11 +189,6 @@ public class ClaudeAgent : Agent
         if (keys is null) return;
 
         await session.WriteAsync(keys, ct);
-        // Emit the wire-stable label so transcript readers don't need to
-        // care about the enum's serialization. (Match wording matches the
-        // old stringly-typed return for back-compat.)
-        string label = dialog == StartupDialog.Trust ? "trust" : "bypass-warning";
-        await Sink.EmitAsync(new AgentEvent.DialogDismissed(DateTimeOffset.UtcNow, Name, label), ct);
         // Wait for claude to transition into its main UI before the
         // caller starts typing the prompt.
         await session.WaitIdleAsync(Options.LaunchSettleIdleMs, maxWaitMs: 5_000, ct: ct);

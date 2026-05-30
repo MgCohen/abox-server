@@ -1,6 +1,4 @@
 using RemoteAgents.Providers.Claude;
-using RemoteAgents.Agents;
-using RemoteAgents.Events;
 
 namespace RemoteAgents.Tests.Agents;
 

@@ -1,6 +1,5 @@
 using RemoteAgents.Agents;
 using RemoteAgents.Agents.Hooks;
-using RemoteAgents.Events;
 using RemoteAgents.Providers.Claude;
 
 namespace RemoteAgents.Tests.Agents;
@@ -210,15 +209,9 @@ public class ClaudeAgentHookIntegrationTests : IDisposable
     }
 
     [Fact]
-    public async Task NonInteractive_violation_event_fires_when_question_detected()
+    public async Task NonInteractive_question_surfaces_on_agent_result()
     {
         WriteHook("claude.idle_prompt", """{"message":"Which one?"}""");
-
-        AgentEvent.NonInteractiveViolation? violation = null;
-        var sink = new CapturingSink(evt =>
-        {
-            if (evt is AgentEvent.NonInteractiveViolation v) violation = v;
-        });
 
         var fake = new FakePtyConnection();
         fake.OnWriteText = w => { if (w.Contains("exit\r")) fake.Exit(0); };
@@ -227,35 +220,24 @@ public class ClaudeAgentHookIntegrationTests : IDisposable
         var agent = new TestableClaudeAgent(fake)
         {
             Name = "claude",
-            Sink = sink,
             Options = FastOpts(new HookIntegrationOptions(_hooksPath, _fakeShim))
         };
 
-        await agent.RunAsync(new AgentRunRequest(
+        var result = await agent.RunAsync(new AgentRunRequest(
             Prompt: "anything",
             SessionId: Guid.NewGuid().ToString(),
             ProjectDir: _projectDir,
             Mode: InteractionMode.NonInteractive));
 
-        Assert.NotNull(violation);
-        Assert.Equal("claude.idle_prompt", violation!.QuestionSource);
-        Assert.Equal("Which one?",         violation.QuestionText);
+        Assert.Equal(AgentStatus.Failed, result.Status);
+        Assert.NotNull(result.Question);
+        Assert.Equal("claude.idle_prompt", result.Question!.Source);
+        Assert.Equal("Which one?",         result.Question.Text);
     }
 
     private void WriteHook(string source, string payloadJson)
     {
         var line = $$"""{"source":"{{source}}","sessionId":"s","cwd":"c","payload":{{payloadJson}}}""";
         File.AppendAllText(_hooksPath, line + "\n");
-    }
-
-    private sealed class CapturingSink : IEventSink
-    {
-        private readonly Action<AgentEvent> _handler;
-        public CapturingSink(Action<AgentEvent> handler) { _handler = handler; }
-        public Task EmitAsync(AgentEvent evt, CancellationToken ct = default)
-        {
-            _handler(evt);
-            return Task.CompletedTask;
-        }
     }
 }

@@ -2,9 +2,7 @@ using RemoteAgents.Agents;
 using System.Diagnostics;
 using System.Text.Json.Nodes;
 using RemoteAgents.Agents.Hooks;
-using RemoteAgents.Events;
 using RemoteAgents.Primitives;
-using RemoteAgents.Runs;
 
 namespace RemoteAgents.Providers.Codex;
 
@@ -99,27 +97,16 @@ public class CodexAgent : Agent
 
         await using var session = SubprocessSession.Start(psi, ct);
 
-        // Consume the stdout line stream: sniff for the codex session id
-        // (one-shot) and emit each line as a StreamChunk. Channel guarantees
-        // ordered EmitAsync awaits on a single consumer.
+        // Consume the stdout line stream so the session id can be sniffed
+        // out as it appears (codex emits it on a known line shape).
         string? extractedSessionId = req.SessionId;
         var stdoutTask = Task.Run(async () =>
         {
             await foreach (var line in session.StdoutLines())
             {
-                if (extractedSessionId is null)
-                {
-                    var found = CodexSessionId.Scan(line);
-                    if (found is not null)
-                    {
-                        extractedSessionId = found;
-                        // Fire-and-forget — ordering vs the StreamChunks
-                        // is acceptable best-effort for a one-shot signal.
-                        _ = Sink.EmitAsync(new AgentEvent.ProviderSessionAttached(
-                            DateTimeOffset.UtcNow, Name, new ProviderSessionRef("codex", found)));
-                    }
-                }
-                await Sink.EmitAsync(new AgentEvent.StreamChunk(DateTimeOffset.UtcNow, Name, line + "\n"));
+                if (extractedSessionId is not null) continue;
+                var found = CodexSessionId.Scan(line);
+                if (found is not null) extractedSessionId = found;
             }
         });
 
