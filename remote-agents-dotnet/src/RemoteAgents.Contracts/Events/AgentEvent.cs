@@ -63,9 +63,9 @@ public abstract record AgentEvent(DateTimeOffset At, string AgentName)
         : AgentEvent(At, AgentName);
 
     // Emitted when the agent attaches a provider-side session reference
-    // to the run (Claude's session UUID, Codex's session id). The Host
-    // listens for this and populates RunRecord.ProviderSession; flows can
-    // ignore it. Replaces the ClaudeJsonlTailer's stdout-sniffing path.
+    // (Claude's session UUID, Codex's session id). Internal to the
+    // provider's transcript jsonl — flows can ignore it. In the new
+    // FlowSnapshot wire shape this is no longer surfaced to the UI.
     public sealed record ProviderSessionAttached(
         DateTimeOffset At, string AgentName, ProviderSessionRef Session)
         : AgentEvent(At, AgentName);
