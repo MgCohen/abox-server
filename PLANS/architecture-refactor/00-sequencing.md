@@ -12,7 +12,7 @@ tags: [#architecture, #refactor, #sequencing]
 
 ---
 
-## Current state (2026-05-29)
+## Current state (2026-05-30)
 
 Phases shipped end-to-end and smoke-validated against real Claude/Codex CLIs:
 
@@ -21,10 +21,12 @@ Phases shipped end-to-end and smoke-validated against real Claude/Codex CLIs:
 | 0 — Baseline | shipped | (pre-existing) | plan docs landed |
 | 1 — Contracts | **shipped** | `e9ebd65` | all records moved; UI mirror deleted |
 | 2 — Composition root | **shipped** | `c197264`, `f2875ed` | see *deviation* below |
-| 3 — Agent base | **shipped** | `d5ecbc8` | typed `IHookInstaller<TAgent>`, polymorphic `AgentPresets` |
+| 3 — Agent base | **shipped** | `d5ecbc8` | typed `IHookInstaller<TAgent>`, polymorphic `AgentPresets` (NOTE: `IHookInstaller<TAgent>` deleted in phase1-C — replaced by `HookIntegration` record) |
 | 4 — IFlow + decorators | **shipped (pilot)** | `acd9e5a` | `ClaudeOnlyFlow` migrated; 7 other `cli/flows/*.cs` still use the old shape |
 | 5 — Sessions & paths | **shipped** | `067378e` | `OrchestratorPaths` + typed `SessionArtifact` |
 | 6 — Host in-process executor | **scaffolded only** | `5ad297e` | `IFlowExecutor` interface lands; deep work deferred (see below) |
+| Phase 1 audit cleanups | **shipped** | `1eac043`, `0d11886`, `0481c09` | hook plumbing collapse + JsonElement dedup + synthetic codex.stop |
+| Phase 2 audit cleanups | **shipped** | `3c39f60` → `e48e6b1` | 7 commits, audit findings F1/F2/F3/F4 piece 1/F5/F6/F7/F10/F11/F13/F14/F15/F16/F17/F19/F20/F21 — see [`12-followup-status.md`](12-followup-status.md) |
 | 7 — Events / sinks split | deferred | — | skipped per user direction |
 | 8 — UI client cleanup | deferred | — | skipped per user direction |
 | 9 — Rejected-options sweep | not started | — | depends on 6/7/8 |

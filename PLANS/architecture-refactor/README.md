@@ -21,15 +21,20 @@ tags: [#architecture, #refactor, #remote-agents-dotnet, #layering]
 
 ---
 
-## Status (2026-05-29)
+## Status (2026-05-30)
 
 Plan drafted; **Phases 1–5 shipped, Phase 6 scaffolded, Phases 7–8 deferred.**
-Branch: `phase-ui/host-mobile`. 8 commits ahead of `origin/main`,
-all pushed. See [`00-sequencing.md`](00-sequencing.md) for the per-phase
-state with commit hashes and what was deferred to follow-up.
+**Phase 1 + Phase 2 audit cleanups shipped** on `refactor/phase1-hooks-collapse`
+(10 commits total addressing 17 of the audit's 22 findings). See
+[`12-followup-status.md`](12-followup-status.md) for the per-finding status
+and [`00-sequencing.md`](00-sequencing.md) for the per-phase state.
 
 Initial findings derived from the thermo-nuclear code-quality review pass
 over the unstaged diff + a depth-pass over the agent/flow/host layers.
+[`10-core-layer-audit.md`](10-core-layer-audit.md) and
+[`11-before-after.md`](11-before-after.md) are now historical snapshots —
+read them with [`12-followup-status.md`](12-followup-status.md) alongside
+to see which findings are closed.
 
 ### Current-state snapshot (post-Phase 6 scaffold)
 
