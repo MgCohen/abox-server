@@ -1,10 +1,8 @@
 using System.Diagnostics;
-using System.Text;
-using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Threading.Channels;
 using RemoteAgents.Events;
 using RemoteAgents.Primitives;
+using RemoteAgents.Pty;
 using RemoteAgents.Runs;
 
 namespace RemoteAgents.Agents;
@@ -16,6 +14,9 @@ namespace RemoteAgents.Agents;
 //
 // Non-sealed (Q7) for the same reason as ClaudeAgent — concrete projects
 // may want to swap in a different model or different sandbox policy.
+// SubprocessSession owns the spawn/pump/timeout/kill plumbing; this class
+// only owns the script (build args, prepend system prompt, sniff session
+// id from the stdout line stream, read the -o file, write synthetic stop).
 public class CodexAgent : Agent
 {
     public CodexAgent() : base("codex") { }
@@ -87,10 +88,6 @@ public class CodexAgent : Agent
             Arguments = $"/c {commandLine}",
             WorkingDirectory = req.ProjectDir,
             RedirectStandardInput = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
         };
         // Defense in depth: blank the API-key vars (centralized in EnvScrub)
         // on the child env so codex can't accidentally fall through to API
@@ -99,51 +96,29 @@ public class CodexAgent : Agent
         if (ctx.HooksJsonlPath is not null)
             psi.Environment["REMOTEAGENTS_HOOKS_JSONL"] = ctx.HooksJsonlPath;
 
-        using var proc = new Process { StartInfo = psi, EnableRaisingEvents = true };
-        var stdout = new StringBuilder();
-        var stderr = new StringBuilder();
+        await using var session = SubprocessSession.Start(psi, ct);
+
+        // Consume the stdout line stream: sniff for the codex session id
+        // (one-shot) and emit each line as a StreamChunk. Channel guarantees
+        // ordered EmitAsync awaits on a single consumer.
         string? extractedSessionId = req.SessionId;
-
-        // Pump stream chunks through an unbounded channel so EmitAsync is
-        // awaited in order on a single consumer task. The previous
-        // `_ = Sink.EmitAsync(...)` would race with itself under chatty
-        // output and silently swallow sink exceptions.
-        var chunks = Channel.CreateUnbounded<string>(new UnboundedChannelOptions
+        var stdoutTask = Task.Run(async () =>
         {
-            SingleReader = true,
-            SingleWriter = true,
-        });
-
-        proc.OutputDataReceived += (_, e) =>
-        {
-            if (e.Data is null) return;
-            stdout.AppendLine(e.Data);
-            if (extractedSessionId is null)
+            await foreach (var line in session.StdoutLines())
             {
-                var found = CodexSessionId.Scan(e.Data);
-                if (found is not null)
+                if (extractedSessionId is null)
                 {
-                    extractedSessionId = found;
-                    // Fire-and-forget — the channel consumer (pump) is what
-                    // serialises sink writes for chunks; provider-session
-                    // is a one-shot announcement, ordering vs StreamChunks
-                    // is acceptable best-effort.
-                    _ = Sink.EmitAsync(new AgentEvent.ProviderSessionAttached(
-                        DateTimeOffset.UtcNow, Name, new ProviderSessionRef("codex", found)));
+                    var found = CodexSessionId.Scan(line);
+                    if (found is not null)
+                    {
+                        extractedSessionId = found;
+                        // Fire-and-forget — ordering vs the StreamChunks
+                        // is acceptable best-effort for a one-shot signal.
+                        _ = Sink.EmitAsync(new AgentEvent.ProviderSessionAttached(
+                            DateTimeOffset.UtcNow, Name, new ProviderSessionRef("codex", found)));
+                    }
                 }
-            }
-            chunks.Writer.TryWrite(e.Data + "\n");
-        };
-        proc.ErrorDataReceived += (_, e) =>
-        {
-            if (e.Data is not null) stderr.AppendLine(e.Data);
-        };
-
-        var pump = Task.Run(async () =>
-        {
-            await foreach (var chunk in chunks.Reader.ReadAllAsync())
-            {
-                await Sink.EmitAsync(new AgentEvent.StreamChunk(DateTimeOffset.UtcNow, Name, chunk));
+                await Sink.EmitAsync(new AgentEvent.StreamChunk(DateTimeOffset.UtcNow, Name, line + "\n"));
             }
         });
 
@@ -153,27 +128,11 @@ public class CodexAgent : Agent
         var fullPrompt = string.IsNullOrEmpty(ctx.SystemPrompt)
             ? req.Prompt
             : ctx.SystemPrompt + "\n\n" + req.Prompt;
+        await session.StandardInput.WriteAsync(fullPrompt);
+        session.CompleteStdin();
 
-        proc.Start();
-        proc.BeginOutputReadLine();
-        proc.BeginErrorReadLine();
-        await proc.StandardInput.WriteAsync(fullPrompt);
-        proc.StandardInput.Close();
-
-        using var timeoutCts = new CancellationTokenSource(Options.JsonStreamTimeoutMs);
-        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
-        try { await proc.WaitForExitAsync(linkedCts.Token); }
-        catch (OperationCanceledException)
-        {
-            try { proc.Kill(entireProcessTree: true); } catch { }
-            try { await proc.WaitForExitAsync(CancellationToken.None); } catch { }
-            if (!timeoutCts.IsCancellationRequested) throw;
-        }
-
-        // Drain any chunks queued between WaitForExit returning and the
-        // OutputDataReceived callbacks finishing.
-        chunks.Writer.Complete();
-        await pump;
+        var exitCode = await session.WaitForExitAsync(Options.JsonStreamTimeoutMs, ct);
+        await stdoutTask;
 
         string text = "";
         if (File.Exists(lastMessageFile))
@@ -195,8 +154,8 @@ public class CodexAgent : Agent
         return new DriveResult(
             Text:      text,
             SessionId: extractedSessionId ?? "",
-            ExitCode:  proc.HasExited ? proc.ExitCode : -1,
-            RawOutput: stdout.ToString());
+            ExitCode:  exitCode,
+            RawOutput: session.RawStdout);
     }
 
     private static async Task AppendSyntheticStopLineAsync(
