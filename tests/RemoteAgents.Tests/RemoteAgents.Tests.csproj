@@ -17,6 +17,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\RemoteAgents.Core\RemoteAgents.Core.csproj" />
+    <ProjectReference Include="..\..\src\RemoteAgents\RemoteAgents.csproj" />
+    <ProjectReference Include="..\..\src\RemoteAgents.Contracts\RemoteAgents.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

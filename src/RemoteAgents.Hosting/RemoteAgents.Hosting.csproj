@@ -11,6 +11,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\RemoteAgents.Core\RemoteAgents.Core.csproj" />
+    <ProjectReference Include="..\RemoteAgents\RemoteAgents.csproj" />
+    <ProjectReference Include="..\RemoteAgents.Contracts\RemoteAgents.Contracts.csproj" />
   </ItemGroup>
 
 </Project>
