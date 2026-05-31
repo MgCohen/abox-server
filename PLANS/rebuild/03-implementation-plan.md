@@ -32,8 +32,10 @@ re-authors.
   only if the flows demonstrably need it — which, given D4, they should not.
 
 These compose with the PRD's spine rules: R-ARCH-2's "guards with agents" and the
-assembly boundary behind `IAgentInvocation` (R-SPINE-1) are one discipline — each
-thing where it belongs, nothing reachable that shouldn't be.
+Step-shaped invocation seam (R-SPINE-1) are one discipline — each thing where it
+belongs, nothing handed to code that shouldn't have it. Note R-ARCH-1's
+"separate at every level" means separate **namespaces/types**, enforced by a
+separate **assembly** only where that earns its keep (see § Assembly layout).
 
 ### Build-sequence rationale
 
@@ -49,9 +51,9 @@ terminal until then.
 |---|---|---|---|---|---|
 | L1 | **Skeleton** | DI + bootstrap + generic infra | composition root, host/app, CORS, ProjectRegistry, paths | REBUILD | — |
 | L2 | **Flow tech** | the flow framework + its DTOs + the pipe | Flow base + lifecycle, `FlowSnapshot`/`StepDto`, Changes channel, Registry, Catalog (name→Type), SSE transport, Blazor | REBUILD | — |
-| L3 | **Step base** | the step framework | `Step<T>`, `StepContext`, `Run<T>`, `IAgentInvocation` seam (defined), `ToString()` summaries | REBUILD | — |
+| L3 | **Step base** | the step framework | `Step<T>`, `StepContext` (internal agent seam, defined), `Run<T>`, `ToString()` summaries | REBUILD | — |
 | L4 | **Core primitives** | generic process/OS exec | Shell, RunCommand | PORT | — |
-| L5 | **Provider framework** | the agent abstraction | Agent base, agent DTOs (`AgentRunRequest`/`AgentResult`/`DriveResult`), `IAgentInvocation` impl, result-resolution (direct file read), a **fake agent** | PORT logic / REBUILD seam | A6 |
+| L5 | **Provider framework** | the agent abstraction | Agent base, agent DTOs (`AgentRunRequest`/`AgentResult`/`DriveResult`), `StepContext` agent seam impl, result-resolution (direct file read), a **fake agent** | PORT logic / REBUILD seam | A6 |
 | L6 | **Concrete agents** | the two real providers | `ClaudeAgent`, `CodexAgent` (on fake terminal) + agent guards (`SubscriptionGuard`, `EnvScrub`) | PORT | A1–A9 |
 | L7 | **Named-agent roles** | configured-once roles | `IAgentFactory`: implementer (Claude/acceptEdits), reviewer (Codex/read-only/gpt-5.5) | NEW (D1) | A3 |
 | L8 | **Tooling** | concrete step types + tool logic | agent/validate/git steps, validators, **Git** (guardrails), IsolationScope, Reviews/verdict | PORT logic / REBUILD shape | — |
@@ -63,6 +65,34 @@ terminal until then.
 No SignalR layer: it was replaced by SSE in the refactor; only a dead smoke
 script remains (removed at L12). Transport (SSE) + UI are not their own layers —
 they fold into L2's walking skeleton.
+
+### Assembly layout (decided 2026-05-31)
+
+The 12 layers are a build sequence, **not** 12 assemblies. The physical project
+split is deliberately small — an assembly boundary is only created where it earns
+**enforcement** or **reuse**:
+
+```
+RemoteAgents.Core        generic infra (paths, ProjectRegistry)        — reused leaf
+RemoteAgents             the orchestrator: Agents/ Steps/ Flows/ folders (L2–L11)
+RemoteAgents.Contracts   wire DTOs (shared with Host + Blazor client)
+RemoteAgents.Hosting     composition root helpers + endpoints + SSE
+RemoteAgents.Host        thin ASP.NET entrypoint
+```
+
+The orchestrator's layers (Agents/Steps/Flows) live as **folders/namespaces in
+one assembly**, not separate assemblies. R-SPINE-1 is enforced by **API shape**:
+`Flow.Run<T>(Step<T>)` owns the lifecycle, and the agent-driving surface is
+`internal` and reached only via `StepContext` handed to a step body — never given
+to flow code. A deliberate bypass is reviewable, not a compile error; escalate to
+a focused Roslyn analyzer only if one ever actually appears.
+
+> Earlier (L1 scaffold) this was a 4-assembly split (`Agents`/`Steps`/`Flows`
+> separate, with `PrivateAssets` + `DisableTransitiveProjectReferences` making a
+> bypass a compile error). Collapsed 2026-05-31: judged over-insurance at
+> solo/4-flow scale, and the ergonomic win (automatic lifecycle bookkeeping)
+> comes from the API shape, not the wall. The analyzer is the escalation path if
+> the trade-off ever flips.
 
 ---
 
@@ -88,10 +118,11 @@ code · **NEW** = didn't exist. Oracle refs point at
 
 ## L1 · Skeleton — REBUILD
 
-**Goal.** An app that boots and serves, with the new assembly layout and DI.
+**Goal.** An app that boots and serves, with the project layout (§ Assembly
+layout) and DI.
 
-**Build.** Project/assembly layout (incl. the Steps assembly boundary that
-R-SPINE-1 needs later); DI composition root; host bootstrap + CORS; generic
+**Build.** The project layout (`Core`, `RemoteAgents` orchestrator, `Contracts`,
+`Hosting`, `Host`); DI composition root; host bootstrap + CORS; generic
 domain-agnostic infra only — `ProjectRegistry`, paths. No DTOs, no
 `SubscriptionGuard`, no agent/flow types.
 
@@ -117,14 +148,16 @@ history lists it → survives restart. The pipe works; no real work runs through
 
 **Goal.** Settle the Step abstraction by building it (the deferred decision).
 
-**Build.** `Step<T>`, `StepContext` (internal ctor), `Flow.Run<T>(Step<T>)` as
-the sole entry; bookkeeping (status/timing/version-bump/summary) once in `Run`;
-summaries from `result.ToString()`; the `IAgentInvocation` seam **defined** in
-the Steps assembly (no impl yet). Re-point the stub flow onto real `Step`s.
+**Build.** `Step<T>`, `StepContext` (internal ctor — only `Flow.Run` mints one),
+`Flow.Run<T>(Step<T>)` as the sole entry; bookkeeping
+(status/timing/version-bump/summary) once in `Run`; summaries from
+`result.ToString()`; the internal agent-invocation seam on `StepContext`
+**defined** (no impl yet). Re-point the stub flow onto real `Step`s.
 
-**Done when (R-SPINE-1, NFR4/AC5).** Stub flow runs through `Run<T>`; a "tool
-call outside a Step does not compile" check holds; the Step ergonomics are
-decided and written down. Build + tests green.
+**Done when (R-SPINE-1, NFR4/AC5).** Stub flow runs through `Run<T>`; the
+agent-driving surface is `internal`/`StepContext`-only and not handed to flow
+code (review/API-shape check, per the collapsed-boundary decision); the Step
+ergonomics are decided and written down. Build + tests green.
 
 ## L4 · Core primitives — PORT
 
@@ -140,10 +173,10 @@ NOT here — they belong to their domains.)
 **Goal.** The agent abstraction, runnable via a fake agent.
 
 **Build.** `Agent` base + drive lifecycle; agent DTOs (`AgentRunRequest`,
-`AgentResult`, `DriveResult`) born here; `IAgentInvocation` **implemented** on
-the base; result resolution by **direct file read** (no hooks — Tier A6 shape,
-NFR-AI4); a **fake agent** returning canned output; the agent-step that
-mints+runs through `Run<T>`.
+`AgentResult`, `DriveResult`) born here; the `StepContext` agent-invocation seam
+**implemented** (wired to the agent base); result resolution by **direct file
+read** (no hooks — Tier A6 shape, NFR-AI4); a **fake agent** returning canned
+output; the agent-step that mints+runs through `Run<T>`.
 
 **Done when.** The flow runs a real agent-step against the fake agent and its
 canned text shows as the step summary in the UI. The seam is proven before any
@@ -233,9 +266,9 @@ hook-resolution tests pass.
 **Build.** Delete dead artifacts (incl. `ui/scripts/signalr-stream-smoke.cs`);
 verify no `IValidator` / event-sink / session-dir types remain (NG2/NG3/NG9).
 
-**Done when (AC5/AC6).** Spine enforced (no-bypass compiles away; flows
-DI-resolved; validators are steps); warning-free build; green tests; no dead
-legacy. Card-Framework shakedown green.
+**Done when (AC5/AC6).** Spine enforced (tool invocation only via `Flow.Run`;
+agent seam internal/`StepContext`-only; flows DI-resolved; validators are steps);
+warning-free build; green tests; no dead legacy. Card-Framework shakedown green.
 
 ---
 
@@ -243,9 +276,9 @@ legacy. Card-Framework shakedown green.
 
 - **Commit per layer.** Each L is a coherent, independently-buildable commit (the
   prototype refactor's working rhythm).
-- **Two couplings to hold:** the `IAgentInvocation` seam is *defined* at L3 and
-  *implemented* at L5 — don't let it drift; roles (L7) require concrete agents
-  (L6).
+- **Two couplings to hold:** the internal `StepContext` agent seam is *defined*
+  at L3 and *implemented* at L5 — don't let it drift; roles (L7) require concrete
+  agents (L6).
 - **Fakes are first-class.** The fake agent (L5) and fake terminal (L6→L9 seam)
   are real deliverables, not throwaway — they stay as the test doubles.
 - **Oracle grows only where a port is risky** — primarily L6/L9. Don't pre-write

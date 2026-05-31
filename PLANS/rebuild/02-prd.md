@@ -46,14 +46,19 @@ The deliverable is the same library + Host + Blazor UI, with a new spine.
 
 Two structural requirements, treated as the rebuild's actual scope:
 
-- **R-SPINE-1 · Step becomes a first-class, bypass-resistant unit.**
-  THE SYSTEM SHALL route every unit of flow work through `Flow.Run<T>(Step<T>)`.
-  IF flow code attempts to invoke a tool (agent, validator) outside a `Step`,
-  THEN THE SYSTEM SHALL fail to compile — the callable method sits behind an
-  `internal IAgentInvocation` in a Steps assembly that flow code cannot reach.
-  Step bookkeeping (status, timing, version bump, summary, future event
-  emission) lives once in `Run<T>`; result display comes from the result's own
-  `ToString()`, not a per-call `summarize` lambda.
+- **R-SPINE-1 · Step is a first-class unit; the lifecycle is automatic.**
+  THE SYSTEM SHALL route every unit of flow work through `Flow.Run<T>(Step<T>)`,
+  which owns the step bookkeeping (status, timing, version bump, summary, future
+  event emission) once. Agent/validator invocation SHALL be reachable only from
+  inside a `Step` — the driving surface is `internal` and exposed only through a
+  `StepContext` handed to the step body, so the *natural* path is through `Run`.
+  Result display comes from the result's own `ToString()`, not a per-call
+  `summarize` lambda.
+  *Enforcement is by API shape + review, not a compile-time assembly wall* (the
+  orchestrator is a single assembly with Agents/Steps/Flows as folders). A
+  deliberate bypass is reviewable; escalate to a focused Roslyn analyzer only if
+  one ever actually appears. (Decided 2026-05-31 — the 4-assembly split was
+  judged over-insurance at this scale; see plan § Architecture.)
 
 - **R-SPINE-2 · Flows are DI-resolved; agents are role-factory-minted.**
   THE SYSTEM SHALL construct flows from the DI container via their declared
@@ -158,9 +163,11 @@ acceptance criteria (AC).
   envelope (~25–30s); the spine change introduces no regression.
 - **NFR3 · Build/test health.** `dotnet build` SHALL be warning-free with
   nullable on; `dotnet test` SHALL be green.
-- **NFR4 · Bypass-proof spine.** A flow author SHALL be unable to invoke a tool
-  outside a Step (R-SPINE-1 compiles the bypass away). Verified by a
-  "this must not compile" doc test or review gate.
+- **NFR4 · Step-shaped spine.** In normal use a flow author SHALL invoke a tool
+  only through a Step: the agent-driving surface is `internal` and reached only
+  via `StepContext`/`Flow.Run`, never handed to flow code. Enforced by API shape
+  + review (a focused analyzer if a real bypass appears) — not a compile-time
+  assembly wall.
 - **NFR5 · Platform.** v1 SHALL be Windows-only (Tier-A behaviors are
   Windows/ConPTY-specific).
 
@@ -226,9 +233,11 @@ Parity-first: the bar is *indistinguishable behavior, cleaner spine*.
   lands a commit with verdict APPROVE and the co-author trailer.
 - **AC4 · subscription intact** — a real run leaves the subscription path intact
   (Tier A checks).
-- **AC5 · spine enforced** — tool invocation outside a Step does not compile
-  (R-SPINE-1); flows are DI-resolved with no `new Agent()` in composition
-  (R-SPINE-2); validators are Steps; no `IValidator` / event-sink types exist.
+- **AC5 · spine enforced** — all tool invocation runs through `Flow.Run<T>(Step<T>)`;
+  the agent-driving surface is `internal`/`StepContext`-only and not handed to
+  flow code (R-SPINE-1); flows are DI-resolved with no `new Agent()` in
+  composition (R-SPINE-2); validators are Steps; no `IValidator` / event-sink
+  types exist.
 - **AC6 · clean build/test** — warning-free build, green tests, no dead legacy.
 
 ## 9. Next

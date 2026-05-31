@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The orchestrator. Agent providers, the Step framework, and the Flow
+       framework + recipes live here as FOLDERS (Agents/, Steps/, Flows/), not
+       separate assemblies.
+
+       The "tools only run inside a Step" rule (R-SPINE-1) is enforced by API
+       shape — Run does the lifecycle bookkeeping once, and agent/validator
+       invocation is reachable only through StepContext (handed to a Step body),
+       whose constructor is internal to this assembly — NOT by a reference-graph
+       wall. A deliberate bypass is reviewable; escalate to a focused Roslyn
+       analyzer only if one ever actually appears. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\RemoteAgents.Core\RemoteAgents.Core.csproj" />
+    <ProjectReference Include="..\RemoteAgents.Contracts\RemoteAgents.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>
