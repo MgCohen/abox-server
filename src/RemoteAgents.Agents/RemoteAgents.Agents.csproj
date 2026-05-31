@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Provider framework + concrete agents + roles + terminals + hooks
+       (L5–L7, L9, L11). Empty shell at L1. Steps references this PRIVATELY and
+       Flows cannot reference it at all — that is the R-SPINE-1 boundary. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\RemoteAgents.Core\RemoteAgents.Core.csproj" />
+    <ProjectReference Include="..\RemoteAgents.Contracts\RemoteAgents.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

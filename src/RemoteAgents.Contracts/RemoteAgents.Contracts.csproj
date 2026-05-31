@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Wire DTOs (FlowSnapshot, StepDto, FlowInfo, …). Born at L2 with the flow
+       tech. Empty shell at L1 — exists to lock the reference graph. -->
+
+</Project>

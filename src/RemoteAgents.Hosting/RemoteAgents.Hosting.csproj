@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Composition root + HTTP surface (DI registration, endpoints, later SSE +
+       registry/catalog/history). A classlib that uses ASP.NET types via the
+       shared framework, so the Host stays a thin entrypoint. At L1 it wires the
+       Core services and maps /health + /projects. -->
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RemoteAgents.Core\RemoteAgents.Core.csproj" />
+  </ItemGroup>
+
+</Project>

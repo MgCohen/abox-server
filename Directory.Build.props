@@ -1,0 +1,18 @@
+<Project>
+
+  <!-- Build conventions for the REBUILD (everything under /src and /tests).
+       The quarantined prototype/ has its own Directory.Build.props nearer to
+       its projects, so MSBuild's nearest-wins rule means these never apply to
+       it. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+    <!-- Centralize bin/obj under /artifacts (gitignored). -->
+    <UseArtifactsOutput>true</UseArtifactsOutput>
+  </PropertyGroup>
+
+</Project>
