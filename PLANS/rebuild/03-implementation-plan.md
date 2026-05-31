@@ -1,8 +1,70 @@
-# Rebuild — Implementation Plan
+# Rebuild — Implementation Plan (Design + Tasks)
 
-Third doc in the pipeline (**feature map → PRD → implementation plan**). Builds
-the 12 layers from [`01-feature-map.md`](01-feature-map.md) in order **L1→L12**,
-honoring the requirements in [`02-prd.md`](02-prd.md).
+Third doc in the pipeline (**feature map → PRD → implementation plan**). This is
+the **HOW**: the layer/domain architecture (the *design*) plus the L1→L12 build
+sequence (the *tasks*). It realizes the capabilities in
+[`01-feature-map.md`](01-feature-map.md) and the requirements in
+[`02-prd.md`](02-prd.md). Per the spec-driven split, all technology and
+structure decisions live **here**, never in the spec docs.
+
+---
+
+## Architecture (layer / domain map)
+
+Capabilities A–D say *what*; requirements FR/NFR say *what must be true*. This
+section says *how the code is structured* — the layers the rebuild ports or
+re-authors.
+
+### Architecture rules (requirements, not style)
+
+- **R-ARCH-1 · Framework ≠ implementation, split at every level.** Flow tech (the
+  Flow/Step/snapshot framework, L2) is distinct from flow recipes (L10); the Step
+  base (L3) is distinct from concrete steps (L8); the provider abstraction (L5)
+  is distinct from the concrete agents (L6). Implementations are assembled from
+  finished frameworks, not interleaved with them.
+- **R-ARCH-2 · Contracts and guards live with the layer that owns them.** No DTO
+  or domain guard is front-loaded into the skeleton (L1). `FlowSnapshot` ships
+  with the flow tech (L2); `AgentRunRequest` with the provider framework (L5);
+  `SubscriptionGuard`/`EnvScrub` with the concrete agents (L6). L1 holds only
+  generic, domain-agnostic infrastructure (ProjectRegistry, paths).
+- **R-ARCH-3 · Hooks is an isolated, deferrable layer (L11).** v1 resolves agent
+  text directly (Claude JSONL, Codex `-o`); the hook machinery is built last and
+  only if the flows demonstrably need it — which, given D4, they should not.
+
+These compose with the PRD's spine rules: R-ARCH-2's "guards with agents" and the
+assembly boundary behind `IAgentInvocation` (R-SPINE-1) are one discipline — each
+thing where it belongs, nothing reachable that shouldn't be.
+
+### Build-sequence rationale
+
+**The numbers are the build sequence, not strict architectural-dependency
+order** — they are a *walking-skeleton-first* order: prove the pipe end-to-end
+with fakes, then deepen. Terminals (L9) sit late despite everything depending on
+them, because the `SpawnPtyAsync` seam lets every layer above run against a fake
+terminal until then.
+
+### Layer / domain map
+
+| # | Layer | Owns | Key contents | Disposition | Oracle |
+|---|---|---|---|---|---|
+| L1 | **Skeleton** | DI + bootstrap + generic infra | composition root, host/app, CORS, ProjectRegistry, paths | REBUILD | — |
+| L2 | **Flow tech** | the flow framework + its DTOs + the pipe | Flow base + lifecycle, `FlowSnapshot`/`StepDto`, Changes channel, Registry, Catalog (name→Type), SSE transport, Blazor | REBUILD | — |
+| L3 | **Step base** | the step framework | `Step<T>`, `StepContext`, `Run<T>`, `IAgentInvocation` seam (defined), `ToString()` summaries | REBUILD | — |
+| L4 | **Core primitives** | generic process/OS exec | Shell, RunCommand | PORT | — |
+| L5 | **Provider framework** | the agent abstraction | Agent base, agent DTOs (`AgentRunRequest`/`AgentResult`/`DriveResult`), `IAgentInvocation` impl, result-resolution (direct file read), a **fake agent** | PORT logic / REBUILD seam | A6 |
+| L6 | **Concrete agents** | the two real providers | `ClaudeAgent`, `CodexAgent` (on fake terminal) + agent guards (`SubscriptionGuard`, `EnvScrub`) | PORT | A1–A9 |
+| L7 | **Named-agent roles** | configured-once roles | `IAgentFactory`: implementer (Claude/acceptEdits), reviewer (Codex/read-only/gpt-5.5) | NEW (D1) | A3 |
+| L8 | **Tooling** | concrete step types + tool logic | agent/validate/git steps, validators, **Git** (guardrails), IsolationScope, Reviews/verdict | PORT logic / REBUILD shape | — |
+| L9 | **Terminals** | the real driving substrate | PtySession (ConPTY), SubprocessSession, AnsiHelpers | PORT | A2/A10, B1/B2 |
+| L10 | **Flow implementations** | the 4 recipes | claude-only, claude-validate, full-review, unity-review | REBUILD | — |
+| L11 | **Hooks** | result-resolution enrichment / future Q&A | HookIntegration, parsers, resolution | PORT / maybe-defer | B4 |
+| L12 | **Cleanup** | acceptance + dead-code removal | AC1–6; delete dead `ui/scripts/signalr-stream-smoke.cs` etc. | — | — |
+
+No SignalR layer: it was replaced by SSE in the refactor; only a dead smoke
+script remains (removed at L12). Transport (SSE) + UI are not their own layers —
+they fold into L2's walking skeleton.
+
+---
 
 ## Strategy
 
@@ -12,15 +74,17 @@ lifecycle; then each layer plugs into a proven pipe. The riskiest ports — real
 terminals (L9) and hooks (L11) — come last, isolated and oracle-guarded, behind
 the `SpawnPtyAsync` seam so nothing above is blocked waiting on them.
 
-Discipline (PRD R-ARCH-1/2/3): framework before implementation at every level;
-DTOs and guards born with their owning layer, never front-loaded; each layer
-ships with its own focused tests and a green build before the next starts.
+Discipline (R-ARCH-1/2/3): framework before implementation at every level; DTOs
+and guards born with their owning layer, never front-loaded; each layer ships
+with its own focused tests and a green build before the next starts.
 
 Disposition legend: **REBUILD** = re-authored spine · **PORT** = lift validated
 code · **NEW** = didn't exist. Oracle refs point at
 [`design/behavioral-oracle.md`](../../design/behavioral-oracle.md).
 
 ---
+
+## Tasks (L1 → L12)
 
 ## L1 · Skeleton — REBUILD
 
@@ -45,9 +109,9 @@ endpoints (+ wire DTOs `FlowInfo`/`StartRunRequest`, born with the endpoints) +
 ETag/304; Blazor (Home/RunView/RunHistory + API clients). A **stub flow** whose
 steps are placeholders (e.g. `await Task.Delay`).
 
-**Done when.** From the UI: pick project + stub flow + prompt → launch → the run
-view streams live snapshots as the placeholder steps advance → history lists it →
-survives restart. The pipe works; no real work runs through it.
+**Done when (FR-A1/A2/A3/A4/A7).** From the UI: pick project + stub flow + prompt
+→ launch → the run view streams live snapshots as the placeholder steps advance →
+history lists it → survives restart. The pipe works; no real work runs through it.
 
 ## L3 · Step base — REBUILD
 
@@ -58,9 +122,9 @@ the sole entry; bookkeeping (status/timing/version-bump/summary) once in `Run`;
 summaries from `result.ToString()`; the `IAgentInvocation` seam **defined** in
 the Steps assembly (no impl yet). Re-point the stub flow onto real `Step`s.
 
-**Done when.** Stub flow runs through `Run<T>`; a "tool call outside a Step does
-not compile" check holds (PRD AC5/NFR4); the Step ergonomics are decided and
-written down. Build + tests green.
+**Done when (R-SPINE-1, NFR4/AC5).** Stub flow runs through `Run<T>`; a "tool
+call outside a Step does not compile" check holds; the Step ergonomics are
+decided and written down. Build + tests green.
 
 ## L4 · Core primitives — PORT
 
@@ -77,9 +141,9 @@ NOT here — they belong to their domains.)
 
 **Build.** `Agent` base + drive lifecycle; agent DTOs (`AgentRunRequest`,
 `AgentResult`, `DriveResult`) born here; `IAgentInvocation` **implemented** on
-the base; result resolution by **direct file read** (no hooks — Tier A6 shape);
-a **fake agent** returning canned output; the agent-step that mints+runs through
-`Run<T>`.
+the base; result resolution by **direct file read** (no hooks — Tier A6 shape,
+NFR-AI4); a **fake agent** returning canned output; the agent-step that
+mints+runs through `Run<T>`.
 
 **Done when.** The flow runs a real agent-step against the fake agent and its
 canned text shows as the step summary in the UI. The seam is proven before any
@@ -92,8 +156,8 @@ real provider exists. Build + tests green.
 **Build.** `ClaudeAgent` (PTY script, startup-dialog detect, JSONL text
 resolution) and `CodexAgent` (subprocess, `-o` text, session-id sniff) — both
 driven against a **fake PTY/subprocess** via the `SpawnPtyAsync` seam. Agent
-guards land here: `SubscriptionGuard` + `EnvScrub` (Tier A1/A3). CLI arg builders
-(Tier A8/A9) with their unit tests.
+guards land here: `SubscriptionGuard` + `EnvScrub` (Tier A1/A3, FR-X1). CLI arg
+builders (Tier A8/A9) with their unit tests.
 
 **Done when.** Arg-builder + dialog-detect + JSONL/`-o` parsing tests pass
 against fixtures; guards refuse on API keys set; build green. No real CLI yet.
@@ -106,8 +170,8 @@ against fixtures; guards refuse on API keys set; build green. No real CLI yet.
 (Claude/`acceptEdits`) and **reviewer** (Codex/read-only/`gpt-5.5`, Tier A3) —
 as configured-once factories. Agent-steps mint via the factory.
 
-**Done when.** A step requests a role and gets the correctly-configured agent;
-swapping in a fake factory swaps every flow's agents. Build + tests green.
+**Done when (FR-N1).** A step requests a role and gets the correctly-configured
+agent; swapping in a fake factory swaps every flow's agents. Build + tests green.
 
 ## L8 · Tooling — PORT logic / REBUILD shape
 
@@ -116,11 +180,11 @@ swapping in a fake factory swaps every flow's agents. Build + tests green.
 **Build.** Concrete step types finalized (agent/validate/git); validators as
 `Step<ValidationResult>` (Orchestrator + Unity, **no `IValidator`**); `Git`
 sub-domain (diff/commit/push/dirty/branch + guardrails: no `-A`, no force-push to
-main); `IsolationScope`; `Reviews` (verdict parse APPROVE/REVISE/Unclear, commit
-message). `ValidationResult.ToString()` → PASSED/FAILED line.
+main, FR-C7); `IsolationScope`; `Reviews` (verdict parse APPROVE/REVISE/Unclear,
+commit message). `ValidationResult.ToString()` → PASSED/FAILED line.
 
-**Done when.** Each tool-step has focused tests (verdict parse, git guardrails,
-validator pass/fail); build green.
+**Done when (FR-C4/C5/C6/C7/C8).** Each tool-step has focused tests (verdict
+parse, git guardrails, validator pass/fail); build green.
 
 ## L9 · Terminals (real) — PORT
 
@@ -131,9 +195,10 @@ validator pass/fail); build green.
 not retype the timings; lift Tier B1 values and the B2 shutdown ordering exactly.
 Honor Tier A2/A4/A5/A7/A10.
 
-**Done when.** A real `claude` PONG round-trips end-to-end through the full
-stack; subscription path intact (Tier A1/A2/A3 checks); anti-zombie teardown
-verified (stuck-child test). Latency within the prototype envelope (NFR2).
+**Done when (NFR2, FR-X1/X2).** A real `claude` PONG round-trips end-to-end
+through the full stack; subscription path intact (Tier A1/A2/A3 checks);
+anti-zombie teardown verified (stuck-child test). Latency within the prototype
+envelope.
 
 ## L10 · Flow implementations — REBUILD
 
@@ -144,10 +209,10 @@ flows composing roles + tool-steps. Decide here whether the shared shape (guard 
 work / validate-fix-loop / review / commit / push) becomes shared composite steps
 or stays duplicated — now that the pieces are known.
 
-**Done when (PRD AC1–AC4).** All four run end-to-end via the UI with snapshots
+**Done when (AC1–AC4).** All four run end-to-end via the UI with snapshots
 equivalent to the prototype; one real `full-review` lands a commit with verdict
-APPROVE + co-author trailer; subscription intact. **Crucially: all four pass
-with NO hooks layer present** — the forcing function for L11.
+APPROVE + co-author trailer; subscription intact. **Crucially: all four pass with
+NO hooks layer present** — the forcing function for L11.
 
 ## L11 · Hooks — PORT / maybe-defer
 
@@ -166,9 +231,9 @@ hook-resolution tests pass.
 **Goal.** Close out against the PRD bar.
 
 **Build.** Delete dead artifacts (incl. `ui/scripts/signalr-stream-smoke.cs`);
-verify no `IValidator` / event-sink / session-dir types remain (PRD NG2/NG3/NG9).
+verify no `IValidator` / event-sink / session-dir types remain (NG2/NG3/NG9).
 
-**Done when (PRD AC5/AC6).** Spine enforced (no-bypass compiles away; flows
+**Done when (AC5/AC6).** Spine enforced (no-bypass compiles away; flows
 DI-resolved; validators are steps); warning-free build; green tests; no dead
 legacy. Card-Framework shakedown green.
 

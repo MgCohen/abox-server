@@ -1,13 +1,31 @@
-# Rebuild — PRD
+# Rebuild — PRD (Requirements Spec)
 
 Second doc in the pipeline (**feature map → PRD → implementation plan**).
-Requirements pinned 2026-05-30. The behavior inventory lives in
+Requirements pinned 2026-05-30. The capability inventory lives in
 [`01-feature-map.md`](01-feature-map.md); this doc says what must be **true**,
 what's **out**, and the **one structural change** the rebuild exists to make.
+The HOW (layer architecture + build order) lives in
+[`03-implementation-plan.md`](03-implementation-plan.md).
 
 > Supersedes the 2026-05-28 `csharp-orchestrator-prd.md` for rebuild purposes.
 > That doc describes the pre-refactor design (events/sinks/sessions/CLI) and is
 > historical only.
+
+## Requirement syntax (EARS)
+
+Functional requirements use **EARS** (Easy Approach to Requirements Syntax) — the
+convention behind AWS Kiro specs — so each contract is testable and unambiguous:
+
+- **Ubiquitous** — `THE SYSTEM SHALL <response>` (always true).
+- **Event** — `WHEN <trigger>, THE SYSTEM SHALL <response>`.
+- **State** — `WHILE <state>, THE SYSTEM SHALL <response>`.
+- **Unwanted** — `IF <condition>, THEN THE SYSTEM SHALL <response>`.
+- **Optional** — `WHERE <feature present>, THE SYSTEM SHALL <response>`.
+
+"THE SYSTEM" = the orchestrator (Host + library), not the underlying CLI agent.
+Each requirement maps to a feature-map row and is satisfied by the current
+prototype; the rebuild must keep each true. Any unresolved point is tagged
+`[NEEDS CLARIFICATION: …]` and listed in § Open Questions — never guessed.
 
 ---
 
@@ -26,114 +44,146 @@ The deliverable is the same library + Host + Blazor UI, with a new spine.
 
 ## 2. The one structural change (the reason we're doing this)
 
-Two things, treated as the rebuild's actual scope:
+Two structural requirements, treated as the rebuild's actual scope:
 
-- **R-SPINE-1 · Step becomes a first-class, bypass-resistant unit.** Every unit
-  of flow work runs through `Flow.Run<T>(Step<T>)`. Tool invocation (agent,
-  validator) is reachable only from inside a `Step` — the callable method sits
-  behind an `internal` interface (`IAgentInvocation`) in a Steps assembly that
-  flow code can't reach, so a flow author cannot bypass the lifecycle by calling
-  a tool directly. Step bookkeeping (status, timing, version bump, summary,
-  future event emission) lives once in `Run<T>`. Result display comes from the
-  result's own `ToString()`, not a per-call `summarize` lambda.
+- **R-SPINE-1 · Step becomes a first-class, bypass-resistant unit.**
+  THE SYSTEM SHALL route every unit of flow work through `Flow.Run<T>(Step<T>)`.
+  IF flow code attempts to invoke a tool (agent, validator) outside a `Step`,
+  THEN THE SYSTEM SHALL fail to compile — the callable method sits behind an
+  `internal IAgentInvocation` in a Steps assembly that flow code cannot reach.
+  Step bookkeeping (status, timing, version bump, summary, future event
+  emission) lives once in `Run<T>`; result display comes from the result's own
+  `ToString()`, not a per-call `summarize` lambda.
 
-- **R-SPINE-2 · Flows are DI-resolved; agents are role-factory-minted.** Flows
-  are services constructed by the container from their declared dependencies —
-  no `new ClaudeAgent()` in a catalog lambda. Agents are created **per step**
-  via an `IAgentFactory` exposing the real **roles** (implementer, reviewer),
-  so a flow can mint zero, one, or many, configured once at the root. The
-  catalog maps flow **name → Type**; `POST /flows` resolves the type from DI.
+- **R-SPINE-2 · Flows are DI-resolved; agents are role-factory-minted.**
+  THE SYSTEM SHALL construct flows from the DI container via their declared
+  dependencies — no `new ClaudeAgent()` in a catalog lambda. WHEN a step needs
+  an agent, THE SYSTEM SHALL mint it via an `IAgentFactory` role (implementer,
+  reviewer), configured once at the root, so a flow can mint zero, one, or many.
+  The catalog maps flow **name → Type**; `POST /flows` resolves the type from DI.
 
-Everything else in this PRD is a behavior we're **keeping**, not building.
-
-## 2.1 Structure: the layer architecture
-
-The rebuild is organized as **12 layers** (full map + dispositions + oracle ties
-in [`01-feature-map.md`](01-feature-map.md) § Layer / domain map). Three
-structural rules are requirements, not style:
-
-- **R-ARCH-1 · Framework and implementation are separate at every level.** Flow
-  tech (the Flow/Step/snapshot framework, L2) is distinct from flow recipes
-  (L10); the Step base (L3) is distinct from concrete steps (L8); the provider
-  abstraction (L5) is distinct from the concrete agents (L6). Implementations
-  are assembled from finished frameworks, not interleaved with them.
-- **R-ARCH-2 · Contracts and guards live with the layer that owns them.** No DTO
-  or domain guard is front-loaded into the skeleton (L1). `FlowSnapshot` ships
-  with the flow tech; `AgentRunRequest` with the provider framework;
-  `SubscriptionGuard`/`EnvScrub` with the concrete agents. L1 holds only
-  generic, domain-agnostic infrastructure (ProjectRegistry, paths).
-- **R-ARCH-3 · Hooks is an isolated, deferrable layer (L11).** v1 resolves agent
-  text directly (Claude JSONL, Codex `-o`); the hook machinery is built last and
-  only if the flows demonstrably need it — which, given D4, they should not.
-
-These compose with §2's spine rules: R-ARCH-2's "guards with agents" and the
-assembly boundary behind `IAgentInvocation` (R-SPINE-1) are one discipline —
-each thing where it belongs, nothing reachable that shouldn't be.
+Everything else in this PRD is a behavior we're **keeping**, not building. The
+*structure* that realizes these (the layer architecture, R-ARCH rules) is
+specified in [`03-implementation-plan.md`](03-implementation-plan.md) §
+Architecture — not duplicated here.
 
 ## 3. Functional requirements (behavior contracts — LOCKED)
 
-These restate the feature map as must-hold contracts. Each is satisfied by the
-current system; the rebuild must keep each true. (IDs map to feature-map rows.)
+IDs map to feature-map rows. Each lists its EARS contract and, where useful,
+acceptance criteria (AC).
 
 ### 3.1 Runs
-- **FR-A1** A user launches a run by choosing a registered project, a catalog
-  flow, and a freeform prompt; the system starts it and returns its id.
-- **FR-A2/A3** While a run is active, its state streams to the UI as versioned
-  snapshots, coalesced to always-latest. A finished run yields one static
-  snapshot. A snapshot carries: flow name, phase, version, and an ordered step
-  list (name, status, start/end, summary text, error).
-- **FR-A4** Active + recent runs are listable; recent runs survive an
-  orchestrator restart. (Persistence = `flows.json`; see NG below for scope.)
-- **FR-A5** An active run is cancelable; cancellation tears the child process
-  tree down (≤5s, Tier A10).
-- **FR-A6** A paused run exposes its pending question and accepts an answer that
-  resumes it. *(Plumbing only in v1 — see §5 D4.)*
-- **FR-A7** Endpoints: health, catalog, projects, list flows, get flow
-  (ETag/304), SSE events, cancel, answer.
+- **FR-A1 · Launch.** WHEN a user submits a registered project, a catalog flow,
+  and a freeform prompt, THE SYSTEM SHALL start a run and return its id.
+- **FR-A2 · Snapshot shape.** THE SYSTEM SHALL expose each run as a versioned
+  snapshot carrying: flow name, phase, version, and an ordered step list (name,
+  status, start/end, summary text, error).
+  - *AC:* phase ∈ {Pending, Running, Paused, Completed, Failed, Canceled}.
+- **FR-A3 · Live streaming.** WHILE a run is active, THE SYSTEM SHALL stream
+  snapshots coalesced to always-latest (never a stale frame). WHEN a run has
+  finished, THE SYSTEM SHALL serve one static snapshot and no stream.
+- **FR-A4 · History + durability.** THE SYSTEM SHALL list active and recent
+  runs. WHEN the orchestrator restarts, THE SYSTEM SHALL still list recent runs.
+  *(Persistence = `flows.json`; durable pause-resume is out — see NG8.)*
+- **FR-A5 · Cancel.** WHEN a user cancels an active run, THE SYSTEM SHALL
+  transition it to Canceled and tear the child process tree down.
+  - *AC:* teardown ≤5s; no orphan process survives (Tier A10).
+- **FR-A6 · Answer.** WHILE a run is Paused with a pending question, THE SYSTEM
+  SHALL expose the question and SHALL resume the run when an answer is submitted.
+  *(Plumbing only in v1 — no v1 flow triggers a pause; see D4.)*
+- **FR-A7 · Endpoints.** THE SYSTEM SHALL serve: health, catalog, projects, list
+  flows, get flow (with ETag/304), SSE events, cancel, answer.
 
 ### 3.2 Flows (behavior per recipe — LOCKED; recipe code REBUILT)
-- **FR-B1 claude-only** — implementer runs the prompt; no validation/review/git.
-- **FR-B2 claude-validate** — implementer → orchestrator validation → resume-on-fail
-  fix loop (≤3 attempts); no review, no commit.
-- **FR-B3 full-review** — refuse dirty tree → implement → validate/fix loop →
-  if diff non-empty: review → APPROVE/REVISE (Unclear ⇒ refuse to commit); on
-  REVISE feed back + re-validate → commit (message = truncated title + prompt +
-  reviewer note + co-author trailer) → push iff requested.
-- **FR-B4 unity-review** — same shape; validator is Unity batch-mode compile
-  inside an isolation worktree, with Unity-specific fix wording.
+- **FR-B1 · claude-only.** THE SYSTEM SHALL run the implementer on the prompt
+  with no validation, review, or git.
+- **FR-B2 · claude-validate.** THE SYSTEM SHALL run the implementer, then
+  orchestrator validation; IF validation fails, THEN THE SYSTEM SHALL resume the
+  implementer with the errors and retry, up to 3 attempts; no review, no commit.
+- **FR-B3 · full-review.** IF the working tree is dirty, THEN THE SYSTEM SHALL
+  refuse to start. Otherwise THE SYSTEM SHALL implement → run the validate/fix
+  loop → WHERE the diff is non-empty, review (APPROVE/REVISE). IF the verdict is
+  REVISE, THEN THE SYSTEM SHALL feed issues back and re-validate. IF the verdict
+  is APPROVE, THEN THE SYSTEM SHALL commit (message = truncated title + prompt +
+  reviewer note + co-author trailer). IF the verdict is Unclear, THEN THE SYSTEM
+  SHALL refuse to commit. WHERE `--push` is present, THE SYSTEM SHALL push.
+- **FR-B4 · unity-review.** THE SYSTEM SHALL behave as full-review, except the
+  validator SHALL be a Unity batch-mode compile run inside an isolation worktree,
+  with Unity-specific fix wording.
 
 ### 3.3 Agents, tools, invariants
-- **FR-C1 implementer (Claude)** — driven via ConPTY for subscription billing;
-  returns last-turn text + resumable session id; dialogs handled invisibly.
-- **FR-C2 reviewer (Codex)** — driven via subprocess; returns final text +
-  session id.
-- **FR-C3** A flow can resume an agent session across steps (fix/revise).
-- **FR-C4/C5** Verdict parse (APPROVE/REVISE/Unclear) and commit-message format
-  are preserved exactly.
-- **FR-C6** Validators produce `{Ok, Summary, Errors}`. *(Shape REBUILT: a
-  validator IS a `Step<ValidationResult>`; no `IValidator` interface.)*
-- **FR-C7/C8** Git ops with guardrails (no `-A`, no force-push to main); Unity
-  validation runs in a throwaway worktree.
-- **FR-X1 subscription billing** preserved end-to-end (guard + env scrub; Tier
-  A1/A3). **FR-X2 anti-zombie** teardown (Tier A10). **FR-X3** monotonic
-  snapshot versioning + ETag.
+- **FR-C1 · implementer (Claude).** THE SYSTEM SHALL drive `claude` via ConPTY
+  (subscription billing) and SHALL return last-turn text + a resumable session
+  id; WHEN a startup dialog appears, THE SYSTEM SHALL dismiss it invisibly.
+- **FR-C2 · reviewer (Codex).** THE SYSTEM SHALL drive `codex exec` via
+  subprocess and SHALL return final text + session id.
+- **FR-C3 · Session continuity.** WHEN a flow resumes an agent across steps
+  (fix/revise), THE SYSTEM SHALL continue the same session via its id.
+- **FR-C4 · Verdict.** THE SYSTEM SHALL parse the reviewer reply to
+  Approve/Revise/Unclear (`APPROVE:`/`REVISE:` prefixes); the parse is preserved
+  exactly.
+- **FR-C5 · Commit message.** THE SYSTEM SHALL format commits as truncated title
+  + full prompt + `Reviewed by: <note>` + `Co-Authored-By:` trailer, preserved
+  exactly.
+- **FR-C6 · Validators.** THE SYSTEM SHALL produce `{Ok, Summary, Errors}` from
+  each validator. *(Shape REBUILT: a validator IS a `Step<ValidationResult>`; no
+  `IValidator` interface — see NG9.)*
+- **FR-C7 · Git guardrails.** THE SYSTEM SHALL perform git ops (dirty/diff/
+  changed-files/commit/push/branch); IF an op would `git add -A` or force-push to
+  main, THEN THE SYSTEM SHALL refuse.
+- **FR-C8 · Isolation.** WHILE running Unity validation, THE SYSTEM SHALL use a
+  throwaway worktree so a failed compile never dirties the real tree.
+- **FR-X1 · Subscription billing.** THE SYSTEM SHALL preserve subscription
+  billing end-to-end (guard + env scrub; Tier A1/A3).
+- **FR-X2 · Anti-zombie.** WHEN a run ends by any path, THE SYSTEM SHALL tear the
+  child process tree down (Tier A10).
+- **FR-X3 · Versioning.** THE SYSTEM SHALL bump a monotonic snapshot `Version`
+  per change and serve ETag/304 on reads.
 
 ### 3.4 Named agents (the one additive feature — D1)
-- **FR-N1** A **role layer** defines the agent roles the flows use —
+- **FR-N1 · Role layer.** THE SYSTEM SHALL define the agent roles the flows use —
   **implementer** (Claude, `acceptEdits`) and **reviewer** (Codex, read-only
-  sandbox, `gpt-5.5`) — as configured-once factories. Steps mint agents from
-  these roles via `IAgentFactory`. New roles are added without touching flow
-  recipes. *(Scoped to roles actually used — not a generic Planner/Documenter/
-  Researcher catalog.)*
+  sandbox, `gpt-5.5`) — as configured-once factories. WHEN a step requests a
+  role, THE SYSTEM SHALL mint the correctly-configured agent via `IAgentFactory`.
+  WHEN a new role is added, THE SYSTEM SHALL NOT require changes to flow recipes.
+  *(Scoped to roles actually used — not a generic Planner/Documenter/Researcher
+  catalog.)*
 
-## 4. Non-behavioral requirements
-- **NFR1** Subscription path intact after every real run (oracle Tier A1/A2/A3).
-- **NFR2** Claude short-task latency stays in the prototype's envelope
-  (~25–30s); no regression from the spine change.
-- **NFR3** `dotnet build` warning-free, nullable on; `dotnet test` green.
-- **NFR4** A flow author cannot invoke a tool outside a Step (R-SPINE-1 compiles
-  the bypass away). Verified by a "this must not compile" doc test or review gate.
-- **NFR5** Windows-only v1 (Tier-A behaviors are Windows/ConPTY-specific).
+## 4. Non-functional requirements
+
+### 4.1 General
+- **NFR1 · Subscription path.** After every real run, the subscription path SHALL
+  remain intact (oracle Tier A1/A2/A3).
+- **NFR2 · Latency.** Claude short-task latency SHALL stay within the prototype's
+  envelope (~25–30s); the spine change introduces no regression.
+- **NFR3 · Build/test health.** `dotnet build` SHALL be warning-free with
+  nullable on; `dotnet test` SHALL be green.
+- **NFR4 · Bypass-proof spine.** A flow author SHALL be unable to invoke a tool
+  outside a Step (R-SPINE-1 compiles the bypass away). Verified by a
+  "this must not compile" doc test or review gate.
+- **NFR5 · Platform.** v1 SHALL be Windows-only (Tier-A behaviors are
+  Windows/ConPTY-specific).
+
+### 4.2 AI-specific
+The orchestrator's *own* behavior is deterministic flow control; the
+**probabilistic surface is delegated** to the Claude/Codex CLIs, which own their
+own evals and quality. So the usual AI-PRD machinery (accuracy thresholds,
+hallucination budgets, drift monitoring) does **not** bind the orchestrator —
+but the agent-handling discipline does:
+
+- **NFR-AI1 · Determinism boundary.** THE SYSTEM SHALL treat agent output as an
+  opaque, non-deterministic payload: flow control (verdict parse, validate/fix
+  loop, commit gate) SHALL depend only on **structured** signals (exit codes,
+  validator `{Ok}`, parsed `APPROVE/REVISE`), never on free-text equality.
+- **NFR-AI2 · Bounded non-termination.** WHERE an agent loop can fail to
+  converge (validate/fix, revise), THE SYSTEM SHALL bound it (≤3 attempts) and
+  surface the terminal failure rather than loop indefinitely.
+- **NFR-AI3 · Guardrail integrity.** THE SYSTEM SHALL keep agent autonomy fenced:
+  reviewer runs read-only/sandboxed; git guardrails (FR-C7) and the Unclear-⇒-no-
+  commit gate (FR-B3) hold regardless of what the agent emits.
+- **NFR-AI4 · Resolution provenance.** THE SYSTEM SHALL resolve agent result text
+  from the provider's own on-disk record (Claude JSONL path/schema Tier A6; Codex
+  `-o`), not by scraping the TUI, so the captured output is faithful.
 
 ## 5. Decisions (resolved 2026-05-30 — feature-map §D)
 - **D1 Named agents → IN**, scoped to real roles (FR-N1).
@@ -159,7 +209,12 @@ current system; the rebuild must keep each true. (IDs map to feature-map rows.)
 - **NG9** No `IValidator` interface; no generic named-agent catalog beyond the
   roles in use.
 
-## 7. Acceptance — "rebuild done"
+## 7. Open questions
+`[NEEDS CLARIFICATION]` markers, if any, surface here. **None open** — D1–D5 are
+all resolved (§5). New ambiguities discovered during the build are added here and
+in the relevant feature-map row, not silently assumed.
+
+## 8. Acceptance — "rebuild done"
 Parity-first: the bar is *indistinguishable behavior, cleaner spine*.
 
 - **AC1 · Flow parity** — all four flows run end-to-end through the Host/UI and
@@ -176,11 +231,8 @@ Parity-first: the bar is *indistinguishable behavior, cleaner spine*.
   (R-SPINE-2); validators are Steps; no `IValidator` / event-sink types exist.
 - **AC6 · clean build/test** — warning-free build, green tests, no dead legacy.
 
-## 8. Next
-Implementation plan ([`03-implementation-plan.md`](03-implementation-plan.md)):
-build the 12 layers in order **L1→L12**. Walking skeleton with fake steps first
-(L1–L2) to prove the pipe, Step base (L3) to settle the abstraction by building
-it, then deepen layer by layer — provider framework against a fake agent,
-concrete agents against a fake terminal, roles, tooling — with **real terminals
-(L9) and hooks (L11) last**, isolated and oracle-guarded. Flows (L10) are
-assembled near the end from finished pieces, then parity-checked.
+## 9. Next
+Implementation plan ([`03-implementation-plan.md`](03-implementation-plan.md))
+owns the **architecture** (layer/domain map + R-ARCH rules) and builds the 12
+layers in order **L1→L12** — walking skeleton first, real terminals and hooks
+last, then parity-checked against AC1–AC6.
