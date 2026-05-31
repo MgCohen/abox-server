@@ -1,11 +1,13 @@
 # Agentic SDLC — phase-by-phase build & quality flow
 
-**Status:** v0.2 — open questions from v0.1 resolved.
+**Status:** v0.3 — added living technical spec (§A.1, draft→probe→update) + durable phased task file (§B.3); agent-identity tier parked (§0.3a). v0.2 resolved the v0.1 open questions.
 **Purpose:** Make every phase, agent role, tool slot, gate, and exit criterion explicit so the workflow can be reviewed, tightened, and eventually implemented as concrete agent definitions + CI configuration.
 
 **Reading order:** §0 establishes the cross-cutting foundations every phase depends on. §A → §B → §C is the runtime order. §Z is the decision log (one line per resolved question + sibling docs).
 
 **Changelog from v0.1:** Resolved all 10 open questions. Major structural changes: signoff gates are now configurable knobs (Q3), the eval suite is reframed in terms of *capability slots* rather than specific tools (Q6, Q9), judge versioning + anchor sets are now part of §0.4 (Q5), governance changes get adversarial review under specific conditions (Q7), §C explicitly yields to §B (Q8). Brownfield variant and starter-stack addendum are noted but deferred to sibling docs.
+
+**Changelog from v0.2:** Added §A.1 living technical spec between north-star and probe — drafted as bets + non-goals + open questions, then updated in place after the probe (the standard agile spike loop: draft→spike→update). Closes the "why → build with no how" gap so the probe tests the patterns we actually care about (Q11). Restructured §B.3 around a durable, revisable phased task file with per-phase commits + findings compaction + fresh context — aligns with the industry-standard Specify→Plan→Tasks→Implement loop and context-engineering practice (Q12). Parked the agent-identity provenance-vs-authorization decision (§0.3a, Q13). New open sub-decision: task-file home. See §Z Q11–Q13.
 
 ---
 
@@ -106,6 +108,21 @@ Enforcement layers (defense in depth):
 
 Each agent identity is a member of exactly one team. Cross-boundary PRs require human approval.
 
+### §0.3a Agent identity — provenance-grade vs authorization-grade (OPEN — revisit)
+
+**Status:** Unresolved design decision. Parked 2026-05-30; revisit before implementing §0.2/§0.3.
+
+§0.2 layer 4 + §0.3 currently assume each agent role is a **distinct CODEOWNERS-eligible principal** — *authorization-grade* identity, where `fixture-author` literally cannot merge `src/**` because CODEOWNERS + branch protection enforce it per-identity. 2026 research shows this is the **minority, least-paved** path. Two tiers exist:
+
+- **Provenance-grade** (where the ecosystem is converging): record *what* produced a change for audit, but authorize via least-privilege tokens + same-rigor required review — not per-agent accounts. Mechanisms: `Co-Authored-By:` / `AI-Model:` git trailers, env-var git author + per-agent SSH key, or platform-managed identity (GitHub **Agent HQ**, launched 2026-02-04, stamps "opened by &lt;model&gt; via Agent HQ" + signs commits). GitHub's own **Well-Architected: Governing agents** guidance takes this line — agents act within the existing permission model with an `actor_is_agent` audit flag; the control surface is CODEOWNERS + rulesets requiring independent review + least-privilege token scope, *not* one-account-per-agent.
+- **Authorization-grade** (what §0.2/§0.3 assume today): each role is a separate principal CODEOWNERS can gate. Hard constraints found: **GitHub Apps cannot appear in CODEOWNERS** (users/teams only) — the "clean" App identity is disqualified from the code-owner role; ToS allows **one free machine account per human**; paid orgs charge **one seat per machine account**; org-mandatory **2FA per account**.
+
+**If we keep authorization-grade:** collapse one-identity-per-*role* → one-identity-per-*enforced-boundary*. The only separation the anti-gaming property truly needs is **fixture-author vs code-author** → 2 machine accounts (2 seats), spec/governance roles staying human. Optionally use an App token for the *acting* layer + a machine account for *commit authorship* so CODEOWNERS/auditor see the right author.
+
+**Decision to make:** is true per-identity authorization worth the seat / 2FA / Apps-not-in-CODEOWNERS friction, or is provenance + least-privilege tokens + same-rigor review (the GitHub-blessed path) sufficient for the anti-gaming model? Depends on §0.4 L6 auditor, which keys off author identity.
+
+Sources: GitHub Well-Architected *Governing agents*; Agent HQ launch (2026-02-04); community discussion #23064 (Apps not valid in CODEOWNERS); GitHub ToS (machine accounts).
+
 ### §0.4 Eval suite (capability slots)
 
 The workflow names *what each slot does*, not *which tool fills it*. Tool selection lives in `governance/mutation-policy.yaml` (or equivalent) and the starter-stack sibling doc.
@@ -190,7 +207,7 @@ Plus (Q8): **§C yields to §B.** §C pauses new proposals while any §B PR is a
 
 Goal: produce a durable spec and a credible MVP plan, with at least one hard-slice unknown validated before commitment.
 
-### §A.1 — North-star spec
+### §A.0 — North-star spec
 
 **Goal:** Capture intent that survives every implementation rewrite.
 **Inputs:** Founder/user vision, constraints (deadlines, compliance, integrations).
@@ -216,12 +233,46 @@ Goal: produce a durable spec and a credible MVP plan, with at least one hard-sli
 **Failure modes:** Spec drifts into solution detail. Founder treats it as "the plan" rather than "the why."
 **Knobs:** Template in starter-stack addendum (TBD).
 
+### §A.1 — Technical spec (living doc) (Q11)
+
+**Goal:** Give the "how" a home — and give the probe a target. **One living technical spec**, drafted before the probe and updated after it (the standard agile *spike* loop: draft → spike → update). Pre-probe it is design-doc/RFC-flavored (bets, non-goals, open questions); post-probe (§A.3) the same doc hardens toward a true tech spec ("how we build it") + ADRs. No separate hypotheses artifact — it is one document that *matures*.
+**Inputs:** `00-north-star.md`.
+**Outputs:** `PLANS/01-tech-spec.md` — candidate architecture, key library/runtime bets, data & IPC/envelope shapes, **non-goals**, and an **open-questions** section listing what the probe must resolve (tagged `must-probe` | `nice-to-probe` | `assume`). Pre-probe, any decision is explicitly marked *provisional*.
+**Agents:** `spec-author` (human-paired); may consult a `code-author` in read-only advisory capacity.
+**Tool slots:** Conversational session; no code.
+**Flow (one artifact, touched at three points):**
+
+```
+00-north-star.md
+     |
+     v
+  A.1    DRAFT 01-tech-spec.md: bets + non-goals + open questions
+         (decisions marked provisional; open questions tagged must-probe;
+          must-probe set feeds the §A.2 hard-slice checklist)
+     |
+     v
+  A.2    probe TESTS the open questions  ───────────┐
+     |                                              │ raw learnings → 02-probe-findings.md
+     v                                              │
+  A.3    UPDATE 01-tech-spec.md in place:  ◀───────┘
+         resolve open questions, promote survivors to decisions,
+         spawn ADRs for the load-bearing ones
+```
+
+**Exit criteria (at A.1):** Every `must-probe` open question is concrete and falsifiable. Anything still a guess lives in the open-questions section, not stated as a decision — so the probe stays a *test*, not a rubber-stamp.
+**Failure modes:**
+- Pre-probe draft over-commits — decisions written as settled bias the probe toward confirmation. Mitigation: provisional bets sit in the explicit open-questions/assumptions section until the probe clears them.
+- Layer skipped → probe runs unguided and surfaces only generic risk (the gap this phase closes).
+- Doc goes stale — drafted, never updated post-probe. Mitigation: A.3 exit requires the open-questions section be emptied (each item resolved, or re-flagged still-unknown with rationale).
+
+**Knobs:** Optional for trivial/throwaway-greenfield projects; recommended whenever the team has specific architectural curiosity. Depth scales with stakes — a half-page bets list is fine for small projects.
+
 ### §A.2 — Throwaway probe (Q1)
 
 **Goal:** Surface unknowns the spec cannot predict (integration friction, scale assumptions, framework limits). Promote evidence, discard code.
-**Inputs:** `00-north-star.md`.
+**Inputs:** `00-north-star.md`, `01-tech-spec.md`.
 **Outputs:**
-- `PLANS/01-probe-findings.md` — what we learned, what surprised us.
+- `PLANS/02-probe-findings.md` — what we learned, what surprised us.
 - `fixtures/discovery/*.failing.test.*` — every surprise expressed as a failing test/fixture.
 - `governance/adrs/0001-*.md` … initial ADRs forced by the probe.
 - *Discarded:* the probe codebase itself. Branch deleted.
@@ -234,8 +285,9 @@ Goal: produce a durable spec and a credible MVP plan, with at least one hard-sli
 00-north-star.md
        |
        v
-  define hard-slice checklist  ←─── MANDATORY: must include ≥1 async path,
-       |                            ≥1 auth flow, OR ≥1 data migration
+  define hard-slice checklist  ←─── MANDATORY: ≥1 async path, ≥1 auth flow,
+       |                            OR ≥1 data migration — AND every "must-probe"
+       |                            open question from 01-tech-spec.md
        v
   scout agent builds end-to-end probe
        |
@@ -248,7 +300,7 @@ Goal: produce a durable spec and a credible MVP plan, with at least one hard-sli
        +──> probe code: DELETE
 ```
 
-**Exit criteria:** Findings-driven (Q1) — every item on the hard-slice checklist has been resolved (validated or explicitly flagged as still-unknown with rationale). Every surprise from the probe exists as a fixture, an ADR, or a documented finding. Probe code is gone.
+**Exit criteria:** Findings-driven (Q1) — every item on the hard-slice checklist has been resolved (validated or explicitly flagged as still-unknown with rationale), and every `must-probe` open question from `01-tech-spec.md` is confirmed or refuted with rationale. Every surprise from the probe exists as a fixture, an ADR, or a documented finding. Probe code is gone.
 **Failure modes:**
 - Probe validates only the easy half (UI, simple CRUD) — auth/scale/migrations never touched. Mitigation: the hard-slice checklist gates exit.
 - Team gets attached to the prototype code and keeps it. The whole point is to discard.
@@ -260,20 +312,22 @@ Goal: produce a durable spec and a credible MVP plan, with at least one hard-sli
 ### §A.3 — Replan → MVP plan
 
 **Goal:** Produce a feature list informed by the probe.
-**Inputs:** `00-north-star.md`, `01-probe-findings.md`, `fixtures/discovery/`, initial ADRs.
-**Outputs:** `PLANS/02-mvp-plan.md` — ordered feature list with rough acceptance criteria per feature.
+**Inputs:** `00-north-star.md`, `01-tech-spec.md`, `02-probe-findings.md`, `fixtures/discovery/`, initial ADRs.
+**Outputs:** `PLANS/03-mvp-plan.md` — ordered feature list with rough acceptance criteria per feature.
 **Agents:** `spec-author` (human-paired).
 **Tool slots:** Conversational planning.
 **Flow:**
 
 ```
-north-star + probe-findings + discovery fixtures
+north-star + tech-spec + probe-findings + discovery fixtures
        |
        v
-  planning session (human-driven)
+  planning session (human-driven):
+    update 01-tech-spec.md in place — resolve open questions, firm up
+    surviving bets into decisions (load-bearing ones → ADRs at A.4)
        |
        v
-  ordered feature list  →  02-mvp-plan.md
+  ordered feature list  →  03-mvp-plan.md
        |
        v
   each feature gets a stub brief in PLANS/features/NN-*.md
@@ -286,7 +340,7 @@ north-star + probe-findings + discovery fixtures
 ### §A.4 — Skeleton features pass
 
 **Goal:** Lay down cross-cutting concerns *before* business features, so they don't fragment.
-**Inputs:** `02-mvp-plan.md`.
+**Inputs:** `03-mvp-plan.md`.
 **Outputs:**
 - Stub implementations + ADRs for: auth, observability/logging, error taxonomy, transaction boundaries, config loading, API/IPC envelope.
 - One ADR per concern in `governance/adrs/`.
@@ -374,7 +428,7 @@ feature brief
 
 **Goal:** Make the §B.2 fixtures pass without weakening them.
 **Inputs:** Failing acceptance tests, feature brief, ADRs.
-**Outputs:** Code under `src/**`, unit tests under `tests/unit/**`. PR labeled `impl:NN`.
+**Outputs:** Code under `src/**`, unit tests under `tests/unit/**`, and a durable **phased task file** (see *Task-file home* below). PR labeled `impl:NN`.
 **Agents:** `code-author` only.
 **Tool slots:** Agent runtime + local linters + local test runner.
 **Flow:**
@@ -383,10 +437,18 @@ feature brief
 failing acceptance tests + feature brief + ADRs
       |
       v
-  code-author breaks feature into internal tasks (own scratch)
+  code-author writes a durable, ordered phased task file:
+    each phase maps to a subset of the acceptance criteria
+    (execution scaffolding — NOT a governed artifact; revisable, not frozen)
       |
       v
-  TDD inner loop: write unit test → impl → run unit + acceptance
+  per phase, in a FRESH context window:
+    load task file → TDD inner loop (unit test → impl → run unit + acceptance subset)
+      → phase's acceptance subset green → commit
+      → compact status + findings back into the task file
+      |
+      v
+  next phase loads the compacted file in fresh context (no accumulated baggage)
       |
       v
   all acceptance tests green
@@ -395,12 +457,18 @@ failing acceptance tests + feature brief + ADRs
   open PR → triggers §B.4 review panel
 ```
 
-**Exit criteria:** All acceptance tests pass. No acceptance test was modified (CI verifies). Linters green.
+**Task-file home (OPEN sub-decision):** `code-author` cannot write `PLANS/**` (§0.2), so the phased task file needs a code-author-owned home. Candidates: (a) branch-only `worklog/NN-feature.md` that never merges to `main`; (b) a merged, code-author-owned `/worklog/**` path added to §0.2/§0.3. Deferred — pick when implementing §0.2 boundaries.
+
+**Why durable, not scratch:** an ephemeral in-agent task list does not survive context compaction or a session reset — exactly the moment it's needed to resume. Persisting + compacting it per phase is the industry-standard context-engineering pattern (plan distilled to ~15–20% of a fresh context vs. 60–80% of accumulated session). It is *not* a contract: the brief is.
+
+**Exit criteria:** All acceptance tests pass. No acceptance test was modified (CI verifies). Linters green. The **brief — not the task file — remains the contract**; the task file is disposable scaffolding.
 **Failure modes:**
 - Cheapest path to green is editing the acceptance test. Mitigation: PreToolUse hook blocks writes outside `src/` and `tests/unit/`; CODEOWNERS blocks merge; L6 auditor fires on any test diff.
 - Implementation copies fixtures inline. Mitigation: reviewer-panel checks for fixture-shaped constants in `src/`.
+- Task file ossifies — agent keeps following a plan it has already discovered is wrong. Mitigation: the file is compacted/revised between phases, never frozen; the brief is the contract, the plan is disposable.
+- Ephemeral task list lost on context reset mid-feature. Mitigation: the file is durable precisely so a fresh context (or a resumed session) can pick up at the next phase.
 
-**Knobs:** None at this gate; constraints come from §0.2 boundaries.
+**Knobs:** Whether the phased task file is *required* vs. left to `code-author` discretion is project-specific (large multi-phase features → required; trivial features → optional). Other constraints come from §0.2 boundaries.
 
 ### §B.4 — Review panel
 
@@ -653,7 +721,7 @@ PR merged
 
 ## §Z — Decision log
 
-All v0.1 open questions resolved. Each row links the decision to where it lives in the doc.
+All v0.1 open questions resolved (Q1–Q10). v0.2→v0.3 added Q11–Q13 (Q13 still open). Each row links the decision to where it lives in the doc.
 
 | # | Question | Decision | Where it lives |
 |---|---|---|---|
@@ -667,6 +735,9 @@ All v0.1 open questions resolved. Each row links the decision to where it lives 
 | Q8 | §B/§C concurrency | Priority queue: §C pauses new proposals while §B review queue non-empty | §0.7 + §C.6 yield rule |
 | Q9 | Tool naming | Capability-only main doc; sibling `agentic-sdlc-starter-stack.md` names concrete options | Design principles + sibling doc (TBD) |
 | Q10 | Brownfield variant | Sibling doc `agentic-sdlc-brownfield.md` covers Extend + Rewrite scenarios | Sibling doc (TBD) |
+| Q11 | "Why → build" gap | Added §A.1 living tech spec (`01-tech-spec.md`) — drafted pre-probe (bets + non-goals + open questions), updated in place post-probe. The agile spike loop (draft→spike→update); aims the probe at project-specific patterns | §A.1 + §A.2/§A.3 |
+| Q12 | Per-feature task list | Durable, revisable phased task file in §B.3 (per-phase commit + findings compaction + fresh context); brief stays the contract. Matches industry Tasks→Implement + context engineering | §B.3 |
+| Q13 | Agent identity tier | **OPEN** — provenance-grade vs authorization-grade; parked pending §0.2/§0.3 implementation | §0.3a |
 
 ### Sibling docs (not yet written)
 
@@ -686,7 +757,7 @@ All v0.1 open questions resolved. Each row links the decision to where it lives 
                                   │
               ┌───────────────────┴───────────────────┐
               │              §A Bootstrap             │
-              │  A.1 north-star  →  A.2 throwaway     │
+              │  A.0 north-star  →  A.2 throwaway     │
               │  probe (findings-driven; must hit     │
               │  hard-slice checklist; code           │
               │  discarded, evidence kept)  →  A.3    │
@@ -725,3 +796,5 @@ All v0.1 open questions resolved. Each row links the decision to where it lives 
               │   while §B review queue non-empty     │
               └───────────────────────────────────────┘
 ```
+
+*v0.3 additions not yet redrawn above: §A is now 0-indexed (A.0 north-star) and inserts **A.1 tech spec** (`01-tech-spec.md`, draft→probe→update) between A.0 north-star and A.2 probe; **§B.3** produces a durable, revisable **phased task file** (per-phase commit → findings compaction → fresh context). Identity tier (§0.3a) is parked.*
