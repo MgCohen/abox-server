@@ -70,8 +70,7 @@
             return;
         }
 
-        // Stream live updates only while the run is active. A finished run already
-        // has its complete final snapshot — no SSE needed.
+        // A finished run already carries its final snapshot, so SSE only for active runs.
         if (IsActive(_snap.Phase))
         {
             _cts = new CancellationTokenSource();

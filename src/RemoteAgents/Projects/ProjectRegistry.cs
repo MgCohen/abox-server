@@ -4,7 +4,6 @@ using RemoteAgents.Paths;
 
 namespace RemoteAgents.Projects;
 
-/// <inheritdoc />
 public sealed class ProjectRegistry : IProjectRegistry
 {
     private readonly Lazy<IReadOnlyDictionary<string, string>> _projects;
@@ -19,7 +18,6 @@ public sealed class ProjectRegistry : IProjectRegistry
 
     public string Resolve(string nameOrPath)
     {
-        // Allow passing an absolute path directly.
         if (Path.IsPathRooted(nameOrPath) && Directory.Exists(nameOrPath))
             return Path.GetFullPath(nameOrPath);
 

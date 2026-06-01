@@ -47,13 +47,18 @@ The deliverable is the same library + Host + Blazor UI, with a new spine.
 Two structural requirements, treated as the rebuild's actual scope:
 
 - **R-SPINE-1 · Step is a first-class unit; the lifecycle is automatic.**
-  THE SYSTEM SHALL route every unit of flow work through `Flow.Run<T>(Step<T>)`,
+  THE SYSTEM SHALL route every unit of flow work through `Flow.Run<T>(IStepHandler<T>)`,
   which owns the step bookkeeping (status, timing, version bump, summary, future
   event emission) once. Agent/validator invocation SHALL be reachable only from
-  inside a `Step` — the driving surface is `internal` and exposed only through a
-  `StepContext` handed to the step body, so the *natural* path is through `Run`.
+  inside a step handler — the agent driving surface (process/terminal spawn) is an
+  `internal`, constructor-injected dependency of the agent base, never exposed to
+  flow code or on any public surface, so the *natural* path is `Run(handler)`.
   Result display comes from the result's own `ToString()`, not a per-call
   `summarize` lambda.
+  *(L3 settled the shape: a work type — agent/git/validator — implements
+  `IStepHandler<T>` directly and receives the run's `FlowContext`; there is no
+  separate `StepContext`. The instance isn't "a step", it runs one; the ledger
+  entry is the step. Decided 2026-06-01.)*
   *Enforcement is by API shape + review, not a compile-time assembly wall* (the
   orchestrator is a single assembly with Agents/Steps/Flows as folders). A
   deliberate bypass is reviewable; escalate to a focused Roslyn analyzer only if
@@ -164,10 +169,10 @@ acceptance criteria (AC).
 - **NFR3 · Build/test health.** `dotnet build` SHALL be warning-free with
   nullable on; `dotnet test` SHALL be green.
 - **NFR4 · Step-shaped spine.** In normal use a flow author SHALL invoke a tool
-  only through a Step: the agent-driving surface is `internal` and reached only
-  via `StepContext`/`Flow.Run`, never handed to flow code. Enforced by API shape
-  + review (a focused analyzer if a real bypass appears) — not a compile-time
-  assembly wall.
+  only through a step handler run by `Flow.Run`: the agent-driving surface is
+  `internal` and constructor-injected into the agent base, never handed to flow
+  code. Enforced by API shape + review (a focused analyzer if a real bypass
+  appears) — not a compile-time assembly wall.
 - **NFR5 · Platform.** v1 SHALL be Windows-only (Tier-A behaviors are
   Windows/ConPTY-specific).
 
@@ -233,10 +238,10 @@ Parity-first: the bar is *indistinguishable behavior, cleaner spine*.
   lands a commit with verdict APPROVE and the co-author trailer.
 - **AC4 · subscription intact** — a real run leaves the subscription path intact
   (Tier A checks).
-- **AC5 · spine enforced** — all tool invocation runs through `Flow.Run<T>(Step<T>)`;
-  the agent-driving surface is `internal`/`StepContext`-only and not handed to
+- **AC5 · spine enforced** — all tool invocation runs through `Flow.Run<T>(IStepHandler<T>)`;
+  the agent-driving surface is `internal` + constructor-injected, not handed to
   flow code (R-SPINE-1); flows are DI-resolved with no `new Agent()` in
-  composition (R-SPINE-2); validators are Steps; no `IValidator` / event-sink
+  composition (R-SPINE-2); validators are step handlers; no `IValidator` / event-sink
   types exist.
 - **AC6 · clean build/test** — warning-free build, green tests, no dead legacy.
 

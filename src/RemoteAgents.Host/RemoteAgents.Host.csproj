@@ -1,10 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
-  <!-- The ASP.NET adapter + composition root. The only ASP.NET-coupled code in
-       the solution: endpoint mapping + the SSE writer (EndpointRouteBuilder
-       extensions), CORS, the DI wiring (AddRemoteAgents/AddFlow), and Program.
-       The engine it drives is web-framework-free. -->
-
   <ItemGroup>
     <ProjectReference Include="..\RemoteAgents\RemoteAgents.csproj" />
     <ProjectReference Include="..\RemoteAgents.Contracts\RemoteAgents.Contracts.csproj" />

@@ -2,7 +2,6 @@ using RemoteAgents.Contracts;
 
 namespace RemoteAgents.Flows;
 
-/// <summary>Mutable per-run bookkeeping for one step; projected to the immutable <see cref="StepDto"/>.</summary>
 internal sealed class StepRecord(string name)
 {
     public string Name { get; } = name;

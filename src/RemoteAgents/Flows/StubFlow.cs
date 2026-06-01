@@ -1,16 +1,23 @@
 namespace RemoteAgents.Flows;
 
-/// <summary>
-/// L2 walking-skeleton flow: a few placeholder steps with no real work, used to
-/// prove the snapshot pipe end-to-end before agents and real steps exist. Retired
-/// once real recipes land (L10).
-/// </summary>
+// PROVISIONAL walking skeleton — placeholder steps, no real work. Retired at L10.
 public sealed class StubFlow : Flow
 {
     protected override async Task RunAsync(FlowConfig config, FlowContext ctx, CancellationToken ct)
     {
-        await RunStep("prepare", async c => { await Task.Delay(800, c); return "ready"; }, ct);
-        await RunStep("work", async c => { await Task.Delay(1200, c); return $"processed: {ctx.Prompt}"; }, ct);
-        await RunStep("finish", async c => { await Task.Delay(600, c); return "done"; }, ct);
+        await Run(new DelayStep("prepare", 800, "ready"), ct);
+        await Run(new ProcessStep("work", 1200), ct);
+        await Run(new DelayStep("finish", 600, "done"), ct);
+    }
+
+    private sealed class ProcessStep(string name, int delayMs) : IStepHandler<string>
+    {
+        public string Name => name;
+
+        public async Task<string> RunAsync(FlowContext ctx, CancellationToken ct)
+        {
+            await Task.Delay(delayMs, ct).ConfigureAwait(false);
+            return $"processed: {ctx.Prompt}";
+        }
     }
 }

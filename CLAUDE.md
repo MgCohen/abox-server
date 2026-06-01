@@ -53,8 +53,8 @@ dotnet test  RemoteAgents.slnx
 ## Code standards
 
 Judgment-call rules we operate by. Mechanical style (formatting, naming) moves
-into `.editorconfig` later. Applied **going forward** — existing L1/L2 code
-predates some of these (notably comments) and aligns as we touch it.
+into `.editorconfig` later. Applied **going forward**; the codebase was swept to
+the no-comments rule at L3, so existing files already conform.
 
 **Architecture / spine**
 
@@ -68,7 +68,7 @@ predates some of these (notably comments) and aligns as we touch it.
 - **Fakes are first-class** test doubles, kept behind the seams — not throwaway.
 - **Throw actionable errors; never swallow them silently.** Messages say what to
   do; an intentional ignore gets a one-line *why*.
-- **Label provisional/scaffolding code as provisional** (e.g. `RunStep`, the stub
+- **Label provisional/scaffolding code as provisional** (e.g. `DelayStep` / the stub
   flow) so it's never mistaken for settled design.
 - **Per layer:** warning-free build + green tests + behavior verified (run it,
   not just compile) + one coherent commit. Nullable on, warnings-as-errors,
@@ -86,7 +86,9 @@ predates some of these (notably comments) and aligns as we touch it.
 - **Make illegal states unrepresentable.** Lean on the type system — non-null,
   records, enums, small value types — so bad states don't compile.
 - **Single type per file** — except nested types and a generic + its companion.
-- **Minimal comments.** No XML-doc ceremony or narration of what the code already
-  says; only short one-liners for genuine edge cases / non-obvious *why* (incl.
-  oracle citations on ported tricky bits).
+- **No comments.** Code carries its meaning through names and structure — no
+  XML-doc summaries, no narration of what the code already says, no section
+  banners. Exactly two comments are allowed: (a) a one-line non-obvious *why* the
+  code genuinely cannot express, and (b) an oracle / Tier-A citation on a ported
+  tricky bit. Reaching for anything else means rename or restructure instead.
 - **Small, focused methods and classes.**

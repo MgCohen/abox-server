@@ -5,10 +5,6 @@ using RemoteAgents.Projects;
 
 namespace RemoteAgents.Host;
 
-/// <summary>
-/// The orchestrator's HTTP surface: health, projects, catalog, and the <c>/flows</c>
-/// group (start / list / snapshot+ETag / SSE / cancel). Companion to <see cref="Composition"/>.
-/// </summary>
 internal static class Endpoints
 {
     public static void Map(WebApplication app)
@@ -29,7 +25,7 @@ internal static class Endpoints
             try { projectDir = projects.Resolve(req.Project); }
             catch (Exception ex) { return Results.BadRequest(new { error = ex.Message }); }
 
-            var id = launcher.Start(req.Flow, req.Project, projectDir, req.Prompt, req.Args ?? []);
+            var id = launcher.Start(req.Flow, req.Project, projectDir, req.Prompt);
             return id is null
                 ? Results.NotFound(new { error = $"Unknown flow '{req.Flow}'." })
                 : Results.Ok(new StartRunResponse(id.Value));

@@ -40,10 +40,11 @@ gives each concern exactly one home — none of them is *snapshots*:
 
 1. **`FlowContext` = pure live data.** Identity, run inputs, the step ledger, and `Phase`.
    It is mutated only by the run's single task, so it carries **no lock, no version, no
-   event, no snapshot** — just data + minimal mutation (`AddStep`, `SetPhase`).
-2. **`Flow` = orchestration + a `Changed` ping.** It drives steps (`RunStep`, the
-   L2-provisional runner moved here from the context) and phase, firing a parameterless
-   `Changed` event after each change. **No version, no lock, no snapshot building.**
+   event, no snapshot** — just data + minimal mutation (`StartStep`/`CompleteStep`/`FailStep`
+   ledger transitions, `SetPhase`).
+2. **`Flow` = orchestration + a `Changed` ping.** It drives steps (`Run<T>(IStepHandler<T>)`,
+   the sole entry) and phase, firing a parameterless `Changed` event after each change.
+   **No version, no lock, no snapshot building.**
 3. **`SnapshotStream` = snapshot + all plumbing.** A per-run object that subscribes to
    `Flow.Changed`, builds the versioned `FlowSnapshot` from the context, caches `Latest`,
    and fans out to SSE subscribers (cap-1 DropOldest, terminal-completing). The **only**
@@ -56,8 +57,8 @@ So "the registry tracks contexts" (first amendment, item 3) reads: *the registry
 the broadcaster*; and §2's "snapshot pipe in `FlowContext`" / "state + seam in
 `FlowContext`" are superseded by this split. **Behaviour is unchanged** (the HTTP/SSE
 surface and snapshot wire shape are identical) — this is an internal re-author. The **L3
-deferral narrows** to only the hardened `Run<T>(Step<T>)` + internal-mint step seam; the
-provisional `RunStep` now lives on the `Flow`.
+deferral narrows** to only the hardened step entry; the provisional `RunStep` now lives on
+the `Flow`. *(Resolved at L3, 2026-06-01 — see the L3 note under § Decision item 2.)*
 
 ## Context
 
@@ -110,10 +111,13 @@ second real use** (YAGNI), not speculatively.
   mutable run-state (steps, phase, version) plus the snapshot pipe (`Snapshot`/`Changes`).
   **Implemented now as a skeleton:** `Flow` is a stateless recipe + orchestration that
   writes through the context it's handed, and the registry tracks contexts, not flows.
-  **Deferred to L3:** the step-run surface hardens from the provisional `ctx.RunStep`
-  into `Run<T>(Step<T>)` with the *structural-safety seam* — an `internal`-only handle
-  the base `Flow` mints, so a recipe can't forge it or drive the lifecycle directly.
-  (`StepContext` will be the per-step view onto `FlowContext`.)
+  **Resolved at L3 (2026-06-01):** the step-run surface hardened from the provisional
+  `RunStep` into `Flow.Run<T>(IStepHandler<T>)` — a work type (agent/git/validator)
+  implements `IStepHandler<T>` directly and receives the run's `FlowContext`. There is
+  **no `StepContext`**: the agent driving surface (process/terminal spawn) is an
+  `internal`, constructor-injected dependency of the agent base, never handed to flow
+  code, so the natural — and only ergonomic — path is `Run(handler)`. Enforcement is by
+  API shape + review, not a forged-handle wall. (R-SPINE-1 amended to match.)
 
 This splits the two hats: **behaviour in `Flow`, state + seam in `FlowContext`.**
 
@@ -171,14 +175,24 @@ duplicate name throws at boot rather than on first request.
   (types/steps/validators) — not pure data — and we keep compile-time type safety.
   Configs are records, so a future JSON/asset source deserialising into the same
   records is **additive**.
-- `FlowContext` doubles as the L3 safety seam, so it isn't extra machinery.
+- `FlowContext` doubles as the per-step view a handler receives at L3, so it isn't extra
+  machinery (no separate `StepContext`).
 
 ## Deferred (with triggers)
 
-- **`FlowContext` step-run seam** → **L3**: the recipe/run-state split landed early
-  (skeleton — `Flow` is stateless, state lives on the context), but the provisional
-  `ctx.RunStep` → `Run<T>(Step<T>)` plus the `internal`-only mint is the Step-safety
-  core and stays L3.
+- **`FlowContext` step-run seam** → **L3 (resolved 2026-06-01)**: the recipe/run-state
+  split landed early (skeleton — `Flow` is stateless, state lives on the context); L3
+  hardened the provisional `RunStep` into `Flow.Run<T>(IStepHandler<T>)` with the ledger
+  owning its transitions. No `StepContext` / forged-handle mint — the agent driving
+  surface is internal + constructor-injected (see § Decision item 2).
+- **Per-step transcript** → **L5**: a step's richer detail (the ordered text /
+  thinking / tool-use / tool-result an agent emits — the prototype's `AgentTurn[]`)
+  lives **inside the step**, born as `AgentResult.Transcript` and surfaced via a
+  `Transcript`/`Events` field on `StepRecord`+`StepDto`. It rides the existing
+  snapshot because it is cumulative state (the cap-1 DropOldest pipe still holds).
+  It is explicitly **not** a flow-level event ledger: events can't be coalesced
+  without loss and would force replay / Last-Event-ID, defeating the snapshot model
+  above. High-volume live terminal bytes are a separate channel, never the snapshot.
 - **`FlowContext` persistence** → only when a concrete need appears; design the
   context to allow it, don't build it (avoids an L3 lifecycle rabbit hole).
 - **Data/JSON catalog source** → only when scalar variations multiply or non-dev /

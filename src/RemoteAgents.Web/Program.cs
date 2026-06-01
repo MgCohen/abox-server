@@ -7,10 +7,8 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-// The Host runs at its own origin (Tailscale-only, CORS open). In dev the WASM
-// DevServer is a different port, so HostBaseAddress from wwwroot/appsettings.json
-// points at the Host; if this bundle is ever served by the Host itself, drop the
-// override and same-origin BaseAddress takes over.
+// In dev the WASM DevServer is a different origin, so HostBaseAddress points at the Host;
+// if the Host ever serves this bundle, drop it and same-origin BaseAddress takes over.
 var hostBase = builder.Configuration["HostBaseAddress"]
                ?? builder.HostEnvironment.BaseAddress;
 

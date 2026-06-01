@@ -8,10 +8,6 @@ using RemoteAgents.Contracts;
 
 namespace RemoteAgents.Web.Api;
 
-/// <summary>SSE client for <c>/flows/{id}/events</c>. Each <c>data:</c> frame is
-/// a <see cref="FlowSnapshot"/>; the snapshot's Version is monotonic and the
-/// server coalesces to always-latest, so no Last-Event-ID replay is needed —
-/// the most recent frame is always sufficient.</summary>
 public sealed class FlowStreamClient(HttpClient http)
 {
     public async IAsyncEnumerable<FlowSnapshot> StreamAsync(Guid id, [EnumeratorCancellation] CancellationToken ct = default)

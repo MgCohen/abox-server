@@ -4,9 +4,6 @@ using RemoteAgents.Contracts;
 
 namespace RemoteAgents.Web.Api;
 
-/// <summary>Typed wrapper over the Host's REST surface: the flow catalog at
-/// <c>/catalog</c>, registered projects at <c>/projects</c>, and the run
-/// registry (active + recent) at <c>/flows</c>.</summary>
 public sealed class HostApiClient(HttpClient http)
 {
     public Task<ProjectInfo[]?> GetProjectsAsync(CancellationToken ct = default) =>

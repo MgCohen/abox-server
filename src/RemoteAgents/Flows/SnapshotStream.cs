@@ -4,14 +4,6 @@ using RemoteAgents.Contracts;
 
 namespace RemoteAgents.Flows;
 
-/// <summary>
-/// The run's observability: builds versioned <see cref="FlowSnapshot"/>s from the
-/// <see cref="FlowContext"/>, caches the <see cref="Latest"/>, and fans them out to SSE
-/// subscribers (coalesced to always-latest, terminal-completing). Snapshot building is
-/// neither the context's nor the flow's concern — it lives here, and so does the only
-/// lock, because this is the one place the run task and HTTP/SSE threads meet. Driven by
-/// the flow's <see cref="Flow.Changed"/> ping. See ADR 0001.
-/// </summary>
 public sealed class SnapshotStream
 {
     private readonly FlowContext _ctx;
@@ -29,16 +21,11 @@ public sealed class SnapshotStream
         flow.Changed += OnChanged;
     }
 
-    /// <summary>The most recent snapshot — the pull path (<c>GET /flows/{id}</c> + ETag) reads this.</summary>
     public FlowSnapshot Latest
     {
         get { lock (_gate) return _latest; }
     }
 
-    /// <summary>
-    /// Subscribe to live snapshots — seeded with the latest, then each change as it
-    /// happens. Completes when the run is terminal, so an SSE stream closes naturally.
-    /// </summary>
     public async IAsyncEnumerable<FlowSnapshot> Changes([EnumeratorCancellation] CancellationToken ct = default)
     {
         var ch = Channel.CreateBounded<FlowSnapshot>(new BoundedChannelOptions(1)
@@ -50,7 +37,7 @@ public sealed class SnapshotStream
 
         lock (_gate)
         {
-            ch.Writer.TryWrite(_latest);           // seed with latest
+            ch.Writer.TryWrite(_latest);
             if (_done) ch.Writer.TryComplete();
             else _subscribers.Add(ch);
         }
@@ -66,7 +53,6 @@ public sealed class SnapshotStream
         }
     }
 
-    // Fired on the run task, synchronously after the flow mutated the context.
     private void OnChanged()
     {
         var snap = Build();
@@ -86,8 +72,8 @@ public sealed class SnapshotStream
         }
     }
 
-    // Build runs only on the run task (ctor, then synchronously from OnChanged), so the
-    // version bump needs no interlock — single writer. HTTP/SSE threads read _latest, not this.
+    // Runs only on the run task (ctor, then synchronously from OnChanged) — single
+    // writer, so the version bump needs no interlock. HTTP/SSE threads read _latest.
     private FlowSnapshot Build() =>
         new(_ctx.Id, _ctx.FlowName, _ctx.Project, _ctx.Phase, ++_version, _ctx.CreatedAt,
             [.. _ctx.Steps.Select(s => s.ToDto())]);

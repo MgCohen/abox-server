@@ -4,12 +4,6 @@ using RemoteAgents.Contracts;
 
 namespace RemoteAgents.Host;
 
-/// <summary>
-/// Server-Sent-Events transport for flow snapshots. Sets the event-stream headers
-/// once, then writes each snapshot as a <c>data:</c> frame. Snapshots are coalesced
-/// and monotonically versioned upstream, so no event ids / replay are needed — the
-/// latest frame always suffices.
-/// </summary>
 internal static class Sse
 {
     public static async Task Stream(HttpContext http, IAsyncEnumerable<FlowSnapshot> snapshots, CancellationToken ct)

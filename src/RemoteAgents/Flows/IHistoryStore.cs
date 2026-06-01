@@ -2,7 +2,6 @@ using RemoteAgents.Contracts;
 
 namespace RemoteAgents.Flows;
 
-/// <summary>Durable store of terminal (and last-seen) run snapshots, so history survives restart.</summary>
 public interface IHistoryStore
 {
     Task Save(FlowSnapshot snapshot);

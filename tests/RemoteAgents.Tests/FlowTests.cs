@@ -5,24 +5,48 @@ namespace RemoteAgents.Tests;
 
 public class FlowTests
 {
+    private sealed class FixedStep(string name, string result) : IStepHandler<string>
+    {
+        public string Name => name;
+        public Task<string> RunAsync(FlowContext ctx, CancellationToken ct) => Task.FromResult(result);
+    }
+
+    private sealed class ThrowingStep(string name) : IStepHandler<string>
+    {
+        public string Name => name;
+        public Task<string> RunAsync(FlowContext ctx, CancellationToken ct) =>
+            throw new InvalidOperationException("nope");
+    }
+
+    private sealed class PromptStep(string name) : IStepHandler<string>
+    {
+        public string Name => name;
+        public Task<string> RunAsync(FlowContext ctx, CancellationToken ct) => Task.FromResult(ctx.Prompt);
+    }
+
     private sealed class TwoStepFlow : Flow
     {
         protected override async Task RunAsync(FlowConfig config, FlowContext ctx, CancellationToken ct)
         {
-            await RunStep("a", _ => Task.FromResult("ra"), ct);
-            await RunStep("b", _ => Task.FromResult("rb"), ct);
+            await Run(new FixedStep("a", "ra"), ct);
+            await Run(new FixedStep("b", "rb"), ct);
         }
     }
 
     private sealed class FailingFlow : Flow
     {
         protected override Task RunAsync(FlowConfig config, FlowContext ctx, CancellationToken ct) =>
-            RunStep<string>("boom", _ => throw new InvalidOperationException("nope"), ct);
+            Run(new ThrowingStep("boom"), ct);
     }
 
-    // Mirrors production: the context's snapshot label is the config name the launcher would hand in.
+    private sealed class PromptFlow : Flow
+    {
+        protected override Task RunAsync(FlowConfig config, FlowContext ctx, CancellationToken ct) =>
+            Run(new PromptStep("echo"), ct);
+    }
+
     private static FlowContext ContextFor(FlowConfig config) =>
-        new(config.Name, "proj", "C:/proj", "prompt", []);
+        new(config.Name, "proj", "C:/proj", "prompt");
 
     [Fact]
     public async Task ExecuteAsync_runs_all_steps_and_reaches_Completed()
@@ -38,8 +62,8 @@ public class FlowTests
         Assert.Equal(FlowPhase.Completed, snap.Phase);
         Assert.Equal(["a", "b"], snap.Steps.Select(s => s.Name));
         Assert.All(snap.Steps, s => Assert.Equal(StepStatus.Completed, s.Status));
-        Assert.Equal("ra", snap.Steps[0].Summary);            // summary = result.ToString()
-        Assert.Equal("two-step", snap.Flow);                  // label comes from the flow's config name
+        Assert.Equal("ra", snap.Steps[0].Summary);
+        Assert.Equal("two-step", snap.Flow);
     }
 
     [Fact]
@@ -73,6 +97,19 @@ public class FlowTests
     }
 
     [Fact]
+    public async Task A_handler_reads_run_data_from_the_context_it_is_handed()
+    {
+        var config = new FlowConfig("prompt", "t");
+        var flow = new PromptFlow();
+        var ctx = ContextFor(config);
+        var stream = new SnapshotStream(flow, ctx);
+
+        await flow.ExecuteAsync(config, ctx, CancellationToken.None);
+
+        Assert.Equal("prompt", stream.Latest.Steps[0].Summary);
+    }
+
+    [Fact]
     public async Task Changes_replays_latest_for_a_finished_run_then_completes()
     {
         var config = new FlowConfig("two-step", "t");
@@ -85,7 +122,6 @@ public class FlowTests
         await foreach (var snap in stream.Changes(CancellationToken.None))
             seen.Add(snap);
 
-        // A finished run yields exactly one static snapshot, then the stream ends.
         Assert.Single(seen);
         Assert.Equal(FlowPhase.Completed, seen[0].Phase);
     }
