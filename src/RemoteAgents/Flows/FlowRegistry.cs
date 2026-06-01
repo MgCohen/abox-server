@@ -14,9 +14,9 @@ public sealed class FlowRegistry(IHistoryStore history)
     private readonly ConcurrentDictionary<Guid, FlowContext> _live = new();
     private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _cts = new();
 
-    public Guid Start(Flow flow, FlowConfig config, string project, string projectDir, string prompt, string[] args)
+    public Guid Start(Flow flow, string project, string projectDir, string prompt, string[] args)
     {
-        var ctx = new FlowContext(config, project, projectDir, prompt, args);
+        var ctx = new FlowContext(flow.Config.Name, project, projectDir, prompt, args);
         var cts = new CancellationTokenSource();
         _live[ctx.Id] = ctx;
         _cts[ctx.Id] = cts;

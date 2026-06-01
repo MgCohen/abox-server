@@ -35,7 +35,7 @@ internal static class Endpoints
             catch (Exception ex) { return Results.BadRequest(new { error = ex.Message }); }
 
             var flow = factory.Create(def);
-            var id = runs.Start(flow, def.Config, req.Project, projectDir, req.Prompt, req.Args ?? []);
+            var id = runs.Start(flow, req.Project, projectDir, req.Prompt, req.Args ?? []);
             return Results.Ok(new StartRunResponse(id));
         });
 

@@ -46,13 +46,14 @@ second real use** (YAGNI), not speculatively.
 - **`Flow`** owns the recipe **and** the orchestration of its steps — one coherent
   responsibility ("the runtime running"). Transient, one instance per run,
   produced by the factory. Not static.
-- **`FlowConfig`** (base record) is per-definition **data**: `Name` + `Description`
-  **only, for now**. Flow-specific knobs (e.g. `ReviewFlowConfig`) are added when a
-  flow actually needs them — not before. It lives on the `FlowContext`, so the
-  snapshot's flow name comes from `ctx.Config.Name` and no flow hard-codes its name.
+- **`FlowConfig`** (base record) is per-definition **config**: `Name` + `Description`
+  **only, for now**; flow-specific knobs (e.g. `ReviewFlowConfig`) and polymorphism
+  are added when a flow actually needs them. It lives on the **`Flow`** — constructor-
+  injected (the factory passes it via `ActivatorUtilities`), immutable, read by the
+  recipe. It is **not** on the context: config is the flow's, the context is the run's.
 - **`FlowContext`** (the run-state) holds the per-run **living data** — identity, the
-  bound `FlowConfig`, the run inputs (project/prompt/args), and the mutable run-state
-  (steps, phase, version) plus the snapshot pipe (`Snapshot`/`Changes`).
+  run inputs (project/prompt/args), the flow's name as the snapshot label, and the
+  mutable run-state (steps, phase, version) plus the snapshot pipe (`Snapshot`/`Changes`).
   **Implemented now as a skeleton:** `Flow` is a stateless recipe + orchestration that
   writes through the context it's handed, and the registry tracks contexts, not flows.
   **Deferred to L3:** the step-run surface hardens from the provisional `ctx.RunStep`
@@ -92,10 +93,11 @@ public sealed class FlowCatalog
     private void Register<TFlow>(FlowConfig config) where TFlow : Flow { … }
 }
 
-// Host composition: build once, register each flow type for the factory to resolve
-var catalog = FlowCatalog.Build();
-services.AddSingleton(catalog);
-foreach (var def in catalog.All()) services.AddTransient(def.FlowType);
+// Host composition: build once; the factory constructs flows via ActivatorUtilities
+// (config passed in, service deps resolved from the container), so flow types need
+// no DI registration of their own.
+services.AddSingleton(FlowCatalog.Build());
+services.AddSingleton<IFlowFactory, FlowFactory>();   // FlowFactory impl lives in the Host (DI-coupled)
 ```
 
 `FlowCatalog.Build()` is a one-time declaration run at composition; the catalog

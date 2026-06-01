@@ -31,9 +31,8 @@ internal static class Composition
         services.AddSingleton<FlowRegistry>();
         services.AddSingleton<IFlowFactory, FlowFactory>();
 
-        var catalog = FlowCatalog.Build();          // runs Register + boot guard now → fail-fast
-        services.AddSingleton(catalog);
-        foreach (var def in catalog.All())
-            services.AddTransient(def.FlowType);     // resolved per run by the factory
+        // FlowCatalog.Build() runs Register + boot guard now → fail-fast on a bad entry.
+        // Flow types need no DI registration: the factory builds them via ActivatorUtilities.
+        services.AddSingleton(FlowCatalog.Build());
     }
 }

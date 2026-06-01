@@ -5,7 +5,7 @@ namespace RemoteAgents.Flows;
 /// prove the snapshot pipe end-to-end before agents and real steps exist. Retired
 /// once real recipes land (L10).
 /// </summary>
-public sealed class StubFlow : Flow
+public sealed class StubFlow(FlowConfig config) : Flow(config)
 {
     protected override async Task RunAsync(FlowContext ctx, CancellationToken ct)
     {

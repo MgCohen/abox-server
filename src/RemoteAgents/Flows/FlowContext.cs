@@ -5,11 +5,12 @@ using RemoteAgents.Contracts;
 namespace RemoteAgents.Flows;
 
 /// <summary>
-/// The living state of one flow run: identity, the bound <see cref="FlowConfig"/>,
-/// the run inputs, and the mutable run-state (steps, phase, monotonic version) plus
-/// the snapshot pipe. A <see cref="Flow"/> is a stateless recipe + orchestration that
-/// writes through the context it's handed; the registry tracks contexts (not flows)
-/// and streams their snapshots. See ADR 0001.
+/// The living state of one flow run: identity, the run inputs, and the mutable
+/// run-state (steps, phase, monotonic version) plus the snapshot pipe. Holds the run
+/// situation, NOT the flow's config — config is the flow's (see <see cref="Flow.Config"/>);
+/// the context only carries the flow's name as the snapshot label. A <see cref="Flow"/>
+/// is a stateless recipe + orchestration that writes through the context it's handed;
+/// the registry tracks contexts (not flows) and streams their snapshots. See ADR 0001.
 /// </summary>
 /// <remarks>
 /// L2/skeleton note: <see cref="RunStep{T}"/> is the provisional step recorder. L3
@@ -26,9 +27,9 @@ public sealed class FlowContext
     private long _version;
     private FlowPhase _phase = FlowPhase.Pending;
 
-    public FlowContext(FlowConfig config, string project, string projectDir, string prompt, string[] args)
+    public FlowContext(string flowName, string project, string projectDir, string prompt, string[] args)
     {
-        Config = config;
+        FlowName = flowName;
         Project = project;
         ProjectDir = projectDir;
         Prompt = prompt;
@@ -38,8 +39,8 @@ public sealed class FlowContext
     /// <summary>Run identity.</summary>
     public Guid Id { get; } = Guid.NewGuid();
 
-    /// <summary>The definition config bound to this run (name, description, later knobs).</summary>
-    public FlowConfig Config { get; }
+    /// <summary>The flow's catalog name — the snapshot label for this run (from the flow's config).</summary>
+    public string FlowName { get; }
 
     /// <summary>Short project name this run targets.</summary>
     public string Project { get; }
@@ -150,7 +151,7 @@ public sealed class FlowContext
 
     // Caller holds _gate.
     private FlowSnapshot Build() =>
-        new(Id, Config.Name, Project, _phase, _version, CreatedAt, [.. _steps.Select(s => s.ToDto())]);
+        new(Id, FlowName, Project, _phase, _version, CreatedAt, [.. _steps.Select(s => s.ToDto())]);
 
     private static bool IsTerminal(FlowPhase p) =>
         p is FlowPhase.Completed or FlowPhase.Failed or FlowPhase.Canceled;
