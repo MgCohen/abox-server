@@ -17,7 +17,8 @@ public sealed class FlowLauncher(FlowCatalog catalog, IFlowFactory factory, Flow
 
         var flow = factory.Create(def);
         var ctx = new FlowContext(def.Config.Name, project, projectDir, prompt, args);
-        var ct = registry.Track(ctx);
+        var stream = new SnapshotStream(flow, ctx);
+        var ct = registry.Track(ctx, stream);
 
         _ = Task.Run(() => Drive(flow, def.Config, ctx, ct));
         return ctx.Id;

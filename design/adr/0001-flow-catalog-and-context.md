@@ -1,7 +1,7 @@
 # ADR 0001 — Flow catalog, configuration, and run context
 
 - **Status:** Accepted (2026-06-01); **amended 2026-06-01** — config home + factory
-  mechanism (see *Amendment* below).
+  mechanism, then the data/orchestration/observability split (see *Amendments* below).
 - **Scope:** the rebuild (`/src`). Applies going forward; existing L2 code aligns
   as we touch it.
 - **Supersedes:** the prototype's "named things as static-class properties" shape.
@@ -30,6 +30,34 @@ catalog/factory/R-SPINE-2 stance are unchanged.
    live→history flip (`Track` mints the token, `Complete` persists + retires). Three jobs,
    three things: catalog = the menu, registry = the ledger, launcher = the conductor.
    Endpoints start through the launcher and read through the registry.
+
+## Amendment (2026-06-01) — three concerns: data / orchestration / observability
+
+§2's "behaviour in `Flow`, state + seam in `FlowContext`" bundled observability (the
+snapshot, version, and the SSE broadcaster) onto the context, which bloated it; a later
+draft over-corrected by piling the snapshot + a lock onto the `Flow`. The settled split
+gives each concern exactly one home — none of them is *snapshots*:
+
+1. **`FlowContext` = pure live data.** Identity, run inputs, the step ledger, and `Phase`.
+   It is mutated only by the run's single task, so it carries **no lock, no version, no
+   event, no snapshot** — just data + minimal mutation (`AddStep`, `SetPhase`).
+2. **`Flow` = orchestration + a `Changed` ping.** It drives steps (`RunStep`, the
+   L2-provisional runner moved here from the context) and phase, firing a parameterless
+   `Changed` event after each change. **No version, no lock, no snapshot building.**
+3. **`SnapshotStream` = snapshot + all plumbing.** A per-run object that subscribes to
+   `Flow.Changed`, builds the versioned `FlowSnapshot` from the context, caches `Latest`,
+   and fans out to SSE subscribers (cap-1 DropOldest, terminal-completing). The **only**
+   lock lives here — the one place the run task and HTTP/SSE threads meet. The launcher
+   creates it (`new SnapshotStream(flow, ctx)`) before tracking; the registry tracks
+   `{stream, cts}` and serves `stream.Latest` for `Get`/`List`/history. No `Bind`
+   ceremony and no seeding race — the stream takes the fully-built context directly.
+
+So "the registry tracks contexts" (first amendment, item 3) reads: *the registry tracks
+the broadcaster*; and §2's "snapshot pipe in `FlowContext`" / "state + seam in
+`FlowContext`" are superseded by this split. **Behaviour is unchanged** (the HTTP/SSE
+surface and snapshot wire shape are identical) — this is an internal re-author. The **L3
+deferral narrows** to only the hardened `Run<T>(Step<T>)` + internal-mint step seam; the
+provisional `RunStep` now lives on the `Flow`.
 
 ## Context
 

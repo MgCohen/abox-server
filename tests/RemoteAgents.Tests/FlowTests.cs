@@ -9,18 +9,18 @@ public class FlowTests
     {
         protected override async Task RunAsync(FlowConfig config, FlowContext ctx, CancellationToken ct)
         {
-            await ctx.RunStep("a", _ => Task.FromResult("ra"), ct);
-            await ctx.RunStep("b", _ => Task.FromResult("rb"), ct);
+            await RunStep("a", _ => Task.FromResult("ra"), ct);
+            await RunStep("b", _ => Task.FromResult("rb"), ct);
         }
     }
 
     private sealed class FailingFlow : Flow
     {
         protected override Task RunAsync(FlowConfig config, FlowContext ctx, CancellationToken ct) =>
-            ctx.RunStep<string>("boom", _ => throw new InvalidOperationException("nope"), ct);
+            RunStep<string>("boom", _ => throw new InvalidOperationException("nope"), ct);
     }
 
-    // Mirrors production: the context's snapshot label is the config name the registry would hand in.
+    // Mirrors production: the context's snapshot label is the config name the launcher would hand in.
     private static FlowContext ContextFor(FlowConfig config) =>
         new(config.Name, "proj", "C:/proj", "prompt", []);
 
@@ -30,10 +30,11 @@ public class FlowTests
         var config = new FlowConfig("two-step", "test flow");
         var flow = new TwoStepFlow();
         var ctx = ContextFor(config);
+        var stream = new SnapshotStream(flow, ctx);
 
         await flow.ExecuteAsync(config, ctx, CancellationToken.None);
 
-        var snap = ctx.Snapshot();
+        var snap = stream.Latest;
         Assert.Equal(FlowPhase.Completed, snap.Phase);
         Assert.Equal(["a", "b"], snap.Steps.Select(s => s.Name));
         Assert.All(snap.Steps, s => Assert.Equal(StepStatus.Completed, s.Status));
@@ -47,11 +48,12 @@ public class FlowTests
         var config = new FlowConfig("two-step", "t");
         var flow = new TwoStepFlow();
         var ctx = ContextFor(config);
-        var before = ctx.Snapshot().Version;
+        var stream = new SnapshotStream(flow, ctx);
+        var before = stream.Latest.Version;
 
         await flow.ExecuteAsync(config, ctx, CancellationToken.None);
 
-        Assert.True(ctx.Snapshot().Version > before);
+        Assert.True(stream.Latest.Version > before);
     }
 
     [Fact]
@@ -60,10 +62,11 @@ public class FlowTests
         var config = new FlowConfig("failing", "t");
         var flow = new FailingFlow();
         var ctx = ContextFor(config);
+        var stream = new SnapshotStream(flow, ctx);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => flow.ExecuteAsync(config, ctx, CancellationToken.None));
 
-        var snap = ctx.Snapshot();
+        var snap = stream.Latest;
         Assert.Equal(FlowPhase.Failed, snap.Phase);
         Assert.Equal(StepStatus.Failed, snap.Steps[0].Status);
         Assert.Equal("nope", snap.Steps[0].Error);
@@ -75,10 +78,11 @@ public class FlowTests
         var config = new FlowConfig("two-step", "t");
         var flow = new TwoStepFlow();
         var ctx = ContextFor(config);
+        var stream = new SnapshotStream(flow, ctx);
         await flow.ExecuteAsync(config, ctx, CancellationToken.None);
 
         var seen = new List<FlowSnapshot>();
-        await foreach (var snap in ctx.Changes(CancellationToken.None))
+        await foreach (var snap in stream.Changes(CancellationToken.None))
             seen.Add(snap);
 
         // A finished run yields exactly one static snapshot, then the stream ends.

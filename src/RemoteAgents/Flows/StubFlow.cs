@@ -9,8 +9,8 @@ public sealed class StubFlow : Flow
 {
     protected override async Task RunAsync(FlowConfig config, FlowContext ctx, CancellationToken ct)
     {
-        await ctx.RunStep("prepare", async c => { await Task.Delay(800, c); return "ready"; }, ct);
-        await ctx.RunStep("work", async c => { await Task.Delay(1200, c); return $"processed: {ctx.Prompt}"; }, ct);
-        await ctx.RunStep("finish", async c => { await Task.Delay(600, c); return "done"; }, ct);
+        await RunStep("prepare", async c => { await Task.Delay(800, c); return "ready"; }, ct);
+        await RunStep("work", async c => { await Task.Delay(1200, c); return $"processed: {ctx.Prompt}"; }, ct);
+        await RunStep("finish", async c => { await Task.Delay(600, c); return "done"; }, ct);
     }
 }
