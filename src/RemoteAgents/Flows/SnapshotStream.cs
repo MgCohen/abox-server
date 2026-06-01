@@ -86,12 +86,11 @@ public sealed class SnapshotStream
         }
     }
 
-    private FlowSnapshot Build()
-    {
-        var version = Interlocked.Increment(ref _version);
-        return new(_ctx.Id, _ctx.FlowName, _ctx.Project, _ctx.Phase, version, _ctx.CreatedAt,
+    // Build runs only on the run task (ctor, then synchronously from OnChanged), so the
+    // version bump needs no interlock — single writer. HTTP/SSE threads read _latest, not this.
+    private FlowSnapshot Build() =>
+        new(_ctx.Id, _ctx.FlowName, _ctx.Project, _ctx.Phase, ++_version, _ctx.CreatedAt,
             [.. _ctx.Steps.Select(s => s.ToDto())]);
-    }
 
     private static bool IsTerminal(FlowPhase p) =>
         p is FlowPhase.Completed or FlowPhase.Failed or FlowPhase.Canceled;
