@@ -1,29 +1,35 @@
 namespace RemoteAgents.Flows;
 
 /// <summary>
-/// Name → <see cref="FlowDefinition"/>, built from the registered manifest. Endpoints
-/// list it; <see cref="IFlowFactory"/> resolves through it. Distinct from
-/// <see cref="FlowRegistry"/> (runtime, Guid-keyed live + history).
+/// Name → <see cref="FlowDefinition"/>. The named, configured flows the orchestrator
+/// offers are declared in <see cref="Build"/> — one typed <c>Register</c> line per
+/// entry, no dictionary literal, no inline <c>new</c>. Endpoints list it;
+/// <see cref="IFlowFactory"/> resolves through it. Distinct from <see cref="FlowRegistry"/>
+/// (runtime, Guid-keyed live + history). See ADR 0001.
 /// </summary>
-/// <remarks>
-/// The constructor is the fail-fast boot guard (ADR 0001): a duplicate name, blank
-/// metadata, or a non-Flow type throws at startup rather than failing on first request.
-/// </remarks>
 public sealed class FlowCatalog
 {
     private readonly Dictionary<string, FlowDefinition> _byName = new(StringComparer.OrdinalIgnoreCase);
 
-    public FlowCatalog(IEnumerable<FlowDefinition> definitions)
+    private FlowCatalog() { }
+
+    /// <summary>
+    /// Declare the catalog. Runs at composition, so a blank or duplicate name is a
+    /// fail-fast boot error. Adding a flow is a single <c>Register&lt;T&gt;</c> line here.
+    /// </summary>
+    public static FlowCatalog Build()
     {
-        foreach (var d in definitions)
-        {
-            if (string.IsNullOrWhiteSpace(d.Config.Name))
-                throw new ArgumentException($"Flow definition for {d.FlowType.Name} has a blank name.");
-            if (!typeof(Flow).IsAssignableFrom(d.FlowType))
-                throw new ArgumentException($"Flow definition '{d.Config.Name}' type {d.FlowType.Name} is not a Flow.");
-            if (!_byName.TryAdd(d.Config.Name, d))
-                throw new ArgumentException($"Duplicate flow name '{d.Config.Name}'.");
-        }
+        var catalog = new FlowCatalog();
+        catalog.Register<StubFlow>(new FlowConfig("stub", "Walking-skeleton stub: placeholder steps, no real work."));
+        return catalog;
+    }
+
+    private void Register<TFlow>(FlowConfig config) where TFlow : Flow
+    {
+        if (string.IsNullOrWhiteSpace(config.Name))
+            throw new ArgumentException($"Flow {typeof(TFlow).Name} registered with a blank name.");
+        if (!_byName.TryAdd(config.Name, new FlowDefinition(typeof(TFlow), config)))
+            throw new ArgumentException($"Duplicate flow name '{config.Name}'.");
     }
 
     public FlowDefinition? Resolve(string name) => _byName.GetValueOrDefault(name);
