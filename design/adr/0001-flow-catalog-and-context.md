@@ -22,9 +22,14 @@ catalog/factory/R-SPINE-2 stance are unchanged.
    flow's only ctor deps are services, so `IServiceProvider.GetRequiredService(type)`
    suffices — no reflection bridge. Composition registers each catalog type
    (`services.AddTransient(def.FlowType)`); `FlowFactory.Create` resolves by type.
-3. **`FlowRegistry` owns the launch cascade.** `Start(flowName, project, dir, prompt, args)`
-   resolves the definition, builds the flow via the factory, creates the context, and
-   drives it — returning `Guid?` (null ⇒ unknown flow). Endpoints no longer assemble runs.
+3. **`FlowLauncher` owns the launch cascade; `FlowRegistry` is the run-tracker.**
+   `FlowLauncher.Start(flowName, project, dir, prompt, args)` resolves the definition,
+   builds the flow via the factory, creates the context, tracks it, and drives it on a
+   background task — returning `Guid?` (null ⇒ unknown flow). `FlowRegistry` holds the
+   live runs + history-backed reads and owns the cancellation lifecycle and the
+   live→history flip (`Track` mints the token, `Complete` persists + retires). Three jobs,
+   three things: catalog = the menu, registry = the ledger, launcher = the conductor.
+   Endpoints start through the launcher and read through the registry.
 
 ## Context
 

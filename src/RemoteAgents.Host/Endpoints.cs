@@ -23,13 +23,13 @@ internal static class Endpoints
 
         var flows = app.MapGroup("/flows");
 
-        flows.MapPost("/", (StartRunRequest req, FlowRegistry runs, IProjectRegistry projects) =>
+        flows.MapPost("/", (StartRunRequest req, FlowLauncher launcher, IProjectRegistry projects) =>
         {
             string projectDir;
             try { projectDir = projects.Resolve(req.Project); }
             catch (Exception ex) { return Results.BadRequest(new { error = ex.Message }); }
 
-            var id = runs.Start(req.Flow, req.Project, projectDir, req.Prompt, req.Args ?? []);
+            var id = launcher.Start(req.Flow, req.Project, projectDir, req.Prompt, req.Args ?? []);
             return id is null
                 ? Results.NotFound(new { error = $"Unknown flow '{req.Flow}'." })
                 : Results.Ok(new StartRunResponse(id.Value));

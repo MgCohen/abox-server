@@ -5,49 +5,35 @@ using RemoteAgents.Contracts;
 namespace RemoteAgents.Flows;
 
 /// <summary>
-/// Runtime registry of in-flight runs (Guid → live <see cref="FlowContext"/>). Owns the
-/// whole launch cascade: resolve a flow by name, build it via the factory, create its
-/// run-context, drive it on a background task, persist the final snapshot to history on
-/// completion, and answer reads as live-then-history.
+/// The ledger of runs: live ones (Guid → <see cref="FlowContext"/>) plus history-backed
+/// reads. Owns the cancellation lifecycle and the live→history flip. It tracks runs; it
+/// does not create or execute them — that's the <see cref="FlowLauncher"/>.
 /// </summary>
-public sealed class FlowRegistry(FlowCatalog catalog, IFlowFactory factory, IHistoryStore history)
+public sealed class FlowRegistry(IHistoryStore history)
 {
-    private readonly ConcurrentDictionary<Guid, FlowContext> _live = new();
-    private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _cts = new();
+    private readonly ConcurrentDictionary<Guid, TrackedRun> _live = new();
 
-    /// <summary>Launch a run by flow name. Returns the run id, or null if no such flow.</summary>
-    public Guid? Start(string flowName, string project, string projectDir, string prompt, string[] args)
+    /// <summary>Register a run as live and return the token that cancels it.</summary>
+    public CancellationToken Track(FlowContext ctx)
     {
-        var def = catalog.Resolve(flowName);
-        if (def is null) return null;
-
-        var flow = factory.Create(def);
-        var ctx = new FlowContext(def.Config.Name, project, projectDir, prompt, args);
         var cts = new CancellationTokenSource();
-        _live[ctx.Id] = ctx;
-        _cts[ctx.Id] = cts;
+        _live[ctx.Id] = new TrackedRun(ctx, cts);
+        return cts.Token;
+    }
 
-        _ = Task.Run(async () =>
-        {
-            try { await flow.ExecuteAsync(def.Config, ctx, cts.Token); }
-            catch { /* terminal phase already recorded on the context */ }
-            finally
-            {
-                await history.Save(ctx.Snapshot());
-                _live.TryRemove(ctx.Id, out _);
-                if (_cts.TryRemove(ctx.Id, out var c)) c.Dispose();
-            }
-        });
-
-        return ctx.Id;
+    /// <summary>Persist the final snapshot and retire the run from the live set.</summary>
+    public async Task Complete(FlowContext ctx)
+    {
+        await history.Save(ctx.Snapshot());
+        if (_live.TryRemove(ctx.Id, out var run)) run.Cts.Dispose();
     }
 
     public FlowSnapshot? Get(Guid id) =>
-        _live.TryGetValue(id, out var ctx) ? ctx.Snapshot() : history.Get(id);
+        _live.TryGetValue(id, out var run) ? run.Ctx.Snapshot() : history.Get(id);
 
     public IReadOnlyList<FlowSnapshot> List()
     {
-        var live = _live.Values.Select(c => c.Snapshot()).ToList();
+        var live = _live.Values.Select(r => r.Ctx.Snapshot()).ToList();
         var liveIds = live.Select(s => s.Id).ToHashSet();
         var recent = history.Recent().Where(s => !liveIds.Contains(s.Id));
         return [.. live.Concat(recent).OrderByDescending(s => s.CreatedAt)];
@@ -59,9 +45,9 @@ public sealed class FlowRegistry(FlowCatalog catalog, IFlowFactory factory, IHis
     /// </summary>
     public async IAsyncEnumerable<FlowSnapshot> Changes(Guid id, [EnumeratorCancellation] CancellationToken ct = default)
     {
-        if (_live.TryGetValue(id, out var ctx))
+        if (_live.TryGetValue(id, out var run))
         {
-            await foreach (var snap in ctx.Changes(ct).ConfigureAwait(false))
+            await foreach (var snap in run.Ctx.Changes(ct).ConfigureAwait(false))
                 yield return snap;
             yield break;
         }
@@ -72,7 +58,9 @@ public sealed class FlowRegistry(FlowCatalog catalog, IFlowFactory factory, IHis
 
     public bool Cancel(Guid id)
     {
-        if (_cts.TryGetValue(id, out var cts)) { cts.Cancel(); return true; }
+        if (_live.TryGetValue(id, out var run)) { run.Cts.Cancel(); return true; }
         return false;
     }
+
+    private sealed record TrackedRun(FlowContext Ctx, CancellationTokenSource Cts);
 }

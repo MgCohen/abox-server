@@ -30,6 +30,7 @@ internal static class Composition
         services.AddSingleton<IProjectRegistry, ProjectRegistry>();
         services.AddSingleton<IHistoryStore, FileHistoryStore>();
         services.AddSingleton<FlowRegistry>();
+        services.AddSingleton<FlowLauncher>();
         services.AddSingleton<IFlowFactory, FlowFactory>();
 
         // FlowCatalog.Build() runs Register + boot guard now → fail-fast on a bad entry.
