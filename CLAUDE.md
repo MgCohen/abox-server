@@ -20,6 +20,8 @@ Source of truth, in order:
   (capabilities, WHAT/WHY), `02-prd.md` (EARS requirements + R-SPINE/R-ARCH
   rules), `03-implementation-plan.md` (layer architecture + L1→L12 build order).
   The plan's "Current state" + done-when gates are authoritative for progress.
+- **Decisions (ADRs):** [`design/adr/`](design/adr) — focused records for choices
+  that outlive a single layer. `0001` fixes the flow catalog / config / context model.
 
 ## `prototype/` is a REFERENCE, not source of truth
 

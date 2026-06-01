@@ -24,12 +24,20 @@ public abstract class Flow
     private long _version;
     private FlowPhase _phase = FlowPhase.Pending;
     private DateTimeOffset _createdAt = DateTimeOffset.UtcNow;
+    private FlowConfig? _config;
 
     /// <summary>Run identity.</summary>
     public Guid Id { get; } = Guid.NewGuid();
 
-    /// <summary>Catalog name of this flow (e.g. <c>claude-only</c>).</summary>
-    public abstract string Name { get; }
+    /// <summary>Catalog name of this flow (e.g. <c>claude-only</c>), from its bound config.</summary>
+    public string Name => Config.Name;
+
+    /// <summary>The definition config the factory bound to this run. Host-driven, not recipe API.</summary>
+    protected FlowConfig Config => _config ?? throw new InvalidOperationException(
+        "Flow used before Configure() — IFlowFactory must bind a FlowConfig first.");
+
+    /// <summary>Bind this run's definition config. Set once by <see cref="IFlowFactory"/> before run inputs. Host-driven, not recipe API.</summary>
+    public void Configure(FlowConfig config) => _config = config;
 
     /// <summary>Short project name this run targets.</summary>
     public string Project { get; private set; } = "";

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using RemoteAgents.Contracts;
 
 namespace RemoteAgents.Flows;
@@ -39,6 +40,24 @@ public sealed class FlowRegistry(IHistoryStore history)
 
     public FlowSnapshot? Get(Guid id) =>
         _live.TryGetValue(id, out var f) ? f.Snapshot() : history.Get(id);
+
+    /// <summary>
+    /// Snapshot stream for an SSE subscriber: live updates while the run is in flight,
+    /// otherwise a single static frame for a finished run (and nothing for an unknown id).
+    /// The live-vs-finished decision lives here, not in the transport.
+    /// </summary>
+    public async IAsyncEnumerable<FlowSnapshot> Changes(Guid id, [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        if (_live.TryGetValue(id, out var flow))
+        {
+            await foreach (var snap in flow.Changes(ct).ConfigureAwait(false))
+                yield return snap;
+            yield break;
+        }
+
+        if (history.Get(id) is { } finished)
+            yield return finished;
+    }
 
     public IReadOnlyList<FlowSnapshot> List()
     {

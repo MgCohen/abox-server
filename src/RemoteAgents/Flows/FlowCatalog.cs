@@ -1,28 +1,32 @@
-
 namespace RemoteAgents.Flows;
 
-/// <summary>A registered flow: name → Type (resolved from DI per run) + description.</summary>
-public sealed record FlowEntry(string Name, string Description, Type FlowType);
-
-/// <summary>Declared once at the composition root via <c>AddFlow&lt;T&gt;</c>; injected into the catalog.</summary>
-public sealed record FlowRegistration(string Name, string Description, Type FlowType);
-
 /// <summary>
-/// Name → flow-type registry. <c>POST /flows</c> resolves a name to a Type and asks
-/// DI for it (R-SPINE-2 — no <c>new</c> in a catalog lambda). Distinct from
+/// Name → <see cref="FlowDefinition"/>, built from the registered manifest. Endpoints
+/// list it; <see cref="IFlowFactory"/> resolves through it. Distinct from
 /// <see cref="FlowRegistry"/> (runtime, Guid-keyed live + history).
 /// </summary>
+/// <remarks>
+/// The constructor is the fail-fast boot guard (ADR 0001): a duplicate name, blank
+/// metadata, or a non-Flow type throws at startup rather than failing on first request.
+/// </remarks>
 public sealed class FlowCatalog
 {
-    private readonly Dictionary<string, FlowEntry> _byName = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, FlowDefinition> _byName = new(StringComparer.OrdinalIgnoreCase);
 
-    public FlowCatalog(IEnumerable<FlowRegistration> registrations)
+    public FlowCatalog(IEnumerable<FlowDefinition> definitions)
     {
-        foreach (var r in registrations)
-            _byName[r.Name] = new FlowEntry(r.Name, r.Description, r.FlowType);
+        foreach (var d in definitions)
+        {
+            if (string.IsNullOrWhiteSpace(d.Config.Name))
+                throw new ArgumentException($"Flow definition for {d.FlowType.Name} has a blank name.");
+            if (!typeof(Flow).IsAssignableFrom(d.FlowType))
+                throw new ArgumentException($"Flow definition '{d.Config.Name}' type {d.FlowType.Name} is not a Flow.");
+            if (!_byName.TryAdd(d.Config.Name, d))
+                throw new ArgumentException($"Duplicate flow name '{d.Config.Name}'.");
+        }
     }
 
-    public FlowEntry? Resolve(string name) => _byName.TryGetValue(name, out var e) ? e : null;
+    public FlowDefinition? Resolve(string name) => _byName.GetValueOrDefault(name);
 
-    public IReadOnlyList<FlowEntry> All() => [.. _byName.Values];
+    public IReadOnlyList<FlowDefinition> All() => [.. _byName.Values];
 }

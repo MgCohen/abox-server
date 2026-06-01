@@ -7,8 +7,6 @@ namespace RemoteAgents.Flows;
 /// </summary>
 public sealed class StubFlow : Flow
 {
-    public override string Name => "stub";
-
     protected override async Task RunAsync(CancellationToken ct)
     {
         await RunStep("prepare", async c => { await Task.Delay(800, c); return "ready"; }, ct);

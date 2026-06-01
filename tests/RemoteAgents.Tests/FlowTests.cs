@@ -7,7 +7,7 @@ public class FlowTests
 {
     private sealed class TwoStepFlow : Flow
     {
-        public override string Name => "two-step";
+        public TwoStepFlow() => Configure(new FlowConfig("two-step", "test flow"));
         protected override async Task RunAsync(CancellationToken ct)
         {
             await RunStep("a", _ => Task.FromResult("ra"), ct);
@@ -17,7 +17,7 @@ public class FlowTests
 
     private sealed class FailingFlow : Flow
     {
-        public override string Name => "failing";
+        public FailingFlow() => Configure(new FlowConfig("failing", "test flow"));
         protected override Task RunAsync(CancellationToken ct) =>
             RunStep<string>("boom", _ => throw new InvalidOperationException("nope"), ct);
     }
