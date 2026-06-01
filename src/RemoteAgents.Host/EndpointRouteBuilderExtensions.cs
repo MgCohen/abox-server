@@ -4,10 +4,10 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using System.Text.Json;
 using RemoteAgents.Contracts;
-using RemoteAgents.Core.Projects;
+using RemoteAgents.Projects;
 using RemoteAgents.Flows;
 
-namespace RemoteAgents.Hosting;
+namespace RemoteAgents.Host;
 
 /// <summary>The orchestrator's HTTP endpoints.</summary>
 public static class EndpointRouteBuilderExtensions

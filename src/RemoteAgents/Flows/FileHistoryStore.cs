@@ -1,7 +1,7 @@
 using System.Text.Json;
 using RemoteAgents.Contracts;
 
-namespace RemoteAgents.Hosting;
+namespace RemoteAgents.Flows;
 
 /// <summary>
 /// File-backed history at <c>%USERPROFILE%/.remote-agents/rebuild/flows.json</c>.

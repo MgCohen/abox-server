@@ -1,4 +1,4 @@
-namespace RemoteAgents.Core.Paths;
+namespace RemoteAgents.Paths;
 
 /// <summary>
 /// Walks up from the current working directory (and the executing assembly's

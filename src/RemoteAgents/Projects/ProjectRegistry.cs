@@ -1,8 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using RemoteAgents.Core.Paths;
+using RemoteAgents.Paths;
 
-namespace RemoteAgents.Core.Projects;
+namespace RemoteAgents.Projects;
 
 /// <inheritdoc />
 public sealed class ProjectRegistry : IProjectRegistry

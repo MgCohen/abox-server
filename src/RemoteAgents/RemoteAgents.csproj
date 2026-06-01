@@ -1,8 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- The orchestrator. Agent providers, the Step framework, and the Flow
-       framework + recipes live here as FOLDERS (Agents/, Steps/, Flows/), not
-       separate assemblies.
+  <!-- The engine — everything that can run a flow WITHOUT a web host. Generic
+       infra (Paths/, Projects/), the Agent/Step/Flow frameworks, and the flow
+       runtime (FlowRegistry/FlowCatalog/history) live here as FOLDERS, not
+       separate assemblies. Takes NO ASP.NET and NO DI-container dependency —
+       only Contracts — so it could be driven from a CLI or worker unchanged.
 
        The "tools only run inside a Step" rule (R-SPINE-1) is enforced by API
        shape — Run does the lifecycle bookkeeping once, and agent/validator
@@ -12,7 +14,6 @@
        analyzer only if one ever actually appears. -->
 
   <ItemGroup>
-    <ProjectReference Include="..\RemoteAgents.Core\RemoteAgents.Core.csproj" />
     <ProjectReference Include="..\RemoteAgents.Contracts\RemoteAgents.Contracts.csproj" />
   </ItemGroup>
 

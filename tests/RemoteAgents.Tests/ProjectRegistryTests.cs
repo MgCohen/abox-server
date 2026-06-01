@@ -1,5 +1,5 @@
-using RemoteAgents.Core.Paths;
-using RemoteAgents.Core.Projects;
+using RemoteAgents.Paths;
+using RemoteAgents.Projects;
 
 namespace RemoteAgents.Tests;
 

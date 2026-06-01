@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 using RemoteAgents.Flows;
-using RemoteAgents.Hosting;
+using RemoteAgents.Host;
 
 var builder = WebApplication.CreateBuilder(args);
 

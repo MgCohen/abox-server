@@ -1,4 +1,4 @@
-namespace RemoteAgents.Core.Projects;
+namespace RemoteAgents.Projects;
 
 /// <summary>A registered project: short name + its absolute directory.</summary>
 public readonly record struct ProjectEntry(string Name, string Path);

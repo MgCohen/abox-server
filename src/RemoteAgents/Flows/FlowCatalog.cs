@@ -1,6 +1,5 @@
-using RemoteAgents.Flows;
 
-namespace RemoteAgents.Hosting;
+namespace RemoteAgents.Flows;
 
 /// <summary>A registered flow: name → Type (resolved from DI per run) + description.</summary>
 public sealed record FlowEntry(string Name, string Description, Type FlowType);

@@ -1,6 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-
-  <!-- L1 · generic, domain-agnostic infrastructure only (paths + project
-       registry). No DTOs, no guards, no flow/agent/step types. -->
-
-</Project>

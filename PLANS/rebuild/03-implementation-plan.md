@@ -66,33 +66,54 @@ No SignalR layer: it was replaced by SSE in the refactor; only a dead smoke
 script remains (removed at L12). Transport (SSE) + UI are not their own layers —
 they fold into L2's walking skeleton.
 
-### Assembly layout (decided 2026-05-31)
+### Assembly layout (4 projects — decided 2026-05-31, refined after L2)
 
-The 12 layers are a build sequence, **not** 12 assemblies. The physical project
-split is deliberately small — an assembly boundary is only created where it earns
-**enforcement** or **reuse**:
+The 12 layers are a build sequence, **not** 12 assemblies. The physical split is
+deliberately small — a boundary exists only where it earns **enforcement** or
+**reuse**:
 
 ```
-RemoteAgents.Core        generic infra (paths, ProjectRegistry)        — reused leaf
-RemoteAgents             the orchestrator: Agents/ Steps/ Flows/ folders (L2–L11)
-RemoteAgents.Contracts   wire DTOs (shared with Host + Blazor client)
-RemoteAgents.Hosting     composition root helpers + endpoints + SSE
-RemoteAgents.Host        thin ASP.NET entrypoint
+RemoteAgents.Web         Blazor WASM UI                              → Contracts
+RemoteAgents.Contracts   wire DTOs (the UI-decoupling seam)          — leaf
+RemoteAgents             the engine: Paths/ Projects/ Agents/ Steps/ → Contracts
+                         Flows/ + flow runtime (registry/catalog/
+                         history). NO ASP.NET, NO DI package — pure.
+RemoteAgents.Host        ASP.NET adapter: endpoints + SSE + CORS +   → RemoteAgents,
+                         composition root (AddRemoteAgents/AddFlow)     Contracts
 ```
 
-The orchestrator's layers (Agents/Steps/Flows) live as **folders/namespaces in
-one assembly**, not separate assemblies. R-SPINE-1 is enforced by **API shape**:
+Why these four and not more:
+
+- **Contracts** is the strongest boundary — shared by the UI and the server, it
+  is what keeps the WASM client unable to see any engine type (Web references
+  Contracts and nothing else). Earns its keep by reuse.
+- **The engine** holds everything that can run a flow *without* a web host:
+  generic infra (paths, `ProjectRegistry`), the Flow/Step/Agent frameworks, and
+  the flow runtime (`FlowRegistry`/`FlowCatalog`/history). It takes **no** ASP.NET
+  and **no** DI-container dependency — only `Contracts` — so it could be driven
+  from a CLI or worker unchanged.
+- **Host** is the web adapter and the composition root: the only ASP.NET-coupled
+  code — endpoint mapping, the SSE writer, CORS, `AddRemoteAgents`/`AddFlow`, and
+  `Program`. Thin, but a real layer, not a stub.
+
+The engine's layers (Agents/Steps/Flows) live as **folders/namespaces in one
+assembly**, not separate assemblies. R-SPINE-1 is enforced by **API shape**:
 `Flow.Run<T>(Step<T>)` owns the lifecycle, and the agent-driving surface is
 `internal` and reached only via `StepContext` handed to a step body — never given
 to flow code. A deliberate bypass is reviewable, not a compile error; escalate to
 a focused Roslyn analyzer only if one ever actually appears.
 
-> Earlier (L1 scaffold) this was a 4-assembly split (`Agents`/`Steps`/`Flows`
-> separate, with `PrivateAssets` + `DisableTransitiveProjectReferences` making a
-> bypass a compile error). Collapsed 2026-05-31: judged over-insurance at
-> solo/4-flow scale, and the ergonomic win (automatic lifecycle bookkeeping)
-> comes from the API shape, not the wall. The analyzer is the escalation path if
-> the trade-off ever flips.
+> **History.** L1 scaffolded a 4-assembly split *inside* the orchestrator
+> (`Agents`/`Steps`/`Flows` separate, with `PrivateAssets` +
+> `DisableTransitiveProjectReferences` walls); collapsed 2026-05-31 to
+> folders-in-one-assembly — the ergonomic win (automatic lifecycle bookkeeping)
+> comes from the API shape, not the wall. **Refined after L2:** `Core` folded
+> into the engine (its "reused leaf" never gained a second consumer) and
+> `Hosting` was dissolved — its framework-agnostic parts (registry, catalog,
+> history, JSON) moved into the engine to keep it pure; its one ASP.NET-coupled
+> file (endpoints + SSE) and the DI composition root moved into `Host`. Net:
+> 5 projects → 4, engine stays ASP.NET-free. The analyzer remains the escalation
+> path if the API-shape seam ever proves too weak.
 
 ---
 

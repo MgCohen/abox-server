@@ -1,4 +1,4 @@
-namespace RemoteAgents.Core.Paths;
+namespace RemoteAgents.Paths;
 
 /// <summary>
 /// Resolved filesystem anchors for the orchestrator. Injected as a singleton so

@@ -1,9 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
-using RemoteAgents.Core.Paths;
-using RemoteAgents.Core.Projects;
+using RemoteAgents.Paths;
+using RemoteAgents.Projects;
 using RemoteAgents.Flows;
 
-namespace RemoteAgents.Hosting;
+namespace RemoteAgents.Host;
 
 /// <summary>Composition root for the orchestrator's services.</summary>
 public static class ServiceCollectionExtensions

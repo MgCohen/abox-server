@@ -1,8 +1,7 @@
 using System.Collections.Concurrent;
 using RemoteAgents.Contracts;
-using RemoteAgents.Flows;
 
-namespace RemoteAgents.Hosting;
+namespace RemoteAgents.Flows;
 
 /// <summary>
 /// Runtime registry of in-flight runs (Guid → live <see cref="Flow"/>). Starts a
