@@ -1,9 +1,30 @@
 # ADR 0001 — Flow catalog, configuration, and run context
 
-- **Status:** Accepted (2026-06-01)
+- **Status:** Accepted (2026-06-01); **amended 2026-06-01** — config home + factory
+  mechanism (see *Amendment* below).
 - **Scope:** the rebuild (`/src`). Applies going forward; existing L2 code aligns
   as we touch it.
 - **Supersedes:** the prototype's "named things as static-class properties" shape.
+
+## Amendment (2026-06-01) — config is a run argument, flows resolve by type
+
+Two refinements after reviewing the start path; the three-tier model (§1) and the
+catalog/factory/R-SPINE-2 stance are unchanged.
+
+1. **`FlowConfig` moved off the `Flow` constructor onto `ExecuteAsync(config, ctx, ct)`.**
+   The flow is now a **fully stateless** recipe — no config field, no run-state. Config
+   is sourced from the definition by the registry at launch and handed in per run. This
+   is more faithful to "stateless recipe" than ctor-injected config, and keeps the
+   run-state/config split clean (config is neither on the flow nor in the context; it's
+   an execution input). Where §2 says config "lives on the `Flow`," read: *config is an
+   execution argument*.
+2. **Flows resolve by plain DI, not `ActivatorUtilities`.** With config off the ctor, a
+   flow's only ctor deps are services, so `IServiceProvider.GetRequiredService(type)`
+   suffices — no reflection bridge. Composition registers each catalog type
+   (`services.AddTransient(def.FlowType)`); `FlowFactory.Create` resolves by type.
+3. **`FlowRegistry` owns the launch cascade.** `Start(flowName, project, dir, prompt, args)`
+   resolves the definition, builds the flow via the factory, creates the context, and
+   drives it — returning `Guid?` (null ⇒ unknown flow). Endpoints no longer assemble runs.
 
 ## Context
 
@@ -93,10 +114,11 @@ public sealed class FlowCatalog
     private void Register<TFlow>(FlowConfig config) where TFlow : Flow { … }
 }
 
-// Host composition: build once; the factory constructs flows via ActivatorUtilities
-// (config passed in, service deps resolved from the container), so flow types need
-// no DI registration of their own.
-services.AddSingleton(FlowCatalog.Build());
+// Host composition: build once; flows are stateless (config is a run arg), so each
+// catalog type is a plain transient the factory resolves by type — no reflection.
+var catalog = FlowCatalog.Build();
+foreach (var def in catalog.All()) services.AddTransient(def.FlowType);
+services.AddSingleton(catalog);
 services.AddSingleton<IFlowFactory, FlowFactory>();   // FlowFactory impl lives in the Host (DI-coupled)
 ```
 

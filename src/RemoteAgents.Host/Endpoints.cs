@@ -23,20 +23,16 @@ internal static class Endpoints
 
         var flows = app.MapGroup("/flows");
 
-        flows.MapPost("/", (StartRunRequest req, FlowCatalog catalog, IFlowFactory factory,
-                            FlowRegistry runs, IProjectRegistry projects) =>
+        flows.MapPost("/", (StartRunRequest req, FlowRegistry runs, IProjectRegistry projects) =>
         {
-            var def = catalog.Resolve(req.Flow);
-            if (def is null)
-                return Results.NotFound(new { error = $"Unknown flow '{req.Flow}'." });
-
             string projectDir;
             try { projectDir = projects.Resolve(req.Project); }
             catch (Exception ex) { return Results.BadRequest(new { error = ex.Message }); }
 
-            var flow = factory.Create(def);
-            var id = runs.Start(flow, req.Project, projectDir, req.Prompt, req.Args ?? []);
-            return Results.Ok(new StartRunResponse(id));
+            var id = runs.Start(req.Flow, req.Project, projectDir, req.Prompt, req.Args ?? []);
+            return id is null
+                ? Results.NotFound(new { error = $"Unknown flow '{req.Flow}'." })
+                : Results.Ok(new StartRunResponse(id.Value));
         });
 
         flows.MapGet("/", (FlowRegistry runs) => runs.List());

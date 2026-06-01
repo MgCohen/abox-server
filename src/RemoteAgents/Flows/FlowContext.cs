@@ -7,10 +7,11 @@ namespace RemoteAgents.Flows;
 /// <summary>
 /// The living state of one flow run: identity, the run inputs, and the mutable
 /// run-state (steps, phase, monotonic version) plus the snapshot pipe. Holds the run
-/// situation, NOT the flow's config — config is the flow's (see <see cref="Flow.Config"/>);
-/// the context only carries the flow's name as the snapshot label. A <see cref="Flow"/>
-/// is a stateless recipe + orchestration that writes through the context it's handed;
-/// the registry tracks contexts (not flows) and streams their snapshots. See ADR 0001.
+/// situation, NOT the flow's config — config is an execution argument the registry
+/// hands to <see cref="Flow.ExecuteAsync"/>; the context only carries the flow's name
+/// as the snapshot label. A <see cref="Flow"/> is a stateless recipe + orchestration
+/// that writes through the context it's handed; the registry tracks contexts (not
+/// flows) and streams their snapshots. See ADR 0001.
 /// </summary>
 /// <remarks>
 /// L2/skeleton note: <see cref="RunStep{T}"/> is the provisional step recorder. L3

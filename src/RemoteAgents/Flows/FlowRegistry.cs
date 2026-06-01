@@ -5,25 +5,31 @@ using RemoteAgents.Contracts;
 namespace RemoteAgents.Flows;
 
 /// <summary>
-/// Runtime registry of in-flight runs (Guid → live <see cref="FlowContext"/>). Creates
-/// a context for each run, drives the flow against it on a background task, persists
-/// the final snapshot to history on completion, and answers reads as live-then-history.
+/// Runtime registry of in-flight runs (Guid → live <see cref="FlowContext"/>). Owns the
+/// whole launch cascade: resolve a flow by name, build it via the factory, create its
+/// run-context, drive it on a background task, persist the final snapshot to history on
+/// completion, and answer reads as live-then-history.
 /// </summary>
-public sealed class FlowRegistry(IHistoryStore history)
+public sealed class FlowRegistry(FlowCatalog catalog, IFlowFactory factory, IHistoryStore history)
 {
     private readonly ConcurrentDictionary<Guid, FlowContext> _live = new();
     private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _cts = new();
 
-    public Guid Start(Flow flow, string project, string projectDir, string prompt, string[] args)
+    /// <summary>Launch a run by flow name. Returns the run id, or null if no such flow.</summary>
+    public Guid? Start(string flowName, string project, string projectDir, string prompt, string[] args)
     {
-        var ctx = new FlowContext(flow.Config.Name, project, projectDir, prompt, args);
+        var def = catalog.Resolve(flowName);
+        if (def is null) return null;
+
+        var flow = factory.Create(def);
+        var ctx = new FlowContext(def.Config.Name, project, projectDir, prompt, args);
         var cts = new CancellationTokenSource();
         _live[ctx.Id] = ctx;
         _cts[ctx.Id] = cts;
 
         _ = Task.Run(async () =>
         {
-            try { await flow.ExecuteAsync(ctx, cts.Token); }
+            try { await flow.ExecuteAsync(def.Config, ctx, cts.Token); }
             catch { /* terminal phase already recorded on the context */ }
             finally
             {

@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.DependencyInjection;
 using RemoteAgents.Flows;
 using RemoteAgents.Paths;
 using RemoteAgents.Projects;
@@ -32,7 +33,11 @@ internal static class Composition
         services.AddSingleton<IFlowFactory, FlowFactory>();
 
         // FlowCatalog.Build() runs Register + boot guard now → fail-fast on a bad entry.
-        // Flow types need no DI registration: the factory builds them via ActivatorUtilities.
-        services.AddSingleton(FlowCatalog.Build());
+        // Flows are stateless recipes (config is an execution arg), so each catalog type
+        // is a plain transient the factory resolves by type. See ADR 0001.
+        var catalog = FlowCatalog.Build();
+        foreach (var def in catalog.All())
+            services.AddTransient(def.FlowType);
+        services.AddSingleton(catalog);
     }
 }
