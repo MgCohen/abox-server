@@ -1,0 +1,107 @@
+@page "/"
+@inject HostApiClient Api
+@inject NavigationManager Nav
+
+<PageTitle>New run</PageTitle>
+
+<div class="page">
+    <h1>New run</h1>
+
+    @if (_projects is null || _flows is null)
+    {
+        <p>Loading…</p>
+    }
+    else
+    {
+        <div class="field">
+            <label for="project">Project</label>
+            <select id="project" @bind="_project">
+                <option value="">— pick one —</option>
+                @foreach (var p in _projects)
+                {
+                    <option value="@p.Name">@p.Name</option>
+                }
+            </select>
+        </div>
+
+        <div class="field">
+            <label for="flow">Flow</label>
+            <select id="flow" @bind="_flow">
+                <option value="">— pick one —</option>
+                @foreach (var f in _flows)
+                {
+                    <option value="@f.Name" title="@f.Description">@f.Name</option>
+                }
+            </select>
+            @if (FlowDescription is { Length: > 0 } desc)
+            {
+                <p class="hint">@desc</p>
+            }
+        </div>
+
+        <div class="field">
+            <label for="prompt">Prompt</label>
+            <textarea id="prompt" rows="6" placeholder="What should the agent do?" @bind="_prompt"></textarea>
+        </div>
+
+        <button @onclick="StartAsync" disabled="@(_busy || !CanSubmit)">
+            @(_busy ? "Starting…" : "Run")
+        </button>
+
+        @if (_error is not null)
+        {
+            <p class="error">@_error</p>
+        }
+    }
+</div>
+
+@code {
+    private ProjectInfo[]? _projects;
+    private FlowInfo[]? _flows;
+    private string _project = "";
+    private string _flow = "";
+    private string _prompt = "";
+    private bool _busy;
+    private string? _error;
+
+    private string? FlowDescription =>
+        _flows?.FirstOrDefault(f => f.Name == _flow)?.Description;
+
+    private bool CanSubmit =>
+        !string.IsNullOrWhiteSpace(_project) &&
+        !string.IsNullOrWhiteSpace(_flow) &&
+        !string.IsNullOrWhiteSpace(_prompt);
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _projects = await Api.GetProjectsAsync();
+            _flows = await Api.GetCatalogAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load: {ex.Message}";
+        }
+    }
+
+    private async Task StartAsync()
+    {
+        if (!CanSubmit) return;
+        _busy = true;
+        _error = null;
+        try
+        {
+            var id = await Api.StartFlowAsync(new StartRunRequest(_project, _flow, _prompt));
+            Nav.NavigateTo($"runs/{id}");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}
