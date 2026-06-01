@@ -50,32 +50,41 @@ dotnet test  RemoteAgents.slnx
 
 ## Code standards
 
-A few rules we already operate by. Mechanical style will move into tooling
-(`.editorconfig`) later; this is the judgment-call set.
+Judgment-call rules we operate by. Mechanical style (formatting, naming) moves
+into `.editorconfig` later. Applied **going forward** — existing L1/L2 code
+predates some of these (notably comments) and aligns as we touch it.
 
-- **Prefer the lightest enforcement that fits the risk; don't over-build walls.**
-  R-SPINE-1 ("tools only run inside a Step") is enforced by **API shape**:
-  `Flow.Run<T>(Step<T>)` owns the lifecycle, and the agent-driving surface is
-  `internal` and reached only via `StepContext` handed to a step body — never
-  given to flow code. A deliberate bypass is reviewable, not a compile error.
-  (We deliberately *collapsed* an earlier 4-assembly wall here — it was
-  over-insurance at this scale; escalate to a Roslyn analyzer only if a real
-  bypass appears.) Reach for structural enforcement when the risk earns it, not
-  by default.
+**Architecture / spine**
+
+- **YAGNI / least mechanism.** Build for the requirement in front of you — no
+  speculative abstraction, config, or extensibility "for later." Add the
+  abstraction on the *second* real use, not the first. (The assembly-wall
+  collapse is the worked example.)
 - **DI services over statics.** Construct collaborators from the container; no
-  hidden static singletons (e.g. `ProjectRegistry`/`OrchestratorPaths` are
-  injected services, not static classes).
-- **Contracts and guards live with the layer that owns them** — never
-  front-loaded into the skeleton. `FlowSnapshot` with the flow tech,
-  `AgentRunRequest` with the provider framework, `SubscriptionGuard` with the
-  concrete agents (R-ARCH-2).
-- **Results own their display** via `ToString()`. No per-call `summarize` lambda.
-- **Validators are `Step`s**, not an `IValidator` interface (NG9).
-- **No `new Agent()` in composition** — mint per step via `IAgentFactory` roles
-  (implementer/reviewer) (R-SPINE-2).
-- **Fakes are first-class.** The fake agent and fake terminal are real, kept test
-  doubles behind the seams — not throwaway scaffolding.
-- **Throw actionable errors** — messages that say what to do (e.g. "Edit
-  projects.json to add more, or pass an absolute path").
-- **Per layer:** warning-free build + green tests + one coherent commit. Nullable
-  on, warnings-as-errors, file-scoped namespaces; net10.0.
+  hidden static singletons.
+- **Results own their display** via `ToString()` — no per-call `summarize` lambda.
+- **Fakes are first-class** test doubles, kept behind the seams — not throwaway.
+- **Throw actionable errors; never swallow them silently.** Messages say what to
+  do; an intentional ignore gets a one-line *why*.
+- **Label provisional/scaffolding code as provisional** (e.g. `RunStep`, the stub
+  flow) so it's never mistaken for settled design.
+- **Per layer:** warning-free build + green tests + behavior verified (run it,
+  not just compile) + one coherent commit. Nullable on, warnings-as-errors,
+  file-scoped namespaces, net10.0.
+- Honor the PRD's spine + architecture rules (R-SPINE-1/2, R-ARCH-1/2/3) and
+  non-goals — validators are Steps, no `new Agent()` in composition,
+  contracts/guards live with their layer.
+
+**Craft / quality**
+
+- **Prefer deleting to adding.** No dead or commented-out code — delete it; git
+  remembers.
+- **Clarity over cleverness.** Optimize for the next reader: obvious names,
+  straight-line logic.
+- **Make illegal states unrepresentable.** Lean on the type system — non-null,
+  records, enums, small value types — so bad states don't compile.
+- **Single type per file** — except nested types and a generic + its companion.
+- **Minimal comments.** No XML-doc ceremony or narration of what the code already
+  says; only short one-liners for genuine edge cases / non-obvious *why* (incl.
+  oracle citations on ported tricky bits).
+- **Small, focused methods and classes.**
