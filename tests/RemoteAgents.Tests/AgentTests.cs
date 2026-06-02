@@ -1,0 +1,79 @@
+using RemoteAgents.Contracts;
+using RemoteAgents.Flows;
+using RemoteAgents.Steps.Agents;
+
+namespace RemoteAgents.Tests;
+
+public class AgentTests
+{
+    private sealed class OneAgentFlow(IAgentFactory agents, string role, string prompt) : Flow
+    {
+        protected override Task RunAsync(FlowConfig config, FlowContext ctx, CancellationToken ct) =>
+            Run(agents.Create(role, "agent", prompt), ct);
+    }
+
+    private static FlowContext ContextFor(string name) => new(name, "proj", "C:/proj", "prompt");
+
+    [Fact]
+    public async Task Factory_minted_agent_runs_through_the_flow_and_its_text_is_the_summary()
+    {
+        var flow = new OneAgentFlow(new FakeAgentFactory(), "implementer", "do the thing");
+        var ctx = ContextFor("agent-flow");
+        var stream = new SnapshotStream(flow, ctx);
+
+        await flow.ExecuteAsync(new FlowConfig("agent-flow", "t"), ctx, CancellationToken.None);
+
+        var step = stream.Latest.Steps.Single();
+        Assert.Equal("agent", step.Name);
+        Assert.Equal(StepStatus.Completed, step.Status);
+        Assert.Equal("[implementer] do the thing", step.Summary);
+    }
+
+    [Fact]
+    public async Task Agent_builds_its_request_from_the_run_project_dir()
+    {
+        AgentRunRequest? seen = null;
+        var flow = new CapturingFlow(req => seen = req);
+
+        await flow.ExecuteAsync(new FlowConfig("cap", "t"), new FlowContext("cap", "proj", "C:/work/card", "p"), CancellationToken.None);
+
+        Assert.NotNull(seen);
+        Assert.Equal("C:/work/card", seen!.ProjectDir);
+        Assert.Equal("p", seen.Prompt);
+    }
+
+    [Fact]
+    public async Task Agent_result_carries_the_transcript()
+    {
+        var agent = new FakeAgent("agent", "reviewer", "look", null);
+
+        var result = await agent.RunAsync(new FlowContext("f", "proj", "C:/proj", "p"), CancellationToken.None);
+
+        var turn = Assert.Single(result.Transcript);
+        Assert.Equal(AgentTurnKind.Text, turn.Kind);
+        Assert.Equal("[reviewer] look", turn.Body);
+        Assert.Equal("fake-session", result.SessionId);
+    }
+
+    [Fact]
+    public void AgentRunRequest_rejects_a_blank_prompt()
+    {
+        Assert.Throws<ArgumentException>(() => new AgentRunRequest(" ", "C:/proj"));
+    }
+
+    private sealed class CapturingFlow(Action<AgentRunRequest> capture) : Flow
+    {
+        protected override Task RunAsync(FlowConfig config, FlowContext ctx, CancellationToken ct) =>
+            Run(new CapturingAgent(capture), ct);
+    }
+
+    private sealed class CapturingAgent(Action<AgentRunRequest> capture)
+        : Agent("capture", "p", null)
+    {
+        protected override Task<DriveResult> DriveAsync(AgentRunRequest request, CancellationToken ct)
+        {
+            capture(request);
+            return Task.FromResult(new DriveResult("ok", "s", 0, "ok", []));
+        }
+    }
+}

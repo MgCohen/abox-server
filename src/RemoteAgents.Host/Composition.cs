@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.DependencyInjection;
 using RemoteAgents.Flows;
+using RemoteAgents.Steps.Agents;
 using RemoteAgents.Tools.Paths;
 using RemoteAgents.Tools.Projects;
 
@@ -25,6 +26,7 @@ internal static class Composition
         services.AddSingleton<FlowRegistry>();
         services.AddSingleton<FlowLauncher>();
         services.AddSingleton<IFlowFactory, FlowFactory>();
+        services.AddSingleton<IAgentFactory, FakeAgentFactory>();
 
         // Eager build → fail-fast on a bad entry. Flows are stateless (config is a run arg), so transient. See ADR 0001.
         var catalog = FlowCatalog.Build();
