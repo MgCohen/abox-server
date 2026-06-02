@@ -1,6 +1,6 @@
 namespace RemoteAgents.Contracts;
 
-public enum StepStatus
+public enum OperationStatus
 {
     Pending,
     Running,

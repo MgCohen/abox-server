@@ -2,30 +2,30 @@ using RemoteAgents.Contracts;
 
 namespace RemoteAgents.Flows;
 
-internal sealed class StepRecord(string name)
+internal class OperationRecord(string name)
 {
     public string Name { get; } = name;
-    public StepStatus Status { get; private set; } = StepStatus.Pending;
+    public OperationStatus Status { get; private set; } = OperationStatus.Pending;
     public DateTimeOffset? StartedAt { get; private set; }
     public DateTimeOffset? EndedAt { get; private set; }
     public string? Summary { get; private set; }
     public string? Error { get; private set; }
 
-    public void Start() { Status = StepStatus.Running; StartedAt = DateTimeOffset.UtcNow; }
+    public void Start() { Status = OperationStatus.Running; StartedAt = DateTimeOffset.UtcNow; }
 
     public void Complete(string? summary)
     {
-        Status = StepStatus.Completed;
+        Status = OperationStatus.Completed;
         Summary = summary;
         EndedAt = DateTimeOffset.UtcNow;
     }
 
     public void Fail(string error)
     {
-        Status = StepStatus.Failed;
+        Status = OperationStatus.Failed;
         Error = error;
         EndedAt = DateTimeOffset.UtcNow;
     }
 
-    public StepDto ToDto() => new(Name, Status, StartedAt, EndedAt, Summary, Error);
+    public OperationDto ToDto() => new(Name, Status, StartedAt, EndedAt, Summary, Error);
 }

@@ -26,15 +26,15 @@
             }
         </p>
 
-        <h2>Steps</h2>
-        @if (_snap.Steps.Count == 0)
+        <h2>Operations</h2>
+        @if (_snap.Operations.Count == 0)
         {
-            <p class="hint">No steps yet.</p>
+            <p class="hint">No operations yet.</p>
         }
         else
         {
             <ol class="steps">
-                @foreach (var step in _snap.Steps)
+                @foreach (var step in _snap.Operations)
                 {
                     <li class="step status-@step.Status.ToString().ToLowerInvariant()">
                         <span class="step-name">@step.Name</span>
@@ -94,7 +94,7 @@
 
     private Task CancelAsync() => Api.CancelFlowAsync(Id);
 
-    private static string TimeRange(StepDto step)
+    private static string TimeRange(OperationDto step)
     {
         var started = step.StartedAt?.ToLocalTime().ToString("HH:mm:ss") ?? "—";
         return step.EndedAt is { } e ? $"{started} → {e.ToLocalTime():HH:mm:ss}" : started;

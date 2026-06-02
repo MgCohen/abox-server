@@ -1,4 +1,4 @@
-namespace RemoteAgents.Steps.Agents;
+namespace RemoteAgents.Actors.Agents;
 
 public sealed record AgentResult(
     string Text,

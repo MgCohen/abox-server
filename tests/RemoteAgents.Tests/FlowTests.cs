@@ -5,23 +5,23 @@ namespace RemoteAgents.Tests;
 
 public class FlowTests
 {
-    private sealed class FixedStep(string name, string result) : IStepHandler<string>
+    private sealed class FixedStep(string name, string result) : IOperation<string>
     {
         public string Name => name;
-        public Task<string> RunAsync(FlowContext ctx, CancellationToken ct) => Task.FromResult(result);
+        public Task<string> Execute(FlowContext ctx, CancellationToken ct) => Task.FromResult(result);
     }
 
-    private sealed class ThrowingStep(string name) : IStepHandler<string>
+    private sealed class ThrowingStep(string name) : IOperation<string>
     {
         public string Name => name;
-        public Task<string> RunAsync(FlowContext ctx, CancellationToken ct) =>
+        public Task<string> Execute(FlowContext ctx, CancellationToken ct) =>
             throw new InvalidOperationException("nope");
     }
 
-    private sealed class PromptStep(string name) : IStepHandler<string>
+    private sealed class RequestStep(string name) : IOperation<string>
     {
         public string Name => name;
-        public Task<string> RunAsync(FlowContext ctx, CancellationToken ct) => Task.FromResult(ctx.Prompt);
+        public Task<string> Execute(FlowContext ctx, CancellationToken ct) => Task.FromResult(ctx.Request);
     }
 
     private sealed class TwoStepFlow : Flow
@@ -39,17 +39,17 @@ public class FlowTests
             Run(new ThrowingStep("boom"), ct);
     }
 
-    private sealed class PromptFlow : Flow
+    private sealed class RequestFlow : Flow
     {
         protected override Task RunAsync(FlowConfig config, FlowContext ctx, CancellationToken ct) =>
-            Run(new PromptStep("echo"), ct);
+            Run(new RequestStep("echo"), ct);
     }
 
     private static FlowContext ContextFor(FlowConfig config) =>
-        new(config.Name, "proj", "C:/proj", "prompt");
+        new(config.Name, "proj", "C:/proj", "request");
 
     [Fact]
-    public async Task ExecuteAsync_runs_all_steps_and_reaches_Completed()
+    public async Task ExecuteAsync_runs_all_operations_and_reaches_Completed()
     {
         var config = new FlowConfig("two-step", "test flow");
         var flow = new TwoStepFlow();
@@ -60,9 +60,9 @@ public class FlowTests
 
         var snap = stream.Latest;
         Assert.Equal(FlowPhase.Completed, snap.Phase);
-        Assert.Equal(["a", "b"], snap.Steps.Select(s => s.Name));
-        Assert.All(snap.Steps, s => Assert.Equal(StepStatus.Completed, s.Status));
-        Assert.Equal("ra", snap.Steps[0].Summary);
+        Assert.Equal(["a", "b"], snap.Operations.Select(s => s.Name));
+        Assert.All(snap.Operations, s => Assert.Equal(OperationStatus.Completed, s.Status));
+        Assert.Equal("ra", snap.Operations[0].Summary);
         Assert.Equal("two-step", snap.Flow);
     }
 
@@ -81,7 +81,7 @@ public class FlowTests
     }
 
     [Fact]
-    public async Task A_failing_step_marks_the_flow_Failed_and_records_the_error()
+    public async Task A_failing_operation_marks_the_flow_Failed_and_records_the_error()
     {
         var config = new FlowConfig("failing", "t");
         var flow = new FailingFlow();
@@ -92,21 +92,21 @@ public class FlowTests
 
         var snap = stream.Latest;
         Assert.Equal(FlowPhase.Failed, snap.Phase);
-        Assert.Equal(StepStatus.Failed, snap.Steps[0].Status);
-        Assert.Equal("nope", snap.Steps[0].Error);
+        Assert.Equal(OperationStatus.Failed, snap.Operations[0].Status);
+        Assert.Equal("nope", snap.Operations[0].Error);
     }
 
     [Fact]
-    public async Task A_handler_reads_run_data_from_the_context_it_is_handed()
+    public async Task An_operation_reads_run_data_from_the_context_it_is_handed()
     {
-        var config = new FlowConfig("prompt", "t");
-        var flow = new PromptFlow();
+        var config = new FlowConfig("request", "t");
+        var flow = new RequestFlow();
         var ctx = ContextFor(config);
         var stream = new SnapshotStream(flow, ctx);
 
         await flow.ExecuteAsync(config, ctx, CancellationToken.None);
 
-        Assert.Equal("prompt", stream.Latest.Steps[0].Summary);
+        Assert.Equal("request", stream.Latest.Operations[0].Summary);
     }
 
     [Fact]
