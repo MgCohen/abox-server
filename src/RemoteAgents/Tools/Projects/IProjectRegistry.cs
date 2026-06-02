@@ -1,4 +1,4 @@
-namespace RemoteAgents.Projects;
+namespace RemoteAgents.Tools.Projects;
 
 public readonly record struct ProjectEntry(string Name, string Path);
 

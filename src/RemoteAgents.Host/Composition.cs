@@ -1,8 +1,8 @@
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.DependencyInjection;
 using RemoteAgents.Flows;
-using RemoteAgents.Paths;
-using RemoteAgents.Projects;
+using RemoteAgents.Tools.Paths;
+using RemoteAgents.Tools.Projects;
 
 namespace RemoteAgents.Host;
 
