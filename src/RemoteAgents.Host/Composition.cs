@@ -26,7 +26,7 @@ internal static class Composition
         services.AddSingleton<FlowRegistry>();
         services.AddSingleton<FlowLauncher>();
         services.AddSingleton<IFlowFactory, FlowFactory>();
-        services.AddSingleton<IAgentFactory, FakeAgentFactory>();
+        services.AddSingleton<IAgentFactory, AgentFactory>();
 
         // Eager build → fail-fast on a bad entry. Flows are stateless (config is a run arg), so transient. See ADR 0001.
         var catalog = FlowCatalog.Build();

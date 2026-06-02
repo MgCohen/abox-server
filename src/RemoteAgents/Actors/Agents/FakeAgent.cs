@@ -2,7 +2,7 @@ namespace RemoteAgents.Actors.Agents;
 
 // PROVISIONAL canned agent for the walking skeleton — replaced by the real
 // providers (Claude/Codex) at L6.
-public sealed class FakeAgent(string role) : Agent(role)
+public sealed class FakeAgent(AgentConfig config) : Agent(config)
 {
     protected override Task<DriveResult> DriveAsync(AgentRunRequest request, CancellationToken ct)
     {

@@ -6,16 +6,21 @@ namespace RemoteAgents.Tests;
 
 public class AgentTests
 {
-    private sealed class OneAgentFlow(IAgentFactory agents, string role, string prompt) : Flow
+    private sealed class FakeAgentFactory : IAgentFactory
     {
-        protected override Task RunAsync(FlowConfig config, FlowContext ctx, CancellationToken ct) =>
-            Run(agents.Create(role).Run(prompt), ct);
+        public Agent Create(AgentConfig config) => new FakeAgent(config);
+    }
+
+    private sealed class OneAgentFlow(IAgentFactory agents, AgentConfig config, string prompt) : Flow
+    {
+        protected override Task RunAsync(FlowConfig flowConfig, FlowContext ctx, CancellationToken ct) =>
+            Run(agents.Create(config).Run(prompt), ct);
     }
 
     [Fact]
     public async Task Factory_minted_agent_runs_through_the_flow_and_its_text_is_the_summary()
     {
-        var flow = new OneAgentFlow(new FakeAgentFactory(), "implementer", "do the thing");
+        var flow = new OneAgentFlow(new FakeAgentFactory(), Agents.Implementer, "do the thing");
         var ctx = new FlowContext("agent-flow", "proj", "C:/proj", "seed");
         var stream = new SnapshotStream(flow, ctx);
 
@@ -30,7 +35,7 @@ public class AgentTests
     [Fact]
     public async Task An_agent_is_reusable_minting_a_fresh_operation_per_call()
     {
-        var agent = new FakeAgent("implementer");
+        var agent = new FakeAgent(Agents.Implementer);
 
         var first = await agent.Run("one").Execute(new FlowContext("f", "p", "C:/proj", "seed"), CancellationToken.None);
         var second = await agent.Run("two").Execute(new FlowContext("f", "p", "C:/proj", "seed"), CancellationToken.None);
@@ -40,22 +45,25 @@ public class AgentTests
     }
 
     [Fact]
-    public async Task An_agent_operation_builds_its_request_from_the_run_project_dir()
+    public async Task An_agent_operation_builds_its_request_from_config_and_run_context()
     {
         AgentRunRequest? seen = null;
-        var flow = new CapturingFlow(req => seen = req);
+        var config = new FakeAgentConfig("capture", "d", "the-model", "the-system-prompt");
+        var flow = new CapturingFlow(config, req => seen = req);
 
         await flow.ExecuteAsync(new FlowConfig("cap", "t"), new FlowContext("cap", "proj", "C:/work/card", "seed"), CancellationToken.None);
 
         Assert.NotNull(seen);
         Assert.Equal("C:/work/card", seen!.ProjectDir);
         Assert.Equal("p", seen.Prompt);
+        Assert.Equal("the-model", seen.Model);
+        Assert.Equal("the-system-prompt", seen.SystemPrompt);
     }
 
     [Fact]
     public async Task An_agent_result_carries_the_transcript()
     {
-        var op = new FakeAgent("reviewer").Run("look");
+        var op = new FakeAgent(Agents.Reviewer).Run("look");
 
         var result = await op.Execute(new FlowContext("f", "proj", "C:/proj", "seed"), CancellationToken.None);
 
@@ -68,16 +76,16 @@ public class AgentTests
     [Fact]
     public void AgentRunRequest_rejects_a_blank_prompt()
     {
-        Assert.Throws<ArgumentException>(() => new AgentRunRequest(" ", "C:/proj"));
+        Assert.Throws<ArgumentException>(() => new AgentRunRequest(" ", "C:/proj", "m", "p"));
     }
 
-    private sealed class CapturingFlow(Action<AgentRunRequest> capture) : Flow
+    private sealed class CapturingFlow(AgentConfig config, Action<AgentRunRequest> capture) : Flow
     {
-        protected override Task RunAsync(FlowConfig config, FlowContext ctx, CancellationToken ct) =>
-            Run(new CapturingAgent(capture).Run("p"), ct);
+        protected override Task RunAsync(FlowConfig flowConfig, FlowContext ctx, CancellationToken ct) =>
+            Run(new CapturingAgent(config, capture).Run("p"), ct);
     }
 
-    private sealed class CapturingAgent(Action<AgentRunRequest> capture) : Agent("capture")
+    private sealed class CapturingAgent(AgentConfig config, Action<AgentRunRequest> capture) : Agent(config)
     {
         protected override Task<DriveResult> DriveAsync(AgentRunRequest request, CancellationToken ct)
         {
