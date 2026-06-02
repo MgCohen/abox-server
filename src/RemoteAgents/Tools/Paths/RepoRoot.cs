@@ -1,4 +1,4 @@
-namespace RemoteAgents.Paths;
+namespace RemoteAgents.Tools.Paths;
 
 public static class RepoRoot
 {

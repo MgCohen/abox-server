@@ -47,6 +47,16 @@ terminal until then.
 
 ### Layer / domain map
 
+> **Structure superseded by [ADR 0002](../../design/adr/0002-tools-steps-flows.md)
+> (2026-06-02).** The engine is **three buckets — Tools / Steps / Flows** (+ the
+> `Contracts` leaf), organized by *intent*, not the `L4 primitives` / `L6` / `L7`
+> split below. There is no `Primitives/` layer: `Shell`/`RunCommand`/terminal/file/
+> paths/project-registry/`EnvScrub` are **Tools**; agents/validators/git/review are
+> **Steps**; the flow framework + recipes are **Flows**. **The L-numbers survive only
+> as the build sequence** (command-line tool before its consumers, terminal/ConPTY
+> last). Read the table's "Layer" column as *build-order milestone*, its "Owns"/"Key
+> contents" as *what that milestone delivers* — but place the code per ADR 0002.
+
 | # | Layer | Owns | Key contents | Disposition | Oracle |
 |---|---|---|---|---|---|
 | L1 | **Skeleton** | DI + bootstrap + generic infra | composition root, host/app, CORS, ProjectRegistry, paths | REBUILD | — |
