@@ -51,9 +51,9 @@
 
     private static string StepSummary(FlowSnapshot s)
     {
-        if (s.Steps.Count == 0) return "(pending)";
-        var done = s.Steps.Count(x => x.Status == StepStatus.Completed);
-        return $"{done}/{s.Steps.Count} · last: {s.Steps[^1].Name}";
+        if (s.Operations.Count == 0) return "(pending)";
+        var done = s.Operations.Count(x => x.Status == OperationStatus.Completed);
+        return $"{done}/{s.Operations.Count} · last: {s.Operations[^1].Name}";
     }
 
     private static string FormatLocal(DateTimeOffset t) =>

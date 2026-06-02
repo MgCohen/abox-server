@@ -1,8 +1,8 @@
 namespace RemoteAgents.Contracts;
 
-public sealed record StepDto(
+public sealed record OperationDto(
     string Name,
-    StepStatus Status,
+    OperationStatus Status,
     DateTimeOffset? StartedAt,
     DateTimeOffset? EndedAt,
     string? Summary,

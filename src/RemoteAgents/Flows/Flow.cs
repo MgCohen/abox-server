@@ -30,20 +30,20 @@ public abstract class Flow
         }
     }
 
-    protected async Task<T> Run<T>(IStepHandler<T> handler, CancellationToken ct)
+    protected async Task<T> Run<T>(IOperation<T> operation, CancellationToken ct)
     {
-        _ctx.StartStep(handler.Name);
+        _ctx.StartOperation(operation.Name);
         Changed?.Invoke();
         try
         {
-            var result = await handler.RunAsync(_ctx, ct).ConfigureAwait(false);
-            _ctx.CompleteStep(result?.ToString());
+            var result = await operation.Execute(_ctx, ct).ConfigureAwait(false);
+            _ctx.CompleteOperation(result?.ToString());
             Changed?.Invoke();
             return result;
         }
         catch (Exception ex)
         {
-            _ctx.FailStep(ex.Message);
+            _ctx.FailOperation(ex.Message);
             Changed?.Invoke();
             throw;
         }

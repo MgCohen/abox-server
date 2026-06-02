@@ -6,6 +6,11 @@
 - **Supersedes:** the implementation plan's `L4 Core primitives` / `L6`/`L7` split as
   a *structural* layering. The L-numbers survive **only as a build sequence**, not as
   namespaces. There is no `Primitives/` layer.
+- **Vocabulary superseded (2026-06-02) by [ADR 0003](0003-actors-operations-run-contract.md):**
+  the middle Kind "**Steps**" is renamed **Actors**, and the per-call tracked unit a flow runs
+  is an **Operation** (`IOperation<T>`), not a "step handler". Throughout this doc read "Step"
+  (the Kind) as "**Actor**" and "implements `IStepHandler<T>`" as "mints `IOperation<T>`". The
+  Tool and Flow rules are unchanged; §3 below is reworded, the rest stands as the record.
 
 ## Context
 
@@ -60,21 +65,26 @@ appeared to (Git, validators, gh) are **Steps**, and the one shared substrate �
 running a process — *is* a tool (command-line), whose internal machinery is not a
 second tool. So the invariant is clean and unqualified: **tools are independent.**
 
-### 3. Step — the rules
+### 3. Actor & operation — the rules
 
-A **Step** is a unit of work that **has intent** — the flow tracks it.
+> Renamed from "Step" by [ADR 0003](0003-actors-operations-run-contract.md), which un-fuses
+> the old "Step" into an **Actor** (the capability) and the **Operations** it mints.
 
-- **Implements `IStepHandler<T>`** (`Name` + `RunAsync(FlowContext, ct)`); the result
-  owns its display via `ToString()` (per the L3 step base).
-- **Uses many tools**; **does not use other steps.** Composition is the flow's job
-  (ADR 0001 §2; "no agent-calls-agent"). *Asterisk:* composite steps — a step that
-  sequences sub-steps — are deferred to flow-implementation time (impl-plan L10) and
-  are the one sanctioned exception (a composite is a mini-flow wearing a step's
-  interface).
-- **Owns its guards/policy** (see §5).
-- **Agents are Steps.** An agent's intent is "produce work from this provider"; it
-  drives the terminal + file tools and implements `IStepHandler<AgentResult>`
-  directly. No privileged agent layer — just the richest step family.
+An **Actor** is a capability *with intent* + identity (`Agent`, `Git`, `Validator`). It
+**mints operations** — per-call units of work the flow tracks. It is not itself an operation
+and does not run them; `Flow.Run` does.
+
+- **An operation implements `IOperation<T>`** (`Name` + `Execute(FlowContext, ct)`); the
+  result owns its display via `ToString()`.
+- **Operations use many tools; do not use other operations.** Composition is the flow's
+  job (ADR 0001 §2; "no agent-calls-agent"). *Asterisk:* composite operations — one that
+  sequences sub-operations — are deferred to flow-implementation time (impl-plan L10) and
+  are the one sanctioned exception (a composite is a mini-flow wearing the operation interface).
+- **Guards are actor/operation policy** (see §5).
+- **Agents are actors.** An agent's intent is "produce work from this provider"; it drives
+  the terminal + file tools and mints an `IOperation<AgentResult>` per call
+  (`agent.run(prompt)`). No privileged agent layer — the richest actor family. Operations are
+  nested in their actor so they reach its `internal` seam without exposing it (R-SPINE-1).
 
 ### 4. Flow — the rules
 

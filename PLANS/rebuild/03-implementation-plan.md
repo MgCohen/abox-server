@@ -48,24 +48,25 @@ terminal until then.
 ### Layer / domain map
 
 > **Structure superseded by [ADR 0002](../../design/adr/0002-tools-steps-flows.md)
-> (2026-06-02).** The engine is **three buckets — Tools / Steps / Flows** (+ the
-> `Contracts` leaf), organized by *intent*, not the `L4 primitives` / `L6` / `L7`
-> split below. There is no `Primitives/` layer: `Shell`/`RunCommand`/terminal/file/
-> paths/project-registry/`EnvScrub` are **Tools**; agents/validators/git/review are
-> **Steps**; the flow framework + recipes are **Flows**. **The L-numbers survive only
-> as the build sequence** (command-line tool before its consumers, terminal/ConPTY
-> last). Read the table's "Layer" column as *build-order milestone*, its "Owns"/"Key
-> contents" as *what that milestone delivers* — but place the code per ADR 0002.
+> (2026-06-02), refined by [ADR 0003](../../design/adr/0003-actors-operations-run-contract.md)
+> (2026-06-02).** The engine is **three buckets — Tools / Actors / Flows** (+ the
+> `Contracts` leaf), organized by *intent*. There is no `Primitives/` layer:
+> `Shell`/`RunCommand`/terminal/file/paths/project-registry/`EnvScrub` are **Tools**;
+> agents/validators/git/review are **Actors** that mint **Operations** (`IOperation<T>`,
+> the sole run contract — ADR 0003); the flow framework + recipes are **Flows**. **The
+> L-numbers survive only as the build sequence** (command-line tool before its consumers,
+> terminal/ConPTY last). Read the table's "Layer" column as *build-order milestone*, its
+> "Owns"/"Key contents" as *what that milestone delivers* — but place the code per ADR 0002/0003.
 
 | # | Layer | Owns | Key contents | Disposition | Oracle |
 |---|---|---|---|---|---|
 | L1 | **Skeleton** | DI + bootstrap + generic infra | composition root, host/app, CORS, ProjectRegistry, paths | REBUILD | — |
-| L2 | **Flow tech** | the flow framework + its DTOs + the pipe | Flow base + lifecycle, `FlowSnapshot`/`StepDto`, Changes channel, Registry, Catalog (name→Type), SSE transport, Blazor | REBUILD | — |
-| L3 | **Step base** | the step framework | `IStepHandler<T>` (work types implement directly), `Flow.Run<T>`, `FlowContext` ledger transitions, `ToString()` summaries | REBUILD | — |
+| L2 | **Flow tech** | the flow framework + its DTOs + the pipe | Flow base + lifecycle, `FlowSnapshot`/`OperationDto`, Changes channel, Registry, Catalog (name→Type), SSE transport, Blazor | REBUILD | — |
+| L3 | **Run contract** | the operation framework | `IOperation<T>` (actors mint operations — ADR 0003), `Flow.Run<T>`, `FlowContext` ledger transitions, `ToString()` summaries | REBUILD | — |
 | L4 | **Core primitives** | generic process/OS exec | Shell, RunCommand | PORT | — |
-| L5 | **Provider framework** | the agent abstraction | Agent base (`IStepHandler<AgentResult>`), agent DTOs (`AgentRunRequest`/`AgentResult`/`DriveResult`), ctor-injected internal spawn seam impl, result-resolution (direct file read), a **fake agent** | PORT logic / REBUILD seam | A6 |
-| L6 | **Concrete agents** | the two real providers | `ClaudeAgent`, `CodexAgent` (on fake terminal) + agent guards (`SubscriptionGuard`, `EnvScrub`) | PORT | A1–A9 |
-| L7 | **Named-agent roles** | configured-once roles | `IAgentFactory`: implementer (Claude/acceptEdits), reviewer (Codex/read-only/gpt-5.5) | NEW (D1) | A3 |
+| L5 | **Agent baseline** | the agent actor abstraction | `Agent` actor + `agent.Run(prompt)`→`IOperation<AgentResult>`, agent DTOs (`AgentRunRequest`/`AgentResult`/`DriveResult`/`AgentTurn`), `IAgentFactory.Create(role)`, a **fake agent** | REBUILD | — |
+| L6 | **Concrete agents** | the two real providers + the spawn seam | `ClaudeAgent`, `CodexAgent` (on fake terminal), **internal ctor-injected spawn seam** (born here, faked), result-resolution (direct file read), guards (`SubscriptionGuard`, `EnvScrub`) | PORT | A1–A9 |
+| L7 | **Named-agent roles** | configured-once roles | `IAgentFactory.Create(role)` → implementer (Claude/acceptEdits), reviewer (Codex/read-only/gpt-5.5); `AgentDefinition`/`AgentCatalog` | NEW (D1) | A3 |
 | L8 | **Tooling** | concrete step types + tool logic | agent/validate/git steps, validators, **Git** (guardrails), IsolationScope, Reviews/verdict | PORT logic / REBUILD shape | — |
 | L9 | **Terminals** | the real driving substrate | PtySession (ConPTY), SubprocessSession, AnsiHelpers | PORT | A2/A10, B1/B2 |
 | L10 | **Flow implementations** | the 4 recipes | claude-only, claude-validate, full-review, unity-review | REBUILD | — |
@@ -108,7 +109,7 @@ Why these four and not more:
 
 The engine's layers (Agents/Steps/Flows) live as **folders/namespaces in one
 assembly**, not separate assemblies. R-SPINE-1 is enforced by **API shape**:
-`Flow.Run<T>(IStepHandler<T>)` owns the lifecycle, and the agent-driving surface
+`Flow.Run<T>(IOperation<T>)` owns the lifecycle, and the agent-driving surface
 is `internal` and constructor-injected into the agent base — never given to flow
 code. A deliberate bypass is reviewable, not a compile error; escalate to a
 focused Roslyn analyzer only if one ever actually appears.
@@ -165,7 +166,7 @@ lists from `projects.json`. Nothing domain-aware exists yet.
 **Goal.** The snapshot pipe, proven end-to-end with placeholder work.
 
 **Build.** Flow base + lifecycle (Pending→Running→terminal); `FlowSnapshot` /
-`StepDto` / enums (born here); the `Changes` coalescing channel (bounded cap-1
+`OperationDto` / enums (born here); the `Changes` coalescing channel (bounded cap-1
 DropOldest); `FlowRegistry` (Guid→live) + `FlowCatalog` (name→Type); SSE
 endpoints (+ wire DTOs `FlowInfo`/`StartRunRequest`, born with the endpoints) +
 ETag/304; Blazor (Home/RunView/RunHistory + API clients). A **stub flow** whose
@@ -199,6 +200,12 @@ agent-driving surface stays `internal` and is not handed to flow code (API-shape
 check, per the collapsed-boundary decision); the Step ergonomics are decided and
 written down. Build + tests green.
 
+**Amended by [ADR 0003](../../design/adr/0003-actors-operations-run-contract.md) (2026-06-02):**
+`IStepHandler<T>`→`IOperation<T>` (`RunAsync`→`Execute`); the run unit is an **operation**
+minted by an **actor** (the actor isn't itself the operation, so `Agent` no longer implements
+the contract — `agent.Run(prompt)` returns the operation). Ledger transitions renamed
+`Start`/`Complete`/`FailOperation`.
+
 ## L4 · Core primitives — PORT
 
 **Goal.** Generic process/OS exec the layers above need.
@@ -208,44 +215,45 @@ NOT here — they belong to their domains.)
 
 **Done when.** Focused tests on exec/quoting pass; build green.
 
-## L5 · Provider framework — PORT logic / REBUILD seam
+## L5 · Agent baseline — REBUILD
 
-**Goal.** The agent abstraction, runnable via a fake agent.
+> **Reshaped by [ADR 0003](../../design/adr/0003-actors-operations-run-contract.md) (2026-06-02).**
+> Built headless: an **agent actor**, not a spawn seam. The internal process/terminal spawn seam
+> + result-resolution move to **L6** (born with the concrete providers that need them);
+> transcript→`OperationDto`/UI surfacing is deferred (no consumer yet); hooks → L11.
 
-**Build.** `Agent` base implementing `IStepHandler<AgentResult>` + drive lifecycle;
-agent DTOs (`AgentRunRequest`, `AgentResult`, `DriveResult`) born here; the
-**internal process/terminal spawn seam constructor-injected** into the agent base
-(per the L3 decision — no `StepContext`) and **implemented** against a fake;
-result resolution by **direct file read** (no hooks — Tier A6 shape, NFR-AI4); a
-**fake agent** returning canned output, run through `Flow.Run<T>`.
+**Goal.** A reusable agent actor, runnable via a fake agent.
 
-**Per-step transcript (the richer observability, decided at L3).** A step is not
-just open/close + one summary: a real agent emits an ordered list of typed events
-(text / thinking / tool-use / tool-result — the prototype's `AgentTurn[]`). That
-list lives **inside the step** — born here as `AgentResult.Transcript` and surfaced
-by adding a `Transcript`/`Events` field to `StepRecord` + `StepDto`, carried by the
-existing snapshot (it's cumulative state, so the cap-1 DropOldest pipe still holds).
-It is **not** a flow-level event ledger — an event stream can't be coalesced without
-loss and would force replay/Last-Event-ID, contradicting ADR 0001. Capture is
-additive: either `Run<T>` reads a transcript off the result, or (for mid-run
-streaming) wire the `Changed` ping into `FlowContext` and add an internal
-`ctx.Emit(turn)` appending to the current step. **Separate concern:** high-volume
-live terminal bytes get their own channel (terminal-driven-agents plan), never the
-snapshot. See ADR 0001 § per-step transcript.
+**Build (as shipped).** `Agent` actor base — `agent.Run(prompt, session?)` mints a nested
+`IOperation<AgentResult>` that reaches the actor's `internal` drive seam without exposing it;
+agent DTOs (`AgentRunRequest`, `AgentResult`, `DriveResult`, `AgentTurn`) born here;
+`IAgentFactory.Create(role)` mints actors (one fake role); a **fake agent** returning canned
+output, run through `Flow.Run<T>`. No spawn seam, no providers, no UI — all deferred.
 
-**Done when.** The flow runs a real agent handler against the fake agent and its
-canned text shows as the step summary in the UI. The seam is proven before any
-real provider exists. Build + tests green.
+**Per-operation transcript.** Born on `AgentResult.Transcript` (the typed turn list:
+text / thinking / tool-use / tool-result). Surfacing it via `OperationRecord` + `OperationDto`
+onto the snapshot is **deferred** until a consumer exists (L6 real turns / UI) —
+`OperationRecord` is the reserved extension seam (ADR 0003 §4). It is **not** a flow-level event
+ledger: events can't be coalesced without loss and would force replay/Last-Event-ID,
+contradicting ADR 0001. High-volume live terminal bytes get their own channel
+(terminal-driven-agents plan), never the snapshot.
+
+**Done when (shipped).** The flow mints a fake agent via the factory and runs it through
+`Flow.Run<T>`; its canned text is the operation summary (proven in tests, headless). Build +
+tests green.
 
 ## L6 · Concrete agents — PORT
 
 **Goal.** Real Claude + Codex, still on a fake terminal.
 
-**Build.** `ClaudeAgent` (PTY script, startup-dialog detect, JSONL text
-resolution) and `CodexAgent` (subprocess, `-o` text, session-id sniff) — both
-driven against a **fake PTY/subprocess** via the `SpawnPtyAsync` seam. Agent
-guards land here: `SubscriptionGuard` + `EnvScrub` (Tier A1/A3, FR-X1). CLI arg
-builders (Tier A8/A9) with their unit tests.
+**Build.** The **internal ctor-injected spawn seam is born here** (moved from L5 per
+[ADR 0003](../../design/adr/0003-actors-operations-run-contract.md) — it belongs with the
+providers that need it), faked now and made real at L9. `ClaudeAgent` (PTY script,
+startup-dialog detect, JSONL text resolution) and `CodexAgent` (subprocess, `-o` text,
+session-id sniff) — both driven against a **fake PTY/subprocess** via that seam;
+result-resolution by **direct file read** (Tier A6 shape, no hooks). Agent guards land here:
+`SubscriptionGuard` + `EnvScrub` (Tier A1/A3, FR-X1). CLI arg builders (Tier A8/A9) with their
+unit tests.
 
 **Done when.** Arg-builder + dialog-detect + JSONL/`-o` parsing tests pass
 against fixtures; guards refuse on API keys set; build green. No real CLI yet.
@@ -333,10 +341,11 @@ tests; no dead legacy. Card-Framework shakedown green.
 - **Commit per layer.** Each L is a coherent, independently-buildable commit (the
   prototype refactor's working rhythm).
 - **Two couplings to hold:** the agent base's internal, constructor-injected
-  process/terminal spawn seam is *introduced* at L5 (faked) and *made real* at L9
-  — don't let it drift; roles (L7) require concrete agents (L6). (L3 settled there
-  is no `StepContext`: work types implement `IStepHandler<T>` and receive the
-  `FlowContext` directly.)
+  process/terminal spawn seam is *introduced* at L6 (faked, with the concrete
+  providers — moved from L5 per ADR 0003) and *made real* at L9 — don't let it
+  drift; roles (L7) require concrete agents (L6). (L3 settled there is no
+  `StepContext`: an **actor** mints an `IOperation<T>` that receives the run's
+  `FlowContext` directly — ADR 0003.)
 - **Fakes are first-class.** The fake agent (L5) and fake terminal (L6→L9 seam)
   are real deliverables, not throwaway — they stay as the test doubles.
 - **Oracle grows only where a port is risky** — primarily L6/L9. Don't pre-write

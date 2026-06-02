@@ -2,9 +2,9 @@ using RemoteAgents.Contracts;
 
 namespace RemoteAgents.Flows;
 
-public sealed class FlowContext(string flowName, string project, string projectDir, string prompt)
+public sealed class FlowContext(string flowName, string project, string projectDir, string request)
 {
-    private readonly List<StepRecord> _steps = [];
+    private readonly List<OperationRecord> _operations = [];
 
     public Guid Id { get; } = Guid.NewGuid();
 
@@ -14,25 +14,25 @@ public sealed class FlowContext(string flowName, string project, string projectD
 
     public string ProjectDir { get; } = projectDir;
 
-    public string Prompt { get; } = prompt;
+    public string Request { get; } = request;
 
     public DateTimeOffset CreatedAt { get; } = DateTimeOffset.UtcNow;
 
     public FlowPhase Phase { get; private set; } = FlowPhase.Pending;
 
-    // Single-writer + sequential run: Complete/Fail close the step just started.
-    internal void StartStep(string name)
+    // Single-writer + sequential run: Complete/Fail close the operation just started.
+    internal void StartOperation(string name)
     {
-        var rec = new StepRecord(name);
+        var rec = new OperationRecord(name);
         rec.Start();
-        _steps.Add(rec);
+        _operations.Add(rec);
     }
 
-    internal void CompleteStep(string? summary) => _steps[^1].Complete(summary);
+    internal void CompleteOperation(string? summary) => _operations[^1].Complete(summary);
 
-    internal void FailStep(string error) => _steps[^1].Fail(error);
+    internal void FailOperation(string error) => _operations[^1].Fail(error);
 
     internal void SetPhase(FlowPhase phase) => Phase = phase;
 
-    internal IReadOnlyList<StepRecord> Steps => _steps;
+    internal IReadOnlyList<OperationRecord> Operations => _operations;
 }
