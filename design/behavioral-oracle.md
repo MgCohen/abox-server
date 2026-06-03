@@ -71,6 +71,13 @@ gap will mistake the gap for a settled TUI and send input before claude is
 reading it. (The prototype's mitigation — a 3.5s floor — is Tier B; the *gap
 itself* is the invariant.)
 
+**Update (claude 2.1.158, 2026-06-03):** startup is *non-monotonic* — splash →
+plugin load → `/remote-control` attach, with quiet gaps *between* render bursts.
+So idle-settle is unreliable for readiness in general (not just the first gap): a
+mid-startup lull is byte-identical to a settled prompt. The reliable signal is
+**positive** — wait until the input bar is actually present (A7) plus a short
+stability window, not until output stops. This supersedes the floor mitigation.
+
 ## A5. Claude TUI input is paste-sensitive
 
 Pressing Enter too quickly after typing into Claude's TUI causes the input to be
@@ -85,9 +92,13 @@ If we choose to read Claude's transcript file (that choice is Tier B — see B5)
 the file's location and shape are fixed by Claude Code:
 
 - **Path:** `%USERPROFILE%\.claude\projects\<encoded-cwd>\<sessionId>.jsonl`
-- **Cwd encoding:** backslash, forward slash, and colon all collapse to `-`.
-  Example: `C:\Unity\CardFramework` → `C--Unity-CardFramework`.
-  (current impl: `ClaudeJsonl.PathFor`)
+- **Cwd encoding:** path punctuation collapses to `-`. Originally documented as
+  backslash / forward-slash / colon, but claude 2.1.158 **also collapses `.`**
+  (e.g. a temp dir `…\claude-smoke-ab12.cd3` → `…-claude-smoke-ab12-cd3`) — the
+  rule is lossier than first assumed, so a *computed* path is unreliable.
+  **Resolve by the `<sessionId>.jsonl` filename instead** — the session id is a
+  GUID we own and is unique, which sidesteps the encoding entirely.
+  (current impl: `ClaudeJsonl.ResolveSessionFile`, globbing `projects\*\<id>.jsonl`)
 - **Line schema:** one JSON object per line, e.g.
 
   ```json
@@ -100,16 +111,24 @@ the file's location and shape are fixed by Claude Code:
 
 ## A7. Claude startup dialogs
 
-Claude may interrupt startup with one of these dialogs. Match (against the
-ANSI-stripped buffer) and keystroke:
+Claude may interrupt startup with one of these dialogs. **The TUI positions each
+glyph with cursor-move escapes, so the ANSI-stripped buffer has no inter-word
+spaces** (`Is this a project you` renders as `Isthisaprojectyou`) — match against
+a **whitespace-stripped** buffer with whitespace-free needles, not the spaced
+phrases. (claude 2.1.158, 2026-06-03 — the prototype's spaced `Contains` silently
+stopped matching, leaving the trust dialog undismissed.)
 
-| Dialog | Substring match | Keystroke |
+| Dialog | Substring match (shown spaced; matched whitespace-free) | Keystroke |
 |---|---|---|
 | Trust folder | `"trust this folder"` or `"Is this a project you"` (case-insensitive) | `\r` |
 | Bypass-permissions warning | `"Bypass Permissions mode"` or `"Yes, I accept"` (case-sensitive) | `2\r` |
 
-The dialog wordings are Claude's; the keystrokes are what dismiss them. (Whether
-we surface dismissal as an event, log line, or nothing is Tier B.)
+The same whitespace-free rule detects **prompt readiness**: the input bar's
+`shift+tab` keybind hint is the positive "ready to accept a prompt" signal (A4).
+The dialog wordings are Claude's; the keystrokes are what dismiss them. (current
+impl: `ClaudeProtocol.DetectStartupDialog` / `IsPromptReady`, both over a
+whitespace-normalized buffer. Whether we surface dismissal as an event, log line,
+or nothing is Tier B.)
 
 ## A8. Claude CLI args
 
@@ -178,8 +197,11 @@ The prototype drives Claude as a scripted PTY session
 splash to settle, dismiss dialog, type prompt + pause + Enter, wait for reply to
 settle, `/exit`, wait, `exit`. **This whole "blind idle-settle scripting"
 approach is a candidate for replacement** (e.g. waiting on an explicit
-prompt-ready marker instead of "the terminal went quiet"). If kept, the tuned
-values were:
+prompt-ready marker instead of "the terminal went quiet"). **Superseded for
+readiness (claude 2.1.158, 2026-06-03):** the rebuild waits on a positive
+input-bar marker + stability window (A4/A7), so the launch-settle idle + floor
+rows below are no longer used; the response/exit-settle idle rows still are. If
+the idle approach is ever revisited, the tuned values were:
 
 | Stage | Knob | Value | Note |
 |---|---|---|---|
@@ -266,6 +288,12 @@ completes**.
 The rebuild might read the `-o`-style output, parse structured CLI output, or
 scrape the buffer. A6 only tells you the file's shape *if* you choose to read
 it — it does not tell you that you should.
+
+**Update (rebuild, 2026-06-03):** the buffer fallback was **removed** — the
+de-spaced TUI buffer (A7) can't reliably yield prose, so a raw `IndexOf(prompt)`
+returns nothing in practice; it was false comfort. The rebuild reads JSONL only
+(resolved by sessionId — A6), polled briefly for the final-flush lag, and keeps
+the raw buffer solely as `RawOutput` for debugging.
 
 > Historical note: an earlier prototype iteration *live-tailed* this JSONL into
 > an event sink (30s appearance wait, 150ms poll tick, partial-line resilience,
