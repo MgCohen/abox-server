@@ -1,3 +1,5 @@
+using RemoteAgents.Actors.Agents.Codex;
+
 namespace RemoteAgents.Actors.Agents;
 
 public static class Agents
@@ -6,5 +8,5 @@ public static class Agents
         new FakeAgentConfig("implementer", "Builds the change.", "fake-model", "You implement.");
 
     public static readonly AgentConfig Reviewer =
-        new FakeAgentConfig("reviewer", "Reviews the change.", "fake-model", "You review.");
+        new CodexConfig("reviewer", "Reviews the change.", "gpt-5.5", "You review.", Sandbox: "read-only");
 }
