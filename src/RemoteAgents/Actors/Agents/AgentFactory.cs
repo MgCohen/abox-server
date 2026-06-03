@@ -1,7 +1,6 @@
-using RemoteAgents.Actors.Agents;
 using RemoteAgents.Actors.Agents.Codex;
 
-namespace RemoteAgents.Host;
+namespace RemoteAgents.Actors.Agents;
 
 public sealed class AgentFactory : IAgentFactory
 {

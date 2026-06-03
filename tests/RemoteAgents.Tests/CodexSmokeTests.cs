@@ -1,32 +1,39 @@
 using RemoteAgents.Actors.Agents;
-using RemoteAgents.Actors.Agents.Codex;
+using RemoteAgents.Contracts;
+using RemoteAgents.Flows;
 using Xunit.Abstractions;
 
 namespace RemoteAgents.Tests;
 
 public class CodexSmokeTests(ITestOutputHelper output)
 {
-    [Fact(Skip = "integration: needs codex CLI + ChatGPT subscription; remove Skip to run manually")]
-    public async Task Drives_a_real_codex_exec_and_returns_a_well_formed_result()
+    private sealed class OneShotFlow(IAgentFactory agents, AgentConfig config, string prompt) : Flow
     {
-        var tmp = Directory.CreateTempSubdirectory("codex-smoke-").FullName;
+        protected override Task RunAsync(FlowConfig flowConfig, FlowContext ctx, CancellationToken ct) =>
+            Run(agents.Create(config).Run(prompt), ct);
+    }
+
+    [Fact(Skip = "integration: needs codex CLI + ChatGPT subscription; remove Skip to run manually")]
+    public async Task A_flow_drives_the_real_codex_reviewer_end_to_end()
+    {
+        var projectDir = Directory.CreateTempSubdirectory("codex-smoke-").FullName;
         try
         {
-            var config = new CodexConfig("smoke", "smoke", "gpt-5.5", "", Sandbox: "read-only");
-            var request = new AgentRunRequest("Reply with exactly: PONG", tmp);
+            var flow = new OneShotFlow(new AgentFactory(), Agents.Reviewer, "Reply with the single word: PONG");
+            var ctx = new FlowContext("codex-smoke", "smoke", projectDir, "seed");
+            var stream = new SnapshotStream(flow, ctx);
 
-            var result = await new CodexProvider(config).DriveAsync(request, CancellationToken.None);
+            await flow.ExecuteAsync(new FlowConfig("codex-smoke", "smoke"), ctx, CancellationToken.None);
 
-            output.WriteLine($"ExitCode={result.ExitCode}");
-            output.WriteLine($"SessionId={result.SessionId}");
-            output.WriteLine($"Text={result.Text}");
-            output.WriteLine($"Turns={result.Transcript.Count}");
+            var op = stream.Latest.Operations.Single();
+            output.WriteLine($"Phase={stream.Latest.Phase} Op={op.Name} Status={op.Status}");
+            output.WriteLine($"Summary={op.Summary}");
 
-            Assert.Equal(0, result.ExitCode);
-            Assert.Contains("PONG", result.Text);
-            Assert.True(result.SessionId.Length >= 8, "expected a sniffed session id");
-            Assert.Contains(result.Transcript, t => t.Kind == AgentTurnKind.Text && t.Body.Contains("PONG"));
+            Assert.Equal(FlowPhase.Completed, stream.Latest.Phase);
+            Assert.Equal(OperationStatus.Completed, op.Status);
+            Assert.Equal("reviewer", op.Name);
+            Assert.False(string.IsNullOrWhiteSpace(op.Summary));
         }
-        finally { try { Directory.Delete(tmp, recursive: true); } catch { /* best-effort */ } }
+        finally { try { Directory.Delete(projectDir, recursive: true); } catch { /* best-effort */ } }
     }
 }
