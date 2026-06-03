@@ -5,44 +5,44 @@ namespace RemoteAgents.Tests;
 
 public class ClaudeJsonlTests : IDisposable
 {
-    private readonly string _projectDir;
+    private readonly string _dir;
     private readonly string _sessionId;
     private readonly string _jsonlPath;
 
     public ClaudeJsonlTests()
     {
-        _projectDir = "C:\\fake\\ra-jsonl-tests-" + Guid.NewGuid().ToString("N");
         _sessionId = Guid.NewGuid().ToString();
-        _jsonlPath = ClaudeJsonl.PathFor(_projectDir, _sessionId);
-        Directory.CreateDirectory(Path.GetDirectoryName(_jsonlPath)!);
+        // Stage under a randomly-named projects subdir; resolution is by
+        // sessionId, so the folder name is irrelevant — which is the point.
+        _dir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            ".claude", "projects", "ra-jsonl-tests-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(_dir);
+        _jsonlPath = Path.Combine(_dir, _sessionId + ".jsonl");
     }
 
     public void Dispose()
     {
-        try { File.Delete(_jsonlPath); } catch { /* best-effort cleanup */ }
-        try { Directory.Delete(Path.GetDirectoryName(_jsonlPath)!); } catch { /* best-effort cleanup */ }
+        try { Directory.Delete(_dir, recursive: true); } catch { /* best-effort cleanup */ }
     }
 
     [Fact]
-    public void PathFor_encodes_cwd_and_appends_session_id()
+    public void ResolveSessionFile_finds_the_file_by_id_regardless_of_folder()
     {
-        var path = ClaudeJsonl.PathFor("C:\\Unity\\Card Framework", "abc-123");
-        Assert.Contains("C--Unity-Card Framework", path);
-        Assert.EndsWith("abc-123.jsonl", path);
+        File.WriteAllText(_jsonlPath, "{}");
+        Assert.Equal(_jsonlPath, ClaudeJsonl.ResolveSessionFile(_sessionId));
     }
 
     [Fact]
-    public void PathFor_normalizes_a_trailing_separator()
+    public void ResolveSessionFile_returns_null_for_unknown_id()
     {
-        var withSlash = ClaudeJsonl.PathFor("C:\\Unity\\Scaffold\\", "id");
-        var without = ClaudeJsonl.PathFor("C:\\Unity\\Scaffold", "id");
-        Assert.Equal(without, withSlash);
+        Assert.Null(ClaudeJsonl.ResolveSessionFile(Guid.NewGuid().ToString()));
     }
 
     [Fact]
     public void TryReadLastAssistantText_missing_file_returns_null()
     {
-        Assert.Null(ClaudeJsonl.TryReadLastAssistantText(_projectDir, _sessionId));
+        Assert.Null(ClaudeJsonl.TryReadLastAssistantText(_sessionId));
     }
 
     [Fact]
@@ -54,7 +54,7 @@ public class ClaudeJsonlTests : IDisposable
             AssistantTextLine("Sure — here is a summary."),
         });
 
-        var result = ClaudeJsonl.TryReadLastAssistantText(_projectDir, _sessionId, "Hello, please summarize.");
+        var result = ClaudeJsonl.TryReadLastAssistantText(_sessionId, "Hello, please summarize.");
         Assert.Equal("Sure — here is a summary.", result);
     }
 
@@ -68,7 +68,7 @@ public class ClaudeJsonlTests : IDisposable
             AssistantTextLine("Part two."),
         });
 
-        var result = ClaudeJsonl.TryReadLastAssistantText(_projectDir, _sessionId, "Two parts please.");
+        var result = ClaudeJsonl.TryReadLastAssistantText(_sessionId, "Two parts please.");
         Assert.Equal("Part one.\nPart two.", result);
     }
 
@@ -82,7 +82,7 @@ public class ClaudeJsonlTests : IDisposable
             AssistantTextLine("Done."),
         });
 
-        var result = ClaudeJsonl.TryReadLastAssistantText(_projectDir, _sessionId, "Run the thing.");
+        var result = ClaudeJsonl.TryReadLastAssistantText(_sessionId, "Run the thing.");
         Assert.Equal("OK, running.\nDone.", result);
         Assert.DoesNotContain("internal reasoning", result);
         Assert.DoesNotContain("Bash", result);
@@ -99,7 +99,7 @@ public class ClaudeJsonlTests : IDisposable
             AssistantTextLine("Fixed."),
         });
 
-        var result = ClaudeJsonl.TryReadLastAssistantText(_projectDir, _sessionId, "Fix the bug at line 42.");
+        var result = ClaudeJsonl.TryReadLastAssistantText(_sessionId, "Fix the bug at line 42.");
         Assert.Equal("Fixed.", result);
     }
 
@@ -114,7 +114,7 @@ public class ClaudeJsonlTests : IDisposable
             AssistantTextLine("Second answer."),
         });
 
-        var result = ClaudeJsonl.TryReadLastAssistantText(_projectDir, _sessionId, promptHint: null);
+        var result = ClaudeJsonl.TryReadLastAssistantText(_sessionId, promptHint: null);
         Assert.Equal("Second answer.", result);
     }
 
@@ -129,7 +129,7 @@ public class ClaudeJsonlTests : IDisposable
             AssistantTextLine("All 42 tests passed."),
         });
 
-        var result = ClaudeJsonl.TryReadLastAssistantText(_projectDir, _sessionId, "Run tests please.");
+        var result = ClaudeJsonl.TryReadLastAssistantText(_sessionId, "Run tests please.");
         Assert.Equal("Running them now.\nAll 42 tests passed.", result);
     }
 
@@ -142,7 +142,7 @@ public class ClaudeJsonlTests : IDisposable
             "{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"content\":\"bare string\"}}",
         });
 
-        var result = ClaudeJsonl.TryReadLastAssistantText(_projectDir, _sessionId, "Hello.");
+        var result = ClaudeJsonl.TryReadLastAssistantText(_sessionId, "Hello.");
         Assert.Equal("bare string", result);
     }
 
@@ -155,14 +155,14 @@ public class ClaudeJsonlTests : IDisposable
             AssistantMixedLine(thinking: null, text: null, toolName: "Bash"),
         });
 
-        var result = ClaudeJsonl.TryReadLastAssistantText(_projectDir, _sessionId, "Just compile.");
+        var result = ClaudeJsonl.TryReadLastAssistantText(_sessionId, "Just compile.");
         Assert.Equal("", result);
     }
 
     [Fact]
     public void TryReadLastTurnTranscript_missing_file_returns_null()
     {
-        Assert.Null(ClaudeJsonl.TryReadLastTurnTranscript(_projectDir, _sessionId));
+        Assert.Null(ClaudeJsonl.TryReadLastTurnTranscript(_sessionId));
     }
 
     [Fact]
@@ -176,7 +176,7 @@ public class ClaudeJsonlTests : IDisposable
             AssistantTextLine("All green."),
         });
 
-        var turns = ClaudeJsonl.TryReadLastTurnTranscript(_projectDir, _sessionId, "Compile please.");
+        var turns = ClaudeJsonl.TryReadLastTurnTranscript(_sessionId, "Compile please.");
 
         Assert.NotNull(turns);
         Assert.Equal(5, turns!.Length);
@@ -201,7 +201,7 @@ public class ClaudeJsonlTests : IDisposable
                  + "]}}";
         File.WriteAllLines(_jsonlPath, new[] { UserLine("Write the file."), line });
 
-        var turns = ClaudeJsonl.TryReadLastTurnTranscript(_projectDir, _sessionId, "Write the file.");
+        var turns = ClaudeJsonl.TryReadLastTurnTranscript(_sessionId, "Write the file.");
 
         Assert.Single(turns!);
         Assert.Equal(AgentTurnKind.ToolUse, turns![0].Kind);

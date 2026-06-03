@@ -78,6 +78,26 @@ public sealed class PtySession : IAsyncDisposable, IDisposable
         return false;
     }
 
+    // Wait for a positive readiness signal: the predicate holds over the
+    // buffer AND no new bytes have arrived for settleMs (so a mid-render lull
+    // can't be mistaken for a settled UI). Returns false if maxWait fired first.
+    public async Task<bool> WaitUntilAsync(
+        Func<string, bool> predicate,
+        int settleMs,
+        int maxWaitMs,
+        int pollMs = 100,
+        CancellationToken ct = default)
+    {
+        var deadline = DateTimeOffset.UtcNow.AddMilliseconds(maxWaitMs);
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            await Task.Delay(pollMs, ct);
+            if (!predicate(Buffer)) continue;
+            if ((DateTimeOffset.UtcNow - _lastChunkAt).TotalMilliseconds >= settleMs) return true;
+        }
+        return false;
+    }
+
     // Oracle B2: on the happy path the reader is NOT cancelled (that would
     // truncate the final chunk); on the kill path the exit code is forced to
     // -1 because a kill is never a success.

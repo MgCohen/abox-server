@@ -5,22 +5,26 @@ namespace RemoteAgents.Actors.Agents.Claude;
 
 public static class ClaudeJsonl
 {
-    // Oracle A6: Claude Code encodes the cwd for its projects/ folder by
-    // collapsing backslash, slash, and colon to '-'. Normalize first so a
-    // trailing separator or non-canonical casing can't miss the real file.
-    public static string PathFor(string projectDir, string sessionId)
+    private static string ProjectsRoot => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "projects");
+
+    // Resolve by sessionId (a unique GUID we own) rather than by encoding the
+    // cwd: Claude's projects/ folder encoding collapses more than the '\/:' that
+    // oracle A6 documents (e.g. '.'), so a computed path is unreliable.
+    public static string? ResolveSessionFile(string sessionId)
     {
-        var normalized = Path.GetFullPath(projectDir)
-            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        var encoded = normalized.Replace('\\', '-').Replace('/', '-').Replace(':', '-');
-        return Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            ".claude", "projects", encoded, sessionId + ".jsonl");
+        if (!Directory.Exists(ProjectsRoot)) return null;
+        try
+        {
+            return Directory.EnumerateFiles(ProjectsRoot, sessionId + ".jsonl", SearchOption.AllDirectories)
+                .FirstOrDefault();
+        }
+        catch { return null; }
     }
 
-    public static string? TryReadLastAssistantText(string projectDir, string sessionId, string? promptHint = null)
+    public static string? TryReadLastAssistantText(string sessionId, string? promptHint = null)
     {
-        var lines = TryLoadLines(projectDir, sessionId);
+        var lines = TryLoadLines(sessionId);
         if (lines is null) return null;
 
         var anchor = FindUserAnchor(lines, promptHint);
@@ -39,9 +43,9 @@ public static class ClaudeJsonl
         return sb.ToString();
     }
 
-    public static AgentTurn[]? TryReadLastTurnTranscript(string projectDir, string sessionId, string? promptHint = null)
+    public static AgentTurn[]? TryReadLastTurnTranscript(string sessionId, string? promptHint = null)
     {
-        var lines = TryLoadLines(projectDir, sessionId);
+        var lines = TryLoadLines(sessionId);
         if (lines is null) return null;
 
         var anchor = FindUserAnchor(lines, promptHint);
@@ -66,10 +70,10 @@ public static class ClaudeJsonl
         return [.. turns];
     }
 
-    private static List<string>? TryLoadLines(string projectDir, string sessionId)
+    private static List<string>? TryLoadLines(string sessionId)
     {
-        var path = PathFor(projectDir, sessionId);
-        if (!File.Exists(path)) return null;
+        var path = ResolveSessionFile(sessionId);
+        if (path is null) return null;
         // Re-read (not seek): Windows FileStream caches EOF on a growing file (A6).
         try { return [.. File.ReadAllLines(path)]; }
         catch { return null; }
