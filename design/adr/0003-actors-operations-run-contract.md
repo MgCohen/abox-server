@@ -3,6 +3,10 @@
 - **Status:** Accepted (2026-06-02).
 - **Scope:** the rebuild (`/src`). Applies going forward; existing L2/L3/L5 code aligns
   as we re-author it (the L5 agent baseline is the first to move).
+- **Refined by:** [ADR 0004](0004-provider-seam.md) — the agent **drive lifecycle** moves out
+  of an abstract `Agent` base into a composed `IProvider`; §1's "abstract base … for the
+  provider drive lifecycle" and the typed-agent reading are retired there. The actor/operation
+  model below otherwise stands.
 - **Supersedes:** the L3 framing in [ADR 0001](0001-flow-catalog-and-context.md) §Decision-2
   and the "Steps" Kind in [ADR 0002](0002-tools-steps-flows.md) §3 — "a work type implements
   `IStepHandler<T>` directly; the instance runs a step, it isn't one." That instinct was
