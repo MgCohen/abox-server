@@ -41,7 +41,7 @@ public static class RunCommand
         };
         if (OperatingSystem.IsWindows())
         {
-            psi.FileName = Path.Combine(Environment.SystemDirectory, "cmd.exe");
+            psi.FileName = Shell.CmdExePath;
             psi.Arguments = $"/c {command}";
         }
         else

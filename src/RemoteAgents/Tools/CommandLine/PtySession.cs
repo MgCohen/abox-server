@@ -3,10 +3,9 @@ using Porta.Pty;
 
 namespace RemoteAgents.Tools.CommandLine;
 
-public sealed class PtySession : IAsyncDisposable, IDisposable
+public sealed class PtySession : IAsyncDisposable
 {
     private readonly IPtyConnection _pty;
-    private readonly Func<string, CancellationToken, Task>? _onChunk;
     private readonly StringBuilder _buffer = new();
     private readonly object _bufLock = new();
     private readonly CancellationTokenSource _readerCts;
@@ -14,10 +13,9 @@ public sealed class PtySession : IAsyncDisposable, IDisposable
     private readonly Task _readerTask;
     private DateTimeOffset _lastChunkAt;
 
-    public PtySession(IPtyConnection pty, Func<string, CancellationToken, Task>? onChunk, CancellationToken ct)
+    public PtySession(IPtyConnection pty, CancellationToken ct)
     {
         _pty = pty;
-        _onChunk = onChunk;
         _lastChunkAt = DateTimeOffset.UtcNow;
         _readerCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         // Oracle A10: the kill-on-hang guarantee must hold even if the caller
@@ -31,9 +29,7 @@ public sealed class PtySession : IAsyncDisposable, IDisposable
         get { lock (_bufLock) return _buffer.ToString(); }
     }
 
-    public DateTimeOffset LastChunkAt => _lastChunkAt;
-
-    public int? ExitCode
+    private int? ExitCode
     {
         get { try { return _pty.ExitCode; } catch { return null; } }
     }
@@ -56,24 +52,17 @@ public sealed class PtySession : IAsyncDisposable, IDisposable
         await WriteAsync("\r", ct);
     }
 
-    // minWaitMs is a floor for the silent pre-output gap (oracle A4) that a
-    // pure idle wait would mistake for a settled TUI.
     public async Task<bool> WaitIdleAsync(
         int idleThresholdMs,
         int maxWaitMs,
         int pollMs = 100,
-        int minWaitMs = 0,
         CancellationToken ct = default)
     {
-        var entry = DateTimeOffset.UtcNow;
-        var deadline = entry.AddMilliseconds(maxWaitMs);
-        var floor = entry.AddMilliseconds(minWaitMs);
+        var deadline = DateTimeOffset.UtcNow.AddMilliseconds(maxWaitMs);
         while (DateTimeOffset.UtcNow < deadline)
         {
             await Task.Delay(pollMs, ct);
-            var now = DateTimeOffset.UtcNow;
-            if (now < floor) continue;
-            if ((now - _lastChunkAt).TotalMilliseconds > idleThresholdMs) return true;
+            if ((DateTimeOffset.UtcNow - _lastChunkAt).TotalMilliseconds > idleThresholdMs) return true;
         }
         return false;
     }
@@ -133,7 +122,6 @@ public sealed class PtySession : IAsyncDisposable, IDisposable
                 var chunk = Encoding.UTF8.GetString(buf, 0, n);
                 lock (_bufLock) _buffer.Append(chunk);
                 _lastChunkAt = DateTimeOffset.UtcNow;
-                if (_onChunk is not null) await _onChunk(chunk, CancellationToken.None);
             }
         }
         catch (OperationCanceledException) { /* kill-path teardown */ }
@@ -143,15 +131,6 @@ public sealed class PtySession : IAsyncDisposable, IDisposable
     private void KillQuietly()
     {
         try { _pty.Kill(); } catch { /* already gone */ }
-    }
-
-    public void Dispose()
-    {
-        _readerCts.Cancel();
-        KillQuietly();
-        _killReg.Dispose();
-        _readerCts.Dispose();
-        _pty.Dispose();
     }
 
     // Cancel the reader first so a stuck Read can't pin us, then kill the PTY,

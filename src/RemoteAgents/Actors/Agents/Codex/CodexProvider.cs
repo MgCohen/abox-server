@@ -35,7 +35,7 @@ public sealed class CodexProvider(CodexConfig config) : IProvider
         // codex resolves from PATH as a shim, so it is spawned through cmd.exe.
         return new ProcessStartInfo
         {
-            FileName = Path.Combine(Environment.SystemDirectory, "cmd.exe"),
+            FileName = Shell.CmdExePath,
             Arguments = $"/c {commandLine}",
             WorkingDirectory = request.ProjectDir,
             RedirectStandardInput = true,

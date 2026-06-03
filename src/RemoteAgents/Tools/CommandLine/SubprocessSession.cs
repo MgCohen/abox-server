@@ -4,7 +4,7 @@ using System.Threading.Channels;
 
 namespace RemoteAgents.Tools.CommandLine;
 
-public sealed class SubprocessSession : IAsyncDisposable, IDisposable
+public sealed class SubprocessSession : IAsyncDisposable
 {
     private readonly Process _proc;
     private readonly Channel<string> _stdout = Channel.CreateUnbounded<string>(
@@ -96,19 +96,6 @@ public sealed class SubprocessSession : IAsyncDisposable, IDisposable
     {
         try { if (!_proc.HasExited) _proc.Kill(entireProcessTree: true); }
         catch { /* best-effort: the child may exit between the check and the kill */ }
-    }
-
-    public void Dispose()
-    {
-        if (_disposed) return;
-        _disposed = true;
-        _externalReg.Dispose();
-        KillIfRunning();
-        try { _proc.WaitForExit(2_000); }
-        catch { /* best-effort drain on dispose */ }
-        _stdout.Writer.TryComplete();
-        _stderr.Writer.TryComplete();
-        _proc.Dispose();
     }
 
     public async ValueTask DisposeAsync()

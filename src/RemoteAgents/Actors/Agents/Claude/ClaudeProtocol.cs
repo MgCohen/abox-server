@@ -5,11 +5,7 @@ namespace RemoteAgents.Actors.Agents.Claude;
 
 public static class ClaudeProtocol
 {
-    // The keybind hint that appears only on Claude's live input bar — its
-    // presence is the positive "ready to accept a prompt" signal. The TUI
-    // positions glyphs with cursor moves, so the stripped buffer collapses
-    // whitespace; match against the whitespace-free form. Tweak here if
-    // Claude changes the input bar.
+    // Keybind hint shown only on Claude's live input bar — the positive "ready" signal.
     private const string PromptReadyMarker = "shift+tab";
     private static readonly Regex Whitespace = new(@"\s+", RegexOptions.Compiled);
 
@@ -45,16 +41,5 @@ public static class ClaudeProtocol
             n.Contains("Isthisaprojectyou", StringComparison.OrdinalIgnoreCase))
             return StartupDialog.Trust;
         return null;
-    }
-
-    public static string ExtractAssistantText(string buffer, string prompt)
-    {
-        var plain = AnsiHelpers.StripAnsi(buffer);
-        var idx = plain.IndexOf(prompt, StringComparison.Ordinal);
-        if (idx < 0) return "";
-        var tail = plain[(idx + prompt.Length)..];
-        var next = tail.IndexOf("\n> ", StringComparison.Ordinal);
-        if (next > 0) tail = tail[..next];
-        return tail.Trim();
     }
 }

@@ -65,19 +65,6 @@ public class ClaudeProtocolTests
         Assert.Equal(StartupDialog.Trust, ClaudeProtocol.DetectStartupDialog(buffer));
     }
 
-    [Fact]
-    public void ExtractAssistantText_returns_reply_between_prompt_and_next_prompt_marker()
-    {
-        var buffer = "> Reply with PONG\nPONG\n> ";
-        Assert.Equal("PONG", ClaudeProtocol.ExtractAssistantText(buffer, "Reply with PONG"));
-    }
-
-    [Fact]
-    public void ExtractAssistantText_returns_empty_when_prompt_absent()
-    {
-        Assert.Equal("", ClaudeProtocol.ExtractAssistantText("nothing here", "missing prompt"));
-    }
-
     private static void AssertPair(List<string> args, string flag, string value)
     {
         var i = args.IndexOf(flag);

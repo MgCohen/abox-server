@@ -9,7 +9,7 @@ public sealed class ClaudeProvider(ClaudeConfig config) : IProvider
     private const int Rows = 40;
     private const int PollMs = 150;
     private const int StartupCapMs = 30_000;           // cold start + plugins + remote-control attach
-    private const int ReadySettleMs = 1_200;           // input bar must hold quiet this long before we type
+    private const int ReadySettleMs = 1_200;
     private const int SubmitSettleMs = 500;            // oracle A5: anti-paste pause
     private const int ResponseIdleMs = 6_000;
     private const int ResponseCapMs = 5 * 60_000;
@@ -33,18 +33,14 @@ public sealed class ClaudeProvider(ClaudeConfig config) : IProvider
         var dct = linkedCts.Token;
 
         var pty = await PtyProvider.SpawnAsync(BuildPtyOptions(request.ProjectDir), dct);
-        await using var session = new PtySession(pty, onChunk: null, dct);
+        await using var session = new PtySession(pty, dct);
 
         await session.WriteLineAsync(launchLine, dct);
         await DismissStartupDialogsAsync(session, dct);
 
-        // Positive readiness: the input bar is present AND has settled. A
-        // mid-startup re-render (e.g. remote-control attaching) is byte-for-byte
-        // identical to a settled idle, so an idle-only wait drops the prompt —
-        // wait for the marker, not for silence.
+        // Wait for the input-bar marker, not for silence: a mid-startup re-render is indistinguishable from a settled idle.
         if (!await session.WaitUntilAsync(ClaudeProtocol.IsPromptReady, ReadySettleMs, StartupCapMs, PollMs, dct))
-            throw new InvalidOperationException(
-                $"Claude input bar did not become ready within {StartupCapMs} ms; cannot submit the prompt.");
+            throw new InvalidOperationException("Claude input bar did not become ready in time; cannot submit the prompt.");
 
         await session.SubmitAsync(request.Prompt, SubmitSettleMs, dct);
         await session.WaitIdleAsync(ResponseIdleMs, ResponseCapMs, ct: dct);
@@ -54,13 +50,11 @@ public sealed class ClaudeProvider(ClaudeConfig config) : IProvider
         await session.WriteLineAsync("exit", dct);
         var exitCode = await session.ShutdownAsync(WaitForExitMs, ReaderDrainMs);
 
-        var (text, transcript) = await ResolveOutputAsync(sessionId, request.Prompt, session, dct);
+        var (text, transcript) = await ResolveOutputAsync(sessionId, request.Prompt, dct);
         return new DriveResult(text, sessionId, exitCode, session.Buffer, transcript);
     }
 
-    // Startup dialogs (trust / bypass) precede the input bar. Dismiss each kind
-    // at most once — sending its keystroke twice would land in the next screen
-    // and corrupt the prompt — and stop as soon as the bar is ready.
+    // Dismiss each dialog kind at most once: a repeated keystroke would land in the next screen and corrupt the prompt.
     private static async Task DismissStartupDialogsAsync(PtySession session, CancellationToken ct)
     {
         var dismissed = new HashSet<StartupDialog>();
@@ -84,24 +78,21 @@ public sealed class ClaudeProvider(ClaudeConfig config) : IProvider
     };
 
     // Oracle A6: the per-session JSONL is the authoritative text source; poll
-    // briefly for Claude's final-flush lag, then fall back to the buffer scrape.
+    // briefly for Claude's final-flush lag.
     private static async Task<(string Text, IReadOnlyList<AgentTurn> Transcript)> ResolveOutputAsync(
-        string sessionId, string prompt, PtySession session, CancellationToken ct)
+        string sessionId, string prompt, CancellationToken ct)
     {
-        string? jsonl = null;
+        string? text = null;
         for (var waited = 0; waited <= ResolveTimeoutMs; waited += ResolvePollMs)
         {
-            jsonl = ClaudeJsonl.TryReadLastAssistantText(sessionId, prompt);
-            if (!string.IsNullOrWhiteSpace(jsonl)) break;
+            text = ClaudeJsonl.TryReadLastAssistantText(sessionId, prompt);
+            if (!string.IsNullOrWhiteSpace(text)) break;
             try { await Task.Delay(ResolvePollMs, ct); }
             catch (OperationCanceledException) { break; }
         }
 
-        var text = !string.IsNullOrWhiteSpace(jsonl)
-            ? jsonl!
-            : ClaudeProtocol.ExtractAssistantText(session.Buffer, prompt);
         var transcript = ClaudeJsonl.TryReadLastTurnTranscript(sessionId, prompt) ?? [];
-        return (text, transcript);
+        return (text ?? "", transcript);
     }
 
     private static PtyOptions BuildPtyOptions(string projectDir)
@@ -117,7 +108,7 @@ public sealed class ClaudeProvider(ClaudeConfig config) : IProvider
             Cols = Cols,
             Rows = Rows,
             Cwd = projectDir,
-            App = Path.Combine(Environment.SystemDirectory, "cmd.exe"),
+            App = Shell.CmdExePath,
             Environment = env,
         };
     }
