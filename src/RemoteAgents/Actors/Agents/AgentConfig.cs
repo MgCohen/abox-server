@@ -1,0 +1,3 @@
+namespace RemoteAgents.Actors.Agents;
+
+public abstract record AgentConfig(string Name, string Description, string Model, string SystemPrompt);
