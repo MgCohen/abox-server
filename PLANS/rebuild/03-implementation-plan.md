@@ -57,6 +57,14 @@ terminal until then.
 > L-numbers survive only as the build sequence** (command-line tool before its consumers,
 > terminal/ConPTY last). Read the table's "Layer" column as *build-order milestone*, its
 > "Owns"/"Key contents" as *what that milestone delivers* — but place the code per ADR 0002/0003.
+>
+> **Agent layer reshaped — [ADR 0004](../../design/adr/0004-provider-seam.md) (2026-06-02).**
+> The factory is **config-driven** (`IAgentFactory.Create(AgentConfig)`); named agents are
+> **static `Agents` presets** (no `AgentCatalog`/`AgentDefinition` — agents are referenced in
+> flow code, not resolved from an API string). Polymorphism is the **provider**: one concrete
+> `Agent` composes an `IProvider` that owns args + drive + parse, so the concretes are
+> `CodexProvider`/`ClaudeProvider`, **not** `CodexAgent`/`ClaudeAgent`. Codex subscription
+> safety is **`--model gpt-5.5` only** (no `EnvScrub`); `EnvScrub` + isatty stay Claude-internal.
 
 | # | Layer | Owns | Key contents | Disposition | Oracle |
 |---|---|---|---|---|---|
@@ -244,6 +252,13 @@ tests green.
 
 ## L6 · Concrete agents — PORT
 
+> **Reshaped by [ADR 0004](../../design/adr/0004-provider-seam.md) (2026-06-02).** Concrete
+> **providers**, not typed agents: `CodexProvider`/`ClaudeProvider` implement `IProvider`
+> (build args + drive substrate + parse → uniform `DriveResult`); one concrete `Agent` composes
+> them. **Codex builds first** (subprocess `exec`, no PTY — A2); its subscription safety is
+> **`--model gpt-5.5` only**, no `EnvScrub`. Claude + ConPTY + `EnvScrub`/isatty + any
+> spawn-seam extraction follow.
+
 **Goal.** Real Claude + Codex, still on a fake terminal.
 
 **Build.** The **internal ctor-injected spawn seam is born here** (moved from L5 per
@@ -259,6 +274,12 @@ unit tests.
 against fixtures; guards refuse on API keys set; build green. No real CLI yet.
 
 ## L7 · Named-agent roles — NEW (D1)
+
+> **Folded forward + reshaped by [ADR 0004](../../design/adr/0004-provider-seam.md) (2026-06-02).**
+> Shipped early as **config-driven** creation: `IAgentFactory.Create(AgentConfig)` + static
+> `Agents` presets (implementer, reviewer) — **no `AgentCatalog`/`AgentDefinition`** (agents are
+> named in flow code, not resolved from an API string). The factory dispatches a config subtype
+> to its provider.
 
 **Goal.** The role layer steps mint from.
 
