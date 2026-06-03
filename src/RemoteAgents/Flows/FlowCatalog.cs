@@ -10,6 +10,7 @@ public sealed class FlowCatalog
     {
         var catalog = new FlowCatalog();
         catalog.Register<StubFlow>(new FlowConfig("stub", "Walking-skeleton stub: placeholder steps, no real work."));
+        catalog.Register<CodexPingFlow>(new FlowConfig("codex-ping", "Drive the Codex reviewer with the run prompt."));
         return catalog;
     }
 

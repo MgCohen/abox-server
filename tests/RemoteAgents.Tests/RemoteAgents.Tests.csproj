@@ -16,8 +16,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\RemoteAgents\RemoteAgents.csproj" />
     <ProjectReference Include="..\..\src\RemoteAgents.Contracts\RemoteAgents.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\RemoteAgents.Host\RemoteAgents.Host.csproj" />
   </ItemGroup>
 
 </Project>

@@ -5,4 +5,8 @@
     <ProjectReference Include="..\RemoteAgents.Contracts\RemoteAgents.Contracts.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="RemoteAgents.Tests" />
+  </ItemGroup>
+
 </Project>
