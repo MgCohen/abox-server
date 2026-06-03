@@ -6,7 +6,7 @@ public sealed class AgentFactory : IAgentFactory
 {
     public Agent Create(AgentConfig config) => config switch
     {
-        FakeAgentConfig fake => new FakeAgent(fake),
-        _ => throw new NotSupportedException($"No agent for config type '{config.GetType().Name}'."),
+        FakeAgentConfig fake => new Agent(fake, new FakeProvider(fake)),
+        _ => throw new NotSupportedException($"No provider for config type '{config.GetType().Name}'."),
     };
 }
