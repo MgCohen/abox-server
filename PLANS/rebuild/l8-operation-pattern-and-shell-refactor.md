@@ -293,7 +293,12 @@ instance or bare ops / static factory." Rule emerging: **an actor is an instance
 its ops close over instance state** — `Agent` yes (`provider` + `config`); `Git`
 today no (identity parked). Decide the seam once; both fall out.
 
-**5. `IOperation<TResult, TArgs>` explored and REJECTED.** Moving args ctor→method
+**5. `IOperation<TResult, TArgs>` explored and REJECTED — REOPENED 2026-06-04, see
+[ADR 0005](../../design/adr/0005-operation-args-generic.md) (proposed).** The rejection below
+evaluated the *single-generic + `Unit`* form; ADR 0005 adopts a *split-interface* form
+(`IOperation<TResult>` + `IOperation<TArgs,TResult>`) on the reframing that the redirect
+indirection — not `TArgs` — is the disease. The notes below stand for the form they judged.
+Moving args ctor→method
 param does **not** kill the op class (something must still implement `Execute` and
 bind collaborators); it adds a `TArgs` record per op, taxes no-arg ops with `Unit`
 ceremony, splits the call-site builder phrase, and regresses D1's AI-enforceability
