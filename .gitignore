@@ -9,3 +9,6 @@ artifacts/
 
 # Claude Code project state (per-user: launch.json, settings.local.json, skills)
 .claude/
+
+# Visual Studio per-user IDE state
+.vs/
