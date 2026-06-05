@@ -35,7 +35,7 @@ public class ClaudeSmokeTests(ITestOutputHelper output)
             output.WriteLine($"Summary={op.Summary}");
 
             Assert.Equal(FlowPhase.Completed, last.Phase);
-            Assert.Equal("implementer", op.Name);
+            Assert.Equal("ping", op.Name);
             Assert.Equal(OperationStatus.Completed, op.Status);
             Assert.Contains("PONG", op.Summary ?? "");
         }

@@ -35,7 +35,7 @@ public class CodexSmokeTests(ITestOutputHelper output)
             output.WriteLine($"Summary={op.Summary}");
 
             Assert.Equal(FlowPhase.Completed, last.Phase);
-            Assert.Equal("reviewer", op.Name);
+            Assert.Equal("ping", op.Name);
             Assert.Equal(OperationStatus.Completed, op.Status);
             Assert.False(string.IsNullOrWhiteSpace(op.Summary));
         }
