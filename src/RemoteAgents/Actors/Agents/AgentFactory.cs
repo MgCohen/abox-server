@@ -5,11 +5,11 @@ namespace RemoteAgents.Actors.Agents;
 
 public sealed class AgentFactory : IAgentFactory
 {
-    public Agent Create(AgentConfig config) => config switch
+    public Agent Create(AgentConfig config, string projectDir) => config switch
     {
-        FakeAgentConfig fake => new Agent(fake, new FakeProvider(fake)),
-        CodexConfig codex => new Agent(codex, new CodexProvider(codex)),
-        ClaudeConfig claude => new Agent(claude, new ClaudeProvider(claude)),
+        FakeAgentConfig fake => new Agent(new FakeProvider(fake), projectDir),
+        CodexConfig codex => new Agent(new CodexProvider(codex), projectDir),
+        ClaudeConfig claude => new Agent(new ClaudeProvider(claude), projectDir),
         _ => throw new NotSupportedException($"No provider for config type '{config.GetType().Name}'."),
     };
 }

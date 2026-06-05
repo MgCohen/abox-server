@@ -12,6 +12,6 @@ public sealed class ClaudePingFlow(IAgentFactory agents) : Flow
     protected override async Task RunAsync(FlowConfig config, FlowContext ctx, CancellationToken ct)
     {
         await SubscriptionGuard.CheckAsync(EnvScrub.SubscriptionKeys, "claude", ct);
-        await Run(agents.Create(Agents.Implementer).Run(ctx.Request), ct);
+        await Run(agents.Create(Agents.Implementer, ctx.ProjectDir), new AgentArgs("ping", ctx.Request), ct);
     }
 }

@@ -1,13 +1,11 @@
 namespace RemoteAgents.Flows;
 
 // PROVISIONAL stub operation — retired with StubFlow at L10.
-public sealed class DelayOperation(string name, int delayMs, string result) : IOperation<string>
+public sealed class DelayOperation : Flow.Operation<DelayArgs, string>
 {
-    public string Name => name;
-
-    public async Task<string> Execute(FlowContext ctx, CancellationToken ct)
+    protected override async Task<string> Invoke(DelayArgs args, CancellationToken ct)
     {
-        await Task.Delay(delayMs, ct).ConfigureAwait(false);
-        return result;
+        await Task.Delay(args.DelayMs, ct).ConfigureAwait(false);
+        return args.Result;
     }
 }

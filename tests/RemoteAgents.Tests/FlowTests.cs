@@ -5,44 +5,38 @@ namespace RemoteAgents.Tests;
 
 public class FlowTests
 {
-    private sealed class FixedStep(string name, string result) : IOperation<string>
+    private sealed record StepArgs(string Name, string Value) : OperationArgs(Name);
+
+    private sealed class FixedOp : Flow.Operation<StepArgs, string>
     {
-        public string Name => name;
-        public Task<string> Execute(FlowContext ctx, CancellationToken ct) => Task.FromResult(result);
+        protected override Task<string> Invoke(StepArgs args, CancellationToken ct) => Task.FromResult(args.Value);
     }
 
-    private sealed class ThrowingStep(string name) : IOperation<string>
+    private sealed class ThrowingOp : Flow.Operation<StepArgs, string>
     {
-        public string Name => name;
-        public Task<string> Execute(FlowContext ctx, CancellationToken ct) =>
+        protected override Task<string> Invoke(StepArgs args, CancellationToken ct) =>
             throw new InvalidOperationException("nope");
-    }
-
-    private sealed class RequestStep(string name) : IOperation<string>
-    {
-        public string Name => name;
-        public Task<string> Execute(FlowContext ctx, CancellationToken ct) => Task.FromResult(ctx.Request);
     }
 
     private sealed class TwoStepFlow : Flow
     {
         protected override async Task RunAsync(FlowConfig config, FlowContext ctx, CancellationToken ct)
         {
-            await Run(new FixedStep("a", "ra"), ct);
-            await Run(new FixedStep("b", "rb"), ct);
+            await Run(new FixedOp(), new StepArgs("a", "ra"), ct);
+            await Run(new FixedOp(), new StepArgs("b", "rb"), ct);
         }
     }
 
     private sealed class FailingFlow : Flow
     {
         protected override Task RunAsync(FlowConfig config, FlowContext ctx, CancellationToken ct) =>
-            Run(new ThrowingStep("boom"), ct);
+            Run(new ThrowingOp(), new StepArgs("boom", ""), ct);
     }
 
-    private sealed class RequestFlow : Flow
+    private sealed class EchoRequestFlow : Flow
     {
         protected override Task RunAsync(FlowConfig config, FlowContext ctx, CancellationToken ct) =>
-            Run(new RequestStep("echo"), ct);
+            Run(new FixedOp(), new StepArgs("echo", ctx.Request), ct);
     }
 
     private static FlowContext ContextFor(FlowConfig config) =>
@@ -97,10 +91,10 @@ public class FlowTests
     }
 
     [Fact]
-    public async Task An_operation_reads_run_data_from_the_context_it_is_handed()
+    public async Task A_flow_feeds_run_data_to_an_operation_through_its_args()
     {
-        var config = new FlowConfig("request", "t");
-        var flow = new RequestFlow();
+        var config = new FlowConfig("echo", "t");
+        var flow = new EchoRequestFlow();
         var ctx = ContextFor(config);
         var stream = new SnapshotStream(flow, ctx);
 

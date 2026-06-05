@@ -6,71 +6,66 @@ namespace RemoteAgents.Tests;
 
 public class AgentTests
 {
-    private static Agent Fake(AgentConfig config) => new(config, new FakeProvider(config));
-
     private sealed class FakeAgentFactory : IAgentFactory
     {
-        public Agent Create(AgentConfig config) => Fake(config);
-    }
-
-    private sealed class OneAgentFlow(IAgentFactory agents, AgentConfig config, string prompt) : Flow
-    {
-        protected override Task RunAsync(FlowConfig flowConfig, FlowContext ctx, CancellationToken ct) =>
-            Run(agents.Create(config).Run(prompt), ct);
+        public Agent Create(AgentConfig config, string projectDir) => new(new FakeProvider(config), projectDir);
     }
 
     [Fact]
-    public async Task Factory_minted_agent_runs_through_the_flow_and_its_text_is_the_summary()
+    public async Task A_factory_minted_agent_runs_through_the_flow_and_its_text_is_the_summary()
     {
-        var flow = new OneAgentFlow(new FakeAgentFactory(), Agents.Implementer, "do the thing");
+        var agent = new FakeAgentFactory().Create(Agents.Implementer, "C:/proj");
+        var flow = new OpFlow<AgentArgs, AgentResult>(agent, new AgentArgs("process", "do the thing"));
         var ctx = new FlowContext("agent-flow", "proj", "C:/proj", "seed");
         var stream = new SnapshotStream(flow, ctx);
 
         await flow.ExecuteAsync(new FlowConfig("agent-flow", "t"), ctx, CancellationToken.None);
 
         var op = stream.Latest.Operations.Single();
-        Assert.Equal("implementer", op.Name);
+        Assert.Equal("process", op.Name);
         Assert.Equal(OperationStatus.Completed, op.Status);
         Assert.Equal("[implementer] do the thing", op.Summary);
     }
 
     [Fact]
-    public async Task An_agent_is_reusable_minting_a_fresh_operation_per_call()
+    public async Task An_agent_reuses_its_session_across_calls()
     {
-        var agent = Fake(Agents.Implementer);
+        var seen = new List<AgentRunRequest>();
+        var agent = new Agent(new CapturingProvider(seen.Add), "C:/proj");
 
-        var first = await agent.Run("one").Execute(new FlowContext("f", "p", "C:/proj", "seed"), CancellationToken.None);
-        var second = await agent.Run("two").Execute(new FlowContext("f", "p", "C:/proj", "seed"), CancellationToken.None);
+        await Op.Exec(agent, new AgentArgs("first", "one"));
+        await Op.Exec(agent, new AgentArgs("second", "two"));
 
-        Assert.Equal("[implementer] one", first.Text);
-        Assert.Equal("[implementer] two", second.Text);
+        Assert.Equal(2, seen.Count);
+        Assert.False(string.IsNullOrEmpty(seen[0].SessionId));
+        Assert.Equal(seen[0].SessionId, seen[1].SessionId);
     }
 
     [Fact]
-    public async Task An_agent_operation_builds_its_request_from_the_run_context()
+    public async Task An_agent_bakes_its_project_dir_and_threads_a_session_into_the_request()
     {
         AgentRunRequest? seen = null;
-        var agent = new Agent(Agents.Implementer, new CapturingProvider(req => seen = req));
+        var agent = new Agent(new CapturingProvider(r => seen = r), "C:/work/card");
 
-        await agent.Run("p", "sess").Execute(new FlowContext("cap", "proj", "C:/work/card", "seed"), CancellationToken.None);
+        await Op.Exec(agent, new AgentArgs("implement", "p"));
 
         Assert.NotNull(seen);
         Assert.Equal("p", seen!.Prompt);
         Assert.Equal("C:/work/card", seen.ProjectDir);
-        Assert.Equal("sess", seen.SessionId);
+        Assert.False(string.IsNullOrEmpty(seen.SessionId));
     }
 
     [Fact]
     public async Task An_agent_result_carries_the_transcript()
     {
-        var op = Fake(Agents.Reviewer).Run("look");
+        var agent = new Agent(new FakeProvider(Agents.Reviewer), "C:/proj");
 
-        var result = await op.Execute(new FlowContext("f", "proj", "C:/proj", "seed"), CancellationToken.None);
+        var result = await Op.Exec(agent, new AgentArgs("look", "look"));
 
         var turn = Assert.Single(result.Transcript);
         Assert.Equal(AgentTurnKind.Text, turn.Kind);
         Assert.Equal("[reviewer] look", turn.Body);
-        Assert.Equal("fake-session", result.SessionId);
+        Assert.False(string.IsNullOrEmpty(result.SessionId));
     }
 
     [Fact]
@@ -84,7 +79,7 @@ public class AgentTests
         public Task<DriveResult> DriveAsync(AgentRunRequest request, CancellationToken ct)
         {
             capture(request);
-            return Task.FromResult(new DriveResult("ok", "s", 0, "ok", []));
+            return Task.FromResult(new DriveResult("ok", request.SessionId ?? "s", 0, "ok", []));
         }
     }
 }

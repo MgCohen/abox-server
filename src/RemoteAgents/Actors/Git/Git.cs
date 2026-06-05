@@ -3,82 +3,86 @@ using RemoteAgents.Tools.CommandLine;
 
 namespace RemoteAgents.Actors.Git;
 
-public sealed class Git
+public sealed class Git(string projectDir)
 {
-    public IOperation<DirtyResult> CheckDirty() =>
-        new GitOperation<DirtyResult>("git-dirty", (ctx, ct) => CheckDirtyAsync(ctx.ProjectDir, ct));
+    public Flow.Operation<DirtyArgs, DirtyResult> CheckDirty { get; } = new DirtyOp(projectDir);
+    public Flow.Operation<DiffArgs, DiffResult> Diff { get; } = new DiffOp(projectDir);
+    public Flow.Operation<ChangedFilesArgs, ChangedFilesResult> ChangedFiles { get; } = new ChangedFilesOp(projectDir);
+    public Flow.Operation<CommitArgs, GitCommitResult> Commit { get; } = new CommitOp(projectDir);
+    public Flow.Operation<PushArgs, GitPushResult> Push { get; } = new PushOp(projectDir);
 
-    public IOperation<DiffResult> Diff() =>
-        new GitOperation<DiffResult>("git-diff", (ctx, ct) => DiffAsync(ctx.ProjectDir, ct));
-
-    public IOperation<ChangedFilesResult> ChangedFiles() =>
-        new GitOperation<ChangedFilesResult>("git-changed-files", (ctx, ct) => ChangedFilesAsync(ctx.ProjectDir, ct));
-
-    public IOperation<GitCommitResult> Commit(string message, IReadOnlyList<string> files, string? coAuthor = null) =>
-        new GitOperation<GitCommitResult>("git-commit", (ctx, ct) => CommitAsync(ctx.ProjectDir, message, files, coAuthor, ct));
-
-    public IOperation<GitPushResult> Push(string remote = "origin", string? branch = null, bool force = false) =>
-        new GitOperation<GitPushResult>("git-push", (ctx, ct) => PushAsync(ctx.ProjectDir, remote, branch, force, ct));
-
-    private static async Task<DirtyResult> CheckDirtyAsync(string projectDir, CancellationToken ct)
+    private sealed class DirtyOp(string dir) : Flow.Operation<DirtyArgs, DirtyResult>
     {
-        var res = (await RunCommand.RunAsync("git status --porcelain", new RunCommandOptions(Cwd: projectDir), ct))
-            .EnsureOk("git status");
-        return new DirtyResult(res.Stdout.Trim().Length > 0);
+        protected override async Task<DirtyResult> Invoke(DirtyArgs args, CancellationToken ct)
+        {
+            var res = (await RunCommand.RunAsync("git status --porcelain", new RunCommandOptions(Cwd: dir), ct))
+                .EnsureOk("git status");
+            return new DirtyResult(res.Stdout.Trim().Length > 0);
+        }
     }
 
-    private static async Task<DiffResult> DiffAsync(string projectDir, CancellationToken ct)
+    private sealed class DiffOp(string dir) : Flow.Operation<DiffArgs, DiffResult>
     {
-        var res = (await RunCommand.RunAsync("git diff", new RunCommandOptions(Cwd: projectDir), ct))
-            .EnsureOk("git diff");
-        return new DiffResult(res.Stdout, CountFiles(res.Stdout));
+        protected override async Task<DiffResult> Invoke(DiffArgs args, CancellationToken ct)
+        {
+            var res = (await RunCommand.RunAsync("git diff", new RunCommandOptions(Cwd: dir), ct))
+                .EnsureOk("git diff");
+            return new DiffResult(res.Stdout, CountFiles(res.Stdout));
+        }
     }
 
-    private static async Task<ChangedFilesResult> ChangedFilesAsync(string projectDir, CancellationToken ct)
+    private sealed class ChangedFilesOp(string dir) : Flow.Operation<ChangedFilesArgs, ChangedFilesResult>
     {
-        var res = (await RunCommand.RunAsync("git status --porcelain", new RunCommandOptions(Cwd: projectDir), ct))
-            .EnsureOk("git status");
-        return new ChangedFilesResult(ParsePorcelainPaths(res.Stdout));
+        protected override async Task<ChangedFilesResult> Invoke(ChangedFilesArgs args, CancellationToken ct)
+        {
+            var res = (await RunCommand.RunAsync("git status --porcelain", new RunCommandOptions(Cwd: dir), ct))
+                .EnsureOk("git status");
+            return new ChangedFilesResult(ParsePorcelainPaths(res.Stdout));
+        }
     }
 
-    private static async Task<GitCommitResult> CommitAsync(
-        string projectDir, string message, IReadOnlyList<string> files, string? coAuthor, CancellationToken ct)
+    private sealed class CommitOp(string dir) : Flow.Operation<CommitArgs, GitCommitResult>
     {
-        if (string.IsNullOrWhiteSpace(message))
-            throw new ArgumentException("git commit: message is required", nameof(message));
-        if (files.Count == 0)
-            throw new ArgumentException("git commit: an explicit file list is required (no implicit add -A)", nameof(files));
+        protected override async Task<GitCommitResult> Invoke(CommitArgs args, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(args.Message))
+                throw new ArgumentException("git commit: message is required", nameof(args));
+            if (args.Files.Count == 0)
+                throw new ArgumentException("git commit: an explicit file list is required (no implicit add -A)", nameof(args));
 
-        var quoted = string.Join(' ', files.Select(Shell.QuoteArg));
-        (await RunCommand.RunAsync($"git add {quoted}", new RunCommandOptions(Cwd: projectDir), ct)).EnsureOk("git add");
+            var quoted = string.Join(' ', args.Files.Select(Shell.QuoteArg));
+            (await RunCommand.RunAsync($"git add {quoted}", new RunCommandOptions(Cwd: dir), ct)).EnsureOk("git add");
 
-        var fullMessage = coAuthor is null
-            ? message.Trim()
-            : $"{message.Trim()}\n\nCo-Authored-By: {coAuthor} <noreply@anthropic.com>";
-        (await RunCommand.RunAsync("git commit -F -", new RunCommandOptions(Cwd: projectDir, Input: fullMessage), ct))
-            .EnsureOk("git commit");
+            var fullMessage = args.CoAuthor is null
+                ? args.Message.Trim()
+                : $"{args.Message.Trim()}\n\nCo-Authored-By: {args.CoAuthor} <noreply@anthropic.com>";
+            (await RunCommand.RunAsync("git commit -F -", new RunCommandOptions(Cwd: dir, Input: fullMessage), ct))
+                .EnsureOk("git commit");
 
-        var head = (await RunCommand.RunAsync("git rev-parse HEAD", new RunCommandOptions(Cwd: projectDir), ct))
-            .EnsureOk("git rev-parse");
-        return new GitCommitResult(head.Stdout.Trim(), FirstLine(message));
+            var head = (await RunCommand.RunAsync("git rev-parse HEAD", new RunCommandOptions(Cwd: dir), ct))
+                .EnsureOk("git rev-parse");
+            return new GitCommitResult(head.Stdout.Trim(), FirstLine(args.Message));
+        }
     }
 
-    private static async Task<GitPushResult> PushAsync(
-        string projectDir, string remote, string? branch, bool force, CancellationToken ct)
+    private sealed class PushOp(string dir) : Flow.Operation<PushArgs, GitPushResult>
     {
-        if (force && IsProtected(branch))
-            throw new InvalidOperationException($"git push: refusing to force-push to {branch}");
+        protected override async Task<GitPushResult> Invoke(PushArgs args, CancellationToken ct)
+        {
+            if (args.Force && IsProtected(args.Branch))
+                throw new InvalidOperationException($"git push: refusing to force-push to {args.Branch}");
 
-        var target = branch ?? await CurrentBranchAsync(projectDir, ct);
-        if (force && IsProtected(target))
-            throw new InvalidOperationException($"git push: refusing to force-push to {target}");
+            var target = args.Branch ?? await CurrentBranchAsync(dir, ct);
+            if (args.Force && IsProtected(target))
+                throw new InvalidOperationException($"git push: refusing to force-push to {target}");
 
-        var parts = new List<string> { "git push" };
-        if (force) parts.Add("--force-with-lease");
-        parts.Add(remote);
-        parts.Add(target);
-        (await RunCommand.RunAsync(string.Join(' ', parts), new RunCommandOptions(Cwd: projectDir), ct)).EnsureOk("git push");
-        return new GitPushResult(remote, target);
+            var parts = new List<string> { "git push" };
+            if (args.Force) parts.Add("--force-with-lease");
+            parts.Add(args.Remote);
+            parts.Add(target);
+            (await RunCommand.RunAsync(string.Join(' ', parts), new RunCommandOptions(Cwd: dir), ct)).EnsureOk("git push");
+            return new GitPushResult(args.Remote, target);
+        }
     }
 
     private static async Task<string> CurrentBranchAsync(string projectDir, CancellationToken ct)
@@ -117,13 +121,5 @@ public sealed class Git
     {
         var nl = message.IndexOf('\n');
         return (nl >= 0 ? message[..nl] : message).Trim();
-    }
-
-    private sealed class GitOperation<T>(string name, Func<FlowContext, CancellationToken, Task<T>> run)
-        : IOperation<T>
-    {
-        public string Name => name;
-
-        public Task<T> Execute(FlowContext ctx, CancellationToken ct) => run(ctx, ct);
     }
 }
