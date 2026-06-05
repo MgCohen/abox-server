@@ -59,14 +59,18 @@ that gate is *Anthropic's* Max-subscription detection. When billing is the alt-v
 against `ANTHROPIC_AUTH_TOKEN`, a **plain subprocess (`claude -p`) bills fine, no ConPTY**. So
 these backends can ride a clean `SubprocessSession` while still reusing `ClaudeJsonl`.
 
-But it **inverts oracle [A1](../design/behavioral-oracle.md)**, and our current guard encodes A1
-literally: `EnvScrub.SubscriptionKeys` blanks `ANTHROPIC_API_KEY`/`CLAUDE_API_KEY` on the child,
-and `SubscriptionGuard` *refuses to start* if they're set on the parent. The override path
-**intentionally sets a token** (`ANTHROPIC_AUTH_TOKEN` + `ANTHROPIC_BASE_URL`) that must **survive**
-to the child — the opposite policy. These two modes are mutually exclusive in one process env:
-real Claude-Max wants every key scrubbed and a PTY; an override backend wants its token present
-and no PTY. If we adopt Tier 0, the provider (not a global guard) must own which env policy is in
-force — a per-provider concern, consistent with ADR 0004 §6 (provider owns subscription safety).
+It also **inverts oracle [A1](../design/behavioral-oracle.md)** for this provider — but the code
+already accommodates that, because the guard is **generic, not a global A1 gate**.
+`SubscriptionGuard.CheckAsync(forbiddenKeys, binary, ct)` takes the forbidden-key list and the
+binary as **parameters**; today the Claude path passes `EnvScrub.SubscriptionKeys` + `"claude"`,
+and `ClaudeProvider` separately blanks those same keys on the child. An override provider just
+calls the same tool with **its own** policy — likely an empty/different forbidden set — and
+**must keep** `ANTHROPIC_AUTH_TOKEN` (+ `ANTHROPIC_BASE_URL`) alive on the child rather than
+scrubbing it. So the two modes coexist as **per-provider config of an existing seam** (ADR 0004 §6
+— provider owns subscription safety), *not* a guard refactor. The only genuine new bit is the
+inverse env policy: real Claude-Max wants every key scrubbed + a PTY; an override backend wants its
+token present + no PTY. The one thing to confirm is that `EnvScrub.SubscriptionKeys` (the
+Anthropic-specific scrub list) is not applied to the override provider's token.
 
 **Recommendation:** add **Z.ai GLM** first — it's the only Tier-0 backend that's *flat-subscription*
 (the actual thesis) and it costs almost no code. Treat Kimi/DeepSeek/MiniMax as a cheap-per-token
@@ -151,8 +155,8 @@ edits). Install `curl https://cursor.com/install -fsS | bash`.
 ## What I'd actually build, in order
 
 1. **Z.ai GLM via `claude` endpoint swap** — flat ~$18/mo, reuses `ClaudeJsonl`, only new work is the
-   per-provider **env policy** (set `ANTHROPIC_AUTH_TOKEN`/`BASE_URL`, *don't* scrub them) — which
-   forces the A1-guard refactor noted above. Highest value / lowest cost.
+   per-provider **env policy** (set `ANTHROPIC_AUTH_TOKEN`/`BASE_URL`, *don't* scrub them). The guard
+   already takes that policy as a parameter (see above), so no refactor — highest value / lowest cost.
 2. **Gemini CLI** — first *new native* provider; clean subprocess (no PTY), free→sub on one
    credential, 1M-context Flash. New `GeminiProtocol` parser. De-risk the subprocess-OAuth pickup.
 3. **Cursor / Composer** — only after a spike confirms the PTY drive + subscription-pool decrement;
