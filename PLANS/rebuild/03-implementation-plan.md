@@ -76,7 +76,7 @@ terminal until then.
 | L6 | **Concrete agents** | the two real providers + the spawn seam | `ClaudeAgent`, `CodexAgent` (on fake terminal), **internal ctor-injected spawn seam** (born here, faked), result-resolution (direct file read), guards (`SubscriptionGuard`, `EnvScrub`) | PORT | A1–A9 |
 | L7 | **Named-agent roles** | configured-once roles | `IAgentFactory.Create(role)` → implementer (Claude/acceptEdits), reviewer (Codex/read-only/gpt-5.5); `AgentDefinition`/`AgentCatalog` | NEW (D1) | A3 |
 | L8 | **Tooling** | concrete step types + tool logic | agent/validate/git steps, validators, **Git** (guardrails), IsolationScope, Reviews/verdict | PORT logic / REBUILD shape | — |
-| L9 | **Terminals** | the real driving substrate | PtySession (ConPTY), SubprocessSession, AnsiHelpers | PORT | A2/A10, B1/B2 |
+| L9 | **Terminals** | the real driving substrate | PtySession (ConPTY), SubprocessSession, AnsiHelpers | PORT · **code landed early (L6/refactor); real-`claude` gate pending a Windows host** | A2/A10, B1/B2 |
 | L10 | **Flow implementations** | the 4 recipes | claude-only, claude-validate, full-review, unity-review | REBUILD | — |
 | L11 | **Hooks** | result-resolution enrichment / future Q&A | HookIntegration, parsers, resolution | PORT / maybe-defer | B4 |
 | L12 | **Cleanup** | acceptance + dead-code removal | AC1–6; delete dead `ui/scripts/signalr-stream-smoke.cs` etc. | — | — |
@@ -307,15 +307,24 @@ parse, git guardrails, validator pass/fail); build green.
 
 **Goal.** Flip agents from fake to real. The crown-jewel port.
 
-**Build.** `PtySession` (ConPTY via Porta.Pty) + `SubprocessSession` +
-`AnsiHelpers` behind the existing seam. Port the choreography **verbatim** — do
-not retype the timings; lift Tier B1 values and the B2 shutdown ordering exactly.
-Honor Tier A2/A4/A5/A7/A10.
+**Build — DONE (landed early).** `PtySession` (ConPTY via Porta.Pty) +
+`SubprocessSession` + `AnsiHelpers` already live in
+`src/RemoteAgents/Tools/CommandLine/`, with `ClaudeProvider`/`CodexProvider`
+driving them through the `IProvider` seam (`FakeProvider` remains for tests). The
+choreography (Tier B1 timings, B2 shutdown ordering) was ported with the providers;
+Tier A2/A4/A5/A7/A10 honored in `ClaudeProvider`.
 
-**Done when (NFR2, FR-X1/X2).** A real `claude` PONG round-trips end-to-end
-through the full stack; subscription path intact (Tier A1/A2/A3 checks);
-anti-zombie teardown verified (stuck-child test). Latency within the prototype
-envelope.
+**Gate split — the code is in, the *verification* is environment-bound:**
+- **Done here (Linux/CI):** substrate compiles, fakes green, subscription-scrub
+  unit checks (Tier A1/A2/A3 logic) pass.
+- **Pending a Windows host:** ConPTY is Windows-only, so the live assertion below
+  cannot run in the Linux container. It must be checked on Windows with `claude`
+  installed + a live subscription before L9 is *closed*.
+
+**Done when (NFR2, FR-X1/X2) — Windows-only gate.** A real `claude` PONG
+round-trips end-to-end through the full stack; subscription path intact
+(Tier A1/A2/A3 checks); anti-zombie teardown verified (stuck-child test). Latency
+within the prototype envelope.
 
 ## L10 · Flow implementations — REBUILD
 

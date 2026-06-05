@@ -1,32 +1,32 @@
 using RemoteAgents.Actors.Git;
-using RemoteAgents.Flows;
 
 namespace RemoteAgents.Tests;
 
 public class GitGuardrailTests
 {
-    private static readonly FlowContext Ctx = new("test", "test", ".", "test");
-
     [Theory]
     [InlineData("main")]
     [InlineData("master")]
     public async Task Push_force_to_protected_branch_is_refused(string branch)
     {
-        var op = new Git().Push(branch: branch, force: true);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => op.Execute(Ctx, CancellationToken.None));
+        var git = new Git(".");
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => Op.Exec(git.Push, new PushArgs(Branch: branch, Force: true)));
     }
 
     [Fact]
     public async Task Commit_with_empty_file_list_is_refused()
     {
-        var op = new Git().Commit("a message", Array.Empty<string>());
-        await Assert.ThrowsAsync<ArgumentException>(() => op.Execute(Ctx, CancellationToken.None));
+        var git = new Git(".");
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => Op.Exec(git.Commit, new CommitArgs("a message", Array.Empty<string>())));
     }
 
     [Fact]
     public async Task Commit_with_blank_message_is_refused()
     {
-        var op = new Git().Commit("   ", new[] { "a.txt" });
-        await Assert.ThrowsAsync<ArgumentException>(() => op.Execute(Ctx, CancellationToken.None));
+        var git = new Git(".");
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => Op.Exec(git.Commit, new CommitArgs("   ", new[] { "a.txt" })));
     }
 }

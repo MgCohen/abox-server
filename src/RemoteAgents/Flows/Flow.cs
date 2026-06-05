@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using RemoteAgents.Contracts;
 
 namespace RemoteAgents.Flows;
@@ -5,6 +6,7 @@ namespace RemoteAgents.Flows;
 public abstract class Flow
 {
     private FlowContext _ctx = null!;
+    private readonly ConcurrentDictionary<object, byte> _inFlight = new();
 
     public event Action? Changed;
 
@@ -30,13 +32,33 @@ public abstract class Flow
         }
     }
 
-    protected async Task<T> Run<T>(IOperation<T> operation, CancellationToken ct)
+    private interface IGate<TArgs, TResult> where TArgs : OperationArgs
     {
-        _ctx.StartOperation(operation.Name);
+        Task<TResult> Execute(TArgs args, CancellationToken ct);
+    }
+
+    public abstract class Operation<TArgs, TResult> : IGate<TArgs, TResult>
+        where TArgs : OperationArgs
+    {
+        protected abstract Task<TResult> Invoke(TArgs args, CancellationToken ct);
+
+        Task<TResult> IGate<TArgs, TResult>.Execute(TArgs args, CancellationToken ct) => Invoke(args, ct);
+    }
+
+    protected async Task<TResult> Run<TArgs, TResult>(
+        Operation<TArgs, TResult> op, TArgs args, CancellationToken ct)
+        where TArgs : OperationArgs
+    {
+        if (!_inFlight.TryAdd(op, 0))
+            throw new InvalidOperationException(
+                $"Operation '{args.Name}' is already running on this actor; sequence the calls.");
+
+        _ctx.StartOperation(args.Name);
         Changed?.Invoke();
         try
         {
-            var result = await operation.Execute(_ctx, ct).ConfigureAwait(false);
+            IGate<TArgs, TResult> gate = op;
+            var result = await gate.Execute(args, ct).ConfigureAwait(false);
             _ctx.CompleteOperation(result?.ToString());
             Changed?.Invoke();
             return result;
@@ -46,6 +68,10 @@ public abstract class Flow
             _ctx.FailOperation(ex.Message);
             Changed?.Invoke();
             throw;
+        }
+        finally
+        {
+            _inFlight.TryRemove(op, out _);
         }
     }
 

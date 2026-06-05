@@ -7,5 +7,5 @@ namespace RemoteAgents.Flows;
 public sealed class CodexPingFlow(IAgentFactory agents) : Flow
 {
     protected override Task RunAsync(FlowConfig config, FlowContext ctx, CancellationToken ct) =>
-        Run(agents.Create(Agents.Reviewer).Run(ctx.Request), ct);
+        Run(agents.Create(Agents.Reviewer, ctx.ProjectDir), new AgentArgs("ping", ctx.Request), ct);
 }

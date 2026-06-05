@@ -23,6 +23,8 @@ public sealed class ClaudeProvider(ClaudeConfig config) : IProvider
 
     public async Task<DriveResult> DriveAsync(AgentRunRequest request, CancellationToken ct)
     {
+        await SubscriptionGuard.CheckAsync(EnvScrub.SubscriptionKeys, "claude", ct);
+
         var isResume = request.SessionId is not null;
         var sessionId = request.SessionId ?? Guid.NewGuid().ToString();
         var args = ClaudeProtocol.BuildArgs(sessionId, isResume, config.PermissionMode, config.Model, config.SystemPrompt);
