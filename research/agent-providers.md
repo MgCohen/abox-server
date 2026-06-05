@@ -27,6 +27,7 @@ only questions that matter per candidate are:
 | **3. Subscription-native, metered** | GitHub Copilot CLI | sub → usage credits (Jun 2026) | clean subprocess | new parser | Good if we accept credit metering |
 | **3. Subscription-native, metered** | Grok Build CLI | SuperGrok/X Premium OAuth (no extra cost) | clean subprocess | new parser | Compelling for X subscribers; beta |
 | **3. New native CLI** | Qwen Code | flat Coding Plan (~$50/mo Pro) | clean subprocess | new parser | OK; free OAuth tier gone Apr 2026 |
+| **L. Local / self-hosted** | **Ollama** (Gemma 4 / Qwen3) | **Free** (local compute) | reuse `codex` *or* `claude` path → localhost | **reuse existing parse** | **Best for small/cheap/high-volume tasks** — config, not code |
 | **Skip** | Aider / Amp / opencode / Cursor Cloud | API-key / credits / is-a-router / HTTP | — | — | Off-thesis (see below) |
 
 ## Tier 0 — the `ANTHROPIC_BASE_URL` override (cheapest integration by far)
@@ -139,6 +140,55 @@ edits). Install `curl https://cursor.com/install -fsS | bash`.
   OpenAI-compatible override (`OPENAI_BASE_URL`/`OPENAI_API_KEY`/`OPENAI_MODEL=qwen3-coder-plus`) —
   so it could ride a `codex`/OpenAI-compat drive path rather than its own CLI.
 
+## Tier L — local / self-hosted (Ollama & friends): the extreme of the value prop
+
+Local open-weight models are the *limit case* of "don't pay per token" — **zero marginal cost,
+private, offline.** They aren't a Claude/Codex replacement; scope them to **small, cheap,
+high-volume tasks** — classification, commit-message drafting, validators, summarization, routing —
+and keep frontier coding on the subscription CLIs.
+
+**The integration is nearly free because they fold into the override pattern we already have.**
+**Ollama** (the de-facto standard) now speaks three dialects at once:
+
+```
+http://localhost:11434/v1            # OpenAI-compatible  → point codex here
+http://localhost:11434  (/v1/messages)# Anthropic-compatible (v0.14.0+) → point claude here
+http://localhost:11434/api/generate  # native
+ANTHROPIC_AUTH_TOKEN=ollama  /  OPENAI_API_KEY=ollama   # required but ignored (dummy)
+```
+
+So a local model is the **same base-URL swap as Tier 0/Tier 3, aimed at localhost** — and since
+billing is local (none), there's **no isatty gate and no PTY**: a clean subprocess reusing our
+*existing* `codex` (OpenAI-compat) or `claude` (Anthropic-compat) drive+parse+session. No new
+provider code — config, not code.
+
+- **Lowest-cost path:** point **`codex`** at Ollama via a `~/.codex/config.toml`
+  `[model_providers.ollama]` arm (`base_url = "http://localhost:11434/v1"`, dummy key, model e.g.
+  `gemma4:e4b`); inherits codex's multi-turn + tool-calling + structured output for free. (Known
+  wrinkle: codex's Ollama provider has assumed-localhost config bugs — verify.) Equally, point
+  **`claude`** at `http://localhost:11434` to reuse `ClaudeJsonl`.
+- **Fallback (only on a second real need, per YAGNI):** drive `ollama run <model> --format json
+  "…"` as a tiny clean-subprocess provider — no PTY, JSON-schema-constrained output, but **no
+  built-in multi-turn** (you'd thread context yourself). Skip a direct HTTP client — that breaks
+  the "drive a CLI" substrate.
+
+**Models worth using (2026):**
+- **Gemma 4** (Google, Apr 2026 — the local models you'd heard about): **Apache 2.0** (clean
+  commercial license, unlike Gemma 3's custom one), variants **E2B / E4B** (on-device, 128K ctx,
+  multimodal incl. audio, native function-calling), **26B-A4B MoE** and **31B dense** (256K). E2B/E4B
+  are the sweet spot for validators/classifiers on a laptop.
+- **Qwen3-Coder** (Apache 2.0, strong small-coder + tool-calling), **Mistral Small 3.2 / Devstral-
+  Small** (Apache 2.0, agentic), **Phi-4-mini 3.8B** (constrained hardware). For pure tool-calling,
+  xLAM-2 / Hammer are purpose-built.
+
+**Caveats:** structured-output grammars guarantee *shape*, not *correctness* — validate values
+app-side. Hardware: Gemma 4 E2B/E4B and Phi-4-mini run comfortably on a 16GB machine; 31B-class
+needs a 24GB GPU (Q4) or more. Quality ceiling: fine for single-function fixes / classify / extract /
+summarize; not multi-file refactors or novel-algorithm reasoning — that stays on Claude/Codex.
+Other OpenAI-compatible runtimes (llama.cpp `llama-server`, LM Studio `lms`, vLLM for throughput)
+all work the same way; Ollama is just the easiest to drive headlessly. Skip **Jan** for agentic use
+(weak function-calling).
+
 ## Skip (and why)
 
 - **Aider** — API-key / per-token only, no subscription; no clean JSON agent transcript. Defeats the
@@ -161,12 +211,16 @@ edits). Install `curl https://cursor.com/install -fsS | bash`.
    credential, 1M-context Flash. New `GeminiProtocol` parser. De-risk the subprocess-OAuth pickup.
 3. **Cursor / Composer** — only after a spike confirms the PTY drive + subscription-pool decrement;
    reuses the Claude PTY substrate and a near-`ClaudeJsonl` parser.
-4. Hold **Copilot / Grok / Qwen** as second-wave — each is a worthwhile *native* adapter but none
-   beats #1–#3 on the value/cost ratio today.
+4. **Local via Ollama** (parallel, near-free) — point `codex` (or `claude`) at `localhost`; zero
+   marginal cost, no PTY, reuses existing drive+parse. Scope to small/cheap/high-volume tasks
+   (classify, validators, commit messages). Worth wiring whenever those tasks appear in a flow.
+5. Hold **Copilot / Grok / Qwen** as second-wave — each is a worthwhile *native* adapter but none
+   beats #1–#4 on the value/cost ratio today.
 
-The recurring theme: the seam was the right bet. Two of the top three candidates need **no new
-drive code at all** (Tier 0 reuses Claude's; Gemini reuses Codex's), and the work collapses to a
-parser + a config arm — exactly the "pure add" ADR 0004 promised.
+The recurring theme: the seam was the right bet. The top candidates need **no new drive code at
+all** — Tier 0 and local both reuse Claude's/Codex's path via a base-URL swap; Gemini reuses the
+Codex-style subprocess. The work collapses to a parser + a config arm — exactly the "pure add"
+ADR 0004 promised.
 
 ## Sources
 
@@ -184,6 +238,11 @@ Per-provider source lists live in the underlying research; key anchors:
   github.blog/…/usage-based-billing, z.ai/subscribe & docs.z.ai/devpack/tool/claude,
   api-docs.deepseek.com/…/claude_code, github.com/Alorse/cc-compatible-models,
   github.com/QwenLM/qwen-code, mer.vin/2026/05/grok-build-cli-….
+- **Local:** docs.ollama.com/api/{openai-compatibility,anthropic-compatibility},
+  ollama.com/blog/{openai-compatibility,claude,structured-outputs}, ollama.com/releases v0.14.0,
+  blog.google/…/gemma-4 & ai.google.dev/gemma/docs/capabilities/…/function-calling-gemma4,
+  ollama.com/library/{gemma3,qwen3-coder,devstral-small-2}, developers.openai.com/codex/config-advanced
+  & docs.ollama.com/integrations/codex, sitepoint.com/best-local-llm-models-2026.
 
 > Caveats: pricing/quotas across all vendors move monthly (Cursor pricing, Copilot's Jun-2026
 > usage-based shift, Gemini's "compute-used" migration, Qwen's vanished free tier all changed in
