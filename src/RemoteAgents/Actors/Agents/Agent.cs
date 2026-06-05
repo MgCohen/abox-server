@@ -2,7 +2,7 @@ using RemoteAgents.Flows;
 
 namespace RemoteAgents.Actors.Agents;
 
-public sealed class Agent(IProvider provider, string projectDir) : Flow.Operation<AgentArgs, AgentResult>
+public sealed class Agent(IProvider provider, string projectDir) : Operation<AgentArgs, AgentResult>
 {
     private string? _sessionId;
 

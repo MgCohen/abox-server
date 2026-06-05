@@ -5,13 +5,13 @@ namespace RemoteAgents.Actors.Git;
 
 public sealed class Git(string projectDir)
 {
-    public Flow.Operation<DirtyArgs, DirtyResult> CheckDirty { get; } = new DirtyOp(projectDir);
-    public Flow.Operation<DiffArgs, DiffResult> Diff { get; } = new DiffOp(projectDir);
-    public Flow.Operation<ChangedFilesArgs, ChangedFilesResult> ChangedFiles { get; } = new ChangedFilesOp(projectDir);
-    public Flow.Operation<CommitArgs, GitCommitResult> Commit { get; } = new CommitOp(projectDir);
-    public Flow.Operation<PushArgs, GitPushResult> Push { get; } = new PushOp(projectDir);
+    public Operation<DirtyArgs, DirtyResult> CheckDirty { get; } = new DirtyOp(projectDir);
+    public Operation<DiffArgs, DiffResult> Diff { get; } = new DiffOp(projectDir);
+    public Operation<ChangedFilesArgs, ChangedFilesResult> ChangedFiles { get; } = new ChangedFilesOp(projectDir);
+    public Operation<CommitArgs, GitCommitResult> Commit { get; } = new CommitOp(projectDir);
+    public Operation<PushArgs, GitPushResult> Push { get; } = new PushOp(projectDir);
 
-    private sealed class DirtyOp(string dir) : Flow.Operation<DirtyArgs, DirtyResult>
+    private sealed class DirtyOp(string dir) : Operation<DirtyArgs, DirtyResult>
     {
         protected override async Task<DirtyResult> Invoke(DirtyArgs args, CancellationToken ct)
         {
@@ -21,7 +21,7 @@ public sealed class Git(string projectDir)
         }
     }
 
-    private sealed class DiffOp(string dir) : Flow.Operation<DiffArgs, DiffResult>
+    private sealed class DiffOp(string dir) : Operation<DiffArgs, DiffResult>
     {
         protected override async Task<DiffResult> Invoke(DiffArgs args, CancellationToken ct)
         {
@@ -31,7 +31,7 @@ public sealed class Git(string projectDir)
         }
     }
 
-    private sealed class ChangedFilesOp(string dir) : Flow.Operation<ChangedFilesArgs, ChangedFilesResult>
+    private sealed class ChangedFilesOp(string dir) : Operation<ChangedFilesArgs, ChangedFilesResult>
     {
         protected override async Task<ChangedFilesResult> Invoke(ChangedFilesArgs args, CancellationToken ct)
         {
@@ -41,7 +41,7 @@ public sealed class Git(string projectDir)
         }
     }
 
-    private sealed class CommitOp(string dir) : Flow.Operation<CommitArgs, GitCommitResult>
+    private sealed class CommitOp(string dir) : Operation<CommitArgs, GitCommitResult>
     {
         protected override async Task<GitCommitResult> Invoke(CommitArgs args, CancellationToken ct)
         {
@@ -65,7 +65,7 @@ public sealed class Git(string projectDir)
         }
     }
 
-    private sealed class PushOp(string dir) : Flow.Operation<PushArgs, GitPushResult>
+    private sealed class PushOp(string dir) : Operation<PushArgs, GitPushResult>
     {
         protected override async Task<GitPushResult> Invoke(PushArgs args, CancellationToken ct)
         {

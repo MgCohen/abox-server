@@ -7,12 +7,12 @@ public class FlowTests
 {
     private sealed record StepArgs(string Name, string Value) : OperationArgs(Name);
 
-    private sealed class FixedOp : Flow.Operation<StepArgs, string>
+    private sealed class FixedOp : Operation<StepArgs, string>
     {
         protected override Task<string> Invoke(StepArgs args, CancellationToken ct) => Task.FromResult(args.Value);
     }
 
-    private sealed class ThrowingOp : Flow.Operation<StepArgs, string>
+    private sealed class ThrowingOp : Operation<StepArgs, string>
     {
         protected override Task<string> Invoke(StepArgs args, CancellationToken ct) =>
             throw new InvalidOperationException("nope");
