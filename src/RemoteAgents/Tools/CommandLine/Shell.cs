@@ -1,8 +1,28 @@
+using System.Diagnostics;
+
 namespace RemoteAgents.Tools.CommandLine;
 
 public static class Shell
 {
-    public static string CmdExePath => Path.Combine(Environment.SystemDirectory, "cmd.exe");
+    public static string Executable =>
+        OperatingSystem.IsWindows()
+            ? Path.Combine(Environment.SystemDirectory, "cmd.exe")
+            : "/bin/bash";
+
+    public static ProcessStartInfo Command(string command)
+    {
+        var psi = new ProcessStartInfo { FileName = Executable };
+        if (OperatingSystem.IsWindows())
+        {
+            psi.Arguments = $"/c {command}";
+        }
+        else
+        {
+            psi.ArgumentList.Add("-c");
+            psi.ArgumentList.Add(command);
+        }
+        return psi;
+    }
 
     private static readonly char[] QuoteTriggers = { ' ', '\t', '"' };
 

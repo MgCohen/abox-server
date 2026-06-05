@@ -315,16 +315,33 @@ choreography (Tier B1 timings, B2 shutdown ordering) was ported with the provide
 Tier A2/A4/A5/A7/A10 honored in `ClaudeProvider`.
 
 **Gate split — the code is in, the *verification* is environment-bound:**
-- **Done here (Linux/CI):** substrate compiles, fakes green, subscription-scrub
-  unit checks (Tier A1/A2/A3 logic) pass.
-- **Pending a Windows host:** ConPTY is Windows-only, so the live assertion below
-  cannot run in the Linux container. It must be checked on Windows with `claude`
-  installed + a live subscription before L9 is *closed*.
+- **Done here (Linux/CI):** substrate compiles, full suite green on Linux,
+  subscription-scrub unit checks (Tier A1/A2/A3 logic) pass.
+- **Pending a host with `claude` + subscription:** the live round-trip needs the
+  real CLI and a Max subscription (neither in the container) — see
+  `L9-validation-handoff.md`. It must be checked before L9 is *closed*.
 
-**Done when (NFR2, FR-X1/X2) — Windows-only gate.** A real `claude` PONG
-round-trips end-to-end through the full stack; subscription path intact
-(Tier A1/A2/A3 checks); anti-zombie teardown verified (stuck-child test). Latency
-within the prototype envelope.
+**Done when (NFR2, FR-X1/X2) — live gate.** A real `claude` PONG round-trips
+end-to-end through the full stack; subscription path intact (Tier A1/A2/A3 checks);
+anti-zombie teardown verified (stuck-child test). Latency within the prototype
+envelope.
+
+### L9 cross-platform track (Linux/macOS execution)
+
+The Windows-only assumption was investigated and largely retired.
+
+- **B0 — Unix PTY confirmed.** Porta.Pty ships native shims
+  (`linux-x64`/`arm64`, `osx-x64`/`arm64`); a spike round-tripped bytes through the
+  unchanged `PtySession` on Linux. The PTY layer is cross-platform — no library swap.
+- **B1 — OS-aware shell seam (DONE).** `Shell.Executable` resolves cmd.exe↔/bin/bash;
+  `Shell.Command` builds the non-interactive `-c`/`/c` invocation that `RunCommand`
+  and `CodexProvider` now share. `ClaudeProvider` hosts `Shell.Executable` in the PTY.
+- **B2 — portable tests (DONE).** `RunCommandTests.Timeout_is_flagged` no longer
+  assumes Windows `ping`; the suite is green on Linux.
+- **B3 — live re-tune (pending, off-box).** Run the smoke gate against a real
+  `claude` on Linux/macOS; re-tune Tier B1 timings if the TUI choreography differs.
+- **B4 — CI matrix (pending).** Add a Linux (± macOS) job: build + unit + portable
+  tests; the live agent smoke stays gated/manual (subscription-bound).
 
 ## L10 · Flow implementations — REBUILD
 

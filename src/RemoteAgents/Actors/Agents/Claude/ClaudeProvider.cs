@@ -110,7 +110,7 @@ public sealed class ClaudeProvider(ClaudeConfig config) : IProvider
             Cols = Cols,
             Rows = Rows,
             Cwd = projectDir,
-            App = Shell.CmdExePath,
+            App = Shell.Executable,
             Environment = env,
         };
     }

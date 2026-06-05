@@ -34,24 +34,9 @@ public static class RunCommand
 
     private static ProcessStartInfo BuildShellPsi(string command, RunCommandOptions options)
     {
-        var psi = new ProcessStartInfo
-        {
-            WorkingDirectory = options.Cwd ?? Environment.CurrentDirectory,
-            RedirectStandardInput = options.Input is not null,
-        };
-        if (OperatingSystem.IsWindows())
-        {
-            psi.FileName = Shell.CmdExePath;
-            psi.Arguments = $"/c {command}";
-        }
-        else
-        {
-            // bash needs the whole command as a single -c argument; ArgumentList lets
-            // the runtime escape it instead of re-quoting it ourselves.
-            psi.FileName = "/bin/bash";
-            psi.ArgumentList.Add("-c");
-            psi.ArgumentList.Add(command);
-        }
+        var psi = Shell.Command(command);
+        psi.WorkingDirectory = options.Cwd ?? Environment.CurrentDirectory;
+        psi.RedirectStandardInput = options.Input is not null;
         ApplyEnv(psi, options.Env);
         return psi;
     }
