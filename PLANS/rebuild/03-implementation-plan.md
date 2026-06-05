@@ -340,8 +340,10 @@ The Windows-only assumption was investigated and largely retired.
   assumes Windows `ping`; the suite is green on Linux.
 - **B3 — live re-tune (pending, off-box).** Run the smoke gate against a real
   `claude` on Linux/macOS; re-tune Tier B1 timings if the TUI choreography differs.
-- **B4 — CI matrix (pending).** Add a Linux (± macOS) job: build + unit + portable
-  tests; the live agent smoke stays gated/manual (subscription-bound).
+- **B4 — CI matrix (DONE).** `.github/workflows/ci.yml` builds + tests on
+  `ubuntu-latest` and `windows-latest` (the seam's two branches; macOS re-treads the
+  non-Windows path). The live agent smokes stay `[Fact(Skip)]`, so no subscription
+  is needed in CI.
 
 ## L10 · Flow implementations — REBUILD
 
