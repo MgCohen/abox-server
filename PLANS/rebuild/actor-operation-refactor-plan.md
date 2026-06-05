@@ -38,14 +38,22 @@ This plan is written to be read cold. §1 fixes every decision; §2 is what exis
   it just started (`_operations[^1]`), never keyed by name. Same-named ops are fine.
 - **D7 — Concurrency is a fail-fast guard.** `Run` rejects a re-entrant call on an
   already-running op instance (an in-flight set) rather than silently racing a session.
-- **D8 — Transcript survives failure via a per-op event sink.** `Run` passes an
-  `IProgress<OpEvent>` into the op; events land on the `OperationRecord` *as they arrive*,
-  so a mid-step failure keeps what happened. The agent fills it from the provider's turns,
-  reported in a `finally` (non-live; partial on failure). Timeline = a projection over
-  `Operations` (start-line + events + end/error-line).
-- **D9 — Results stay semantic; no base result class with events.** Events live on the
-  record, not the result (a result does not exist on failure, and that would fight the
-  "results own display via `ToString()`" standard). `ToString()` is the end-line summary.
+- **D8 (REVISED) — No event sink; transcript lives on the result, failure stays exception-
+  channeled.** The original D8 (an `IProgress<OpEvent>` sink writing to `OperationRecord` as
+  turns arrive) is **dropped as YAGNI.** `AgentResult.Transcript` already carries the full
+  transcript on success, and the snapshot channel is coalesced (cap-1, DropOldest) — a
+  lossless per-turn stream fights it. Failure remains a thrown exception that `Flow.Run`
+  catches into `FailOperation(ex.Message)` (fail-fast, unchanged). The *only* gap the sink
+  closed — partial transcript on a mid-step failure — is deferred to the second real use. If
+  needed, the right-sized fix is a typed `AgentRunException(message, partialTranscript, inner)`
+  thrown by `ClaudeProvider` after reading `ClaudeJsonl` in a `catch`; the partial turns ride
+  the exception with zero spine churn (no `IProgress`, no `RecordSink`, no `OperationDto.Events`).
+- **D9 — Results stay semantic; no base result class with success/events.** A universal
+  `OperationResult(bool Success, …, Events)` base was considered and rejected: it outlaws
+  bare-`string` results, duplicates `OperationStatus` (the record already tracks Completed vs
+  Failed), forces an always-empty events list onto git/delay results, and would invert
+  `Run`'s exception-as-failure contract (a behavior change). Results stay semantic; success
+  is `OperationStatus`, the summary is `ToString()`.
 - **D10 — Agents are flow-factoried, never DI'd.** The flow mints its agent via
   `IAgentFactory` so the session is born owned by that flow (no cross-flow session bleed).
   Git needs no factory (≈stateless); the flow constructs it inline with `projectDir`.
@@ -80,6 +88,11 @@ record has nowhere to keep it.
 ---
 
 ## 3. Target shape
+
+> **Note (P6 trim):** the `RecordSink` / `IProgress` / `OpEvent` / `OperationDto.Events`
+> elements below were the *original* D8 design and are **superseded** by revised D8/D9 — they
+> were never built and are not part of the shipped shape. Everything else (gate, `Run`,
+> `OperationArgs`, actor fusion) landed as written. Kept here as design history.
 
 ### Gate + Run (in `Flow.cs`)
 
@@ -287,26 +300,25 @@ No explicit type args anywhere — `args` pins `TArgs`, `git.Commit` is a unique
 - **P5 — Retire the old contract.** Migrate `DelayOperation` and any last call site; delete
   `IOperation.cs` and the old `Run`. Ops no longer reference `FlowContext`. *Done when:* no
   reference to `IOperation` remains, build + all tests green.
-- **P6 — Transcript survives failure + timeline UI.** `IProvider.DriveAsync` gains the
-  `IProgress<AgentTurn>` sink; providers report turns in a `finally` (Claude via
-  `ClaudeJsonl`, partial on failure); `Agent` adapts via `TurnSink`; `RunView` renders
-  start → events → end/error. *Done when:* run a flow that fails an agent mid-step and the
-  snapshot shows `started → used tool → Error` (behavior verified, not just compiled).
+- **P6 (TRIMMED — closes the refactor plan).** No sink, no timeline UI, no `OperationDto.Events`
+  (see revised D8/D9). Transcript-on-success is **already shipped** via `AgentResult.Transcript`;
+  failure surfaces as `ex.Message` through the existing `Run` catch. *Done when:* the decision is
+  recorded here (this commit), success transcript confirmed present, and no sink/base-result
+  machinery exists in the tree. The partial-transcript-on-failure `AgentRunException` is held as
+  a documented second-use option, not built now.
 
 ---
 
 ## 6. Risks & edge cases
 
-- **R1 — sessionId before the drive.** The failure-path transcript read needs the id up
-  front. The agent mints `_sessionId` (a GUID we own) *before* calling the provider; the
-  provider must adopt that id rather than mint its own. Verify against `ClaudeProvider`/
-  `ClaudeJsonl` (the id is the JSONL filename).
-- **R2 — sink ordering.** `RecordSink` is a synchronous `IProgress` (not `System.Progress`,
-  which marshals to a sync context and can reorder). The run task is the single writer to
-  `FlowContext`; SSE/HTTP threads only read `_latest`. Keep it synchronous.
-- **R3 — provider surface churn.** P6 touches all three providers. If Codex partial-on-
-  failure isn't needed yet, the lighter fallback is: agent reads `ClaudeJsonl` in its own
-  `finally` (Claude-only) and the sink stays agent-side — revisit only if Codex needs it.
+- **R1 (still live, for the deferred `AgentRunException`) — sessionId before the drive.** A
+  failure-path transcript read needs the id up front. The agent mints `_sessionId` (a GUID we
+  own) *before* calling the provider, and `ClaudeProvider` already adopts it as the JSONL
+  filename — so the second-use fix can `TryReadLastTurnTranscript(sessionId, …)` from a `catch`.
+- **R2 — MOOT.** No `RecordSink`/`IProgress` was built; the run task remains the single writer
+  to `FlowContext` and SSE/HTTP threads only read `_latest`. Nothing to order.
+- **R3 — MOOT.** No provider-surface churn: `IProvider.DriveAsync` is unchanged. The deferred
+  `AgentRunException` stays Claude-only inside `ClaudeProvider`; Codex is untouched.
 - **R4 — holder boilerplate.** Five Git verbs → five args records + five op classes. This is
   the accepted cost of the no-hole base-class gate (D2/D3); each op class is one method.
 - **R5 — gate accessibility.** Confirm at P2 that `public Operation : private IGate` nested
