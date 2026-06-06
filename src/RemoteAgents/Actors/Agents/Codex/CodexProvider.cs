@@ -32,14 +32,10 @@ public sealed class CodexProvider(CodexConfig config) : IProvider
         var args = CodexProtocol.BuildArgs(request.SessionId, request.ProjectDir, lastMessageFile, config.Model, config.Sandbox);
         var commandLine = "codex " + string.Join(' ', args.Select(Shell.QuoteArg));
 
-        // codex resolves from PATH as a shim, so it is spawned through cmd.exe.
-        return new ProcessStartInfo
-        {
-            FileName = Shell.CmdExePath,
-            Arguments = $"/c {commandLine}",
-            WorkingDirectory = request.ProjectDir,
-            RedirectStandardInput = true,
-        };
+        var psi = Shell.Command(commandLine);
+        psi.WorkingDirectory = request.ProjectDir;
+        psi.RedirectStandardInput = true;
+        return psi;
     }
 
     private static Task<string?> SniffSessionId(SubprocessSession session, string? initial) =>

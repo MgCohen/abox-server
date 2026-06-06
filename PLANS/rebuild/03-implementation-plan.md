@@ -315,16 +315,43 @@ choreography (Tier B1 timings, B2 shutdown ordering) was ported with the provide
 Tier A2/A4/A5/A7/A10 honored in `ClaudeProvider`.
 
 **Gate split — the code is in, the *verification* is environment-bound:**
-- **Done here (Linux/CI):** substrate compiles, fakes green, subscription-scrub
-  unit checks (Tier A1/A2/A3 logic) pass.
-- **Pending a Windows host:** ConPTY is Windows-only, so the live assertion below
-  cannot run in the Linux container. It must be checked on Windows with `claude`
-  installed + a live subscription before L9 is *closed*.
+- **Done here (Linux/CI):** substrate compiles, full suite green on Linux,
+  subscription-scrub unit checks (Tier A1/A2/A3 logic) pass.
+- **Pending a host with `claude` + subscription:** the live round-trip needs the
+  real CLI and a Max subscription (neither in the container) — see
+  `L9-validation-handoff.md`. It must be checked before L9 is *closed*.
 
-**Done when (NFR2, FR-X1/X2) — Windows-only gate.** A real `claude` PONG
-round-trips end-to-end through the full stack; subscription path intact
-(Tier A1/A2/A3 checks); anti-zombie teardown verified (stuck-child test). Latency
-within the prototype envelope.
+**Done when (NFR2, FR-X1/X2) — live gate.** A real `claude` PONG round-trips
+end-to-end through the full stack; subscription path intact (Tier A1/A2/A3 checks);
+anti-zombie teardown verified (stuck-child test). Latency within the prototype
+envelope.
+
+### L9 cross-platform track (Linux/macOS execution)
+
+The Windows-only assumption was investigated and largely retired.
+
+- **B0 — Unix PTY confirmed.** Porta.Pty ships native shims
+  (`linux-x64`/`arm64`, `osx-x64`/`arm64`); a spike round-tripped bytes through the
+  unchanged `PtySession` on Linux. The PTY layer is cross-platform — no library swap.
+- **B1 — OS-aware shell seam (DONE).** `Shell.Executable` resolves cmd.exe↔/bin/bash;
+  `Shell.Command` builds the non-interactive `-c`/`/c` invocation that `RunCommand`
+  and `CodexProvider` now share. `ClaudeProvider` hosts `Shell.Executable` in the PTY.
+- **B2 — portable tests (DONE).** `RunCommandTests.Timeout_is_flagged` no longer
+  assumes Windows `ping`; the suite is green on Linux.
+- **B3 — live re-tune (partially done; rest off-box).** A no-subscription probe on
+  Linux confirmed the terminal interaction end-to-end up to startup: PTY spawn, the
+  shell→`claude` launch, and claude rendering its TUI all work. Finding: a *fresh*
+  profile shows a **theme-picker** first-run dialog that `DetectStartupDialog`
+  doesn't dismiss (it knows only Trust/Bypass, Oracle A7). Decision: **pre-seed a
+  configured claude profile in deployment setup** (theme/trust/login) rather than
+  add speculative dialog code — the prototype assumed a configured machine, and
+  ephemeral containers should match that in setup. The remaining gate (trust →
+  prompt → submit → response → JSONL) needs a real subscription; see
+  `L9-validation-handoff.md`.
+- **B4 — CI matrix (DONE).** `.github/workflows/ci.yml` builds + tests on
+  `ubuntu-latest` and `windows-latest` (the seam's two branches; macOS re-treads the
+  non-Windows path). The live agent smokes stay `[Fact(Skip)]`, so no subscription
+  is needed in CI.
 
 ## L10 · Flow implementations — REBUILD
 

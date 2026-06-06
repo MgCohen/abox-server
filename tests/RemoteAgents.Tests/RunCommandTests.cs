@@ -26,9 +26,8 @@ public class RunCommandTests
     [Fact]
     public async Task Timeout_is_flagged()
     {
-        var res = await RunCommand.RunAsync(
-            "ping -n 30 127.0.0.1 > nul",
-            new RunCommandOptions(TimeoutMs: 500));
+        var sleep = OperatingSystem.IsWindows() ? "ping -n 30 127.0.0.1 > nul" : "sleep 30";
+        var res = await RunCommand.RunAsync(sleep, new RunCommandOptions(TimeoutMs: 500));
 
         Assert.True(res.TimedOut);
     }
