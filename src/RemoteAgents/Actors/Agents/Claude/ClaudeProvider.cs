@@ -13,11 +13,6 @@ public sealed class ClaudeProvider(ClaudeConfig config) : IProvider
     private const int SubmitSettleMs = 500;            // oracle A5: anti-paste pause
     private const int ResponseStopPollMs = 500;
     private const int ResponseCapMs = 5 * 60_000;
-    private const int PostStopSettleIdleMs = 1_000;
-    private const int ExitSettleIdleMs = 500;
-    private const int ExitSettleCapMs = 5_000;
-    private const int WaitForExitMs = 15_000;
-    private const int ReaderDrainMs = 2_000;
     private const int ResolveTimeoutMs = 2_000;
     private const int ResolvePollMs = 100;
     private const int MaxOverallMs = 10 * 60_000;      // oracle A10: wall-clock cap → guaranteed teardown
@@ -52,16 +47,10 @@ public sealed class ClaudeProvider(ClaudeConfig config) : IProvider
             await session.SubmitAsync(request.Prompt, SubmitSettleMs, dct);
             await WaitForStopAsync(hook, dct);
 
-            // The Stop hook marks the turn logically done; let the TUI finish
-            // painting the final answer before /exit, or the keystroke is dropped.
-            await session.WaitIdleAsync(PostStopSettleIdleMs, ExitSettleCapMs, ct: dct);
-            await session.SubmitAsync("/exit", SubmitSettleMs, dct);
-            await session.WaitIdleAsync(ExitSettleIdleMs, ExitSettleCapMs, ct: dct);
-            await session.WriteLineAsync("exit", dct);
-            // ConPTY teardown only; its code is a kill/race artifact, not the turn
-            // outcome — Claude success is "the Stop hook delivered a result".
-            await session.ShutdownAsync(WaitForExitMs, ReaderDrainMs);
-
+            // The Stop hook fired: the final message and JSONL transcript are
+            // already on disk. Read them, then let `await using` dispose kill the
+            // PTY tree (Job Object cascade, oracle A10) — no graceful /exit needed,
+            // and the cmd exit code was never the turn outcome anyway.
             var text = hook.ReadFinalMessage();
             if (string.IsNullOrWhiteSpace(text))
                 text = await ResolveTextFallbackAsync(sessionId, request.Prompt, dct);

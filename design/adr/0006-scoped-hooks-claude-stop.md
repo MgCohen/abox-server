@@ -67,8 +67,11 @@ signal is not that.
 - R-ARCH-3 is amended: hooks are no longer *wholly* L11-deferred — the
   turn-completion hook ships with the provider. The rest of the hook layer (Q&A,
   guardrails) remains deferred/optional.
-- Follow-up (latency, not correctness): the ~15 s shutdown kill-wait can be
-  shortened later (`WaitForExitMs`).
+- Shutdown is kill-only: once `Stop` fires, the final message and JSONL
+  transcript are already on disk, so `ClaudeProvider` reads them and lets
+  `await using` dispose kill the PTY tree (Job Object cascade, A10) — no graceful
+  `/exit` dance, no ~15 s exit-wait. `PtySession.ShutdownAsync`/`WaitIdleAsync`
+  were removed as dead.
 
 ## Alternatives considered
 

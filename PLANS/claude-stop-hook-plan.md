@@ -77,7 +77,7 @@ therefore not needed.
 4. `SubmitAsync(prompt)`.
 5. **Wait for the `Stop` signal file** (poll `RA_STOP_SIGNAL`, cap `ResponseCapMs`) — replaces `WaitIdleAsync`.
 6. **Read the signal payload (UTF-8):** `last_assistant_message` → final text; `transcript_path`/`session_id` for the transcript read.
-7. `/exit` → `exit` → `ShutdownAsync` (unchanged; now reliably clean because the turn is actually done → expect exit 0).
+7. **Kill-only teardown:** the message + transcript are on disk, so let `await using` dispose kill the PTY tree (Job Object cascade, A10) — no `/exit`/`exit`/`ShutdownAsync`.
 8. **Full transcript** from the session JSONL (`ClaudeJsonl.TryReadLastTurnTranscript`), unchanged — but read once, after `Stop`, not polled.
 9. Return `DriveResult(Text = last_assistant_message, SessionId, ExitCode, RawOutput, Transcript)`.
 10. **finally:** delete the system-prompt file, the `ra-hooks.json`, and the signal file.
@@ -105,7 +105,7 @@ poll/anchor-for-completion logic from the hot path.
 - **Hook-trust gate (not observed, but guard):** if a trust/hook dialog ever blocks, detect it like other startup dialogs (`DetectStartupDialog`) and/or pre-clear via settings. Validate on the pinned build.
 - **`--bare`:** would skip auto-discovered hooks — we must **not** run `--bare` (we don't).
 - **Encoding:** read the payload as UTF-8 (the spike's mojibake was PowerShell's default `Add-Content` encoding; the shim uses `Set-Content -Encoding utf8` and we read UTF-8).
-- **Exit code is a ConPTY teardown artifact, not the turn outcome.** `/exit`→`exit`→kill rarely yields a clean code over ConPTY (the prototype had the same kill path). So Claude success = "the `Stop` hook delivered a result" (`DriveResult.ExitCode` = 0 when fired/text recovered, else 1); the cmd exit code is ignored. Codex keeps using its real subprocess exit code. *(Follow-up: the ~15 s shutdown kill-wait is latency, not correctness — can shorten `WaitForExitMs` later.)*
+- **Exit code is a ConPTY teardown artifact, not the turn outcome.** `/exit`→`exit`→kill rarely yields a clean code over ConPTY (the prototype had the same kill path). So Claude success = "the `Stop` hook delivered a result" (`DriveResult.ExitCode` = 0 when fired/text recovered, else 1); the cmd exit code is ignored. Codex keeps using its real subprocess exit code. *Because the outcome never depended on a clean exit, shutdown is now **kill-only**: after `Stop`, read the on-disk message + JSONL transcript and let `await using` dispose kill the PTY tree (Job Object cascade, A10) — the `/exit` dance and the ~15 s exit-wait are gone, and `PtySession.ShutdownAsync`/`WaitIdleAsync` were removed as dead.*
 
 ## 7. Tests
 - **Unit:** `ra-hooks.json` shape; signal-payload parse (`last_assistant_message`, `transcript_path`); fallback selection when signal absent; shim writes UTF-8 to `RA_STOP_SIGNAL`.
@@ -129,4 +129,4 @@ over ConPTY. Record the spike evidence (§2).
 8. Amend the ADR (§8) + mark this plan landed.
 
 ## 10. Open questions
-- Optional Codex parity: switch its end-signal from process-exit to the stream's `turn.completed` (minor robustness; not required).
+- ~~Optional Codex parity: switch its end-signal from process-exit to the stream's `turn.completed`.~~ **Won't do (2026-06-06).** `codex exec` process-exit is already the deterministic turn-end *and* yields the real exit code that drives Codex's Faulted-beats-question health signal; the `JsonStreamTimeoutMs` cap already guards hangs. Switching would add stream-watching and *lose* the exit code. The asymmetry (Claude=`Stop` hook, Codex=process exit) is correct — each uses its best native signal.
