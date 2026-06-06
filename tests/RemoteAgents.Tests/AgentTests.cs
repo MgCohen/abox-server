@@ -37,12 +37,12 @@ public class AgentTests
         await Op.Exec(agent, new AgentArgs("second", "two"));
 
         Assert.Equal(2, seen.Count);
-        Assert.False(string.IsNullOrEmpty(seen[0].SessionId));
-        Assert.Equal(seen[0].SessionId, seen[1].SessionId);
+        Assert.Null(seen[0].SessionId);
+        Assert.Equal(MintedSession, seen[1].SessionId);
     }
 
     [Fact]
-    public async Task An_agent_bakes_its_project_dir_and_threads_a_session_into_the_request()
+    public async Task An_agent_bakes_its_project_dir_and_starts_the_first_call_without_a_session()
     {
         AgentRunRequest? seen = null;
         var agent = new Agent(new CapturingProvider(r => seen = r), "C:/work/card");
@@ -52,7 +52,7 @@ public class AgentTests
         Assert.NotNull(seen);
         Assert.Equal("p", seen!.Prompt);
         Assert.Equal("C:/work/card", seen.ProjectDir);
-        Assert.False(string.IsNullOrEmpty(seen.SessionId));
+        Assert.Null(seen.SessionId);
     }
 
     [Fact]
@@ -74,12 +74,14 @@ public class AgentTests
         Assert.Throws<ArgumentException>(() => new AgentRunRequest(" ", "C:/proj"));
     }
 
+    private const string MintedSession = "minted-session";
+
     private sealed class CapturingProvider(Action<AgentRunRequest> capture) : IProvider
     {
         public Task<DriveResult> DriveAsync(AgentRunRequest request, CancellationToken ct)
         {
             capture(request);
-            return Task.FromResult(new DriveResult("ok", request.SessionId ?? "s", 0, "ok", []));
+            return Task.FromResult(new DriveResult("ok", request.SessionId ?? MintedSession, 0, "ok", []));
         }
     }
 }
