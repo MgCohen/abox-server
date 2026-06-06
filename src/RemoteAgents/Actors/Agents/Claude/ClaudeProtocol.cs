@@ -18,14 +18,17 @@ public static class ClaudeProtocol
         Whitespace.Replace(AnsiHelpers.StripAnsi(buffer), "");
 
     // Oracle A8: --session-id and --resume are mutually exclusive.
-    public static List<string> BuildArgs(string sessionId, bool isResume, string permissionMode, string model, string systemPrompt)
+    // The system prompt is passed by FILE, not inline: the launch line is typed
+    // into cmd.exe through the PTY, and a multiline prompt's newlines would submit
+    // the command early and mangle it (Windows ConPTY). A file path is single-line.
+    public static List<string> BuildArgs(string sessionId, bool isResume, string permissionMode, string model, string? systemPromptFile)
     {
         var args = new List<string>();
         if (isResume) { args.Add("--resume"); args.Add(sessionId); }
         else { args.Add("--session-id"); args.Add(sessionId); }
         if (!string.IsNullOrEmpty(permissionMode)) { args.Add("--permission-mode"); args.Add(permissionMode); }
         if (!string.IsNullOrEmpty(model)) { args.Add("--model"); args.Add(model); }
-        if (!string.IsNullOrEmpty(systemPrompt)) { args.Add("--append-system-prompt"); args.Add(systemPrompt); }
+        if (!string.IsNullOrEmpty(systemPromptFile)) { args.Add("--append-system-prompt-file"); args.Add(systemPromptFile); }
         return args;
     }
 

@@ -27,34 +27,56 @@ public sealed class ClaudeProvider(ClaudeConfig config) : IProvider
 
         var isResume = request.SessionId is not null;
         var sessionId = request.SessionId ?? Guid.NewGuid().ToString();
-        var systemPrompt = AgentDirective.ComposeSystemPrompt(config.SystemPrompt);
-        var args = ClaudeProtocol.BuildArgs(sessionId, isResume, config.PermissionMode, config.Model, systemPrompt);
-        var launchLine = "claude " + string.Join(' ', args.Select(Shell.QuoteArg));
+        var systemPromptFile = WriteSystemPromptFile(AgentDirective.ComposeSystemPrompt(config.SystemPrompt));
+        try
+        {
+            var args = ClaudeProtocol.BuildArgs(sessionId, isResume, config.PermissionMode, config.Model, systemPromptFile);
+            var launchLine = "claude " + string.Join(' ', args.Select(Shell.QuoteArg));
 
-        using var deadlineCts = new CancellationTokenSource(MaxOverallMs);
-        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, deadlineCts.Token);
-        var dct = linkedCts.Token;
+            using var deadlineCts = new CancellationTokenSource(MaxOverallMs);
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, deadlineCts.Token);
+            var dct = linkedCts.Token;
 
-        var pty = await PtyProvider.SpawnAsync(BuildPtyOptions(request.ProjectDir), dct);
-        await using var session = new PtySession(pty, dct);
+            var pty = await PtyProvider.SpawnAsync(BuildPtyOptions(request.ProjectDir), dct);
+            await using var session = new PtySession(pty, dct);
 
-        await session.WriteLineAsync(launchLine, dct);
-        await DismissStartupDialogsAsync(session, dct);
+            await session.WriteLineAsync(launchLine, dct);
+            await DismissStartupDialogsAsync(session, dct);
 
-        // Wait for the input-bar marker, not for silence: a mid-startup re-render is indistinguishable from a settled idle.
-        if (!await session.WaitUntilAsync(ClaudeProtocol.IsPromptReady, ReadySettleMs, StartupCapMs, PollMs, dct))
-            throw new InvalidOperationException("Claude input bar did not become ready in time; cannot submit the prompt.");
+            // Wait for the input-bar marker, not for silence: a mid-startup re-render is indistinguishable from a settled idle.
+            if (!await session.WaitUntilAsync(ClaudeProtocol.IsPromptReady, ReadySettleMs, StartupCapMs, PollMs, dct))
+                throw new InvalidOperationException("Claude input bar did not become ready in time; cannot submit the prompt.");
 
-        await session.SubmitAsync(request.Prompt, SubmitSettleMs, dct);
-        await session.WaitIdleAsync(ResponseIdleMs, ResponseCapMs, ct: dct);
+            await session.SubmitAsync(request.Prompt, SubmitSettleMs, dct);
+            await session.WaitIdleAsync(ResponseIdleMs, ResponseCapMs, ct: dct);
 
-        await session.WriteLineAsync("/exit", dct);
-        await session.WaitIdleAsync(ExitSettleIdleMs, ExitSettleCapMs, ct: dct);
-        await session.WriteLineAsync("exit", dct);
-        var exitCode = await session.ShutdownAsync(WaitForExitMs, ReaderDrainMs);
+            await session.WriteLineAsync("/exit", dct);
+            await session.WaitIdleAsync(ExitSettleIdleMs, ExitSettleCapMs, ct: dct);
+            await session.WriteLineAsync("exit", dct);
+            var exitCode = await session.ShutdownAsync(WaitForExitMs, ReaderDrainMs);
 
-        var (text, transcript) = await ResolveOutputAsync(sessionId, request.Prompt, dct);
-        return new DriveResult(text, sessionId, exitCode, session.Buffer, transcript);
+            var (text, transcript) = await ResolveOutputAsync(sessionId, request.Prompt, dct);
+            return new DriveResult(text, sessionId, exitCode, session.Buffer, transcript);
+        }
+        finally
+        {
+            TryDelete(systemPromptFile);
+        }
+    }
+
+    // The launch line is typed into cmd.exe through the PTY, so the (multiline)
+    // system prompt must travel as a file path, not an inline arg (oracle A-Win).
+    private static string WriteSystemPromptFile(string content)
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"claude-sysprompt-{Guid.NewGuid():N}.txt");
+        File.WriteAllText(path, content);
+        return path;
+    }
+
+    private static void TryDelete(string path)
+    {
+        try { File.Delete(path); }
+        catch { /* best-effort: temp cleanup is non-fatal */ }
     }
 
     // Dismiss each dialog kind at most once: a repeated keystroke would land in the next screen and corrupt the prompt.

@@ -23,13 +23,13 @@ public class ClaudeProtocolTests
     }
 
     [Fact]
-    public void BuildArgs_carries_permission_mode_model_and_system_prompt()
+    public void BuildArgs_carries_permission_mode_model_and_system_prompt_file()
     {
-        var args = ClaudeProtocol.BuildArgs("sess-1", isResume: false, "acceptEdits", "opus", "be terse");
+        var args = ClaudeProtocol.BuildArgs("sess-1", isResume: false, "acceptEdits", "opus", "C:/tmp/sys.txt");
 
         AssertPair(args, "--permission-mode", "acceptEdits");
         AssertPair(args, "--model", "opus");
-        AssertPair(args, "--append-system-prompt", "be terse");
+        AssertPair(args, "--append-system-prompt-file", "C:/tmp/sys.txt");
     }
 
     [Fact]
@@ -39,7 +39,7 @@ public class ClaudeProtocolTests
 
         Assert.DoesNotContain("--permission-mode", args);
         Assert.DoesNotContain("--model", args);
-        Assert.DoesNotContain("--append-system-prompt", args);
+        Assert.DoesNotContain("--append-system-prompt-file", args);
     }
 
     [Theory]
