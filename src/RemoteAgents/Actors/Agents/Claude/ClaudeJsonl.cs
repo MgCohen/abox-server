@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using RemoteAgents.Tools.Json;
 
 namespace RemoteAgents.Actors.Agents.Claude;
 
@@ -99,24 +100,16 @@ public static class ClaudeJsonl
         role = "";
         blocks = [];
 
-        var trimmed = line.TrimStart();
-        if (trimmed.Length == 0 || trimmed[0] != '{') return false;
-
-        JsonDocument doc;
-        try { doc = JsonDocument.Parse(line); }
-        catch { return false; }
+        if (!JsonLine.TryParseObject(line, out var doc)) return false;
 
         using (doc)
         {
             var root = doc.RootElement;
-            if (root.TryGetProperty("type", out var t) && t.ValueKind == JsonValueKind.String)
-                role = t.GetString() ?? "";
+            role = JsonLine.StringProp(root, "type") ?? "";
 
-            if (!root.TryGetProperty("message", out var msg) || msg.ValueKind != JsonValueKind.Object)
-                return true;
+            if (JsonLine.ObjProp(root, "message") is not { } msg) return true;
 
-            if (msg.TryGetProperty("role", out var r) && r.ValueKind == JsonValueKind.String)
-                role = r.GetString() ?? role;
+            role = JsonLine.StringProp(msg, "role") ?? role;
 
             if (!msg.TryGetProperty("content", out var content)) return true;
 
@@ -130,9 +123,7 @@ public static class ClaudeJsonl
             foreach (var block in content.EnumerateArray())
             {
                 if (block.ValueKind != JsonValueKind.Object) continue;
-                var bt = "";
-                if (block.TryGetProperty("type", out var btv) && btv.ValueKind == JsonValueKind.String)
-                    bt = btv.GetString() ?? "";
+                var bt = JsonLine.StringProp(block, "type") ?? "";
                 blocks.Add(new Block(bt, ExtractBody(bt, block)));
             }
             return true;
@@ -144,21 +135,14 @@ public static class ClaudeJsonl
         switch (blockType)
         {
             case "text":
-                return block.TryGetProperty("text", out var tx) && tx.ValueKind == JsonValueKind.String
-                    ? tx.GetString() ?? ""
-                    : "";
+                return JsonLine.StringProp(block, "text") ?? "";
 
             case "thinking":
-                if (block.TryGetProperty("thinking", out var th) && th.ValueKind == JsonValueKind.String)
-                    return th.GetString() ?? "";
-                if (block.TryGetProperty("text", out var thText) && thText.ValueKind == JsonValueKind.String)
-                    return thText.GetString() ?? "";
-                return "";
+                return JsonLine.StringProp(block, "thinking") ?? JsonLine.StringProp(block, "text") ?? "";
 
             case "tool_use":
             {
-                var name = block.TryGetProperty("name", out var n) && n.ValueKind == JsonValueKind.String
-                    ? n.GetString() ?? "" : "";
+                var name = JsonLine.StringProp(block, "name") ?? "";
                 var input = block.TryGetProperty("input", out var inp) ? inp.GetRawText() : "{}";
                 return $"{{\"name\":{JsonSerializer.Serialize(name)},\"input\":{input}}}";
             }
@@ -172,12 +156,9 @@ public static class ClaudeJsonl
                     var sb = new StringBuilder();
                     foreach (var part in rc.EnumerateArray())
                     {
-                        if (part.ValueKind != JsonValueKind.Object) continue;
-                        if (part.TryGetProperty("text", out var pt) && pt.ValueKind == JsonValueKind.String)
-                        {
-                            if (sb.Length > 0) sb.Append('\n');
-                            sb.Append(pt.GetString());
-                        }
+                        if (JsonLine.StringProp(part, "text") is not { } text) continue;
+                        if (sb.Length > 0) sb.Append('\n');
+                        sb.Append(text);
                     }
                     return sb.ToString();
                 }

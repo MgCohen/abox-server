@@ -63,6 +63,12 @@ public abstract class Flow
             Changed?.Invoke();
             return result;
         }
+        catch (OperationCanceledException)
+        {
+            _ctx.CancelOperation();
+            Changed?.Invoke();
+            throw;
+        }
         catch (Exception ex)
         {
             _ctx.FailOperation(ex.Message);

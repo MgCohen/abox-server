@@ -101,7 +101,7 @@
     }
 
     private static bool IsActive(FlowPhase phase) =>
-        phase is FlowPhase.Pending or FlowPhase.Running or FlowPhase.Paused;
+        phase is FlowPhase.Pending or FlowPhase.Running;
 
     public ValueTask DisposeAsync()
     {

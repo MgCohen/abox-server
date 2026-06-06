@@ -23,11 +23,11 @@ internal static class Endpoints
         {
             string projectDir;
             try { projectDir = projects.Resolve(req.Project); }
-            catch (Exception ex) { return Results.BadRequest(new { error = ex.Message }); }
+            catch (Exception ex) { return Results.BadRequest(Error(ex.Message)); }
 
             var id = launcher.Start(req.Flow, req.Project, projectDir, req.Prompt);
             return id is null
-                ? Results.NotFound(new { error = $"Unknown flow '{req.Flow}'." })
+                ? Results.NotFound(Error($"Unknown flow '{req.Flow}'."))
                 : Results.Ok(new StartRunResponse(id.Value));
         });
 
@@ -52,4 +52,6 @@ internal static class Endpoints
         flows.MapPost("/{id:guid}/cancel", (Guid id, FlowRegistry runs) =>
             runs.Cancel(id) ? Results.Accepted() : Results.NotFound());
     }
+
+    private static object Error(string message) => new { error = message };
 }

@@ -32,6 +32,8 @@ public sealed class FlowContext(string flowName, string project, string projectD
 
     internal void FailOperation(string error) => _operations[^1].Fail(error);
 
+    internal void CancelOperation() => _operations[^1].Cancel();
+
     internal void SetPhase(FlowPhase phase) => Phase = phase;
 
     internal IReadOnlyList<OperationRecord> Operations => _operations;

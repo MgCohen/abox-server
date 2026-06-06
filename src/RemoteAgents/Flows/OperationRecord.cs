@@ -27,5 +27,11 @@ internal class OperationRecord(string name)
         EndedAt = DateTimeOffset.UtcNow;
     }
 
+    public void Cancel()
+    {
+        Status = OperationStatus.Canceled;
+        EndedAt = DateTimeOffset.UtcNow;
+    }
+
     public OperationDto ToDto() => new(Name, Status, StartedAt, EndedAt, Summary, Error);
 }
