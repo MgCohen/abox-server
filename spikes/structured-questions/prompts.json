@@ -1,0 +1,44 @@
+[
+  {
+    "id": "open-1",
+    "prompt": "Deploy the built artifact to our object storage bucket.",
+    "expectedStatus": "NeedsInput",
+    "expectedKind": "open",
+    "note": "no bucket configured — answer is unconstrained"
+  },
+  {
+    "id": "open-2",
+    "prompt": "Use the team's standard commit-signing key to sign this tag.",
+    "expectedStatus": "NeedsInput",
+    "expectedKind": "open",
+    "note": "secret it cannot infer"
+  },
+  {
+    "id": "choice-1",
+    "prompt": "Create a new library csproj for the parser.",
+    "expectedStatus": "NeedsInput",
+    "expectedKind": "choice",
+    "note": "repo mixes net8.0 + net10.0 — enumerate options"
+  },
+  {
+    "id": "choice-2",
+    "prompt": "Add a CI job — should it run on push or on PR?",
+    "expectedStatus": "NeedsInput",
+    "expectedKind": "choice",
+    "note": "deliberately framed as a fork"
+  },
+  {
+    "id": "none-1",
+    "prompt": "Add a /health endpoint returning 200 OK.",
+    "expectedStatus": "Completed",
+    "expectedKind": null,
+    "note": "negative — fully specified, must NOT ask"
+  },
+  {
+    "id": "none-2",
+    "prompt": "Rename the variable tmp to buffer in Foo.cs.",
+    "expectedStatus": "Completed",
+    "expectedKind": null,
+    "note": "negative — trivial"
+  }
+]

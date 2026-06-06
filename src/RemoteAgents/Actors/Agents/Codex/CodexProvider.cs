@@ -48,9 +48,7 @@ public sealed class CodexProvider(CodexConfig config) : IProvider
         });
 
     private string ComposePrompt(AgentRunRequest request) =>
-        string.IsNullOrEmpty(config.SystemPrompt)
-            ? request.Prompt
-            : config.SystemPrompt + "\n\n" + request.Prompt;
+        AgentDirective.ComposeSystemPrompt(config.SystemPrompt) + "\n\n" + request.Prompt;
 
     private static void TryDelete(string dir)
     {

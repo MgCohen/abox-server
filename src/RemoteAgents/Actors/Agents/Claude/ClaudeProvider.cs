@@ -27,7 +27,8 @@ public sealed class ClaudeProvider(ClaudeConfig config) : IProvider
 
         var isResume = request.SessionId is not null;
         var sessionId = request.SessionId ?? Guid.NewGuid().ToString();
-        var args = ClaudeProtocol.BuildArgs(sessionId, isResume, config.PermissionMode, config.Model, config.SystemPrompt);
+        var systemPrompt = AgentDirective.ComposeSystemPrompt(config.SystemPrompt);
+        var args = ClaudeProtocol.BuildArgs(sessionId, isResume, config.PermissionMode, config.Model, systemPrompt);
         var launchLine = "claude " + string.Join(' ', args.Select(Shell.QuoteArg));
 
         using var deadlineCts = new CancellationTokenSource(MaxOverallMs);

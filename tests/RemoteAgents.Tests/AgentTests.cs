@@ -15,7 +15,7 @@ public class AgentTests
     public async Task A_factory_minted_agent_runs_through_the_flow_and_its_text_is_the_summary()
     {
         var agent = new FakeAgentFactory().Create(Agents.Implementer, "C:/proj");
-        var flow = new OpFlow<AgentArgs, AgentResult>(agent, new AgentArgs("process", "do the thing"));
+        var flow = new OpFlow<AgentArgs, AgentOutcome>(agent, new AgentArgs("process", "do the thing"));
         var ctx = new FlowContext("agent-flow", "proj", "C:/proj", "seed");
         var stream = new SnapshotStream(flow, ctx);
 
@@ -60,8 +60,9 @@ public class AgentTests
     {
         var agent = new Agent(new FakeProvider(Agents.Reviewer), "C:/proj");
 
-        var result = await Op.Exec(agent, new AgentArgs("look", "look"));
+        var outcome = await Op.Exec(agent, new AgentArgs("look", "look"));
 
+        var result = Assert.IsType<AgentOutcome.Completed>(outcome).Result;
         var turn = Assert.Single(result.Transcript);
         Assert.Equal(AgentTurnKind.Text, turn.Kind);
         Assert.Equal("[reviewer] look", turn.Body);

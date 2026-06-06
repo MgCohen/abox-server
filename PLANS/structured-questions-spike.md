@@ -13,9 +13,26 @@
 > report-back template. Build the spike **outside the engine** (`spikes/`,
 > not `src/`) — it is a probe of model+CLI behavior, not orchestrator code.
 >
-> **Status.** Proposed 2026-06-06. Not yet validated. Run the spike locally
-> (the box has a logged-in `claude` + `codex`), record results per §10, then
-> revise.
+> **Status.** Proposed 2026-06-06. Plan reviewed against the local box
+> 2026-06-06 (Claude): `claude` 2.1.158, `codex` 0.134.0, dotnet 10.0.203
+> present; every cited CLI flag (§6) confirmed in those versions; all doc/source
+> references resolve; `AgentResult` (§3/§9) matches as described.
+>
+> **Spike built + run 2026-06-06 (Claude).** Approach VALIDATED on both
+> providers. Full results, insights, and issues in
+> [`spikes/structured-questions/FINDINGS.md`](../spikes/structured-questions/FINDINGS.md);
+> per-run data in `spikes/structured-questions/out/`. Headlines: parser 14/14
+> fixtures + 17/17 live envelopes (0 degrades); `open` emission + negative
+> behavior solid on both providers (parse 100%, false-positive 0%); session
+> continuity (C3) holds for both; `choice` emission is unreliable by design
+> (the unattended "make a reasonable assumption" directive biases toward
+> deciding over asking). Two environment fixes were required — see §6 codex
+> corrections and FINDINGS Issues 1/8.
+>
+> **Local-box adaptation (Windows, no WSL).** `uuidgen` and `jq` are absent and
+> bash is msys (Git Bash). Drive via the §8 C# `Harness` path, not the
+> `run-*.sh` quick path: generate session ids with `Guid.NewGuid()` and parse
+> JSON natively. The bash scripts are optional/PowerShell — not load-bearing.
 
 ---
 
@@ -299,20 +316,29 @@ $PROMPT" | codex exec \
   --cd "$PROJECT" \
   -o turn1-last.txt \
   --skip-git-repo-check \
+  -s danger-full-access \
   --model gpt-5.5 \
   --json - \
   > turn1-events.jsonl
 # Parse the envelope out of turn1-last.txt. Scan turn1-events.jsonl for the id.
 
-# Resume with an answer.
+# Resume with an answer. NOTE: `codex exec resume` rejects --cd and -s (it has a
+# narrower arg set). cwd comes from the recorded session, and sandbox is disabled
+# the resume-compatible way. (Validated correction 2026-06-06; see FINDINGS Issue 8.)
 echo "$ANSWER" | codex exec resume "$CODEX_SID" \
-  --cd "$PROJECT" \
   -o turn2-last.txt \
   --skip-git-repo-check \
+  --dangerously-bypass-approvals-and-sandbox \
   --model gpt-5.5 \
   --json - \
   > turn2-events.jsonl
 ```
+
+> **Codex sandbox on Windows (validated 2026-06-06).** Without `-s
+> danger-full-access`, codex's default sandbox fails to spawn on Windows
+> (`windows sandbox: spawn setup refresh`) and the agent falls back to asking —
+> a *broken-executor* signal that masquerades as a content question. See
+> FINDINGS Issue 1.
 
 ### The directive (appended for both providers)
 
@@ -433,39 +459,34 @@ verbatim** when hardening — keep them dependency-free.
 
 ---
 
-## 9. From spike to architecture (after it passes)
+## 9. From spike to architecture — DECIDED (2026-06-06)
 
-What the spike feeds into the real rebuild:
+The spike passed and the hardening calls are settled. **The authoritative
+hardening steps now live in
+[`PLANS/rebuild/03-implementation-plan.md`](rebuild/03-implementation-plan.md)
+§ L6 "Structured agent questions"** (with the outcome-type forward note at L5).
+In brief, the five locked decisions:
 
-- **`AgentResult` / outcome** (L5, `src/RemoteAgents/Actors/Agents/`): add
-  `AgentStatus` + `AgentQuestion?`. Decide whether it rides on the existing
-  `AgentResult` record or a wrapping outcome (the spike's `AgentOutcome` is a
-  placeholder — pick when hardening, honoring ADR 0003's operation contract).
-- **Detection in the provider parse step** (L6, `IProvider`): each provider's
-  `DriveAsync` already returns a `DriveResult` with the final text; run
-  `QuestionParser.TryParse` there so `ClaudeProvider`/`CodexProvider` surface a
-  uniform `AgentQuestion`. The parser is provider-agnostic — it lives once,
-  above the seam.
-- **The directive** becomes the unattended system-prompt addendum, applied via
-  `--append-system-prompt` (Claude) / prepended to stdin (Codex), gated on an
-  interaction mode (cf. `interaction-modes.md` Q2/Q3 — mode decides what we do
-  with a detected question, not whether we detect).
-- **Resolver seam** (the only genuinely new abstraction): `AgentQuestion →
-  answer?`. Switches on the case — `Choice` auto-matches against flow config or
-  renders a picker; `Open` goes to config or human. Answering re-invokes the
-  agent operation on the session id. Keep it a stub (or "fail in
-  non-interactive mode", like the prototype default) until the human-in-loop UI
-  exists.
-- **Provider seam keeps the warm-pool door open** (§2.2) — do not add it unless
-  a measured latency problem appears.
+1. Closed `AgentOutcome` (`Completed`/`NeedsInput`/`Faulted`) wrapping the
+   unchanged `AgentResult` — status is the type.
+2. Detection in the provider parse step; lift `QuestionParser` + `AgentQuestion`
+   verbatim; `open` reliable, `Choice` opportunistic.
+3. Executor health is a separate signal — `Faulted` beats a parsed question.
+4. Provider owns an OS-aware sandbox policy (incl. the corrected `codex exec
+   resume` contract, §6).
+5. `IQuestionResolver` seam + `NonInteractive` stub; the flow owns the resume loop.
+
+Directive ask-trigger = reversibility/stakes, interaction-mode-scaled (supersedes
+`interaction-modes.md` Q2/Q3 for the question model). Warm-pool door stays open
+(§2.2) — don't build it.
 
 Explicitly **don't** build yet (YAGNI): a third question kind, multi-question
-turns, a global pending-questions queue, the API-key judge, warm terminals.
+turns, a global pending-questions queue, the API-key judge, warm terminals,
+`Choice` auto-match, the UI picker.
 
-Open questions to resolve when hardening (not in the spike):
-- Final home + shape of status/question on the result type.
+Still genuinely open (minor, decide at implementation):
 - Whether `RawTail` is retained in the wire DTO or dropped after parse.
-- Interaction-mode default and where it lives (per-call vs flow config).
+- Interaction-mode default + where it lives (per-call vs flow config).
 
 ---
 

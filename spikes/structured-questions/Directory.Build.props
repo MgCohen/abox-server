@@ -1,0 +1,9 @@
+<Project>
+
+  <!-- Isolate this throwaway spike from the repo's /src build conventions
+       (artifacts-output redirect + warnings-as-errors). MSBuild's nearest-wins
+       rule means this standalone props stops the walk before the repo root,
+       mirroring how prototype/ escapes the same conventions. The spike builds
+       to a local bin/ so it stays fully self-contained and deletable. -->
+
+</Project>
