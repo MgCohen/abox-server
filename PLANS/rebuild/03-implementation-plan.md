@@ -30,6 +30,10 @@ re-authors.
 - **R-ARCH-3 · Hooks is an isolated, deferrable layer (L11).** v1 resolves agent
   text directly (Claude JSONL, Codex `-o`); the hook machinery is built last and
   only if the flows demonstrably need it — which, given D4, they should not.
+  **Amended by [ADR 0006](../../design/adr/0006-scoped-hooks-claude-stop.md)
+  (2026-06-06):** one Claude `Stop` hook lands with the provider (turn-completion
+  is undetectable from terminal idle under high-effort thinking). The rest of the
+  hook layer (Q&A, guardrails) stays L11-deferred; Codex stays hook-free.
 
 These compose with the PRD's spine rules: R-ARCH-2's "guards with agents" and the
 Step-shaped invocation seam (R-SPINE-1) are one discipline — each thing where it

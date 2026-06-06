@@ -1,8 +1,9 @@
 # Claude Turn-Completion via `Stop` Hook — Implementation Plan
 
-> **Status.** Proposed 2026-06-06, spike-validated (two live runs). Supersedes the
-> 6-second-idle turn-completion guess in `ClaudeProvider` and the (reverted) JSONL
-> `stop_reason` polling approach. Scoped reversal of the no-hooks bet — see §8.
+> **Status.** LANDED 2026-06-06 (Phases 0–5). Replaced the 6-second-idle
+> turn-completion guess in `ClaudeProvider` with the `Stop` hook; spike- and
+> in-engine-validated on Windows. Scoped reversal of the no-hooks bet recorded in
+> [ADR 0006](../design/adr/0006-scoped-hooks-claude-stop.md).
 
 ## 1. Why
 
