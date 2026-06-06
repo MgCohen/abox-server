@@ -33,6 +33,22 @@ public class ClaudeProtocolTests
     }
 
     [Fact]
+    public void BuildArgs_adds_the_settings_file_when_provided()
+    {
+        var args = ClaudeProtocol.BuildArgs("sess-1", isResume: false, "acceptEdits", "", null, "C:/tmp/ra-hooks.json");
+
+        AssertPair(args, "--settings", "C:/tmp/ra-hooks.json");
+    }
+
+    [Fact]
+    public void BuildArgs_omits_the_settings_file_by_default()
+    {
+        var args = ClaudeProtocol.BuildArgs("sess-1", isResume: false, "acceptEdits", "", null);
+
+        Assert.DoesNotContain("--settings", args);
+    }
+
+    [Fact]
     public void BuildArgs_omits_optional_flags_when_blank()
     {
         var args = ClaudeProtocol.BuildArgs("sess-1", isResume: false, "", "", "");

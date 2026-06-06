@@ -21,7 +21,7 @@ public static class ClaudeProtocol
     // The system prompt is passed by FILE, not inline: the launch line is typed
     // into cmd.exe through the PTY, and a multiline prompt's newlines would submit
     // the command early and mangle it (Windows ConPTY). A file path is single-line.
-    public static List<string> BuildArgs(string sessionId, bool isResume, string permissionMode, string model, string? systemPromptFile)
+    public static List<string> BuildArgs(string sessionId, bool isResume, string permissionMode, string model, string? systemPromptFile, string? settingsFile = null)
     {
         var args = new List<string>();
         if (isResume) { args.Add("--resume"); args.Add(sessionId); }
@@ -29,6 +29,7 @@ public static class ClaudeProtocol
         if (!string.IsNullOrEmpty(permissionMode)) { args.Add("--permission-mode"); args.Add(permissionMode); }
         if (!string.IsNullOrEmpty(model)) { args.Add("--model"); args.Add(model); }
         if (!string.IsNullOrEmpty(systemPromptFile)) { args.Add("--append-system-prompt-file"); args.Add(systemPromptFile); }
+        if (!string.IsNullOrEmpty(settingsFile)) { args.Add("--settings"); args.Add(settingsFile); }
         return args;
     }
 

@@ -11,7 +11,7 @@ public sealed class ClaudeProvider(ClaudeConfig config) : IProvider
     private const int StartupCapMs = 30_000;           // cold start + plugins + remote-control attach
     private const int ReadySettleMs = 1_200;
     private const int SubmitSettleMs = 500;            // oracle A5: anti-paste pause
-    private const int ResponseIdleMs = 6_000;
+    private const int ResponseStopPollMs = 500;
     private const int ResponseCapMs = 5 * 60_000;
     private const int ExitSettleIdleMs = 500;
     private const int ExitSettleCapMs = 5_000;
@@ -28,16 +28,17 @@ public sealed class ClaudeProvider(ClaudeConfig config) : IProvider
         var isResume = request.SessionId is not null;
         var sessionId = request.SessionId ?? Guid.NewGuid().ToString();
         var systemPromptFile = WriteSystemPromptFile(AgentDirective.ComposeSystemPrompt(config.SystemPrompt));
+        using var hook = ClaudeStopHook.Create();
         try
         {
-            var args = ClaudeProtocol.BuildArgs(sessionId, isResume, config.PermissionMode, config.Model, systemPromptFile);
+            var args = ClaudeProtocol.BuildArgs(sessionId, isResume, config.PermissionMode, config.Model, systemPromptFile, hook.SettingsFile);
             var launchLine = "claude " + string.Join(' ', args.Select(Shell.QuoteArg));
 
             using var deadlineCts = new CancellationTokenSource(MaxOverallMs);
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, deadlineCts.Token);
             var dct = linkedCts.Token;
 
-            var pty = await PtyProvider.SpawnAsync(BuildPtyOptions(request.ProjectDir), dct);
+            var pty = await PtyProvider.SpawnAsync(BuildPtyOptions(request.ProjectDir, hook.SignalFile), dct);
             await using var session = new PtySession(pty, dct);
 
             await session.WriteLineAsync(launchLine, dct);
@@ -48,15 +49,18 @@ public sealed class ClaudeProvider(ClaudeConfig config) : IProvider
                 throw new InvalidOperationException("Claude input bar did not become ready in time; cannot submit the prompt.");
 
             await session.SubmitAsync(request.Prompt, SubmitSettleMs, dct);
-            await session.WaitIdleAsync(ResponseIdleMs, ResponseCapMs, ct: dct);
+            await WaitForStopAsync(hook, dct);
 
             await session.WriteLineAsync("/exit", dct);
             await session.WaitIdleAsync(ExitSettleIdleMs, ExitSettleCapMs, ct: dct);
             await session.WriteLineAsync("exit", dct);
             var exitCode = await session.ShutdownAsync(WaitForExitMs, ReaderDrainMs);
 
-            var (text, transcript) = await ResolveOutputAsync(sessionId, request.Prompt, dct);
-            return new DriveResult(text, sessionId, exitCode, session.Buffer, transcript);
+            var text = hook.ReadFinalMessage();
+            if (string.IsNullOrWhiteSpace(text))
+                text = await ResolveTextFallbackAsync(sessionId, request.Prompt, dct);
+            var transcript = ClaudeJsonl.TryReadLastTurnTranscript(sessionId, request.Prompt) ?? [];
+            return new DriveResult(text ?? "", sessionId, exitCode, session.Buffer, transcript);
         }
         finally
         {
@@ -102,30 +106,40 @@ public sealed class ClaudeProvider(ClaudeConfig config) : IProvider
         _ => "",
     };
 
-    // Oracle A6: the per-session JSONL is the authoritative text source; poll
-    // briefly for Claude's final-flush lag.
-    private static async Task<(string Text, IReadOnlyList<AgentTurn> Transcript)> ResolveOutputAsync(
-        string sessionId, string prompt, CancellationToken ct)
+    // The Stop hook fires once when Claude's turn truly ends (oracle A-Stop),
+    // carrying the final message — deterministic, unlike waiting for terminal silence.
+    private static async Task WaitForStopAsync(ClaudeStopHook hook, CancellationToken ct)
     {
-        string? text = null;
+        var deadline = DateTimeOffset.UtcNow.AddMilliseconds(ResponseCapMs);
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            if (hook.HasFired) return;
+            try { await Task.Delay(ResponseStopPollMs, ct); }
+            catch (OperationCanceledException) { return; }
+        }
+    }
+
+    // Fallback only: if the Stop hook never delivered the final text, recover it
+    // from the per-session JSONL (oracle A6), polling briefly for the flush lag.
+    private static async Task<string> ResolveTextFallbackAsync(string sessionId, string prompt, CancellationToken ct)
+    {
         for (var waited = 0; waited <= ResolveTimeoutMs; waited += ResolvePollMs)
         {
-            text = ClaudeJsonl.TryReadLastAssistantText(sessionId, prompt);
-            if (!string.IsNullOrWhiteSpace(text)) break;
+            var text = ClaudeJsonl.TryReadLastAssistantText(sessionId, prompt);
+            if (!string.IsNullOrWhiteSpace(text)) return text;
             try { await Task.Delay(ResolvePollMs, ct); }
             catch (OperationCanceledException) { break; }
         }
-
-        var transcript = ClaudeJsonl.TryReadLastTurnTranscript(sessionId, prompt) ?? [];
-        return (text ?? "", transcript);
+        return "";
     }
 
-    private static PtyOptions BuildPtyOptions(string projectDir)
+    private static PtyOptions BuildPtyOptions(string projectDir, string stopSignalFile)
     {
         var env = new Dictionary<string, string>();
         foreach (System.Collections.DictionaryEntry kv in Environment.GetEnvironmentVariables())
             if (kv.Key is string k && kv.Value is string v) env[k] = v;
         foreach (var key in EnvScrub.SubscriptionKeys) env[key] = "";
+        env[ClaudeStopHook.SignalEnvVar] = stopSignalFile;
 
         return new PtyOptions
         {
