@@ -68,12 +68,11 @@ claude --session-id <id> --permission-mode acceptEdits \
 ```
 
 This is the key simplification over the prototype: **no writing into the user's
-`.claude/settings.json`, no backup/restore, no clobber risk.** *Open item to
-verify in step 1:* that `--settings` merges (adds our hook) rather than replacing
-project settings, and that it's honored in TUI mode on 2.1.158. **Fallback** if
-`--settings` is unsuitable: install into `<projectDir>/.claude/settings.json` with
-`.ra-bak` backup/restore (the prototype's `ClaudeHookConfig` pattern), merging into
-any existing hooks.
+`.claude/settings.json`, no backup/restore, no clobber risk.** **Confirmed by
+probe (2026-06-06):** `--settings` is **additive** in TUI mode on 2.1.158 — our
+`Stop` hook fires *and* the project's own settings are retained (a merge, not a
+replace). The project-install fallback (`.claude/settings.json` + `.ra-bak`) is
+therefore not needed.
 
 ### 4.3 `ClaudeProvider.DriveAsync` flow (changed steps in **bold**)
 1. SubscriptionGuard + scrub env (unchanged).
@@ -124,7 +123,7 @@ hooks. Rationale: the no-hooks bet was about avoiding the prototype's hook *spra
 over ConPTY. Record the spike evidence (§2).
 
 ## 9. Build order
-1. **Verify `--settings`** merges + is honored in TUI on 2.1.158 (tiny probe). Pick install strategy (4.2 primary vs fallback).
+1. **Verify `--settings`** merges + is honored in TUI on 2.1.158 — DONE (additive, confirmed). Strategy = `--settings`.
 2. Add `scripts/claude-stop-shim.ps1` (UTF-8, writes stdin to `RA_STOP_SIGNAL`) + unit test.
 3. Add a `ClaudeStopHook` helper: render the temp `ra-hooks.json`, expose the launch arg + the signal path; cleanup. Unit-test the JSON shape.
 4. Rewire `ClaudeProvider.DriveAsync` per §4.3 (replace `WaitIdleAsync`; set env + `--settings`; read payload; cleanup). Remove the now-dead `ResponseIdleMs` path.
@@ -134,6 +133,5 @@ over ConPTY. Record the spike evidence (§2).
 8. Amend the ADR (§8) + mark this plan landed.
 
 ## 10. Open questions
-- `--settings` merge/precedence + TUI honoring on 2.1.158 (step 1 resolves).
 - Should the shim live in `scripts/` (committed) or be generated per run? Default: committed + testable.
 - Optional Codex parity: switch its end-signal from process-exit to the stream's `turn.completed` (minor robustness; not required).
