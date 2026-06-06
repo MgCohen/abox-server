@@ -103,7 +103,8 @@ poll/anchor-for-completion logic from the hot path.
 - **`Stop` never fires within `ResponseCapMs`:** fall back to `ClaudeJsonl` last-assistant text (and/or a long idle), and mark the run degraded; if still nothing, `Faulted`. Never hang past the existing `MaxOverallMs` wall-clock (Oracle A10).
 - **Hook-trust gate (not observed, but guard):** if a trust/hook dialog ever blocks, detect it like other startup dialogs (`DetectStartupDialog`) and/or pre-clear via settings. Validate on the pinned build.
 - **`--bare`:** would skip auto-discovered hooks — we must **not** run `--bare` (we don't).
-- **Encoding:** read the payload as UTF-8 (the spike's mojibake was PowerShell's default `Add-Content` encoding; the shim must `Out-File -Encoding utf8` and we read UTF-8).
+- **Encoding:** read the payload as UTF-8 (the spike's mojibake was PowerShell's default `Add-Content` encoding; the shim uses `Set-Content -Encoding utf8` and we read UTF-8).
+- **Exit code is a ConPTY teardown artifact, not the turn outcome.** `/exit`→`exit`→kill rarely yields a clean code over ConPTY (the prototype had the same kill path). So Claude success = "the `Stop` hook delivered a result" (`DriveResult.ExitCode` = 0 when fired/text recovered, else 1); the cmd exit code is ignored. Codex keeps using its real subprocess exit code. *(Follow-up: the ~15 s shutdown kill-wait is latency, not correctness — can shorten `WaitForExitMs` later.)*
 
 ## 7. Tests
 - **Unit:** `ra-hooks.json` shape; signal-payload parse (`last_assistant_message`, `transcript_path`); fallback selection when signal absent; shim writes UTF-8 to `RA_STOP_SIGNAL`.
@@ -120,10 +121,10 @@ over ConPTY. Record the spike evidence (§2).
 ## 9. Build order
 1. **Verify `--settings`** merges + is honored in TUI on 2.1.158 — DONE (additive, confirmed). Strategy = `--settings`.
 2. Add `ClaudeStopHook` — renders the per-run shim + settings file inline (UTF-8, shim writes stdin to `RA_STOP_SIGNAL`), exposes the settings/signal paths, reads `last_assistant_message`, disposes the temp dir. Unit-tested. DONE.
-4. Rewire `ClaudeProvider.DriveAsync` per §4.3 (replace `WaitIdleAsync`; set env + `--settings`; read payload; cleanup). Remove the now-dead `ResponseIdleMs` path.
-5. Demote `ClaudeJsonl` completion/last-text to fallback (§5).
-6. Update/extend `ClaudeProtocolTests` for the new launch args; add helper tests. Full suite green, warning-free.
-7. Live-validate (port both spikes); confirm clean `exit 0`, `Stop` once, final text.
+4. Rewire `ClaudeProvider.DriveAsync` per §4.3 (replace `WaitIdleAsync`; set env + `--settings`; read payload; cleanup). DONE.
+5. Demote `ClaudeJsonl` completion/last-text to fallback (§5). DONE.
+6. Update/extend `ClaudeProtocolTests` for the new launch args; add helper tests. Full suite green (100), warning-free. DONE.
+7. Live-validate (ported both spikes through the real `ClaudeProvider`): question turn → `NeedsInput`, tool-heavy turn → `Completed` (files created), no false `Faulted`. DONE.
 8. Amend the ADR (§8) + mark this plan landed.
 
 ## 10. Open questions

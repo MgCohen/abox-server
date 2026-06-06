@@ -13,6 +13,7 @@ public sealed class ClaudeProvider(ClaudeConfig config) : IProvider
     private const int SubmitSettleMs = 500;            // oracle A5: anti-paste pause
     private const int ResponseStopPollMs = 500;
     private const int ResponseCapMs = 5 * 60_000;
+    private const int PostStopSettleIdleMs = 1_000;
     private const int ExitSettleIdleMs = 500;
     private const int ExitSettleCapMs = 5_000;
     private const int WaitForExitMs = 15_000;
@@ -51,15 +52,21 @@ public sealed class ClaudeProvider(ClaudeConfig config) : IProvider
             await session.SubmitAsync(request.Prompt, SubmitSettleMs, dct);
             await WaitForStopAsync(hook, dct);
 
-            await session.WriteLineAsync("/exit", dct);
+            // The Stop hook marks the turn logically done; let the TUI finish
+            // painting the final answer before /exit, or the keystroke is dropped.
+            await session.WaitIdleAsync(PostStopSettleIdleMs, ExitSettleCapMs, ct: dct);
+            await session.SubmitAsync("/exit", SubmitSettleMs, dct);
             await session.WaitIdleAsync(ExitSettleIdleMs, ExitSettleCapMs, ct: dct);
             await session.WriteLineAsync("exit", dct);
-            var exitCode = await session.ShutdownAsync(WaitForExitMs, ReaderDrainMs);
+            // ConPTY teardown only; its code is a kill/race artifact, not the turn
+            // outcome — Claude success is "the Stop hook delivered a result".
+            await session.ShutdownAsync(WaitForExitMs, ReaderDrainMs);
 
             var text = hook.ReadFinalMessage();
             if (string.IsNullOrWhiteSpace(text))
                 text = await ResolveTextFallbackAsync(sessionId, request.Prompt, dct);
             var transcript = ClaudeJsonl.TryReadLastTurnTranscript(sessionId, request.Prompt) ?? [];
+            var exitCode = hook.HasFired || !string.IsNullOrWhiteSpace(text) ? 0 : 1;
             return new DriveResult(text ?? "", sessionId, exitCode, session.Buffer, transcript);
         }
         finally
