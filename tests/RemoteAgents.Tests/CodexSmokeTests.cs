@@ -1,44 +1,66 @@
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.DependencyInjection;
 using RemoteAgents.Contracts;
-using RemoteAgents.Flows;
-using RemoteAgents.Host;
 using Xunit.Abstractions;
 
 namespace RemoteAgents.Tests;
 
 public class CodexSmokeTests(ITestOutputHelper output)
 {
-    [Fact(Skip = "integration: needs codex CLI + ChatGPT subscription; remove Skip to run manually")]
-    public async Task FlowLauncher_drives_the_registered_codex_flow_end_to_end()
+    private const string Skip = "integration: needs codex CLI + ChatGPT subscription; remove Skip to run manually";
+    private static readonly TimeSpan Timeout = TimeSpan.FromMinutes(3);
+
+    [Fact(Skip = Skip)]
+    public async Task Ping_completes_with_a_reply()
+    {
+        var op = await DriveAsync("Reply with the single word: PONG");
+
+        Assert.Equal(OperationStatus.Completed, op.Status);
+        Assert.False(string.IsNullOrWhiteSpace(op.Summary));
+    }
+
+    [Fact(Skip = Skip)]
+    public async Task Missing_secret_asks_a_question()
+    {
+        var op = await DriveAsync("Add our production database password to a new .env file so the service can connect to the live database.");
+
+        Assert.Equal(OperationStatus.Completed, op.Status);
+        Assert.StartsWith("Needs input:", op.Summary ?? "");
+    }
+
+    [Fact(Skip = Skip)]
+    public async Task File_request_edits_the_project()
     {
         var projectDir = Directory.CreateTempSubdirectory("codex-smoke-").FullName;
-        var builder = WebApplication.CreateBuilder();
-        Composition.AddServices(builder);
-        await using var app = builder.Build();
         try
         {
-            var launcher = app.Services.GetRequiredService<FlowLauncher>();
-            var registry = app.Services.GetRequiredService<FlowRegistry>();
+            var op = await DriveInAsync(projectDir, "Create a file named hello.txt in the current directory containing exactly: Hello from Codex");
 
-            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(90));
-            var id = launcher.Start("codex-ping", "smoke", projectDir, "Reply with the single word: PONG");
-            Assert.NotNull(id);
-
-            FlowSnapshot? last = null;
-            await foreach (var snap in registry.Changes(id!.Value, timeout.Token))
-                last = snap;
-
-            Assert.NotNull(last);
-            var op = last!.Operations.Single();
-            output.WriteLine($"Phase={last.Phase} Op={op.Name} Status={op.Status}");
-            output.WriteLine($"Summary={op.Summary}");
-
-            Assert.Equal(FlowPhase.Completed, last.Phase);
-            Assert.Equal("ping", op.Name);
             Assert.Equal(OperationStatus.Completed, op.Status);
-            Assert.False(string.IsNullOrWhiteSpace(op.Summary));
+            var written = Path.Combine(projectDir, "hello.txt");
+            Assert.True(File.Exists(written), $"expected {written} to be created");
+            Assert.Contains("Hello from Codex", File.ReadAllText(written));
         }
-        finally { try { Directory.Delete(projectDir, recursive: true); } catch { /* best-effort */ } }
+        finally { TryDeleteDir(projectDir); }
+    }
+
+    private async Task<OperationDto> DriveAsync(string prompt)
+    {
+        var projectDir = Directory.CreateTempSubdirectory("codex-smoke-").FullName;
+        try { return await DriveInAsync(projectDir, prompt); }
+        finally { TryDeleteDir(projectDir); }
+    }
+
+    private async Task<OperationDto> DriveInAsync(string projectDir, string prompt)
+    {
+        var last = await LiveSmoke.RunAsync("codex-ping", prompt, projectDir, Timeout);
+        var op = last.Operations.Single();
+        output.WriteLine($"Phase={last.Phase} Op={op.Name} Status={op.Status}");
+        output.WriteLine($"Summary={op.Summary}");
+        output.WriteLine($"Error={op.Error}");
+        return op;
+    }
+
+    private static void TryDeleteDir(string dir)
+    {
+        try { Directory.Delete(dir, recursive: true); } catch { /* best-effort */ }
     }
 }
