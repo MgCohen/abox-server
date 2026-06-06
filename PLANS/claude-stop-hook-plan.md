@@ -42,16 +42,11 @@ ConPTY/TUI mode (our billing path). No interactive hook-trust prompt appeared.
 ## 4. Architecture
 
 ### 4.1 Signal channel
-The `Stop` hook runs a **committed shim** that writes the hook payload (UTF-8) to a
-per-run signal file:
-
-```
-scripts/claude-stop-shim.ps1   # reads stdin, writes it to the path in $env:RA_STOP_SIGNAL
-```
-
-`ClaudeProvider` sets `RA_STOP_SIGNAL` to a fresh temp file on the PTY environment,
-then polls that file for existence after submitting the prompt. (Env var, not a
-baked path, so the shim stays static and testable.)
+`ClaudeStopHook.Create()` writes a tiny per-run shim + settings file to a temp dir.
+The `Stop` hook runs the shim, which writes the hook payload (UTF-8) to the file in
+`$env:RA_STOP_SIGNAL`. `ClaudeProvider` sets `RA_STOP_SIGNAL` on the PTY env to the
+helper's signal path and polls it after submitting. Generated per-run, not a
+committed script — self-contained and disposable (`Dispose()` deletes the temp dir).
 
 ### 4.2 Installing the hook — prefer `--settings`, avoid touching the project
 Pass our hook config as a **dedicated settings file** on the launch line:
@@ -124,8 +119,7 @@ over ConPTY. Record the spike evidence (§2).
 
 ## 9. Build order
 1. **Verify `--settings`** merges + is honored in TUI on 2.1.158 — DONE (additive, confirmed). Strategy = `--settings`.
-2. Add `scripts/claude-stop-shim.ps1` (UTF-8, writes stdin to `RA_STOP_SIGNAL`) + unit test.
-3. Add a `ClaudeStopHook` helper: render the temp `ra-hooks.json`, expose the launch arg + the signal path; cleanup. Unit-test the JSON shape.
+2. Add `ClaudeStopHook` — renders the per-run shim + settings file inline (UTF-8, shim writes stdin to `RA_STOP_SIGNAL`), exposes the settings/signal paths, reads `last_assistant_message`, disposes the temp dir. Unit-tested. DONE.
 4. Rewire `ClaudeProvider.DriveAsync` per §4.3 (replace `WaitIdleAsync`; set env + `--settings`; read payload; cleanup). Remove the now-dead `ResponseIdleMs` path.
 5. Demote `ClaudeJsonl` completion/last-text to fallback (§5).
 6. Update/extend `ClaudeProtocolTests` for the new launch args; add helper tests. Full suite green, warning-free.
@@ -133,5 +127,4 @@ over ConPTY. Record the spike evidence (§2).
 8. Amend the ADR (§8) + mark this plan landed.
 
 ## 10. Open questions
-- Should the shim live in `scripts/` (committed) or be generated per run? Default: committed + testable.
 - Optional Codex parity: switch its end-signal from process-exit to the stream's `turn.completed` (minor robustness; not required).
