@@ -338,8 +338,16 @@ The Windows-only assumption was investigated and largely retired.
   and `CodexProvider` now share. `ClaudeProvider` hosts `Shell.Executable` in the PTY.
 - **B2 — portable tests (DONE).** `RunCommandTests.Timeout_is_flagged` no longer
   assumes Windows `ping`; the suite is green on Linux.
-- **B3 — live re-tune (pending, off-box).** Run the smoke gate against a real
-  `claude` on Linux/macOS; re-tune Tier B1 timings if the TUI choreography differs.
+- **B3 — live re-tune (partially done; rest off-box).** A no-subscription probe on
+  Linux confirmed the terminal interaction end-to-end up to startup: PTY spawn, the
+  shell→`claude` launch, and claude rendering its TUI all work. Finding: a *fresh*
+  profile shows a **theme-picker** first-run dialog that `DetectStartupDialog`
+  doesn't dismiss (it knows only Trust/Bypass, Oracle A7). Decision: **pre-seed a
+  configured claude profile in deployment setup** (theme/trust/login) rather than
+  add speculative dialog code — the prototype assumed a configured machine, and
+  ephemeral containers should match that in setup. The remaining gate (trust →
+  prompt → submit → response → JSONL) needs a real subscription; see
+  `L9-validation-handoff.md`.
 - **B4 — CI matrix (DONE).** `.github/workflows/ci.yml` builds + tests on
   `ubuntu-latest` and `windows-latest` (the seam's two branches; macOS re-treads the
   non-Windows path). The live agent smokes stay `[Fact(Skip)]`, so no subscription

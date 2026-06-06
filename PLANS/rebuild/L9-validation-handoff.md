@@ -1,10 +1,16 @@
-# L9 validation handoff — run the live terminal gate (Windows)
+# L9 validation handoff — run the live terminal gate (Windows or Linux)
 
-This is a self-contained brief for a **local agent on Windows**. The Linux/CI
-environment cannot run the live gate (ConPTY is Windows-only and there is no
-`claude`/subscription on the runner), so L9's substrate shipped and is unit-green,
-but its **live "done-when" is unverified.** Your job is to verify it on real metal
-and report back.
+This is a self-contained brief for a **local agent on a machine with a real
+`claude` + subscription** (Windows or Linux — the PTY layer is confirmed
+cross-platform). The container this was built in has no subscription, so L9's
+substrate is unit-green but its **live "done-when" is unverified.** Your job is to
+verify it on real metal and report back.
+
+**Already validated on Linux (no subscription):** PTY spawn, the bash/cmd→`claude`
+launch, and claude rendering its TUI in the PTY all work — a probe drove real
+`claude 2.1.x` to its first-run screen. What remains unverified is everything
+*behind the startup dialogs*: trust → login → prompt-ready → submit → response →
+JSONL resolve. That is what you're closing.
 
 ## What you're validating
 
@@ -19,10 +25,18 @@ real CLIs. The gate to close it:
 
 ## Preconditions
 
-- Windows 10/11.
+- Windows 10/11 **or** Linux/macOS.
 - **.NET 10 SDK** (`dotnet --version`).
 - **`claude` CLI** installed and on `PATH`, signed in to a **Max subscription** (required).
 - *(Optional, for the Codex gate)* **`codex` CLI** on `PATH`, signed in to ChatGPT.
+- **Configure the CLI once, interactively, before running the gate.** On a *fresh*
+  profile claude shows first-run dialogs the orchestrator does **not** auto-dismiss
+  — notably a **theme picker** ("Choose the text style…"). `DetectStartupDialog`
+  only handles the **Trust-folder** and **Bypass-permissions** prompts (Oracle A7),
+  so run `claude` by hand once in the target project dir to pick a theme, trust the
+  folder, and log in. After that the orchestrator drives a configured CLI straight
+  to the prompt. (This is why ephemeral containers need claude pre-seeded in setup,
+  not handled in code.)
 
 ## Steps
 
