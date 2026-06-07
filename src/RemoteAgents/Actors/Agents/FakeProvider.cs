@@ -6,7 +6,7 @@ public sealed class FakeProvider(AgentConfig config) : IProvider
 {
     public Task<DriveResult> DriveAsync(AgentRunRequest request, CancellationToken ct)
     {
-        var text = $"[{config.Name}] {request.Prompt}";
+        var text = (config as FakeAgentConfig)?.Reply ?? $"[{config.Name}] {request.Prompt}";
         var transcript = new[] { new AgentTurn(AgentTurnKind.Text, text) };
         return Task.FromResult(new DriveResult(text, request.SessionId ?? "fake-session", 0, text, transcript));
     }
