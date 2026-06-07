@@ -52,28 +52,31 @@ public abstract class Flow
         if (!_inFlight.TryAdd(op, 0))
             throw new InvalidOperationException(
                 $"Operation '{args.Name}' is already running on this actor; sequence the calls.");
-
-        _ctx.StartOperation(args.Name);
-        Changed?.Invoke();
         try
         {
-            IGate<TArgs, TResult> gate = op;
-            var result = await gate.Execute(args, ct).ConfigureAwait(false);
-            _ctx.CompleteOperation(result?.ToString());
+            var ctx = _ctx;
+            var record = ctx.StartOperation(args.Name);
             Changed?.Invoke();
-            return result;
-        }
-        catch (OperationCanceledException)
-        {
-            _ctx.CancelOperation();
-            Changed?.Invoke();
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _ctx.FailOperation(ex.Message);
-            Changed?.Invoke();
-            throw;
+            try
+            {
+                IGate<TArgs, TResult> gate = op;
+                var result = await gate.Execute(args, ct).ConfigureAwait(false);
+                ctx.CompleteOperation(record, result?.ToString());
+                Changed?.Invoke();
+                return result;
+            }
+            catch (OperationCanceledException)
+            {
+                ctx.CancelOperation(record);
+                Changed?.Invoke();
+                throw;
+            }
+            catch (Exception ex)
+            {
+                ctx.FailOperation(record, ex.Message);
+                Changed?.Invoke();
+                throw;
+            }
         }
         finally
         {

@@ -39,6 +39,13 @@ public class FlowTests
             Run(new FixedOp(), new StepArgs("echo", ctx.Request), ct);
     }
 
+    private sealed class ParallelFlow(int count) : Flow
+    {
+        protected override Task RunAsync(FlowConfig config, FlowContext ctx, CancellationToken ct) =>
+            Task.WhenAll(Enumerable.Range(0, count)
+                .Select(i => Task.Run(() => Run(new FixedOp(), new StepArgs($"op{i}", $"v{i}"), ct), ct)));
+    }
+
     private static FlowContext ContextFor(FlowConfig config) =>
         new(config.Name, "proj", "C:/proj", "request");
 
@@ -101,6 +108,26 @@ public class FlowTests
         await flow.ExecuteAsync(config, ctx, CancellationToken.None);
 
         Assert.Equal("request", stream.Latest.Operations[0].Summary);
+    }
+
+    [Fact]
+    public async Task Concurrent_operations_are_all_recorded_without_corruption()
+    {
+        const int count = 64;
+        var config = new FlowConfig("parallel", "t");
+        var flow = new ParallelFlow(count);
+        var ctx = ContextFor(config);
+        var stream = new SnapshotStream(flow, ctx);
+
+        await flow.ExecuteAsync(config, ctx, CancellationToken.None);
+
+        var snap = stream.Latest;
+        Assert.Equal(FlowPhase.Completed, snap.Phase);
+        Assert.Equal(count, snap.Operations.Count);
+        Assert.All(snap.Operations, s => Assert.Equal(OperationStatus.Completed, s.Status));
+        Assert.Equal(
+            Enumerable.Range(0, count).Select(i => $"op{i}").OrderBy(n => n, StringComparer.Ordinal),
+            snap.Operations.Select(s => s.Name).OrderBy(n => n, StringComparer.Ordinal));
     }
 
     [Fact]

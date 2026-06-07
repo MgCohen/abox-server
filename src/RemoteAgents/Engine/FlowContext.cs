@@ -4,7 +4,9 @@ namespace RemoteAgents.Flows;
 
 public sealed class FlowContext(string flowName, string project, string projectDir, string request)
 {
+    private readonly Lock _gate = new();
     private readonly List<OperationRecord> _operations = [];
+    private FlowPhase _phase = FlowPhase.Pending;
 
     public Guid Id { get; } = Guid.NewGuid();
 
@@ -18,23 +20,26 @@ public sealed class FlowContext(string flowName, string project, string projectD
 
     public DateTimeOffset CreatedAt { get; } = DateTimeOffset.UtcNow;
 
-    public FlowPhase Phase { get; private set; } = FlowPhase.Pending;
+    public FlowPhase Phase { get { lock (_gate) return _phase; } }
 
-    // Single-writer + sequential run: Complete/Fail close the operation just started.
-    internal void StartOperation(string name)
+    internal OperationRecord StartOperation(string name)
     {
-        var rec = new OperationRecord(name);
-        rec.Start();
-        _operations.Add(rec);
+        var record = new OperationRecord(name);
+        record.Start();
+        lock (_gate) _operations.Add(record);
+        return record;
     }
 
-    internal void CompleteOperation(string? summary) => _operations[^1].Complete(summary);
+    internal void CompleteOperation(OperationRecord record, string? summary) { lock (_gate) record.Complete(summary); }
 
-    internal void FailOperation(string error) => _operations[^1].Fail(error);
+    internal void FailOperation(OperationRecord record, string error) { lock (_gate) record.Fail(error); }
 
-    internal void CancelOperation() => _operations[^1].Cancel();
+    internal void CancelOperation(OperationRecord record) { lock (_gate) record.Cancel(); }
 
-    internal void SetPhase(FlowPhase phase) => Phase = phase;
+    internal void SetPhase(FlowPhase phase) { lock (_gate) _phase = phase; }
 
-    internal IReadOnlyList<OperationRecord> Operations => _operations;
+    internal (FlowPhase Phase, IReadOnlyList<OperationDto> Operations) Capture()
+    {
+        lock (_gate) return (_phase, [.. _operations.Select(o => o.ToDto())]);
+    }
 }
