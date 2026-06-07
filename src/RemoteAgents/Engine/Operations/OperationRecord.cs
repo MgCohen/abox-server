@@ -1,6 +1,6 @@
 using RemoteAgents.Contracts;
 
-namespace RemoteAgents.Flows;
+namespace RemoteAgents.Engine.Operations;
 
 internal class OperationRecord(string name)
 {

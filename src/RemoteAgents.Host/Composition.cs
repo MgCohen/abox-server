@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.DependencyInjection;
-using RemoteAgents.Flows;
+using RemoteAgents.Engine.Flows;
 using RemoteAgents.Actors.Agents;
 using RemoteAgents.Actors.Agents.Claude;
 using RemoteAgents.Tools.Paths;
@@ -23,12 +23,14 @@ internal static class Composition
 
         services.AddSingleton<IOrchestratorPaths, OrchestratorPaths>();
         services.AddSingleton<IProjectRegistry, ProjectRegistry>();
-        services.AddSingleton<IHistoryStore, FileHistoryStore>();
+        services.AddSingleton<IFlowHistory, FileFlowHistory>();
         services.AddSingleton<FlowRegistry>();
         services.AddSingleton<FlowLauncher>();
         services.AddSingleton<IFlowFactory, FlowFactory>();
-        services.AddSingleton<IDecisionResolver, NonInteractiveResolver>();
+        services.AddSingleton<PendingDecisions>();
+        services.AddSingleton<IDecisionResolver, InteractiveResolver>();
         services.AddSingleton<AutoResolver>();
+        services.AddSingleton<DenyResolver>();
         services.AddSingleton<AutoPolicy>();
         services.AddSingleton<IAgentFactory, AgentFactory>();
 

@@ -1,4 +1,4 @@
-namespace RemoteAgents.Flows;
+namespace RemoteAgents.Engine.Flows;
 
 public interface IFlowFactory
 {

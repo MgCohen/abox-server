@@ -2,7 +2,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using RemoteAgents.Contracts;
 
-namespace RemoteAgents.Flows;
+namespace RemoteAgents.Engine.Flows;
 
 public sealed class SnapshotStream
 {
@@ -74,8 +74,8 @@ public sealed class SnapshotStream
 
     private FlowSnapshot Build()
     {
-        var (phase, operations) = _ctx.Capture();
-        return new(_ctx.Id, _ctx.FlowName, _ctx.Project, phase, ++_version, _ctx.CreatedAt, operations);
+        var (phase, operations, decisions) = _ctx.Capture();
+        return new(_ctx.Id, _ctx.FlowName, _ctx.Project, phase, ++_version, _ctx.CreatedAt, operations, decisions);
     }
 
     private static bool IsTerminal(FlowPhase p) =>

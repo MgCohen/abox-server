@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using RemoteAgents.Contracts;
-using RemoteAgents.Flows;
+using RemoteAgents.Engine.Flows;
 using RemoteAgents.Host;
 
 namespace RemoteAgents.Tests;

@@ -1,11 +1,13 @@
 using RemoteAgents.Contracts;
+using RemoteAgents.Engine.Operations;
 
-namespace RemoteAgents.Flows;
+namespace RemoteAgents.Engine.Flows;
 
 public sealed class FlowContext(string flowName, string project, string projectDir, string request)
 {
     private readonly Lock _gate = new();
     private readonly List<OperationRecord> _operations = [];
+    private readonly List<DecisionDto> _decisions = [];
     private FlowPhase _phase = FlowPhase.Pending;
 
     public Guid Id { get; } = Guid.NewGuid();
@@ -38,8 +40,10 @@ public sealed class FlowContext(string flowName, string project, string projectD
 
     internal void SetPhase(FlowPhase phase) { lock (_gate) _phase = phase; }
 
-    internal (FlowPhase Phase, IReadOnlyList<OperationDto> Operations) Capture()
+    internal void RecordDecision(DecisionDto decision) { lock (_gate) _decisions.Add(decision); }
+
+    internal (FlowPhase Phase, IReadOnlyList<OperationDto> Operations, IReadOnlyList<DecisionDto> Decisions) Capture()
     {
-        lock (_gate) return (_phase, [.. _operations.Select(o => o.ToDto())]);
+        lock (_gate) return (_phase, [.. _operations.Select(o => o.ToDto())], [.. _decisions]);
     }
 }

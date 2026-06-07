@@ -1,7 +1,8 @@
 using System.Collections.Concurrent;
 using RemoteAgents.Contracts;
+using RemoteAgents.Engine.Operations;
 
-namespace RemoteAgents.Flows;
+namespace RemoteAgents.Engine.Flows;
 
 public abstract class Flow
 {
@@ -58,6 +59,9 @@ public abstract class Flow
             {
                 IGate<TArgs, TResult> gate = op;
                 var result = await gate.Execute(args, ct).ConfigureAwait(false);
+                if (op is IDecisionSource src)
+                    foreach (var decision in src.Decisions)
+                        ctx.RecordDecision(decision);
                 ctx.CompleteOperation(record, result?.ToString());
                 Changed?.Invoke();
                 return result;
