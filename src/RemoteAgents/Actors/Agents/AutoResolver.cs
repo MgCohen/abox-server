@@ -2,11 +2,8 @@ using System.Collections.Concurrent;
 
 namespace RemoteAgents.Actors.Agents;
 
-// The decider for an Autonomous agent: it never blocks. Any question is self-answered
-// with an instruction to proceed on a best assumption, and the assumption is recorded.
-// For a permission Choice the answer is not "Allow", so it degrades to a safe deny —
-// Autonomous agents are expected to gate via Auto/Bypass, not Ask (Ask presumes
-// Interactive; permission-interaction-model §2).
+// A permission Choice self-answer is never "Allow", so Autonomous + Ask degrades to a
+// safe deny — Autonomous agents gate via Auto/Bypass, not Ask (permission-interaction-model §2).
 public sealed class AutoResolver : IDecisionResolver
 {
     private const string ProceedInstruction =

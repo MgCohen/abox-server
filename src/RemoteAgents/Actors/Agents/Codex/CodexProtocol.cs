@@ -34,10 +34,9 @@ public static class CodexProtocol
         return args;
     }
 
-    // Capability is the host/VM's wall, not a per-agent knob (permission-interaction-model
-    // §1). Codex still needs a valid --sandbox arg, so bake one default: Windows can't spawn
-    // codex's OS sandbox ("windows sandbox: spawn setup refresh") so bypass it there
-    // (structured-questions FINDINGS Issue 1); elsewhere stay workspace-write.
+    // Capability is the host/VM's wall now, not a per-agent knob (permission-interaction-model
+    // §1), but codex still needs a valid --sandbox arg. Windows can't spawn its OS sandbox
+    // ("windows sandbox: spawn setup refresh"), so bypass there (FINDINGS Issue 1).
     private static string DefaultSandbox()
         => OperatingSystem.IsWindows() ? "danger-full-access" : "workspace-write";
 

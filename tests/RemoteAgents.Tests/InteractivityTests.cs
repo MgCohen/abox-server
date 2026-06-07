@@ -46,8 +46,7 @@ public class InteractivityTests
         Assert.Equal(answer, recorded.Answer);
     }
 
-    // The overlap guard: an Autonomous agent should gate via Auto/Bypass, not Ask. If it
-    // does hit a permission Choice, the self-answer is not "Allow", so it degrades to deny.
+    // Autonomous + Ask degrades to deny: the self-answer is never "Allow".
     [Fact]
     public async Task The_auto_resolver_does_not_allow_a_permission_choice()
     {
