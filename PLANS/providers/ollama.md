@@ -1,75 +1,41 @@
-# Implementation plan — Ollama (local runtime + generic local provider)
+# Implementation plan — Ollama (a local runtime)
 
-Ollama is the **runtime**, not a model — it's how we run Gemma 4 / Qwen3 / etc. locally (model
-choice is [`gemma4.md`](gemma4.md)). It's the extreme of the value prop: **$0 marginal cost,
-private, offline.** Unlike the cloud plans, this one needs **local setup**, not just code. See
-[`README.md`](README.md) for the shared seam.
+Ollama is a **runtime**, not a model and not a provider — it's *one way* to serve local weights
+(Gemma 4, Qwen3, …). Model choice is [`gemma4.md`](gemma4.md); the in-process alternative that needs
+no Ollama at all is also there. This file is about using Ollama as the serving layer. See
+[`README.md`](README.md) for the substrate-by-billing framing.
 
-Scope local models to **small, cheap, high-volume tasks** — classification, commit-message drafting,
-validators, summarization, routing. Frontier coding stays on Claude/Codex.
+Local models are the extreme of the value prop: **$0 marginal cost, private, offline.** Scope them to
+**small, cheap, high-volume text tasks** — classify, summarize, validate, route, draft commit
+messages. Frontier coding stays on Claude/Codex.
 
-## Two integration approaches
+## Talk to Ollama over HTTP, not by shelling out
 
-| | Approach 1 — `ollama run` as its own provider | Approach 2 — point `codex` at Ollama |
-|---|---|---|
-| Best for | simple text tasks (classify/summarize/route) | agentic/tool-use tasks needing the codex loop |
-| Substrate | new tiny `OllamaProvider` (`SubprocessSession`) | reuse `CodexProvider` (+ small arg/env tweak) |
-| Output | text (+ `--format json` schema) | full codex tool transcript |
-| Multi-turn | one-shot (thread context yourself) | codex's native session |
-| Catch | no native tool-call transcript via `ollama run` | codex Ollama-provider config bugs (#8240) |
+Ollama runs as a local service on `http://localhost:11434` exposing:
 
-Recommendation: **Approach 1** for the validator/classifier use case (dead simple, clean), and reach
-for Approach 2 only when a local model genuinely needs the agentic loop.
+- **OpenAI-compatible** `/v1/chat/completions` (+ `/v1/embeddings`)
+- **Anthropic-compatible** `/v1/messages` (v0.14.0+)
+- native `/api/chat`, `/api/generate`
 
-## Approach 1 — `OllamaProvider`
-
-### How it looks
+So the right substrate is the **HTTP `IChatClient`** from [`README.md`](README.md) — `OllamaSharp`
+implements `IChatClient` directly, and the OpenAI client works against `/v1` with a dummy key. You get
+streaming, tool-calling, structured output, and you keep multi-turn yourself. **No subprocess, no PTY,
+no teardown.**
 
 ```csharp
-public sealed record OllamaConfig(
-    string Name, string Description, string Model, string SystemPrompt,
-    bool JsonFormat = true, int TimeoutMs = 120_000)
-    : AgentConfig(Name, Description, Model, SystemPrompt);
-
-public sealed class OllamaProvider(OllamaConfig config) : IProvider
-{
-    public async Task<DriveResult> DriveAsync(AgentRunRequest request, CancellationToken ct)
-    {
-        var args = new List<string> { "run", config.Model };
-        if (config.JsonFormat) { args.Add("--format"); args.Add("json"); }
-
-        var psi = new ProcessStartInfo
-        {
-            FileName = "ollama",                         // real ollama.exe; no cmd.exe shim needed
-            WorkingDirectory = request.ProjectDir,
-            RedirectStandardInput = true,
-        };
-        foreach (var a in args) psi.ArgumentList.Add(a);
-
-        await using var session = SubprocessSession.Start(psi, ct);
-        await session.StandardInput.WriteAsync(Compose(config.SystemPrompt, request.Prompt));
-        session.CompleteStdin();
-
-        var exit = await session.WaitForExitAsync(config.TimeoutMs, ct);
-        var text = session.RawStdout.Trim();
-        return new DriveResult(text, request.SessionId ?? "", exit, session.RawStdout,
-            [new AgentTurn(AgentTurnKind.Text, text)]);
-    }
-}
+// factory arm — local text-task provider
+LocalModelConfig c => new Agent(c, new ChatClientProvider(c,
+    new OllamaApiClient(new Uri("http://localhost:11434"), c.Model)));   // OllamaSharp : IChatClient
 ```
 
-The parser is trivial — `ollama run` prints the model's answer to stdout; `--format json` constrains
-it to a JSON object. `OllamaProtocol` is just "trim stdout" (+ optional JSON-schema validation).
-**No PTY, no isatty, no key scrub** (local = no billing). Factory arm + a catalog entry like a
-`Classifier`/`Summarizer` `OllamaConfig`.
+That's the whole integration on the code side. The work that remains is **local setup** (below), not
+plumbing.
 
-> If you later need **tool-calling** locally, that lives on Ollama's HTTP `/api/chat` (with a
-> `tools` array) or the OpenAI-compat `/v1/chat/completions` — which is Approach 2's territory,
-> because driving an HTTP endpoint directly breaks the "drive a CLI" substrate.
+### When you need local *agentic* work (file edits, tool loops)
 
-## Approach 2 — `codex` against Ollama's OpenAI-compatible endpoint
-
-Reuse `CodexProvider`'s drive + parse + session. Configure a local provider in `~/.codex/config.toml`:
+A raw `IChatClient` call returns text — it doesn't edit the workspace. For local agentic tasks, don't
+rebuild the agent loop: **point `codex` at Ollama's `/v1`** and reuse Codex's drive + parse + session.
+Add `~/.codex/config.toml`:
 
 ```toml
 [model_providers.ollama]
@@ -77,62 +43,58 @@ name = "Ollama"
 base_url = "http://localhost:11434/v1"
 ```
 
-then run codex with `-c model_provider="ollama" -c model="gemma4:e4b"` (or the `--oss` shortcut).
-The only code change is teaching `CodexProtocol.BuildArgs` to optionally emit `-c
-model_provider=…`, and supplying a dummy `OPENAI_API_KEY` on the child env. Everything else (JSON
-stream parse, session-id sniff, `-o` last-message read, anti-zombie teardown) is reused.
+run codex with `-c model_provider="ollama" -c model="gemma4:e4b"`, supply a dummy `OPENAI_API_KEY` on
+the child env. Only code change: let `CodexProtocol.BuildArgs` optionally emit `-c model_provider=…`.
+
+### Last resort — `ollama run` as a subprocess
+
+The earlier draft drove `ollama run --format json` through `SubprocessSession`. **Don't** — it's the
+worst of both worlds: it spawns a process *and* gives no tool-call transcript (text only), and the
+no-model-arg case hangs waiting for a TTY. The HTTP path is strictly better. Keep `ollama run` for
+manual smoke-testing only.
 
 ## Traps / concerns from the docs
 
-- **`ollama run` has no native tool-call transcript** — you get final text only. For ToolUse/
-  ToolResult turns you need the API path (Approach 2 or HTTP). Fine for classify/summarize; not for
-  agentic loops.
-- **Structured output guarantees *shape*, not *correctness*** — `--format json` (or a JSON schema)
-  stops malformed JSON, but values can still be wrong/hallucinated. Validate app-side.
-- **Codex's Ollama provider has assumed-localhost config bugs** (#8240) where some `config.toml`
-  fields are ignored — verify the model actually used is the one you set.
-- **Headless model selection is mandatory** — `ollama run` without a model name opens an interactive
-  selector that needs a TTY and will hang a subprocess. Always pass the model.
-- **First run pulls the model** (multi-GB download) and **cold-loads into VRAM** (seconds of
-  latency); keep `ollama serve` warm so high-volume calls don't pay reload each time.
-- **Tool-calling through the OpenAI-compat translation layer can be flaky** for some models; prefer
-  models with native tool tokens (Gemma 4, Qwen3) and Ollama's hardened 2026 tool-call parser.
+- **Structured output guarantees *shape*, not *correctness*** — JSON schema / `format` stops
+  malformed JSON, but values can still be wrong. Validate app-side.
+- **Tool-calling through the OpenAI-compat translation can be flaky** for some models; prefer models
+  with native tool tokens (Gemma 4, Qwen3) and Ollama's hardened 2026 tool-call parser. Test against
+  *real* prompts.
+- **Codex's Ollama provider has assumed-localhost config bugs** (#8240) — if you take the agentic
+  path, verify the model actually used is the one you set.
+- **Cold load latency** — first call after start loads weights into VRAM (seconds). Keep the service
+  warm (`OLLAMA_KEEP_ALIVE`) for high-volume calls so they don't pay reload each time.
+- **Concurrency is single-box** — heavy parallel load wants vLLM, not Ollama.
 
-## Extra steps (this is the one with real local setup)
+## Extra steps (the real cost here is local setup, not code)
 
-1. **Install Ollama for Windows** (`OllamaSetup.exe` from ollama.com). It installs `ollama.exe` and
-   runs `ollama serve` as a background service on `http://localhost:11434` (auto-starts on login).
-2. **Pull a model:** `ollama pull gemma4:e4b` (see [`gemma4.md`](gemma4.md) for the right tag/size).
-3. **Verify:** `ollama run gemma4:e4b "hello"` returns text; `ollama list` shows it.
-4. **GPU check:** Ollama auto-detects your NVIDIA GPU (CUDA) and offloads as many layers as fit in
-   8 GB VRAM, spilling the rest to your 32 GB RAM.
-5. Add an `ollama --version` (or a `GET /api/tags` ping) to the provider's preflight, analogous to
-   `SubscriptionGuard`'s binary check.
+1. **Install Ollama for Windows** (`OllamaSetup.exe`). It installs `ollama.exe` and runs the service on
+   `http://localhost:11434`, auto-starting on login.
+2. **Pull a model:** `ollama pull gemma4:e4b` (tag per [`gemma4.md`](gemma4.md)).
+3. **Verify:** `curl http://localhost:11434/api/tags` lists it; `ollama run gemma4:e4b "hi"` answers.
+4. **GPU:** Ollama auto-detects the NVIDIA GPU (CUDA) and offloads as many layers as fit in 8 GB VRAM,
+   spilling the rest to your 32 GB RAM.
+5. **Provider preflight:** ping `GET /api/tags` (the HTTP analog of `SubscriptionGuard`'s binary
+   check) and fail with an actionable message if the service is down.
+
+> If you'd rather not run a background service at all, the **in-process** option in
+> [`gemma4.md`](gemma4.md) (LLamaSharp) removes Ollama entirely.
 
 ## Runs on your PC?
 
-**Yes** — this is the whole point. On your **Windows / 32 GB RAM / NVIDIA ≤8 GB VRAM** box:
-
-| Model class | Fits 8 GB VRAM (Q4)? | Expectation |
-|---|---|---|
-| Gemma 4 **E2B / E4B**, Phi-4-mini, 7B-ish | **Yes, fully** | Fast, fully GPU-offloaded — ideal for high-volume small tasks |
-| **12B** (Q4 ~7–8 GB) | Borderline | Mostly fits; minor CPU spill, still usable |
-| **26B MoE** (Q4 ~15 GB, ~3.8B active) | No (VRAM) | Runs via 32 GB RAM + partial GPU offload; decent speed thanks to low active params |
-| **31B dense** (Q4 ~20 GB+) | No | Runs but slow (heavy CPU spill) — not recommended for interactive/high-volume |
-
-Default pick for your box: **Gemma 4 E4B** (fast in VRAM), with the 26B MoE as a "more quality,
-accept some latency" option.
+**Yes** — that's the point. On **Windows / 32 GB RAM / NVIDIA ≤8 GB VRAM**, see the model fit table
+in [`gemma4.md`](gemma4.md). Short version: small models (Gemma 4 E2B/E4B, Phi-4-mini, 7B-class) run
+fully in 8 GB VRAM and are fast; 26B MoE runs off RAM with partial offload; skip 31B-dense.
 
 ## Associated costs
 
-**$0** beyond electricity and the hardware you already own. No subscription, no API key, no per-token
-charge. One-time multi-GB model downloads.
+**$0** beyond electricity and hardware you already own. One-time multi-GB model downloads.
 
 ## What it can / can't do
 
-- **Can:** run fully offline + private (nothing leaves the machine — best possible data governance
-  for proprietary Unity code); free at unlimited volume; deterministic-ish small-task work
-  (classify, extract, summarize, route, draft commit messages); JSON-shaped output.
-- **Can't:** match Claude/Codex on hard reasoning, multi-file refactors, or long agentic loops; give
-  a clean tool-call transcript via `ollama run` (needs the API path); guarantee output *correctness*
-  (validate values). Throughput is single-box — heavy concurrency wants vLLM, not Ollama.
+- **Can:** run fully offline + private (nothing leaves the machine — best data governance for
+  proprietary Unity code); free at unlimited volume; clean tool-calling + structured output **over
+  HTTP**; serve as the local backend for codex's agent loop.
+- **Can't:** match Claude/Codex on hard reasoning or large refactors; guarantee output *correctness*;
+  scale to heavy concurrency (single box). It's a daemon you must keep running — the in-process route
+  avoids that.
