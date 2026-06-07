@@ -60,6 +60,15 @@
   surviving restart, and typed/compiled/reproducible recipes. **Our gap** vs the
   patterns remains parallelism — `parallel()`/`pipeline()` have no equivalent in
   our deliberately-sequential engine (correctly YAGNI until a recipe needs it).
+- **Deep-dives added 2026-06-07 (§9, §10):** (a) our engine is **already safe to
+  run parallel *agents and whole flows*** — the only "unsafe" is reusing one agent
+  instance concurrently (guard throws by design), and the only open hazards are
+  *write* contention on a shared project dir / git, which worktree isolation
+  fixes. (b) Workflow `{schema}` is **not** API constrained decoding — it's a
+  forced `StructuredOutput` tool + validate + retry; and `claude --json-schema`
+  now exists but **bills as API/SDK credit, not the Max subscription**, so it's
+  off-limits for us. The borrow is to generalize our existing `<<NEEDS_INPUT>>`
+  envelope into a schema-validated-and-retried `<<RESULT>>` operation over ConPTY.
 
 ---
 
@@ -341,6 +350,96 @@ own session). Out of scope for sequential v1.
 
 ---
 
+## 9. Parallelism in our engine — what's actually safe (audit, 2026-06-07)
+
+Code audit of `src/RemoteAgents`, by the three scenarios the question framed. The
+headline: **our engine is far more parallel-ready than the sequential recipes
+suggest.** Verdicts with evidence:
+
+| Scenario | Verdict | Why |
+|---|---|---|
+| **Different agents in parallel** (impl + reviewer, or two Claudes) | **SAFE** (caveat = shared *project files*) | Per-run isolation is real: each Claude run mints a fresh `sessionId = Guid.NewGuid()` (`ClaudeProvider.cs:25`); output is resolved by **searching for `{sessionId}.jsonl`**, not by cwd (`ClaudeJsonl.cs:15-21`) — so two Claudes in the *same dir* never collide on output. Temp artifacts are GUID/`CreateTempSubdirectory`-keyed (sysprompt `ClaudeProvider.cs:72`, hooks `ClaudeHooks.cs:34`, codex `CodexProvider.cs:14`). |
+| **Same agent instance, twice concurrently** | **UNSAFE — throws by design** | `Flow.Run`'s `_inFlight` guard: `if (!_inFlight.TryAdd(op, 0)) throw …"already running on this actor; sequence the calls."` (`Flow.cs:52-54`). It keys on the operation/actor object, so it's **per-instance** — minting a *fresh* agent per branch (which `AgentFactory.Create` already does, `AgentFactory.cs:9-14`) sidesteps it cleanly. |
+| **Two whole flows in parallel** | **SAFE** | Flows are `AddTransient` (`Composition.cs:35-38`); each `FlowLauncher.Start` builds a new `FlowContext` with a unique `Guid` (`FlowContext.cs:9`); `FlowRegistry` is a `ConcurrentDictionary` (`FlowRegistry.cs:9`); `FileHistoryStore` serializes every write under `lock(_gate)` (`FileHistoryStore.cs:27`); each flow has its own `SnapshotStream`. No singleton holds mutable per-run state. |
+
+**No process-global footguns.** No `Directory.SetCurrentDirectory` and no
+`Environment.SetEnvironmentVariable` anywhere — cwd is passed per-process
+(`RunCommand.cs:38` `ProcessStartInfo.WorkingDirectory`), and env overrides are a
+**local dict** handed to each child PTY (`ClaudeProvider.cs:156-171`); `EnvScrub`
+/ `SubscriptionGuard` only *read* (`SubscriptionGuard.cs:8`). PTY/subprocess
+sessions hold no shared/static handles. So the subscription key-scrub and spawn
+path are concurrency-clean.
+
+**The two open hazards — both *write*-side, both fixed by isolation, not by the engine:**
+1. **Shared project-dir file contention.** Two agents fanned out over the *same*
+   `ProjectDir` that both *edit files* will race — the orchestrator does not
+   serialize this. Read-only fan-out (e.g. N reviewers reading one diff) is fine
+   today; *write* fan-out needs a worktree per branch.
+2. **Git in one repo.** `Git` ops are cwd-keyed (`Git.cs`) but there's **no
+   worktree isolation wired in yet** (it's the planned `IsolationScope`, C8/L8) and
+   no per-repo serialization — two flows committing/pushing the same repo can race.
+
+**Conclusion for the `Flow.RunAll` combinator (§6/§7).** The engine is ready for
+**read-only fan-out now** (audit/review patterns) by minting one agent per branch —
+the in-flight guard is per-instance, flows/agents are already isolated, no global
+state. The only thing fan-out of *write* work needs is **per-branch worktree
+isolation** (build `IsolationScope` at L8 first) and optionally a per-repo git
+lock. So `codebase-audit`-style fan-out + adversarial verify is the *cheap* first
+parallel recipe; `fix-issue-batch`-style parallel writers come after L8.
+
+## 10. Structured output: the real mechanism, and the subscription gap (2026-06-07)
+
+Two questions answered: *what is `{schema}`*, and *can we get it without the API*.
+
+**(a) Workflow `{schema}` is NOT API constrained decoding — it's a forced tool +
+validate + retry.** When you pass `agent(prompt, {schema})`, the runtime injects a
+system prompt telling the subagent it *must* call a synthetic tool literally named
+**`StructuredOutput`** exactly once, registers your JSON Schema as that tool's
+`input_schema`, and **validates the tool arguments post-hoc**; on mismatch it feeds
+the error back and the model **re-prompts itself** until a retry budget is
+exhausted (then errors with `error_max_structured_output_retries`). This is the
+Agent SDK's `output_format` path. Proof it's validate-and-retry, not grammar
+constraint: the SDK doc describes "re-prompting on mismatch … retry limit … error";
+a filed SDK bug (#571) shows a *wrong-shape* result reaching root validation — which
+constrained decoding could never emit. Confidence ~95%. (The model-written "Return
+ONLY via the StructuredOutput schema" lines in wild scripts are this injected
+prompt.)
+
+The genuine API feature — *constrained decoding* via `output_config.format`
+(`type: json_schema`) / strict tool use — is a different, lower layer: it compiles
+the schema to a grammar and **cannot emit violating tokens** (shipped Nov 2025, GA
+on 4.5/4.6/4.7/4.8). It gives a hard guarantee; `{schema}` gives a soft one.
+
+**(b) Can we get it on a *subscription* session (no API key)? Short answer: only
+the soft kind, and the obvious flag breaks our billing.** New since our spike: the
+installed `claude` 2.1.168 ships **`--json-schema`** (`--output-format json` puts
+the conforming object in a `structured_output` field). But:
+- It's **validate-and-retry, not constrained decoding** (open request #9058 asks
+  for real constrained decoding — still unbuilt).
+- It's **print/headless-only**, and `claude -p` with OAuth **bills as API/SDK
+  usage, not the Max subscription** (issue #43333; plus the *"from June 15, 2026
+  Agent SDK & `claude -p` on subscription draw from a separate Agent-SDK credit"*
+  notice). That collides head-on with **Oracle A1/A2** — the whole reason we drive
+  the interactive CLI over ConPTY. So `--json-schema` is **off-limits** for us.
+- There is **no hidden constrained-output channel** on the keyless subscription
+  session. Our original spike conclusion ("can't get *hard* schema output without
+  the API/billing change", `PLANS/structured-questions-spike.md:80-95`) stands.
+
+**What we already have, and the borrow.** `QuestionParser.cs` is *already*
+structured-output-without-API: a `<<NEEDS_INPUT>>` sentinel + balanced-brace
+`ExtractFirstJsonObject` + lenient parse, degrading to `Open` on failure (proven
+14/14 fixtures + 17/17 live, both providers). It lacks exactly the two things the
+workflow pattern adds: **schema validation** and **auto-retry**. The borrow is a
+provisional **`SchemaResultOperation`**: reuse the sentinel + brace-scanner
+(generalize the sentinel to a parameter, e.g. `<<RESULT>>`), validate the extracted
+JSON against a supplied schema, and on mismatch **resume the same session**
+(resume contract already proven both providers) with a **round-aware corrective
+prompt** ("your last reply didn't match — here's the schema + the error"), capped
+≤N (convergence-not-counter). It stays entirely on ConPTY/subscription, needs no
+API key, no `EnvScrub` inversion, and — unlike `--json-schema` — works for **codex
+too**. This is the single highest-value mechanical borrow from workflows; it
+outlives a layer, so it earns an **ADR** when built.
+
 ## Sources
 
 - [Orchestrate subagents at scale with dynamic workflows — Claude Code Docs](https://code.claude.com/docs/en/workflows) **[A]**
@@ -348,4 +447,6 @@ own session). Out of scope for sequential v1.
 - [A harness for every task — Claude blog](https://claude.com/blog/a-harness-for-every-task-dynamic-workflows-in-claude-code) (403 to fetch; prose via summaries)
 - [HN discussion](https://news.ycombinator.com/item?id=48311705) and [follow-up](https://news.ycombinator.com/item?id=48350661)
 - [Claude Code Adds Dynamic Workflows — InfoQ](https://www.infoq.com/news/2026/06/dynamic-workflows-claude-code/)
+- Structured output (§10): [Agent SDK structured outputs (validate + re-prompt + retry)](https://code.claude.com/docs/en/agent-sdk/structured-outputs) · [API structured outputs (constrained decoding)](https://platform.claude.com/docs/en/build-with-claude/structured-outputs) · [Claude Code headless / `--json-schema`](https://code.claude.com/docs/en/headless) · [issue #9058 — constrained decoding still unbuilt](https://github.com/anthropics/claude-code/issues/9058) · [issue #43333 — `claude -p`+OAuth bills as API, not Max](https://github.com/anthropics/claude-code/issues/43333) · [`StructuredOutput` synthetic tool / injected prompts (Piebald extraction)](https://github.com/Piebald-AI/claude-code-system-prompts)
+- Internal (§9/§10): `src/RemoteAgents/Engine/Flow.cs`, `Runtime/*`, `Actors/Agents/Claude/ClaudeProvider.cs` + `ClaudeJsonl.cs`, `Actors/Agents/QuestionParser.cs`, `Actors/Git/Git.cs`, `RemoteAgents.Host/Composition.cs`; `PLANS/structured-questions-spike.md`, `spikes/structured-questions/FINDINGS.md`
 </content>
