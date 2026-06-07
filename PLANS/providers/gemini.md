@@ -5,6 +5,13 @@ The best **new native** provider: `gemini -p` is genuinely headless, bills again
 `SubprocessSession` provider, structurally a sibling of `CodexProvider`. See [`README.md`](README.md)
 for shared seam mechanics.
 
+**Why the CLI-drive is justified here (unlike Kimi-per-token):** Gemini's **free / subscription**
+tier is reachable *only* through the CLI's OAuth credential — the HTTP API bills **per-token**. So you
+drive the CLI specifically to get the free billing. If you only ever wanted the per-token model, you'd
+skip the CLI and use an HTTP `IChatClient` (Google GenAI / OpenAI-compat) exactly like Kimi Path A —
+simpler, but it forfeits the free tier. This plan targets the **free tier**, so the clean subprocess
+is the right substrate.
+
 ## How the provider would look
 
 ### Config

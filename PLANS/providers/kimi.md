@@ -1,95 +1,65 @@
 # Implementation plan — Kimi (Moonshot AI)
 
-Kimi has **two** integration paths with very different cost/effort profiles. Decide the path first;
-the rest follows. See [`README.md`](README.md) for the shared seam.
+Two integration paths with different billing — **pick by which billing you want**, and the substrate
+follows (see [`README.md`](README.md)). The earlier draft routed the per-token path through the
+`claude` CLI; that was needless terminal-juggling — per-token Kimi is a plain HTTP API.
 
-| | Path A — `claude` → Moonshot endpoint | Path B — native `kimi` CLI |
+| | Path A — HTTP (per-token) | Path B — native `kimi` CLI (flat sub) |
 |---|---|---|
-| Billing | **per-token** (no subscription on this path) | **flat subscription** ($19+/mo) |
-| New code | env-policy seam only (reuses Claude drive + `ClaudeJsonl`) | full provider + new parser |
-| Substrate | reuses `PtySession` (works; PTY not strictly needed) | `SubprocessSession` (clean) |
-| Use when | you want a cheap frontier-ish model fast | flat Kimi billing is a confirmed requirement |
+| Billing | **per-token** (~$0.60/$2.50 per M) | **flat subscription** ($19+/mo) |
+| Substrate | **`IChatClient` HTTP** — no CLI, no process | `SubprocessSession` (clean, no PTY) |
+| New code | one `IChatClient` factory arm | full provider + new parser |
+| Use when | you want a cheap cloud model, simplest wiring | flat Kimi billing is a confirmed requirement |
 
-Recommendation: **start with Path A** — it's the cheapest to build *and* cheap to run. Only build
-Path B if you specifically want the flat Kimi plan.
+Recommendation: **Path A** unless you specifically need the flat plan — it's both the cheapest to
+build and the simplest substrate.
 
 ---
 
-## Path A — drive the `claude` CLI against Moonshot's Anthropic-compatible endpoint
+## Path A — OpenAI/Anthropic-compatible HTTP (per-token)
 
-Moonshot exposes an Anthropic Messages-API shim, so the `claude` CLI talks to it natively and writes
-its usual per-session JSONL — meaning **`ClaudeJsonl` parses it unchanged.** The only real work is
-that `ClaudeProvider` today hardcodes the subscription env policy (scrub keys, no base URL). We make
-that policy a per-provider concern (ADR 0004 §6).
-
-### How the provider would look
-
-The cheapest honest change: extract `ClaudeProvider`'s env-building into a small strategy the
-provider holds, then add a Kimi config that supplies the override policy and model.
+Moonshot exposes standard endpoints; there is **no reason to drive a CLI** for this. Use the shared
+`ChatClientProvider` (from [`README.md`](README.md)) with an OpenAI-compatible `IChatClient` pointed at
+Moonshot.
 
 ```csharp
-public sealed record KimiClaudeConfig(
+public sealed record KimiHttpConfig(
     string Name, string Description, string Model, string SystemPrompt,
-    string BaseUrl = "https://api.moonshot.ai/anthropic",
-    string PermissionMode = "acceptEdits")
+    string BaseUrl = "https://api.moonshot.ai/v1")     // China: https://api.moonshot.cn/v1
     : AgentConfig(Name, Description, Model, SystemPrompt);
+
+// factory arm
+KimiHttpConfig c => new Agent(c, new ChatClientProvider(c,
+    new OpenAIClient(new ApiKeyCredential(secret), new() { Endpoint = new(c.BaseUrl) })
+        .GetChatClient(c.Model).AsIChatClient()));      // Microsoft.Extensions.AI
 ```
 
-`ClaudeProvider` gains an injected env policy (today's literal becomes `SubscriptionEnvPolicy`):
+No subprocess, no PTY, no `EnvScrub`/teardown, no JSONL files. `resp.Text` is the answer; tool-calls
+come back as structured content you map to `AgentTurn`s; multi-turn = keep the message list. The key
+lives in the secret store, never in env where it'd be scrubbed.
 
-```csharp
-// Claude (today): blank the keys, set nothing.
-foreach (var key in EnvScrub.SubscriptionKeys) env[key] = "";
+> The Anthropic-compatible endpoint (`…/anthropic`) also exists, but for a fresh provider the
+> OpenAI-compat `IChatClient` is the more standard .NET path. Only reach for the *`claude`-CLI*
+> + `ANTHROPIC_BASE_URL` trick if you specifically want to reuse Claude's full agentic loop against
+> Kimi — and even then it's a clean subprocess (no isatty gate), not a PTY.
 
-// Kimi: keep the override token + base url; do NOT scrub ANTHROPIC_AUTH_TOKEN.
-env["ANTHROPIC_BASE_URL"]   = config.BaseUrl;
-env["ANTHROPIC_AUTH_TOKEN"] = secret;            // Moonshot key, from secret store
-env["ANTHROPIC_MODEL"]      = config.Model;      // e.g. "kimi-k2.6"
-env["ANTHROPIC_API_KEY"]    = "";                // still blank: the *key* var, not the token
-```
+### Traps / concerns (Path A)
 
-Everything else — `PtySession`, startup-dialog dismissal, prompt-ready wait, `ClaudeJsonl` resolve,
-`--resume` session handling — is **reused verbatim**. Factory arm: `KimiClaudeConfig k => new
-Agent(k, new ClaudeProvider(k, OverrideEnvPolicy))`.
-
-Guard call becomes per-provider: `SubscriptionGuard.CheckAsync([], "claude", ct)` (nothing to
-forbid; the token is *supposed* to be set), or keep `ANTHROPIC_API_KEY` forbidden to catch a
-mis-set key that would override the token.
-
-### Traps / concerns from the docs
-
-- **Use `ANTHROPIC_AUTH_TOKEN`, not `ANTHROPIC_API_KEY`.** The token is the Moonshot key; the
-  `_API_KEY` var is on the scrub list and must stay blank, or you get confusing auth.
-- **Base URL must end in `/anthropic`** (`…/anthropic/v1/messages`). Global: `api.moonshot.ai`;
-  China: `api.moonshot.cn`.
-- **Model mapping opacity** — the `claude` CLI may still *display* Claude model names while a Kimi
-  model serves. Confirm which model actually ran.
 - **`kimi-k2-thinking` was EOL'd ~May 25 2026** — target `kimi-k2.6` (current) or `kimi-k2.5`.
-- **No subscription on this path** — billing is per-token against the Moonshot key. The flat "Kimi
-  for Coding" plan is *only* reachable via the native CLI (Path B).
-- **The PTY is unnecessary here** (billing isn't isatty-gated) but harmless; reusing it is the
-  least-code choice. If startup-dialog flakiness on the Moonshot path becomes a problem, Path B's
-  clean subprocess is the escape hatch.
-
-### Extra steps
-
-- `claude` CLI on PATH (already required by the orchestrator).
-- A Moonshot API key in the secret store (don't commit it).
-- Nothing else — no local setup.
+- **It's per-token, not flat** — no subscription on this path.
+- **OpenAI-compat coverage** — confirm Moonshot supports the features you use (tool-calling,
+  streaming, structured output) on the model you pick; compat shims occasionally lag.
 
 ---
 
 ## Path B — native `kimi` CLI (flat subscription)
 
-`kimi --print` is a headless mode that reads stdin/`--command`, writes stdout, and implicitly enables
-`--yolo`. It's `codex`-shaped: clean subprocess, no PTY.
-
-### How the provider would look
+`kimi --print` is headless (reads stdin/`--command`, writes stdout, implicitly `--yolo`). `codex`-
+shaped: clean `SubprocessSession`, no PTY.
 
 ```csharp
 public sealed record KimiConfig(
-    string Name, string Description, string Model, string SystemPrompt,
-    int TimeoutMs = 60_000)
+    string Name, string Description, string Model, string SystemPrompt, int TimeoutMs = 60_000)
     : AgentConfig(Name, Description, Model, SystemPrompt);
 
 public sealed class KimiProvider(KimiConfig config) : IProvider
@@ -106,47 +76,43 @@ public sealed class KimiProvider(KimiConfig config) : IProvider
 }
 ```
 
-This mirrors `CodexProvider` almost exactly (spawn via `cmd.exe`, write prompt to stdin, parse the
-JSON stream). `KimiProtocol.Normalize` parses Kimi's `stream-json` events into `AgentTurn`s and pulls
-the final assistant text + session id. Session resume via `--resume <id>` / `--continue`.
+Mirrors `CodexProvider` (spawn via `cmd.exe`, write prompt to stdin, parse the JSON stream). New
+`KimiProtocol` parses Kimi's own `stream-json` into `AgentTurn`s + final text + session id; resume via
+`--resume <id>` / `--continue`.
 
-### Traps / concerns from the docs
+### Traps / concerns (Path B)
 
-- **The flat subscription is reached via the CLI's OAuth `/login`, not an API key** — so Path B
-  needs an interactive one-time `kimi` login on the machine; the token isn't a simple env var.
-- **`--continue` context-replay bugs** were reported in some versions (issues #756/#284) — test
-  multi-turn before relying on it.
-- **Stream-json schema is Kimi's own**, not Anthropic's — the parser is new (can't reuse
-  `ClaudeJsonl`). Pin the CLI version; the official command/flag docs returned 403 to scrapers, so
-  verify exact flags against `kimi --help`.
-- **5-hour rolling quota window** (~300–1,200 calls/window) — not a weekly cap; size batch jobs to it.
+- **The flat plan is bound to the CLI's OAuth `/login`**, not an env var — needs a one-time
+  interactive login on the machine.
+- **`--continue` context-replay bugs** in some versions (issues #756/#284) — test multi-turn.
+- **Stream-json schema is Kimi's own** (not Anthropic's) — new parser. Official flag docs returned 403
+  to scrapers; verify against `kimi --help`, pin the version.
+- **5-hour rolling quota window** (~300–1,200 calls/window) — size batch jobs to it.
 
-### Extra steps
+### Extra steps (Path B)
 
-- Install: `irm https://code.kimi.com/kimi-code/install.ps1 | iex` (Windows PowerShell).
-- One-time `kimi` then `/login` (OAuth) to bind the subscription.
-- Add a `kimi --version` check to the guard.
+- Install: `irm https://code.kimi.com/kimi-code/install.ps1 | iex` (Windows).
+- One-time `kimi` → `/login` (OAuth) to bind the subscription.
+- Add a `kimi --version` check to the provider preflight.
 
 ---
 
 ## Runs on your PC?
 
-**N/A — Kimi is cloud either way.** Your PC only runs the `claude` or `kimi` CLI (negligible
-resources); the model executes on Moonshot's servers. Needs network. Your 32 GB / 8 GB VRAM is
-irrelevant here.
+**N/A — Kimi is cloud either way.** Your PC runs only an HTTP client (Path A) or the `kimi` CLI
+(Path B); the model executes on Moonshot's servers. Needs network. Your 32 GB / 8 GB VRAM is
+irrelevant. (Kimi's weights are open, but K2 is a huge MoE — not your 8 GB-VRAM box.)
 
 ## Associated costs
 
-- **Path A (per-token, K2.5/K2.6):** ~**$0.60 / 1M input, $2.50 / 1M output**, cache-hit ~$0.15/1M.
-  Roughly **8–10× cheaper than Claude Opus 4.8** ($5/$25). No fixed fee.
-- **Path B (flat subscription):** Moderato **~$19/mo**, then $39 / $99 / $199 tiers (more credits,
-  Agent Swarm, larger quota).
+- **Path A (per-token, K2.5/K2.6):** ~**$0.60 / 1M input, $2.50 / 1M output**, cache-hit ~$0.15/1M —
+  roughly **8–10× cheaper than Claude Opus 4.8** ($5/$25). No fixed fee.
+- **Path B (flat):** Moderato **~$19/mo**, then $39 / $99 / $199 tiers.
 
 ## What it can / can't do
 
-- **Can:** strong agentic coding (K2.6 SWE-Bench Pro ~58.6, competitive with frontier), 256K
-  context, tool use, multi-turn/resume. Cheap. Open-weight model (so a *local* Kimi is theoretically
-  possible later, but it's a large MoE — not your 8 GB-VRAM box).
-- **Can't:** run offline or on your hardware via these paths. **Sends prompts + code context to
-  Moonshot (China-based)** — a real data-governance question for proprietary Unity source; clear it
-  before routing anything sensitive. No flat billing on Path A; no simple env-var auth on Path B.
+- **Can:** strong agentic coding (K2.6 SWE-Bench Pro ~58.6), 256K context, tool use, multi-turn.
+  Cheap. Path A is the simplest provider in this whole set to wire (one `IChatClient` arm).
+- **Can't:** run offline / on your hardware via these paths. **Sends prompts + code to Moonshot
+  (China-based)** — a real data-governance question for proprietary Unity source; clear it before
+  routing anything sensitive. No flat billing on Path A; no simple env-var auth on Path B.
