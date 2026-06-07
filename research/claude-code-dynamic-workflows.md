@@ -1,325 +1,351 @@
-# Claude Code Dynamic Workflows — What They Are, and What We Steal
+# Claude Code Dynamic Workflows — What Gets Generated, and What We Steal
 
 > Research synthesis, produced 2026-06-07. Trigger: Anthropic's "A harness for
-> every task: dynamic workflows in Claude Code" (blog, 2026-06-02), shipped
-> alongside Opus 4.8. Sibling of [`flow-orchestration-references.md`](flow-orchestration-references.md)
+> every task: dynamic workflows in Claude Code" (2026-06-02, shipped with Opus
+> 4.8). Sibling of [`flow-orchestration-references.md`](flow-orchestration-references.md)
 > and [`node-based-flow.md`](node-based-flow.md).
 >
-> **Sourcing note.** The official docs page fetched cleanly and is the spine of
-> the *mechanics* section (authoritative). The blog itself and most third-party
-> deep-dives 403'd to direct fetch, so the **six-pattern definitions** and the
-> **scripting-API primitives** are reconstructed from multiple corroborating
-> search summaries. Confidence tags: **[A]** = official Anthropic docs,
-> **[H]** = 2+ independent sources agree, **[M]** = single decent source,
-> **[L]** = vendor/marketing/unverified.
+> **Focus.** The *generation* mechanism (Claude writes a JS harness on the fly)
+> is not the interesting part for us — we author flows by hand on purpose. The
+> interesting part is **what the generated/saved scripts actually do**: the
+> orchestration logic, the patterns, the idioms. So the spine of this doc is
+> **§3 — four real saved workflow scripts dissected** and diffed against our
+> flows. The mechanics (§1) and patterns (§2) are the setup; the comparison
+> (§5–8) is the payoff.
+>
+> **Sourcing.** Official docs fetched cleanly **[A]**. The four scripts in §3 are
+> **real files pulled verbatim from public repos** (491 such files exist —
+> GitHub code search) **[A-code]**. Blog/third-party pattern prose is corroborated
+> across search summaries **[H]**.
 
 ---
 
 ## TL;DR
 
-- **Anthropic just validated our core thesis.** Their own docs frame the four
-  ways to run a multi-step task by *who holds the plan*, and define a workflow as
-  **"the plan moved into code."** That is exactly what a `Flow` is for us. Our
-  `Flow` ≈ their workflow script; our `Operation` (minted by an `Actor`) ≈ their
-  `agent()` call; our `FlowContext` ledger ≈ their "script variables + run
-  tracking." We are building the same category. **[A]**
-- **Their headline mechanism is codegen-the-harness:** Claude *writes a
-  JavaScript orchestration script on the fly* for your task, a separate runtime
-  executes it in the background spawning up to 1,000 subagents, and you can
-  **save the script** (`s` in `/workflows`) into `~/.claude/workflows/` or
-  `.claude/workflows/` to rerun as `/<name>`. **[A]**
-- **The six patterns** — classify-and-act, fan-out-and-synthesize, adversarial
-  verification, generate-and-filter, tournament, loop-until-done — are
-  **orchestration *shapes*, not features.** They are provider-neutral and
-  translate cleanly onto our `Flow` + `Operation` model. **[H]**
-- **Our differentiator holds and sharpens: we are provider-agnostic.** Their
-  every agent is a Claude subagent (same harness, optionally a different *Claude*
-  model per stage). Ours orchestrates `claude` **and** `codex` (more later) over
-  CLIs on subscription billing, with the provider behind `IProvider` (ADR 0004).
-  Plus we are a **persistent Host + Blazor service with history that survives
-  restart**, where theirs lives and dies inside one CLI session. **[A]**
-- **Biggest capability gap vs. the patterns: parallelism.** Four of the six
-  patterns need fan-out + a barrier. Our engine is deliberately **sequential**
-  today (`Flow.Run` runs one operation at a time, and there's an explicit guard
-  against concurrent ops on one actor). Our four v1 recipes (B1–B4) are all
-  sequential pipelines, so this is **correctly YAGNI for now** — but it's the
-  precise seam to add when the *second* recipe needs a fan-out.
-- **Two insights worth stealing immediately (cheap, no parallelism needed):**
-  (1) **pairwise comparison beats absolute 1–10 scoring** for judge/verdict
-  reliability — applies directly to our reviewer; (2) **loop-until-convergence**
-  (stop when a round comes back empty) is the honest generalization of our
-  fixed `≤3` fix loop.
+- **The generated scripts are, structurally, *our flows* — written in JS instead
+  of typed C#.** A saved workflow is `export const meta {…}` (name + phases) then
+  a body that calls injected globals `agent() / parallel() / pipeline() / phase()
+  / log()` over `await`. That maps almost 1:1 onto our `Flow` (recipe + phases) →
+  `Operation` minted by an `Actor`, tracked by `Flow.Run`. We are building the
+  same thing.
+- **The single biggest mechanical difference: they get typed JSON back from
+  agents.** *Every* real script defines JSON Schemas and passes them as
+  `agent(prompt, { schema })`; the runtime validates and auto-retries on
+  mismatch. We resolve agent output as **text** and parse it (`ToString()`,
+  verdict-parse, `QuestionParser`). **Schema-validated structured agent output is
+  the most worthwhile thing to steal.**
+- **Their best recipes are exactly our recipes, generalized.** `codebase-audit`
+  is our `full-review` reviewer turned into *fan-out review → adversarial
+  per-finding verify → synthesize*. `design-screen` is our *validate-fix loop*
+  with a quality grader instead of a compiler. `infra-review` is *loop-until-dry*
+  (the honest version of our `≤3` cap). `fix-issue-batch` is a batched
+  `full-review` over a `pipeline()`.
+- **Two architectural facts fall out of their constraints — and both favor us:**
+  1. **No mid-run human input.** Their workaround is to *terminate* the workflow
+     with a `checkpoint`/`status` and re-invoke (see `design-screen`'s
+     `AWAITING_FOUNDER`). **We have real interactive pause/resume Q&A in the
+     spine** (`AskAsync` + modal + `/answer`, D4) — a genuine edge.
+  2. **Subagents can't spawn subagents.** So the *script* must be the only
+     orchestrator; multi-reviewer fan-out lives at script level, and a worker
+     does its own inline "5-angle self-review." Our actors compose freely.
+- **The real recurring idioms worth adopting** (all observed in the scripts):
+  structured-output schemas; **adversarial verification that consults the
+  documented record** (their verifier greps `CLAUDE.md`/ADRs to drop "intentional"
+  findings — we have `behavioral-oracle.md` + ADRs, perfect fit); **richer verdict
+  enums with confidence gating**; **loop-until-convergence** (dedupe + stop after
+  N empty rounds); **resilience by degradation** (wrap each agent, degrade to
+  empty, never throw out of the run).
+- **Still our differentiators:** provider-agnostic (`claude`+`codex`, theirs is
+  Claude-only), subscription billing, persistent Host+Blazor service with history
+  surviving restart, and typed/compiled/reproducible recipes. **Our gap** vs the
+  patterns remains parallelism — `parallel()`/`pipeline()` have no equivalent in
+  our deliberately-sequential engine (correctly YAGNI until a recipe needs it).
 
 ---
 
-## 1. What it actually is (the mechanics) [A]
+## 1. Mechanics, briefly [A]
 
-From [the official docs](https://code.claude.com/docs/en/workflows):
+A dynamic workflow is a JS script that orchestrates subagents; Claude writes it,
+a runtime runs it in the background, results stay in **script variables** (not the
+model's context), and you can **save** it (`s` in `/workflows`) to
+`.claude/workflows/` (repo) or `~/.claude/workflows/` (user) to rerun as
+`/<name>`. Their own "who holds the plan" framing — *"a workflow moves the plan
+into code"* — is our `Flow` thesis verbatim.
 
-> "A dynamic workflow is a JavaScript script that orchestrates subagents at
-> scale. Claude writes the script for the task you describe, and a runtime
-> executes it in the background while your session stays responsive."
-
-The framing that matters most to us is their **"who holds the plan"** table —
-this is the clearest articulation of the design space we're in:
-
-| | Subagents | Skills | Agent teams | **Workflows** |
-|---|---|---|---|---|
-| What it is | A worker Claude spawns | Instructions Claude follows | A lead supervising peers | **A script the runtime executes** |
-| Who decides what runs next | Claude, turn by turn | Claude, per prompt | Lead agent, turn by turn | **The script** |
-| Where intermediate results live | Claude's context | Claude's context | Shared task list | **Script variables** |
-| What's repeatable | Worker definition | Instructions | Team definition | **The orchestration itself** |
-| Scale | A few/turn | Same | A handful | **Dozens–hundreds/run** |
-| Interruption | Restarts the turn | Restarts the turn | Teammates keep running | **Resumable in-session** |
-
-> "A workflow moves the plan into code … the script holds the loop, the
-> branching, and the intermediate results itself, so Claude's context holds only
-> the final answer." **— this is our entire `Flow`/`Operation`/ledger argument,
-> almost verbatim.**
-
-**Runtime model:**
-- Claude generates a JS script → an **approval prompt** shows the planned phases
-  → the runtime executes it **in the background** (session stays responsive).
-- The script is written to a file under `~/.claude/projects/<session>/`; you can
-  read/diff/edit it and relaunch from the edited version.
-- **Subagents always run in `acceptEdits`**, inherit your tool allowlist
-  regardless of session mode; the workflow script itself has **no direct
-  filesystem/shell** — only the agents act; the script *coordinates*.
-- **Limits:** up to **16 concurrent** agents (fewer on small machines),
-  **1,000 agents/run** cap (anti-runaway), **no mid-run user input** (only
-  permission prompts pause; "for sign-off between stages, run each stage as its
-  own workflow"), **resume only within the same session** (exit = fresh start).
-- **Triggers:** the `ultracode` keyword in a prompt, `/effort ultracode`
-  (xhigh + auto-workflow per task), or a saved `/<name>` command. Bundled
-  example: `/deep-research`.
-- **Reuse:** press `s` to save a run's script to `.claude/workflows/` (repo,
-  shared) or `~/.claude/workflows/` (user). Saved workflows take an `args` global
-  (structured data, no parsing). Can be shipped inside a **Skill** by bundling
-  the JS and referencing it in `SKILL.md`. **[H]**
-
-### Scripting primitives [M]
-
-Reconstructed from developer write-ups (alexop.dev, bswen, claudefa.st — all
-403'd direct fetch, corroborated via summaries; treat signatures as
-*indicative*, not spec):
-
-- **`agent(prompt, opts?)`** — spawns one subagent, returns a string result. Pass
-  a **JSON Schema** in `opts` and the runtime **validates the output and retries
-  automatically on mismatch**. (This is a nice structured-output + auto-repair
-  primitive.)
-- **`parallel(tasks)`** — runs a set at once and **waits for all** before
-  continuing. *"`parallel` is a barrier."*
-- **`pipeline(items, stages)`** — runs each item through every stage
-  **independently, no barrier** between stages (item A can be in stage 3 while
-  item B is still in stage 1).
-- **`phase(...)`** / **`log(...)`** — progress grouping + run logging (drives the
-  `/workflows` phase view: agent count, token total, elapsed).
-- A **`meta` block** must be a **pure literal** (no variables, calls, or
-  interpolation) at the top of every script.
-- A **barrier** is needed only when the next step genuinely needs *every* prior
-  result at once (dedupe across the full set; compare items pairwise).
-
----
+**The script surface (injected globals, `await` directly):**
+- `agent(prompt, opts?)` → returns the agent's result. `opts`: `{ schema }`
+  (JSON-Schema validate + **auto-retry on mismatch**), `agentType` (named
+  subagent role), `label`, `phase`, `isolation: 'worktree'`.
+- `parallel(tasks)` → runs all, **waits for all (a barrier)**.
+- `pipeline(items, ...stages)` → each item flows through stages independently,
+  **no barrier** (replace-on-completion); stage args are `(prevResult,
+  originalItem, index)`.
+- `phase(title)` / `log(msg)` → progress grouping + run log (drives the
+  `/workflows` view).
+- `args` → caller input (structured). `meta` must be a pure literal. **No
+  wall-clock, no randomness, no direct fs/shell** — only agents act; the script
+  coordinates. **Subagents cannot spawn subagents.** Limits: 16 concurrent / 1,000
+  agents per run; **no mid-run user input**; resume only within the same session.
 
 ## 2. The six patterns [H]
 
-These are the part the user flagged as "we most likely want to have on ours."
-They are **orchestration shapes** — provider-neutral, and each maps to a small
-composite over our `Flow.Run`.
+Orchestration *shapes*, provider-neutral, each a small composite over the run
+contract:
 
-1. **Classify-and-act.** A classifier reads the task, decides its type, routes
-   each kind to the right downstream agent. *Use when* input is heterogeneous and
-   different kinds want different handling.
-
-2. **Fan-out-and-synthesize.** Split into many small units, run one agent on
-   each, then **merge at a barrier** into one result. *Use when* the work is
-   embarrassingly parallel and a final pass must see everything (the synthesize
-   step is the barrier).
-
-3. **Adversarial verification.** For each finding, spawn a **separate skeptic
-   whose only job is to refute it**. Survivors = findings the skeptic couldn't
-   knock down. *Use when* false positives are costly (audits, security, research
-   claims). This is `/deep-research`'s "claims that didn't survive cross-checking
-   are filtered out."
-
-4. **Generate-and-filter.** Generate many noisy candidates, then a **separate
-   pass** filters, dedupes, and keeps only what holds up. *Use when* recall
-   matters first and precision is recovered downstream.
-
-5. **Tournament.** Agents each attempt the same task **differently**, then a
-   judge compares them **pairwise** until a winner emerges. *Key insight:*
-   **"is A better than B?" is far more reliable than asking each agent to score
-   itself 1–10 — absolute scoring drifts, comparative judgment doesn't.** The
-   deterministic loop holds the bracket; only the running pair stays in context.
-
-6. **Loop-until-done.** When you don't know how much work there is, **don't guess
-   a fixed pass count** — loop spawning agents until a **stop condition** is met
-   ("no new findings two rounds in a row," "no more errors in the logs"). *"The
-   work decides when it is finished, not an arbitrary counter."*
+1. **Classify-and-act** — a classifier routes each input kind to the right agent.
+2. **Fan-out-and-synthesize** — one agent per unit, then **merge at a barrier**.
+3. **Adversarial verification** — per finding, a **skeptic whose job is to
+   refute**; survivors are what it couldn't knock down.
+4. **Generate-and-filter** — many noisy candidates, then a separate filter pass.
+5. **Tournament** — agents attempt the same task differently; a judge compares
+   **pairwise** (more reliable than absolute 1–10 scoring) to a winner.
+6. **Loop-until-done** — loop spawning agents until a **stop condition** (no new
+   findings two rounds running), not a fixed counter.
 
 ---
 
-## 3. Community reception [M/L]
+## 3. What actually gets generated — four real scripts, dissected
 
-- **InfoQ / general coverage:** framed as parallel-agent coordination for
-  codebase-wide audits, large migrations, cross-checked research. Positioned as
-  *formalizing* orchestration patterns devs already hand-assembled. **[H]**
-- **Cost is the loudest caveat** — Anthropic itself warns runs use *meaningfully*
-  more tokens; advice is to pilot on a thin slice (one dir / narrow question)
-  first. **[A]**
-- **Hacker News** ([48311705](https://news.ycombinator.com/item?id=48311705),
-  [48350661](https://news.ycombinator.com/item?id=48350661)): the sharpest
-  critique is **control over correctness** — *"more mechanisms for controlling
-  long-running sessions and dynamically injecting … correction and nudges, rather
-  than faster ways to burn through tokens without knowing if the results are going
-  to be correct."* The "no mid-run input" constraint is felt here. **[M]**
-- **vs. LangGraph / CrewAI / AutoGen** (levelup.gitconnected, claudefa.st): the
-  recurring verdict is that dynamic workflows win for **fast, ad-hoc,
-  Claude-native** orchestration, while **LangGraph still wins for durable,
-  reproducible, externally-checkpointed** execution (the script is regenerated
-  each time unless saved; resume is in-session only). **[M]**
+These are verbatim public `.claude/workflows/*.js` files. Each is annotated for
+its **logic** and its **map to our flows**.
 
-The **control + reproducibility** gap the critics name is *precisely* where our
-design is already stronger (typed compiled recipes, persistent service, history
-that survives restart). Worth remembering as positioning.
+### 3.1 `codebase-audit.js` (Zenetusken/memex) — fan-out + adversarial verify + synthesize
+
+The canonical high-quality audit. Structure:
+
+- A static `UNITS` array (~26 code slices), **each with a `note` of governing
+  invariants** ("repair_claim_chunk_ids MUST run before verify"). This is hand-
+  curated domain context injected per slice.
+- **Three JSON Schemas** — `REVIEW_SCHEMA`, `VERDICTS_SCHEMA`, `SYNTH_SCHEMA` —
+  for the three stages' structured output.
+- `reviewAndVerify(u)`: `agent(reviewPrompt, {schema: REVIEW})` → if findings,
+  `agent(verifyPrompt, {schema: VERDICTS})`. The verify prompt: *"You are an
+  ADVERSARIAL verifier. Your default stance is to REFUTE each."*
+- **Adversarial verifier consults the documented record:** *"grep `CLAUDE.md` …
+  and `docs/adr/*` for the relevant symbol/decision — many 'obvious fixes' here
+  are documented anti-fixes."* Findings marked intentional-per-docs are dropped.
+- **Manual concurrency throttle:** `chunk(UNITS, 4)` then `await
+  parallel(batch…)` per batch — *"small bursts — the first run rate-limited at
+  ~14 concurrent heavy agents."*
+- **Resilience by degradation:** every `agent()` is wrapped in `try/catch` →
+  returns empty, *"never throws out of the workflow."*
+- Join findings↔verdicts by `id`; **survivors** = verdict ∈ {confirmed-bug,
+  confirmed-improvement, needs-human-judgment} **AND `confidence ≥ 0.5`**.
+- Synthesize agent dedupes/ranks; the script **always also returns raw survivors**
+  so a synthesis hiccup never loses the audit.
+
+Verdict enum: `confirmed-bug | confirmed-improvement | false-positive |
+intentional-per-docs | needs-human-judgment`.
+
+**Maps to our `full-review` reviewer (C4), generalized:** one Codex
+APPROVE/REVISE pass → N parallel reviewers + a per-finding adversarial verifier,
+confidence-gated. The verifier-consults-`CLAUDE.md`/ADRs idea lands *directly* on
+us — we have `behavioral-oracle.md` (Tier A invariants) + `design/adr/*`; a
+reviewer that greps them before flagging would refuse to "fix" deliberate design.
+
+### 3.2 `infra-review.js` (pvthanh-sa/claude-code-guideline) — loop-until-dry
+
+- `args.deep` → `MAX_ROUNDS = 5`, `DRY_STOP = 2`.
+- Loop: `parallel([security-auditor, infra-reviewer (, cost-optimizer round 1)])`,
+  each with a `{schema}`. **Dedupe by `key = severity|title|location`**; `fresh` =
+  not-seen findings. **Round-aware prompts:** *"This is review ROUND ${round}:
+  surface only LESS-obvious issues not caught earlier."*
+- **Stop logic:** if `fresh.length === 0` then `dry++`; **stop after 2 consecutive
+  dry rounds**, hard-capped at 5. Non-deep = single pass.
+- Synthesize → go/no-go (`no-go` if any Critical, `go-with-fixes` if any High).
+
+**Maps to our validate-fix loop (B2/B3) — but for *discovery*, not repair.** Our
+`≤3` is a *safety bound*; theirs makes the **empty-round the stop signal** and the
+counter just the cap. The round-aware prompt (don't repeat round 1) is a neat
+trick for our retry prompts too. `agentType: 'security-auditor'` etc. are their
+named roles — our `Agents.Implementer`/`Reviewer` presets are the same idea.
+
+### 3.3 `design-screen.js` (Adam077K/Beamix) — validate-fix loop + human checkpoints
+
+- Pipeline `REFERENCE → BUILD → VALIDATE(loop) → JUDGE`, each stage a typed
+  `agent(prompt, {agentType, schema})`.
+- **The validate loop IS our fix loop:** `while (round < MAX_ROUNDS=4)` →
+  `design-critic` grades `PASS | NEEDS_WORK | CRITICAL_ISSUES`; on non-PASS,
+  `design-polisher` closes the named gaps; repeat. **On cap without PASS →
+  `status: "ESCALATED"`, *don't ship unvalidated*.** Identical shape to "validate
+  → on fail resume with errors → retry, refuse on unclear."
+- **Human-in-the-loop via termination:** *"The harness cannot block on human
+  input mid-run, so each checkpoint is emitted as a `log()` line + a structured
+  `checkpoint` field in the result"* → returns `AWAITING_FOUNDER` /
+  `ESCALATED` and is **re-invoked** after the human acts.
+- Worktree isolation per build (= our `IsolationScope`, C8). Note in the doc:
+  *"the critic↔polisher loop is sequential by necessity (each polish pass depends
+  on the prior critic verdict); `parallel`/`pipeline` are reserved for multi-
+  screen runs."*
+
+**This is the sharpest contrast and it favors us.** Their fix loop is forced to
+**end-and-restart** to get a human in; **our spine pauses and resumes mid-flow**
+(`AskAsync` + modal + `/answer`, D4). Their own admission that the loop is
+"sequential by necessity" also **validates our sequential-first engine** — a
+fix/critique loop genuinely cannot be parallelized.
+
+### 3.4 `fix-issue-batch.js` (sceneview/sceneview) — batched full-review over `pipeline()`
+
+A near-complete SDLC, and the closest thing to our `full-review` at scale:
+
+- `phase('Preflight')`: a **disk-gate** agent + an **issue-selection** agent
+  (priority buckets `CI > BUG_CRITICAL > BUG > …`), both `{schema}`.
+- `pipeline(chosen, stage1, stage2)`:
+  - **Stage 1 (fix):** one agent per issue does claim → **challenge the
+    prescribed root cause** → fix → compile/test → changelog → **inline 5-angle
+    self-review** → open PR. **Self-classifies scope** `trivial | medium-plus`
+    (classify-and-act): trivial → fire-and-forget `--auto` merge; medium+ → PR
+    only, returns `pr-open-pending-review`.
+  - **Stage 2 (graded review):** medium+ only → `await workflow('review-fanout',
+    {…})` — **a workflow calling another workflow** — 4 adversarial reviewers;
+    `MERGE`/`MERGE_AFTER_WARNINGS` → merge; breaking public API → draft for
+    maintainer; else leave open.
+- **Concurrency state pushed to disk** (`claim.sh` lease + `in-progress` label)
+  because the script can't safely hold cross-session state across the fan.
+- Commit trailer `Co-Authored-By: Claude…` (= our C5). Hard rules baked into the
+  prompt: *never push uncompiled code, no polling/sleep loops, always clean up.*
+
+**Maps to `full-review` (B3): guard → work → validate → review → commit/push.**
+The new ideas: **scope-classify to skip review on trivial changes**; **workers
+self-review because they can't spawn reviewers** (our reviewer is a separate
+actor — cleaner); **sub-workflow composition** (`workflow(name, args)`) — our
+`FlowCatalog` is name→Type launched independently, so flows don't yet call flows.
+
+### 3.5 The idioms, distilled
+
+Across all four (and the other 487), the recurring DNA:
+
+| Idiom | In the scripts | Our current equivalent |
+|---|---|---|
+| **Structured output** | `agent(prompt, {schema})` everywhere, auto-retry | text + `ToString()`/parse — **no schema/retry** |
+| **Adversarial verify vs. the record** | verifier greps `CLAUDE.md`/ADRs, refute-by-default | single Codex APPROVE/REVISE; **doesn't read our oracle/ADRs** |
+| **Richer verdicts + confidence gate** | 5-value enum, `confidence ≥ 0.5` | APPROVE/REVISE/Unclear, no confidence |
+| **Loop-until-convergence** | dedupe + stop after N dry rounds, round-aware prompts | fixed `≤3` cap |
+| **Resilience by degradation** | wrap each agent, degrade to empty, never throw | `Flow.Run` **throws → flow Fails** (fail-fast) |
+| **Human-in-loop** | terminate with `checkpoint`, re-invoke | **pause/resume mid-flow** (`AskAsync`/`/answer`) ← ours is better |
+| **Named roles** | `agentType: 'security-auditor'` | `Agents.Implementer` / `Reviewer` presets |
+| **Isolation** | `isolation:'worktree'` / `/tmp` lean clone | `IsolationScope` (C8) |
+| **Sub-workflow** | `await workflow('review-fanout', …)` | none (flows launched independently) |
+| **Concurrency** | `parallel`/`pipeline`, manual throttle, disk gate | **sequential**, per-actor in-flight guard |
 
 ---
 
-## 4. Us vs. them — the honest comparison
+## 4. Community reception [M/L]
+
+- Positioned (InfoQ) as *formalizing* patterns devs already hand-assembled, for
+  audits / large migrations / cross-checked research. **[H]**
+- **Cost is the loudest caveat** (Anthropic's own warning): runs use meaningfully
+  more tokens; pilot on a thin slice first. **[A]**
+- **HN** ([48311705](https://news.ycombinator.com/item?id=48311705),
+  [48350661](https://news.ycombinator.com/item?id=48350661)): sharpest critique is
+  **control over correctness** — wanting *"mechanisms for … injecting correction
+  and nudges rather than faster ways to burn through tokens."* The "no mid-run
+  input" limit is felt — which is exactly the gap our pause/resume Q&A fills. **[M]**
+- **vs. LangGraph/CrewAI:** consensus is dynamic workflows win for fast,
+  ad-hoc, Claude-native orchestration; **LangGraph wins for durable,
+  reproducible, externally-checkpointed** execution. Reproducibility + control is
+  our turf too. **[M]**
+
+## 5. Us vs. them
 
 | Dimension | Claude Dynamic Workflows | **Remote Unity Agents (us)** |
 |---|---|---|
-| **The plan lives in** | JS the *model writes per task* | Hand-authored, **typed C# `Flow`** (compiled, tested) |
-| **Authoring** | Codegen (dynamic), optionally saved | Declarative recipe, reviewed + version-controlled |
-| **Worker** | Claude subagent (`agent()`) | `Operation` minted by an `Actor` (ADR 0003) |
-| **Provider** | **Claude only** (per-stage *Claude* model) | **Provider-agnostic** — `claude` + `codex`, more later, behind `IProvider` (ADR 0004) **← our edge** |
-| **Billing** | Plan tokens | **Subscription** end-to-end (key-scrub, Tier A1/A3) **← our edge** |
-| **Surface** | CLI `/workflows` TUI, in-session | **Persistent Host + Blazor UI + SSE**, multi-client over Tailscale |
-| **Durability** | Resume in-session; exit = fresh | **History survives orchestrator restart** (A4) **← our edge** |
-| **Concurrency** | `parallel`/`pipeline`, 16 conc / 1000 cap | **Sequential today** (one op at a time; per-actor in-flight guard) **← our gap** |
-| **Reproducibility** | Script regenerated unless saved | Recipe is the source of truth, always identical |
-| **Approval / cancel / progress / cost** | Approve-before-run, pause/stop, per-phase tokens+elapsed | Approve via UI, cancel (A5), live snapshots (A2/A3) — **no token/elapsed surfaced yet** |
+| Plan lives in | JS the model writes per task | typed **C# `Flow`** (compiled, tested) |
+| Worker | Claude subagent `agent()` | `Operation` minted by an `Actor` (ADR 0003) |
+| Agent output | **typed JSON via `{schema}` + retry** | **text, parsed** ← adopt their approach |
+| Provider | **Claude only** | **`claude` + `codex`, more later** (`IProvider`) ← edge |
+| Billing | plan tokens | **subscription** end-to-end ← edge |
+| Surface | CLI `/workflows` TUI, in-session | **persistent Host + Blazor + SSE + history** ← edge |
+| Human-in-loop | **terminate + re-invoke** (no mid-run input) | **pause/resume mid-flow** (`AskAsync`) ← edge |
+| Orchestration depth | flat (no nested subagents) | actors compose freely |
+| Concurrency | `parallel`/`pipeline`, 16/1000 caps | **sequential** ← gap |
+| Composition | `workflow(name, args)` sub-workflows | flows launched independently ← gap |
+| Reproducibility | script regenerated unless saved | recipe is the source of truth |
 
-**Conceptual mapping (one-to-one, and it's tight):**
+Conceptual mapping is tight: their script ≈ our `Flow`; `agent()` ≈
+`Actor.verb()→IOperation<T>` run via `Flow.Run`; `{schema}` ≈ (a typed result we
+don't validate yet); script variables ≈ flow-locals + `FlowContext` ledger;
+`/workflows` TUI ≈ Blazor run view + history; `parallel()`/`pipeline()` ≈ (a
+combinator we don't have).
 
-```
-their workflow script   ≈  our Flow (the recipe)
-their agent(prompt)      ≈  our Actor.verb(args) -> IOperation<T>, run via Flow.Run
-their parallel()/barrier ≈  (gap) a Flow.RunAll combinator we don't have yet
-their pipeline()         ≈  (gap) per-item staged streaming
-their script variables   ≈  our flow-local C# variables + FlowContext ledger
-their /workflows TUI      ≈  our Blazor run view + RunHistory + SSE
-their save-as-/name       ≈  our FlowCatalog (name -> Type) — already declarative
-their schema+retry agent  ≈  (gap) we parse (verdict/QuestionParser) but don't schema-validate+retry
-```
+## 6. What we extract — concretely
 
----
+**Adopt now (cheap, no parallelism, high value):**
+1. **Schema-validated structured agent output + retry.** Wrap an agent operation
+   to validate a typed result and re-prompt on mismatch. This is the one
+   mechanical thing every real script does that we don't, and it hardens
+   verdict-parse / `QuestionParser` / any structured call. Strongest single
+   takeaway.
+2. **Reviewer consults the documented record.** Feed `behavioral-oracle.md` Tier-A
+   + relevant ADRs into the reviewer/verifier prompt and have it **refute by
+   default + drop intentional-per-docs** findings. We are uniquely positioned for
+   this — we already keep the oracle and ADRs.
+3. **Richer verdict + confidence gate.** Extend C4 beyond APPROVE/REVISE/Unclear
+   toward {confirmed / false-positive / intentional-per-docs / needs-human} with a
+   confidence threshold; survivors-only proceed to commit.
+4. **Loop-until-convergence framing.** Keep `≤3` as the cap, but make
+   *validator-clean* (and, for any discovery loop, *empty round*) the real stop;
+   make retry prompts round-aware ("surface only what round 1 missed").
+5. **Pairwise > absolute scoring** (Tournament) wherever we ever rank.
 
-## 5. What we extract — patterns translated to our model
+**Decide per-flow:**
+- **Resilience-by-degradation vs. fail-fast.** Theirs wraps every agent and never
+  throws; ours fails the flow. For an audit-style flow, degrade-and-aggregate is
+  right; for `full-review` (must not commit on a broken step) fail-fast is right.
+  Make it a conscious per-flow choice, not an accident of `Flow.Run`.
 
-The patterns are **not Claude features**; they're orchestration shapes that, for
-us, become **reusable composite flow helpers / operation combinators layered on
-`Flow.Run`** — *not* codegen. Per CLAUDE.md YAGNI / second-use rule, we add the
-machinery when a recipe actually needs it.
+**Post-v1, on the *second* real use (YAGNI gate):**
+- `Flow.RunAll<T>(IEnumerable<IOperation<T>>)` **barrier combinator** +
+  per-branch actor minting → unlocks fan-out-synthesize, adversarial
+  verification, generate-filter, tournament as composite flow helpers without
+  breaking the sequential invariant. Likely a `pipeline`-style no-barrier variant
+  later. **Write an ADR then** ("orchestration patterns as flow combinators").
+- **Sub-flow composition** (a flow invoking another flow) if a recipe wants the
+  `fix-issue-batch → review-fanout` shape.
 
-| Pattern | Our translation | Status today |
-|---|---|---|
-| **Classify-and-act** | A `Classifier` actor → enum/verdict; flow `switch`es to the right operation. Pure C#, no new machinery. | **Trivial now** — possible the day we want it |
-| **Adversarial verification** | Generalize the `full-review` reviewer: instead of one APPROVE/REVISE pass, mint a **skeptic operation per finding**; keep survivors. We already own the verdict-parse seam (`Reviews`, C4). | **Seam exists**; per-finding fan-out needs §6 parallelism |
-| **Loop-until-done** | Our `validate-fix` loop is already a *bounded* version (`≤3`). Generalize to **loop until convergence** (round returns empty / no errors). | **Pattern already half-present**; reframe |
-| **Fan-out-and-synthesize** | `Flow.RunAll(IEnumerable<IOperation<T>>) -> IReadOnlyList<T>` (the **barrier**), then a synthesize operation. | **Gap** — needs §6 |
-| **Generate-and-filter** | Fan-out candidates → a single `filter` operation that dedupes/keeps. | **Gap** — needs §6 |
-| **Tournament** | Pairwise-comparison operations; the **deterministic bracket lives in flow code**, only the running pair in agent context. | **Gap** — needs §6; *but steal the insight now* |
+**Do NOT copy:**
+- Model-writes-the-harness codegen (the whole point we're rejecting — typed,
+  tested, reproducible recipes instead).
+- The flat "no nested orchestration / workers self-review" constraint — that's
+  *their* limitation, not a design to import; our composing actors are cleaner.
+- 16/1000-agent fan scale speculatively — no v1 recipe needs it.
 
-**Two insights we steal regardless of parallelism (cheap, high-value):**
-
-1. **Pairwise > absolute scoring** (from Tournament). Our reviewer/verdict design
-   (C4: APPROVE/REVISE) is already comparative-ish; when we ever score or rank
-   (e.g. choosing among fix attempts), **compare pairs, don't ask for a 1–10**.
-   Worth a line in the `Reviews` design.
-2. **Stop on convergence, not a counter** (from Loop-until-done). Our `≤3` retry
-   cap is a *safety bound*, not the *stop signal*. The honest stop is "validator
-   came back clean" — which we already do; the lesson is to **not** treat the
-   counter as the goal, and to make the empty-round exit explicit in the recipe.
-
-**API design lessons worth borrowing (not now, but noted):**
-- **Schema-validated agent output with auto-retry** (`agent(prompt, {schema})`).
-  We have ad-hoc parsing (`QuestionParser`, verdict parse) but no
-  validate-then-retry loop. A small `IOperation` wrapper that validates a typed
-  result and re-prompts on mismatch would harden every structured agent call.
-- **`parallel` = barrier; `pipeline` = no barrier** is the cleanest mental model
-  for *when* concurrency needs a join. Adopt this vocabulary if/when we build §6.
-- **Per-phase token + elapsed surfacing.** Their progress view shows tokens +
-  elapsed per phase; our snapshot shows status/timing/summary but not tokens.
-  Cheap UX win for a remote, cost-sensitive (subscription) tool — candidate
-  post-v1.
-
-**What we deliberately do *not* copy (anti-goals):**
-- **Codegen-the-harness** (Claude writes the JS each run). It conflicts head-on
-  with our typed/tested/reproducible recipe model and the CLAUDE.md "clarity,
-  illegal-states-unrepresentable, no speculative mechanism" stance. A
-  "Claude-drafts-a-flow" capability is *imaginable* later, but it is **not** v1
-  and shouldn't shape the engine.
-- **1,000-agent / 16-concurrency fan-out.** No v1 recipe (B1–B4) needs it. Build
-  the parallel combinator on the *second* real fan-out use, not speculatively.
-
----
-
-## 6. The one real engine change this implies (when, not now)
+## 7. The one real engine change this implies (when, not now)
 
 Four of six patterns need **fan-out + barrier**, which our engine intentionally
-lacks:
+lacks: `Flow.Run` is one-at-a-time and `Flow.cs` throws if two operations run
+concurrently on one actor (*"sequence the calls"*). Correct for B1–B4 (all
+sequential), and `design-screen`'s own "sequential by necessity" note confirms a
+fix loop can't be parallelized anyway. The future addition (gated on a recipe
+that needs it): a `Flow.RunAll` barrier that fans out, awaits all, records each in
+the ledger; relax the per-actor guard by minting one actor per branch (each its
+own session). Out of scope for sequential v1.
 
-- `Flow.Run` runs one operation at a time; `Flow.cs` holds an explicit
-  `_inFlight` guard that **throws if two operations run concurrently on one
-  actor** ("sequence the calls"). That guard is correct for sequential recipes
-  and is the thing to revisit, not bulldoze.
+## 8. Recommendations (prioritized)
 
-The minimal future addition (gated on a recipe that needs it):
-- A **`Flow.RunAll<T>(IEnumerable<IOperation<T>>) -> Task<IReadOnlyList<T>>`**
-  barrier combinator that fans out, awaits all, and records each operation in the
-  ledger (snapshot/SSE already coalesce — a parallel run just bumps versions
-  faster).
-- Relax the per-actor in-flight guard by **minting one actor instance per
-  parallel branch** (each branch gets its own `Agent`/session), preserving the
-  "no concurrent ops on a *single* actor" invariant while allowing N actors.
-- Optionally a `pipeline` staged variant later (only if an item-streaming recipe
-  appears).
-
-This deserves an **ADR** ("orchestration patterns as flow combinators") at the
-point a parallel recipe is real — likely around or after L10, not before. It is
-explicitly **out of scope for the current sequential v1**.
-
----
-
-## 7. Recommendations (prioritized)
-
-1. **Now, free:** fold the two insights into design notes — *pairwise > absolute*
-   in `Reviews`/verdict, and *convergence-not-counter* in the validate-fix loop
-   framing. No code change required.
-2. **Now, framing:** keep positioning sharp — we are the **provider-agnostic,
-   persistent, reproducible** counterpart to a Claude-native, in-session,
-   codegen tool. The HN "control + reproducibility" critique is our home turf.
-3. **Post-v1, on second use:** add `Flow.RunAll` (barrier) + per-branch actor
-   minting; that single addition unlocks fan-out/synthesize, adversarial
-   verification, generate-and-filter, and tournament as **composite flow
-   helpers** — without codegen, without breaking the sequential invariant for
-   recipes that don't opt in. Write the ADR then.
-4. **Consider post-v1:** a schema-validate-and-retry wrapper for structured agent
-   operations; per-operation token/elapsed on the snapshot.
-5. **Do not** chase model-writes-the-harness for v1.
+1. **Now, free:** fold the cheap insights into design notes — schema-output +
+   retry as the structured-result direction; reviewer-consults-oracle/ADRs in
+   `Reviews`; richer verdict + confidence; convergence-not-counter; pairwise
+   scoring.
+2. **Now, framing:** positioning is sharp — provider-agnostic, persistent,
+   reproducible, **and able to pause for a human mid-run**. The HN "control +
+   correctness" critique and the "no mid-run input" limit are precisely our edges.
+3. **Soon:** prototype a schema-validated agent operation (the highest-value
+   mechanical borrow) on one structured call (verdict parse) and see if it
+   replaces ad-hoc parsing.
+4. **Post-v1, on second use:** `Flow.RunAll` barrier + per-branch actors → the
+   four parallel patterns as composite helpers; ADR at that point. Consider
+   sub-flow composition.
+5. **Don't:** chase harness codegen; don't import the flat-orchestration / self-
+   review-because-you-must constraint.
 
 ---
 
 ## Sources
 
 - [Orchestrate subagents at scale with dynamic workflows — Claude Code Docs](https://code.claude.com/docs/en/workflows) **[A]**
-- [A harness for every task: dynamic workflows in Claude Code — Claude blog](https://claude.com/blog/a-harness-for-every-task-dynamic-workflows-in-claude-code) (403 to fetch; pattern defs via summaries)
-- [Dynamic Workflows in Claude Code — Hacker News](https://news.ycombinator.com/item?id=48311705) and [follow-up thread](https://news.ycombinator.com/item?id=48350661)
-- [Claude Code Adds Dynamic Workflows for Parallel Agent Coordination — InfoQ](https://www.infoq.com/news/2026/06/dynamic-workflows-claude-code/)
-- [Deterministic Multi-Agent Orchestration — alexop.dev](https://alexop.dev/posts/claude-code-workflows-deterministic-orchestration/) (primitives; 403 to fetch)
-- [Build Custom Claude Code Workflows: Scripting API — BSWEN](https://docs.bswen.com/blog/2026-06-02-build-custom-claude-code-workflows/) (primitives; 403 to fetch)
-- [Dynamic Workflows: Complete Guide — claudefa.st](https://claudefa.st/blog/guide/development/dynamic-workflows)
-- [Claude's Dynamic Workflows … and the Three Jobs Where LangGraph Still Wins — levelup.gitconnected](https://levelup.gitconnected.com/claudes-dynamic-workflows-the-hands-on-playbook-and-the-three-jobs-where-langgraph-still-wins-ab44b85a70ee)
+- Real saved workflow scripts (verbatim, public repos): [memex `codebase-audit.js`](https://github.com/Zenetusken/memex/blob/main/.claude/workflows/codebase-audit.js), [claude-code-guideline `infra-review.js`](https://github.com/pvthanh-sa/claude-code-guideline/blob/main/.claude/workflows/infra-review.js), [Beamix `design-screen.js`](https://github.com/Adam077K/Beamix/blob/main/.claude/workflows/design-screen.md), [sceneview `fix-issue-batch.js`](https://github.com/sceneview/sceneview/blob/main/.claude/workflows/fix-issue-batch.js) — found via GitHub code search (`path:.claude/workflows extension:js`, 491 results) **[A-code]**
+- [A harness for every task — Claude blog](https://claude.com/blog/a-harness-for-every-task-dynamic-workflows-in-claude-code) (403 to fetch; prose via summaries)
+- [HN discussion](https://news.ycombinator.com/item?id=48311705) and [follow-up](https://news.ycombinator.com/item?id=48350661)
+- [Claude Code Adds Dynamic Workflows — InfoQ](https://www.infoq.com/news/2026/06/dynamic-workflows-claude-code/)
 </content>
-</invoke>
