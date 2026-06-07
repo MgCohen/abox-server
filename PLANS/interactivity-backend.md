@@ -42,15 +42,25 @@ fast-follow (provider-internal permission verdicts — §13).
 
 ---
 
+> **Status (built).** Steps 1–4 are implemented and merged on
+> `feat/interactivity-backend`: the `Resolution` axis + `DecisionKind` seam, the
+> `DenyResolver`, the durable audit ledger, and the pending-decision await +
+> `InteractiveResolver`. **The LLM resolver (§8, build step 5) is deferred** —
+> Auto already covers "proceed autonomously," and an LLM resolver only earns its
+> place once we want a *separate* brain deciding; `Resolution.Llm` stays as a
+> reserved enum value the factory rejects until then.
+
 ## 2. Locked decisions (from planning Q&A)
 
-1. **Build all resolver variants** — Interactive (real await), LLM, Deny.
-   (`AutoResolver` + `NonInteractiveResolver` already exist.)
+1. **Build the needed resolver variants** — Interactive (real await) + Deny now;
+   **LLM deferred** (see status note). (`AutoResolver` + `NonInteractiveResolver`
+   already existed.)
 2. **Real await mechanism.** A pending-decision registry + a resolver that
    **blocks until answered or run-cancelled** (no timeout). Only the HTTP
    fulfill-endpoint + UI are deferred; a **scripted/test fulfiller** drives it now.
-3. **LLM resolver is decoupled** — it depends on an injected `IRationalizer`
-   interface; a separate impl spawns an easy-to-configure agent to rationalize.
+3. **LLM resolver (deferred) folds in `IAgentFactory` directly** — when built it's
+   one thin `IDecisionResolver` that mints a sub-agent; no separate `IRationalizer`
+   seam (that would be an abstraction on its first use).
 4. **Audit is durable** — decisions are recorded on the run, surfaced in the
    snapshot, and persisted via `IFlowHistory`; the provisional in-memory queue is retired.
 5. **DP1 — resolver selection becomes a config axis** (see §4).
@@ -69,8 +79,8 @@ fast-follow (provider-internal permission verdicts — §13).
 | Resolver | Behavior | Caps? |
 |---|---|---|
 | `AutoResolver` *(exists)* | Self-answer "assume low-risk, state it, continue" | yes (loops) |
-| `LlmResolver` *(new)* | Delegate to injected `IRationalizer` | yes (loops) |
-| `DenyResolver` *(new)* | Always refuse — deny choice for a permission Ask; terminal for an open question | no (terminal) |
+| `LlmResolver` *(deferred — §8)* | Mint a sub-agent to answer | yes (loops) |
+| `DenyResolver` *(built)* | Always refuse — deny choice for a permission Ask; terminal for an open question | no (terminal) |
 | `InteractiveResolver` *(new)* | Register a pending decision, **await** answer-or-cancel | no (human self-terminates) |
 | `NonInteractiveResolver` *(exists)* | `null` → terminal `NeedsInput` (the no-resolver default) | no (terminal) |
 
@@ -188,14 +198,21 @@ string; it returns in §8 only if the LLM resolver separates answer from rationa
 
 ---
 
-## 8. LLM resolver
+## 8. LLM resolver — DEFERRED
 
-`LlmResolver(IAgentFactory factory)` *(new)* — a single `IDecisionResolver`. On
+> Not built. Auto already covers "proceed autonomously without a human"; an LLM
+> resolver only earns its place when we want a *separate* brain (a different/cheaper
+> model, or context-isolated decider) making the call rather than nudging the stuck
+> agent. `Resolution.Llm` stays a reserved enum value the factory rejects until
+> then. The sketch below is what to build when that need is real.
+
+`LlmResolver(IAgentFactory factory)` — a single `IDecisionResolver`. On
 `ResolveAsync` it mints an **easy-to-configure** sub-agent via `IAgentFactory`
 (its own small config: model + a focused "pick the best option, justify briefly"
 system prompt), runs it **`Resolution.Auto`, cap 0** so it cannot itself park a
-`NeedsInput` (no recursion), and returns the agent's answer. The justification
-lands in `DecisionRecord.Rationale`.
+`NeedsInput` (no recursion), and returns the agent's answer. If a separate
+justification is wanted, that's when `DecisionDto` regains a `Rationale` field
+(it carries only the answer today — §6).
 
 **No `IRationalizer` seam.** The rationalizing strategy is *already* swappable
 through `IAgentFactory` + the sub-agent's config (model, prompt) — a second
@@ -244,24 +261,26 @@ Thin, no dependencies. For agents that must never proceed on a gated/ambiguous a
 4. **Pending-decision backend + InteractiveResolver.** Registry, await, `ct`
    cancel linkage; scripted fulfiller; wire `Resolution.Human`. Specify (not
    build) the endpoint.
-5. **LLM resolver.** `LlmResolver(IAgentFactory)`; wire `Resolution.Llm`.
+5. ~~**LLM resolver.**~~ **Deferred** (§8) — `Resolution.Llm` left reserved.
 
 ---
 
 ## 12. Done when
 
-- All four resolution modes (`Auto`/`Llm`/`Deny`/`Human`) selectable per agent and
-  exercised end-to-end through `Flow.Run` in tests.
-- `InteractiveResolver` genuinely blocks until a scripted `Resolve` (or run-cancel).
-- A completed run's snapshot + persisted history carry the `DecisionRecord`s
-  (assumptions, human answers, llm rationales, deny); the provisional
-  `Assumptions` queue is gone.
-- Warning-free build, green tests. No UI, no fulfill-endpoint (both specified, deferred).
+- The built resolution modes (`Auto`/`Deny`/`Human`) selectable per agent and
+  exercised end-to-end through `Flow.Run` in tests; `Llm` reserved (deferred, §8).
+- `InteractiveResolver` genuinely blocks until a scripted `Resolve` (or run-cancel). ✅
+- A completed run's snapshot carries the `DecisionDto`s (auto proceed-instructions,
+  human answers, deny) with the right source; the provisional `Assumptions` queue
+  is gone. ✅
+- Warning-free build, green tests. No UI, no fulfill-endpoint (both specified, deferred). ✅
 
 ---
 
 ## 13. Non-goals / deferred (the UI edge)
 
+- **LLM resolver** (§8) — deferred until we want a *separate* brain deciding;
+  `Resolution.Llm` is reserved meanwhile.
 - **Provider-internal permission-verdict audit** (was DP3) — surfacing
   `AutoPolicy` allow/deny verdicts on `DriveResult` and draining them into the
   ledger. A fast-follow once the ledger exists and we can see whether we miss it;
