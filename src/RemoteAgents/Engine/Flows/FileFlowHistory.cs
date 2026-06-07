@@ -1,9 +1,9 @@
 using System.Text.Json;
 using RemoteAgents.Contracts;
 
-namespace RemoteAgents.Flows;
+namespace RemoteAgents.Engine.Flows;
 
-public sealed class FileHistoryStore : IHistoryStore
+public sealed class FileFlowHistory : IFlowHistory
 {
     private const int MaxEntries = 50;
 
@@ -12,7 +12,7 @@ public sealed class FileHistoryStore : IHistoryStore
     private readonly Dictionary<Guid, FlowSnapshot> _byId = [];
     private readonly List<Guid> _order = [];
 
-    public FileHistoryStore()
+    public FileFlowHistory()
     {
         // rebuild/ isolates from the quarantined prototype's sibling flows.json; reverts at L12.
         var root = Path.Combine(
