@@ -7,5 +7,5 @@ namespace RemoteAgents.Flows;
 public sealed class ClaudePingFlow(IAgentFactory agents) : Flow
 {
     protected override Task RunAsync(FlowConfig config, FlowContext ctx, CancellationToken ct) =>
-        Run(agents.Create(Agents.Implementer, ctx.ProjectDir), new AgentArgs("ping", ctx.Request), ct);
+        Run(ctx, agents.Create(Agents.Implementer, ctx.ProjectDir), new AgentArgs("ping", ctx.Request), ct);
 }

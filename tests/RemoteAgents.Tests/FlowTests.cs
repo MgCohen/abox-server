@@ -22,28 +22,28 @@ public class FlowTests
     {
         protected override async Task RunAsync(FlowConfig config, FlowContext ctx, CancellationToken ct)
         {
-            await Run(new FixedOp(), new StepArgs("a", "ra"), ct);
-            await Run(new FixedOp(), new StepArgs("b", "rb"), ct);
+            await Run(ctx, new FixedOp(), new StepArgs("a", "ra"), ct);
+            await Run(ctx, new FixedOp(), new StepArgs("b", "rb"), ct);
         }
     }
 
     private sealed class FailingFlow : Flow
     {
         protected override Task RunAsync(FlowConfig config, FlowContext ctx, CancellationToken ct) =>
-            Run(new ThrowingOp(), new StepArgs("boom", ""), ct);
+            Run(ctx, new ThrowingOp(), new StepArgs("boom", ""), ct);
     }
 
     private sealed class EchoRequestFlow : Flow
     {
         protected override Task RunAsync(FlowConfig config, FlowContext ctx, CancellationToken ct) =>
-            Run(new FixedOp(), new StepArgs("echo", ctx.Request), ct);
+            Run(ctx, new FixedOp(), new StepArgs("echo", ctx.Request), ct);
     }
 
     private sealed class ParallelFlow(int count) : Flow
     {
         protected override Task RunAsync(FlowConfig config, FlowContext ctx, CancellationToken ct) =>
             Task.WhenAll(Enumerable.Range(0, count)
-                .Select(i => Task.Run(() => Run(new FixedOp(), new StepArgs($"op{i}", $"v{i}"), ct), ct)));
+                .Select(i => Task.Run(() => Run(ctx, new FixedOp(), new StepArgs($"op{i}", $"v{i}"), ct), ct)));
     }
 
     private static FlowContext ContextFor(FlowConfig config) =>

@@ -5,7 +5,6 @@ namespace RemoteAgents.Flows;
 
 public abstract class Flow
 {
-    private FlowContext _ctx = null!;
     private readonly ConcurrentDictionary<object, byte> _inFlight = new();
 
     public event Action? Changed;
@@ -14,20 +13,19 @@ public abstract class Flow
 
     public async Task ExecuteAsync(FlowConfig config, FlowContext ctx, CancellationToken ct)
     {
-        _ctx = ctx;
-        SetPhase(FlowPhase.Running);
+        SetPhase(ctx, FlowPhase.Running);
         try
         {
             await RunAsync(config, ctx, ct).ConfigureAwait(false);
-            SetPhase(FlowPhase.Completed);
+            SetPhase(ctx, FlowPhase.Completed);
         }
         catch (OperationCanceledException)
         {
-            SetPhase(FlowPhase.Canceled);
+            SetPhase(ctx, FlowPhase.Canceled);
         }
         catch
         {
-            SetPhase(FlowPhase.Failed);
+            SetPhase(ctx, FlowPhase.Failed);
             throw;
         }
     }
@@ -46,7 +44,7 @@ public abstract class Flow
     }
 
     protected async Task<TResult> Run<TArgs, TResult>(
-        Operation<TArgs, TResult> op, TArgs args, CancellationToken ct)
+        FlowContext ctx, Operation<TArgs, TResult> op, TArgs args, CancellationToken ct)
         where TArgs : OperationArgs
     {
         if (!_inFlight.TryAdd(op, 0))
@@ -54,7 +52,6 @@ public abstract class Flow
                 $"Operation '{args.Name}' is already running on this actor; sequence the calls.");
         try
         {
-            var ctx = _ctx;
             var record = ctx.StartOperation(args.Name);
             Changed?.Invoke();
             try
@@ -84,9 +81,9 @@ public abstract class Flow
         }
     }
 
-    private void SetPhase(FlowPhase phase)
+    private void SetPhase(FlowContext ctx, FlowPhase phase)
     {
-        _ctx.SetPhase(phase);
+        ctx.SetPhase(phase);
         Changed?.Invoke();
     }
 }

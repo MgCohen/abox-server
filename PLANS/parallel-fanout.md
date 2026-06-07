@@ -131,7 +131,9 @@ change required for v1 (revisit grouping/labels only if it reads poorly).
   `Concurrent_operations_are_all_recorded_without_corruption` (64-op fan via
   `Task.Run`). Warning-free build + full suite 155 green on net10. Clears
   engine-audit #1/#2/#4/#7. The `FlowDefinition` concrete-Flow constructor guard
-  (#3/#5) followed in a separate commit (also verified on net10).
+  (#3/#5) followed in a separate commit (also verified on net10). The redundant
+  mutable `_ctx` field was then removed entirely — `ctx` is threaded through
+  `Run`/`SetPhase` (#6), making the non-re-entrancy fix structural.
 
 **Stage 2 — the combinators.**
 - Extract `RunOne(op, args, ct)`; implement `RunAll` (linked-CTS fail-fast) and

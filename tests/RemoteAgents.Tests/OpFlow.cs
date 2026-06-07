@@ -8,5 +8,5 @@ internal sealed class OpFlow<TArgs, TResult>(Flow.Operation<TArgs, TResult> op, 
     public TResult Result { get; private set; } = default!;
 
     protected override async Task RunAsync(FlowConfig config, FlowContext ctx, CancellationToken ct) =>
-        Result = await Run(op, args, ct);
+        Result = await Run(ctx, op, args, ct);
 }
