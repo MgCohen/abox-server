@@ -82,7 +82,7 @@ fast-follow (provider-internal permission verdicts — §13).
 | `LlmResolver` *(deferred — §8)* | Mint a sub-agent to answer | yes (loops) |
 | `DenyResolver` *(built)* | Always refuse — deny choice for a permission Ask; terminal for an open question | no (terminal) |
 | `InteractiveResolver` *(new)* | Register a pending decision, **await** answer-or-cancel | no (human self-terminates) |
-| `NonInteractiveResolver` *(exists)* | `null` → terminal `NeedsInput` (the no-resolver default) | no (terminal) |
+| `NonInteractiveResolver` *(test double)* | `null` → terminal `NeedsInput` (the abstain path; no production `Resolution` maps to it) | no (terminal) |
 
 **Cap rule (refined).** The auto-only cap applies to resolvers that *always
 produce an answer* and could therefore loop forever — `Auto` and `Llm`. `Deny`

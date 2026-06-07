@@ -1,10 +1,8 @@
 namespace RemoteAgents.Actors.Agents;
 
-// Refuses every decision. A permission Ask gets an explicit deny — its reject
-// option, which by convention is the last one (e.g. ["Allow", "Deny"]) — so the
-// refusal is recorded as a real choice, not an abstention. An open question gets
-// null: "I won't decide; stop." (This is the one behavior that distinguishes it
-// from NonInteractiveResolver, which abstains on everything.)
+// Refuses every decision. A permission Ask returns an explicit deny — the reject
+// option, by convention the last one (e.g. ["Allow", "Deny"]) — so it's recorded
+// as a real choice rather than an abstention; anything else gets null.
 public sealed class DenyResolver : IDecisionResolver
 {
     public Resolution Source => Resolution.Deny;

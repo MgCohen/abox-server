@@ -4,7 +4,7 @@ using RemoteAgents.Actors.Agents.Codex;
 namespace RemoteAgents.Actors.Agents;
 
 // Resolution selects the resolver: Auto self-answers, Deny refuses, Human awaits the
-// person (pre-UI the non-interactive stub). Llm is wired in its own build step.
+// person via the injected resolver. Llm is reserved (deferred).
 public sealed class AgentFactory(IDecisionResolver humanResolver, AutoResolver autoResolver, DenyResolver denyResolver, AutoPolicy autoPolicy) : IAgentFactory
 {
     public Agent Create(AgentConfig config, string projectDir) => config switch
