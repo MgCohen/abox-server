@@ -130,12 +130,14 @@ questions); `NonInteractiveResolver` stays as the stub impl.
 ## 7. Build order
 
 0. Resolver rename `IQuestionResolver` → `IDecisionResolver` — **done**.
-1. **Kill Sandbox** (changes 1–4) + realign docs/memory (change 5); green build + tests.
-   One "simplification" commit (with the rename).
-2. **Interactivity (Autonomous path):** add the `Interactivity` flag; select the
-   directive by it (`AgentDirective.Compose`); add the auto-resolver (self-answer +
-   record); `AgentFactory` picks the resolver by the flag. Unit tests. Separate commit.
-3. Merge.
+1. **Kill Sandbox** (changes 1–4) + realign docs/memory (change 5) — **done**
+   (commit `a68b561`, the "simplification" commit, folded in the rename).
+2. **Interactivity (Autonomous path)** — **done**: `Interactivity` flag on `AgentConfig`
+   (default `Autonomous`, behavior-neutral); `AgentDirective.ComposeSystemPrompt` selects
+   the directive by it (shared envelope-format, two preambles); `AutoResolver` self-answers
+   + records; `AgentFactory` picks `AutoResolver` (Autonomous) vs the human/stub resolver
+   (Interactive). Unit tests in `InteractivityTests`.
+3. Merge — pending owner go.
 
 ## 8. Non-goals
 

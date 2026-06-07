@@ -28,6 +28,7 @@ internal static class Composition
         services.AddSingleton<FlowLauncher>();
         services.AddSingleton<IFlowFactory, FlowFactory>();
         services.AddSingleton<IDecisionResolver, NonInteractiveResolver>();
+        services.AddSingleton<AutoResolver>();
         services.AddSingleton<AutoPolicy>();
         services.AddSingleton<IAgentFactory, AgentFactory>();
 

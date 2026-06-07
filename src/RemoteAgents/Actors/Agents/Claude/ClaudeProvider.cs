@@ -23,7 +23,7 @@ public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolv
 
         var isResume = request.SessionId is not null;
         var sessionId = request.SessionId ?? Guid.NewGuid().ToString();
-        var systemPromptFile = WriteSystemPromptFile(AgentDirective.ComposeSystemPrompt(config.SystemPrompt));
+        var systemPromptFile = WriteSystemPromptFile(AgentDirective.ComposeSystemPrompt(config.SystemPrompt, config.Interactivity));
         using var hook = ClaudeHooks.Create(gatePermissions: config.Policy != PermissionPolicy.Bypass);
         try
         {
