@@ -9,7 +9,7 @@ public sealed class CodexProvider(CodexConfig config) : IProvider
     {
         if (config.Policy != PermissionPolicy.Bypass)
             throw new NotSupportedException(
-                $"Codex does not yet honor PermissionPolicy.{config.Policy} (ADR 0007 §5); it runs Sandbox-driven. Leave Policy at the default Bypass.");
+                $"Codex does not yet honor PermissionPolicy.{config.Policy} (ADR 0007 §5); it runs with the baked sandbox default. Leave Policy at the default Bypass.");
 
         var tmpDir = Directory.CreateTempSubdirectory("agents-codex-").FullName;
         try
@@ -33,7 +33,7 @@ public sealed class CodexProvider(CodexConfig config) : IProvider
 
     private ProcessStartInfo BuildStartInfo(AgentRunRequest request, string lastMessageFile)
     {
-        var args = CodexProtocol.BuildArgs(request.SessionId, request.ProjectDir, lastMessageFile, config.Model, config.Sandbox);
+        var args = CodexProtocol.BuildArgs(request.SessionId, request.ProjectDir, lastMessageFile, config.Model);
         var commandLine = "codex " + string.Join(' ', args.Select(Shell.QuoteArg));
 
         var psi = Shell.Command(commandLine);
@@ -52,7 +52,7 @@ public sealed class CodexProvider(CodexConfig config) : IProvider
         });
 
     private string ComposePrompt(AgentRunRequest request) =>
-        AgentDirective.ComposeSystemPrompt(config.SystemPrompt) + "\n\n" + request.Prompt;
+        AgentDirective.ComposeSystemPrompt(config.SystemPrompt, config.Interactivity) + "\n\n" + request.Prompt;
 
     private static void TryDelete(string dir)
     {

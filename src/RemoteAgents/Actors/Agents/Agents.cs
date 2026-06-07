@@ -9,5 +9,5 @@ public static class Agents
         new ClaudeConfig("implementer", "Builds the change.", "", "You implement.", PermissionPolicy.Bypass);
 
     public static readonly AgentConfig Reviewer =
-        new CodexConfig("reviewer", "Reviews the change.", "gpt-5.5", "You review.", Sandbox: "read-only");
+        new CodexConfig("reviewer", "Reviews the change.", "gpt-5.5", "You review.");
 }

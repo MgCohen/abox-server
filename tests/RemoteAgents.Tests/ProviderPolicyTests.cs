@@ -8,7 +8,7 @@ public class ProviderPolicyTests
     [Fact]
     public void Codex_resume_omits_cd_and_sandbox_and_bypasses_instead()
     {
-        var args = CodexProtocol.BuildArgs("sess-1", "C:/proj", "last.txt", "gpt-5.5", "read-only");
+        var args = CodexProtocol.BuildArgs("sess-1", "C:/proj", "last.txt", "gpt-5.5");
 
         Assert.Contains("resume", args);
         Assert.DoesNotContain("--cd", args);
@@ -17,23 +17,23 @@ public class ProviderPolicyTests
     }
 
     [Fact]
-    public void Codex_new_turn_sets_cd_and_sandbox()
+    public void Codex_new_turn_sets_cd_and_the_baked_sandbox_default()
     {
-        var args = CodexProtocol.BuildArgs(null, "C:/proj", "last.txt", "gpt-5.5", "read-only");
+        var args = CodexProtocol.BuildArgs(null, "C:/proj", "last.txt", "gpt-5.5");
 
         Assert.Contains("--cd", args);
         Assert.Contains("--sandbox", args);
         Assert.DoesNotContain("--dangerously-bypass-approvals-and-sandbox", args);
 
         var sandbox = args[args.IndexOf("--sandbox") + 1];
-        var expected = OperatingSystem.IsWindows() ? "danger-full-access" : "read-only";
+        var expected = OperatingSystem.IsWindows() ? "danger-full-access" : "workspace-write";
         Assert.Equal(expected, sandbox);
     }
 
     [Fact]
     public async Task Codex_rejects_a_non_bypass_policy_with_an_actionable_error()
     {
-        var config = new CodexConfig("reviewer", "Reviews.", "gpt-5.5", "You review.", Sandbox: "read-only")
+        var config = new CodexConfig("reviewer", "Reviews.", "gpt-5.5", "You review.")
         {
             Policy = PermissionPolicy.Ask,
         };

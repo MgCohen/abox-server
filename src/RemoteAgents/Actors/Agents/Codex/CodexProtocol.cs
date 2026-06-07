@@ -5,7 +5,7 @@ namespace RemoteAgents.Actors.Agents.Codex;
 
 public static class CodexProtocol
 {
-    public static List<string> BuildArgs(string? sessionId, string projectDir, string lastMessageFile, string model, string sandbox)
+    public static List<string> BuildArgs(string? sessionId, string projectDir, string lastMessageFile, string model)
     {
         var isResume = sessionId is not null;
         var args = new List<string> { "exec" };
@@ -23,7 +23,7 @@ public static class CodexProtocol
         {
             args.Add("--cd"); args.Add(projectDir);
             args.Add("-o"); args.Add(lastMessageFile);
-            args.Add("--sandbox"); args.Add(EffectiveSandbox(sandbox));
+            args.Add("--sandbox"); args.Add(DefaultSandbox());
         }
 
         // codex refuses to run unattended in a non-git or first-seen dir without this.
@@ -34,11 +34,11 @@ public static class CodexProtocol
         return args;
     }
 
-    // Codex's OS sandbox fails to spawn on Windows ("windows sandbox: spawn setup
-    // refresh"), so bypass it there; honor the configured policy elsewhere
-    // (structured-questions FINDINGS Issue 1).
-    private static string EffectiveSandbox(string sandbox)
-        => OperatingSystem.IsWindows() ? "danger-full-access" : sandbox;
+    // Capability is the host/VM's wall now, not a per-agent knob (permission-interaction-model
+    // §1), but codex still needs a valid --sandbox arg. Windows can't spawn its OS sandbox
+    // ("windows sandbox: spawn setup refresh"), so bypass there (FINDINGS Issue 1).
+    private static string DefaultSandbox()
+        => OperatingSystem.IsWindows() ? "danger-full-access" : "workspace-write";
 
     public static string? ScanSessionId(string line)
     {

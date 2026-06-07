@@ -10,8 +10,16 @@
   permission-as-question. The one-way `Stop` helper (`ClaudeStopHook`) is generalized
   to `ClaudeHooks`, which renders both the `Stop` hook and (when gating) a
   request/response `PreToolUse` hook into one `--settings` file.
-- **Amends:** D4 (interactive Q&A deferral). The `IQuestionResolver` seam gets its
+- **Amends:** D4 (interactive Q&A deferral). The `IDecisionResolver` seam gets its
   **first consumer** here, scoped to tool-permission — not free-form mid-turn chat.
+- **Amended (2026-06-07) by [permission-interaction-model.md](../../PLANS/permission-interaction-model.md):**
+  Sandbox is **killed as a layer** — capability is the host/VM's wall, not a per-agent
+  knob, so this ADR no longer models a capability axis (its old open question is closed:
+  we model approval only). `CodexConfig.Sandbox` and the `read-only` Reviewer are gone;
+  Codex runs with one baked internal sandbox default. The resolver seam was renamed
+  `IQuestionResolver` → `IDecisionResolver` (it openly resolves both permissions and
+  questions). The two concerns are now **Permission** (the gate) and **Interaction** (the
+  intercom), sharing the one resolve seam. Read item 5 and the Consequences with that in mind.
 
 ## Context
 
@@ -58,29 +66,32 @@ Two facts shaped the mechanism:
    `ResponseCapMs` / `MaxOverallMs` (A10).
 5. **Codex policy mapping is deferred (research-gated).** `codex exec` is
    non-interactive; whether `Ask` can ride the `--json` stream or needs the
-   app-server protocol is unproven. Codex stays **Sandbox-driven** for now (the
-   `read-only` Reviewer is unchanged) and ignores `Policy`. No cross-provider hook
-   framework (ADR 0006 holds).
-6. **`Auto` = the gate with no human: auto-approve every tool.** `Auto` runs
-   `default` perm-mode + the same `PreToolUse` hook as `Ask`, but the pump approves
-   each call automatically instead of consulting the resolver — no human, no hang,
-   every tool observable. It deliberately does **not** use `acceptEdits` (which still
-   prompts on `Bash` and would hang unattended — the very bug that started this).
-   The v1 decision is a flat auto-allow; the **allowlist/denylist policy engine**
-   (allow `ls`/build/test, deny `rm -rf`/`curl|sh`/`git push`/out-of-workspace writes)
-   is the deferred refinement (YAGNI) — that "second use" is where the decision logic
-   would move into an `AutoResolver` rather than a provider branch.
+   app-server protocol is unproven. Codex runs with a **baked internal sandbox
+   default** (`danger-full-access` on Windows — its OS sandbox won't spawn there —
+   `workspace-write` elsewhere) and ignores `Policy` beyond rejecting any non-`Bypass`
+   value with an actionable error. No cross-provider hook framework (ADR 0006 holds).
+6. **`Auto` = the gate with no human, governed by a denylist guardrail.** `Auto` runs
+   `default` perm-mode + the same `PreToolUse` hook as `Ask`, but the pump decides via
+   `AutoPolicy` instead of consulting the resolver — no human, no hang, every tool
+   observable. It deliberately does **not** use `acceptEdits` (which still prompts on
+   `Bash` and would hang unattended — the very bug that started this). `AutoPolicy` is
+   **default-allow with a denylist**: it blocks the catastrophic, hard-to-undo commands
+   (`rm -rf`, `Remove-Item -Recurse`, `git push`, `curl|sh`, `sudo`, disk format) and
+   allows everything else. It is a **guardrail, not a sandbox** — the OS sandbox / VM is
+   the real boundary; this just stops the obvious footguns. A stricter **allowlist
+   (default-deny)** mode and **out-of-workspace-write** rules are the noted next steps
+   (YAGNI — added when an agent needs them).
 
 ## Consequences
 
 - Per-agent posture replaces the hard-coded bypass. Current intentional defaults:
   Implementer `Bypass` (the only currently-safe unattended Claude posture that still
   *does work* — `Ask` + `NonInteractive` denies everything, so it's useless until an
-  interactive resolver exists), Reviewer `Bypass` + Codex `read-only` sandbox.
+  interactive resolver exists), Reviewer `Bypass` (Codex, baked sandbox default).
 - `ClaudeHooks` now owns both lifecycle signals (Stop) and the permission
   request/response file protocol; `ClaudePermission` owns the pure payload→`Choice`
   and decision→envelope transforms (unit-tested).
-- `IQuestionResolver` is wired into DI (`NonInteractiveResolver` default) and consumed
+- `IDecisionResolver` is wired into DI (`NonInteractiveResolver` default) and consumed
   by `ClaudeProvider`. The same seam later serves end-of-turn `NeedsInput` when the
   flow layer learns to route it (deferred — likely the UI / terminal-driven work).
 - Fixed a latent coupling: the prompt-ready marker was `shift+tab` (only on the
