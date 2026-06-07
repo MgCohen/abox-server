@@ -38,7 +38,8 @@ Two facts shaped the mechanism:
 1. **One provider-agnostic enum** `PermissionPolicy { Bypass, Auto, Ask }` on
    `AgentConfig`, default `Bypass` (behavior-neutral). The raw
    `ClaudeConfig.PermissionMode` string is removed; Claude derives its perm-mode from
-   the policy (`Bypass`→`bypassPermissions`, `Auto`→`acceptEdits`, `Ask`→`default`).
+   the policy (`Bypass`→`bypassPermissions`; `Auto` and `Ask` both →`default` and gate
+   via the hook, differing only in who decides).
 2. **A permission request is a `Choice` question.** A gated tool becomes
    `AgentQuestion.Choice("Allow \`Tool\`: detail ?", ["Allow","Deny"], …)`, resolved
    through `IQuestionResolver`. **`null` ⇒ deny** — the safe, *non-hanging* default
@@ -60,12 +61,15 @@ Two facts shaped the mechanism:
    app-server protocol is unproven. Codex stays **Sandbox-driven** for now (the
    `read-only` Reviewer is unchanged) and ignores `Policy`. No cross-provider hook
    framework (ADR 0006 holds).
-6. **`Auto` is provisional.** It maps to `acceptEdits` as the v1-minimal "allow edits,
-   don't ask a human." But `acceptEdits` *still* prompts on `Bash` — so `Auto` is not
-   yet safe for unattended *command-heavy* Claude turns (the very hang that started
-   this). A real `Auto` should route the same `PreToolUse` hook through an
-   auto-allow/allowlist policy instead of the human resolver. Deferred until a real
-   need (YAGNI); the enum reserves the slot.
+6. **`Auto` = the gate with no human: auto-approve every tool.** `Auto` runs
+   `default` perm-mode + the same `PreToolUse` hook as `Ask`, but the pump approves
+   each call automatically instead of consulting the resolver — no human, no hang,
+   every tool observable. It deliberately does **not** use `acceptEdits` (which still
+   prompts on `Bash` and would hang unattended — the very bug that started this).
+   The v1 decision is a flat auto-allow; the **allowlist/denylist policy engine**
+   (allow `ls`/build/test, deny `rm -rf`/`curl|sh`/`git push`/out-of-workspace writes)
+   is the deferred refinement (YAGNI) — that "second use" is where the decision logic
+   would move into an `AutoResolver` rather than a provider branch.
 
 ## Consequences
 

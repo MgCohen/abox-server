@@ -24,7 +24,7 @@ public sealed class ClaudeProvider(ClaudeConfig config, IQuestionResolver resolv
         var isResume = request.SessionId is not null;
         var sessionId = request.SessionId ?? Guid.NewGuid().ToString();
         var systemPromptFile = WriteSystemPromptFile(AgentDirective.ComposeSystemPrompt(config.SystemPrompt));
-        using var hook = ClaudeHooks.Create(gatePermissions: config.Policy == PermissionPolicy.Ask);
+        using var hook = ClaudeHooks.Create(gatePermissions: config.Policy != PermissionPolicy.Bypass);
         try
         {
             var permissionMode = ClaudeProtocol.PermissionMode(config.Policy);
@@ -120,12 +120,20 @@ public sealed class ClaudeProvider(ClaudeConfig config, IQuestionResolver resolv
         }
     }
 
-    // A gated tool is a Choice question; an unresolvable one (null) denies — the
-    // safe, non-hanging default that replaces acceptEdits' silent mid-turn block.
+    // Auto applies an automatic policy with no human in the loop. v1 minimal:
+    // auto-approve every gated tool (the allowlist/denylist engine is the deferred
+    // refinement, ADR 0007 §6 — the "second use" that would earn an AutoResolver).
+    // Ask routes to the resolver; an unresolvable call (null) denies — the safe,
+    // non-hanging default that replaces acceptEdits' silent mid-turn block.
     private async Task ResolvePermissionAsync(ClaudeHooks hook, PermissionRequest request, CancellationToken ct)
     {
-        var answer = await resolver.ResolveAsync(ClaudePermission.ToQuestion(request), ct);
-        var allow = ClaudePermission.IsAllow(answer);
+        if (config.Policy == PermissionPolicy.Auto)
+        {
+            hook.Respond(request, ClaudePermission.RenderResponse(allow: true, "auto-approved"));
+            return;
+        }
+
+        var allow = ClaudePermission.IsAllow(await resolver.ResolveAsync(ClaudePermission.ToQuestion(request), ct));
         hook.Respond(request, ClaudePermission.RenderResponse(allow, allow ? "approved" : "denied (no approval)"));
     }
 

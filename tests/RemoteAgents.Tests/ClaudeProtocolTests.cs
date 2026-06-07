@@ -7,7 +7,7 @@ public class ClaudeProtocolTests
 {
     [Theory]
     [InlineData(PermissionPolicy.Bypass, "bypassPermissions")]
-    [InlineData(PermissionPolicy.Auto, "acceptEdits")]
+    [InlineData(PermissionPolicy.Auto, "default")]
     [InlineData(PermissionPolicy.Ask, "default")]
     public void PermissionMode_maps_each_policy_to_its_claude_flag(PermissionPolicy policy, string expected)
         => Assert.Equal(expected, ClaudeProtocol.PermissionMode(policy));

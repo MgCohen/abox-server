@@ -3,10 +3,11 @@
 > **Status.** LANDED for Claude (2026-06-06) — see
 > [ADR 0007](../design/adr/0007-permission-policy-pretooluse.md). Phases 0–3 built,
 > unit-tested, and live-validated end-to-end (allow path runs the gated `Write`;
-> deny-on-null denies it and the turn completes without hanging). Phase 4 (Codex
-> `Ask` spike) and Phase 5 (`Auto` policy engine) remain deferred — Codex stays
-> Sandbox-driven and ignores `Policy`; `Auto`→`acceptEdits` is provisional (still
-> prompts on `Bash`, so not yet safe for unattended command turns — see ADR 0007 §6).
+> deny-on-null denies it and the turn completes without hanging). `Auto` also landed:
+> same `PreToolUse` gate, pump auto-approves (no `acceptEdits`, no hang). Phase 4
+> (Codex `Ask` spike) remains deferred — Codex stays Sandbox-driven and ignores
+> `Policy`. Phase 5 narrows to just the allowlist/denylist engine that would replace
+> `Auto`'s flat auto-allow (see ADR 0007 §6).
 > Builds on the `Stop` hook ([ADR 0006](../design/adr/0006-scoped-hooks-claude-stop.md))
 > and is the first consumer of the `IQuestionResolver` / `AgentQuestion` seam.
 
@@ -57,9 +58,9 @@ public enum PermissionPolicy { Bypass, Auto, Ask }
 
 | Policy | Meaning | Claude | Codex |
 |--------|---------|--------|-------|
-| **Bypass** | no safety check; run everything | `--permission-mode bypassPermissions` | `danger-full-access` |
-| **Auto** | "don't ask" — auto-decide by a static policy, no human | `acceptEdits` (+ allowlist later) | `workspace-write` + `--ask-for-approval never` |
-| **Ask** | each gated tool → `NeedsInput` → `IQuestionResolver` | `default` perm-mode + a `PreToolUse` blocking hook | **research-gated** (see §4.6) |
+| **Bypass** | no safety check; run everything | `--permission-mode bypassPermissions`, no hook | `danger-full-access` |
+| **Auto** | "don't ask" — auto-decide, no human | `default` + `PreToolUse` hook, pump auto-approves (allowlist later) | **research-gated** (see §4.6) |
+| **Ask** | each gated tool → `Choice` → `IQuestionResolver` | `default` + `PreToolUse` hook, pump routes to resolver | **research-gated** (see §4.6) |
 
 - **Default = `Bypass`** — preserves exactly today's behavior, so phase 0 is a
   no-op refactor (no surprise behavior change on existing agents).

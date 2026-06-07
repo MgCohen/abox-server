@@ -17,12 +17,13 @@ public static class ClaudeProtocol
         return PromptReadyMarkers.Any(m => normalized.Contains(m, StringComparison.OrdinalIgnoreCase));
     }
 
-    // Bypass skips every check; Auto auto-accepts edits but never blocks on a
-    // human; Ask runs the default prompt-mode so the PreToolUse hook can gate.
+    // Bypass skips every check; Auto and Ask both run the default prompt-mode so
+    // the PreToolUse hook gates each tool — they differ only in who decides
+    // (Auto auto-approves, Ask routes to the resolver), not in the launch flag.
     public static string PermissionMode(PermissionPolicy policy) => policy switch
     {
         PermissionPolicy.Bypass => "bypassPermissions",
-        PermissionPolicy.Auto => "acceptEdits",
+        PermissionPolicy.Auto => "default",
         PermissionPolicy.Ask => "default",
         _ => throw new ArgumentOutOfRangeException(nameof(policy), policy, "Unknown permission policy."),
     };

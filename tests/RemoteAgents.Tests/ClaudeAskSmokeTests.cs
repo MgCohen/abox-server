@@ -22,11 +22,29 @@ public class ClaudeAskSmokeTests(ITestOutputHelper output)
         var projectDir = Directory.CreateTempSubdirectory("claude-ask-").FullName;
         try
         {
-            await DriveAsync(resolver, projectDir, CreateFilePrompt);
+            await DriveAsync(PermissionPolicy.Ask, resolver, projectDir, CreateFilePrompt);
 
             AssertGatedToolWasAskedAbout(resolver);
             var written = Path.Combine(projectDir, "hello.txt");
             Assert.True(File.Exists(written), $"expected {written} to be created after Allow");
+        }
+        finally { TryDeleteDir(projectDir); }
+    }
+
+    // Auto auto-approves through the same gate without a human: the write runs even
+    // though the resolver would have denied, and the resolver is never consulted.
+    [Fact(Skip = Skip)]
+    public async Task Auto_runs_the_gated_tool_without_consulting_the_resolver()
+    {
+        var resolver = new RecordingResolver("Deny");
+        var projectDir = Directory.CreateTempSubdirectory("claude-auto-").FullName;
+        try
+        {
+            await DriveAsync(PermissionPolicy.Auto, resolver, projectDir, CreateFilePrompt);
+
+            Assert.Empty(resolver.Questions);
+            var written = Path.Combine(projectDir, "hello.txt");
+            Assert.True(File.Exists(written), $"expected {written} to be created under Auto");
         }
         finally { TryDeleteDir(projectDir); }
     }
@@ -40,7 +58,7 @@ public class ClaudeAskSmokeTests(ITestOutputHelper output)
         var projectDir = Directory.CreateTempSubdirectory("claude-ask-").FullName;
         try
         {
-            await DriveAsync(resolver, projectDir, CreateFilePrompt);
+            await DriveAsync(PermissionPolicy.Ask, resolver, projectDir, CreateFilePrompt);
 
             AssertGatedToolWasAskedAbout(resolver);
             var written = Path.Combine(projectDir, "hello.txt");
@@ -56,9 +74,9 @@ public class ClaudeAskSmokeTests(ITestOutputHelper output)
         foreach (var q in resolver.Questions) output.WriteLine($"gated: {q.Prompt}");
     }
 
-    private async Task DriveAsync(IQuestionResolver resolver, string projectDir, string prompt)
+    private async Task DriveAsync(PermissionPolicy policy, IQuestionResolver resolver, string projectDir, string prompt)
     {
-        var config = new ClaudeConfig("asker", "Asks before acting.", "", "You implement.", PermissionPolicy.Ask);
+        var config = new ClaudeConfig("asker", "Asks before acting.", "", "You implement.", policy);
         var provider = new ClaudeProvider(config, resolver);
 
         using var cts = new CancellationTokenSource(Timeout);
