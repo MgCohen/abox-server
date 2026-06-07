@@ -15,7 +15,7 @@ public class AgentFactoryTests
     public async Task Auto_is_wired_to_the_auto_resolver_and_capped()
     {
         var human = new SpyResolver(null);
-        var factory = new AgentFactory(human, new AutoResolver(), new AutoPolicy());
+        var factory = new AgentFactory(human, new AutoResolver(), new DenyResolver(), new AutoPolicy());
         var config = new FakeAgentConfig("a", "d", "m", "s", Reply: Envelope)
         {
             Resolution = Resolution.Auto,
@@ -33,7 +33,7 @@ public class AgentFactoryTests
     public async Task Human_is_wired_to_the_human_resolver()
     {
         var human = new SpyResolver(null);
-        var factory = new AgentFactory(human, new AutoResolver(), new AutoPolicy());
+        var factory = new AgentFactory(human, new AutoResolver(), new DenyResolver(), new AutoPolicy());
         var config = new FakeAgentConfig("a", "d", "m", "s", Reply: Envelope)
         {
             Resolution = Resolution.Human,
@@ -43,6 +43,22 @@ public class AgentFactoryTests
 
         Assert.IsType<AgentOutcome.NeedsInput>(outcome);
         Assert.Equal(1, human.Calls);
+    }
+
+    [Fact]
+    public async Task Deny_is_wired_and_runs_uncapped()
+    {
+        var human = new SpyResolver(null);
+        var factory = new AgentFactory(human, new AutoResolver(), new DenyResolver(), new AutoPolicy());
+        var config = new FakeAgentConfig("a", "d", "m", "s", Reply: Envelope)
+        {
+            Resolution = Resolution.Deny,
+        };
+
+        var outcome = await Op.Exec(factory.Create(config, "C:/proj"), new AgentArgs("turn", "go"));
+
+        Assert.IsType<AgentOutcome.NeedsInput>(outcome);
+        Assert.Equal(0, human.Calls);
     }
 
     private sealed class SpyResolver(string? answer) : IDecisionResolver
