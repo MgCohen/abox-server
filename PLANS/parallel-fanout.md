@@ -125,6 +125,12 @@ change required for v1 (revisit grouping/labels only if it reads poorly).
 - **Done when:** existing sequential flows behave identically and stay green; a new
   stress test hammering `Changed` from many threads shows no exception, monotonic
   versions, and a final snapshot containing every operation.
+- **Landed 2026-06-07.** Handle-based ledger + single `Lock` + atomic `Capture()`;
+  `Flow.Run` bookkeeping moved inside `try` and `ctx` read via a local;
+  `SnapshotStream` builds under its lock from `Capture()`. Added
+  `Concurrent_operations_are_all_recorded_without_corruption` (64-op fan via
+  `Task.Run`). Warning-free build + full suite 155 green on net10. Clears
+  engine-audit #1/#2/#4/#7; the `FlowDefinition` guard (#3/#5) is **not** included.
 
 **Stage 2 — the combinators.**
 - Extract `RunOne(op, args, ct)`; implement `RunAll` (linked-CTS fail-fast) and
