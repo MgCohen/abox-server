@@ -134,27 +134,30 @@ smell we're avoiding.
 ## 6. Audit model
 
 ```
-record DecisionRecord(
-    DecisionKind Kind,
+record DecisionDto(           // Contracts, parallel to OperationDto
+    string Kind,               // "Permission" | "Question"
     string Prompt,
-    string Answer,              // the answer / allow / deny text
-    Resolution Source,         // Auto | Llm | Deny | Human — reuse the §4 enum
-    string? Rationale,          // LLM rationale or auto assumption
+    string Answer,             // the answer / allow / deny text
+    string Source,             // Resolution.ToString(): "Auto" | "Llm" | "Deny" | "Human"
     DateTimeOffset At);
 ```
 
-`Source` reuses the `Resolution` enum from §4 — the source of a decision *is* the
-resolver that made it, so a separate `DecisionSource` enum with the same four
-members would only drift.
+`Kind`/`Source` are stringified at the boundary: `DecisionDto` lives in `Contracts`
+(the leaf), which can't reference the `DecisionKind`/`Resolution` enums in the
+orchestrator. The source label comes from `IDecisionResolver.Source` (a new
+property — the resolver *is* the decider, so it declares its own `Resolution`).
+`Rationale` was dropped for now: nothing produces it and the seam returns a single
+string; it returns in §8 only if the LLM resolver separates answer from rationale.
 
 - **Collected on the run.** `FlowContext` gains a decision ledger
   (`RecordDecision` + a read-only list), surfaced on `FlowSnapshot` and persisted
   with the snapshot via `IFlowHistory` (no new store).
-- **Recorded by the Agent resolve loop** at each resolution (it has the answer,
-  the `Resolution` source, and the `FlowContext`). This covers every
-  resolver-path decision: auto assumptions, human answers, llm rationales, deny.
+- **Drained, not threaded.** The `Agent` accumulates its turn's decisions and
+  exposes them via a capability seam, `IDecisionSource`; `Flow.Run` drains them
+  onto the ledger after the operation completes. This keeps the `Agent` free of any
+  `FlowContext` dependency (cleaner than the Agent holding the context directly).
 - **Retire** `AutoResolver`'s in-memory `Assumptions` queue — its content becomes
-  `DecisionRecord{Source=Auto}` on the run.
+  `DecisionDto{Source="Auto"}` on the run.
 
 > Provider-internal permission verdicts (`AutoPolicy` mid-`DriveAsync`) are *not*
 > captured here — that's the deferred fast-follow (§13). The resolver path above is

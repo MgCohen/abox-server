@@ -23,7 +23,6 @@ public class InteractivitySmokeTests(ITestOutputHelper output)
         var outcome = await DriveAsync(Resolution.Auto, resolver, AmbiguousPrompt);
 
         Assert.IsType<AgentOutcome.Completed>(outcome);
-        Assert.NotEmpty(resolver.Assumptions);
     }
 
     [Fact(Skip = Skip)]
@@ -67,6 +66,8 @@ public class InteractivitySmokeTests(ITestOutputHelper output)
 
     private sealed class FixedResolver(string answer) : IDecisionResolver
     {
+        public Resolution Source => Resolution.Human;
+
         public Task<string?> ResolveAsync(AgentQuestion question, DecisionKind kind, CancellationToken ct)
             => Task.FromResult<string?>(answer);
     }

@@ -1,9 +1,8 @@
-using System.Collections.Concurrent;
-
 namespace RemoteAgents.Actors.Agents;
 
 // A permission Choice self-answer is never "Allow", so Auto + Ask degrades to a
 // safe deny — autonomous agents gate via Auto/Bypass policy, not Ask (permission-interaction-model §2).
+// The proceed instruction it returns is recorded on the run ledger by the Agent loop.
 public sealed class AutoResolver : IDecisionResolver
 {
     private const string ProceedInstruction =
@@ -11,16 +10,8 @@ public sealed class AutoResolver : IDecisionResolver
         "reasonable, low-risk option, state the assumption you are making, and continue. " +
         "Do not ask again unless you truly cannot proceed.";
 
-    // PROVISIONAL record: in-memory until the run history owns recorded assumptions.
-    private readonly ConcurrentQueue<Assumption> _assumptions = new();
-
-    public IReadOnlyCollection<Assumption> Assumptions => _assumptions;
+    public Resolution Source => Resolution.Auto;
 
     public Task<string?> ResolveAsync(AgentQuestion question, DecisionKind kind, CancellationToken ct)
-    {
-        _assumptions.Enqueue(new Assumption(question.Prompt, ProceedInstruction));
-        return Task.FromResult<string?>(ProceedInstruction);
-    }
-
-    public sealed record Assumption(string Question, string Answer);
+        => Task.FromResult<string?>(ProceedInstruction);
 }

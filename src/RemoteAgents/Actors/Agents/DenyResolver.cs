@@ -7,6 +7,8 @@ namespace RemoteAgents.Actors.Agents;
 // from NonInteractiveResolver, which abstains on everything.)
 public sealed class DenyResolver : IDecisionResolver
 {
+    public Resolution Source => Resolution.Deny;
+
     public Task<string?> ResolveAsync(AgentQuestion question, DecisionKind kind, CancellationToken ct)
     {
         string? answer = kind == DecisionKind.Permission && question is AgentQuestion.Choice { Options: [.., var deny] }

@@ -33,7 +33,7 @@ public class InteractivityTests
     }
 
     [Fact]
-    public async Task The_auto_resolver_self_answers_and_records_the_assumption()
+    public async Task The_auto_resolver_self_answers_with_a_proceed_instruction()
     {
         var resolver = new AutoResolver();
         var question = new AgentQuestion.Open("Which bucket?", "raw");
@@ -41,9 +41,7 @@ public class InteractivityTests
         var answer = await resolver.ResolveAsync(question, DecisionKind.Question, CancellationToken.None);
 
         Assert.False(string.IsNullOrWhiteSpace(answer));
-        var recorded = Assert.Single(resolver.Assumptions);
-        Assert.Equal("Which bucket?", recorded.Question);
-        Assert.Equal(answer, recorded.Answer);
+        Assert.Equal(Resolution.Auto, resolver.Source);
     }
 
     // Auto + Ask degrades to deny: the self-answer is never "Allow".

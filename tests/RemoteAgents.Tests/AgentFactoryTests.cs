@@ -65,6 +65,8 @@ public class AgentFactoryTests
     {
         public int Calls { get; private set; }
 
+        public Resolution Source => Resolution.Human;
+
         public Task<string?> ResolveAsync(AgentQuestion question, DecisionKind kind, CancellationToken ct)
         {
             Calls++;

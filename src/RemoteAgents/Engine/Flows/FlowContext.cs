@@ -6,6 +6,7 @@ namespace RemoteAgents.Engine.Flows;
 public sealed class FlowContext(string flowName, string project, string projectDir, string request)
 {
     private readonly List<OperationRecord> _operations = [];
+    private readonly List<DecisionDto> _decisions = [];
 
     public Guid Id { get; } = Guid.NewGuid();
 
@@ -37,5 +38,9 @@ public sealed class FlowContext(string flowName, string project, string projectD
 
     internal void SetPhase(FlowPhase phase) => Phase = phase;
 
+    internal void RecordDecision(DecisionDto decision) => _decisions.Add(decision);
+
     internal IReadOnlyList<OperationRecord> Operations => _operations;
+
+    internal IReadOnlyList<DecisionDto> Decisions => _decisions;
 }

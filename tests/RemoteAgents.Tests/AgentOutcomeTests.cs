@@ -95,6 +95,8 @@ public class AgentOutcomeTests
 
     private sealed class FixedResolver(string answer) : IDecisionResolver
     {
+        public Resolution Source => Resolution.Human;
+
         public Task<string?> ResolveAsync(AgentQuestion question, DecisionKind kind, CancellationToken ct)
             => Task.FromResult<string?>(answer);
     }
