@@ -8,7 +8,8 @@ public class AgentTests
 {
     private sealed class FakeAgentFactory : IAgentFactory
     {
-        public Agent Create(AgentConfig config, string projectDir) => new(new FakeProvider(config), projectDir);
+        public Agent Create(AgentConfig config, string projectDir) =>
+            new(new FakeProvider(config), new NonInteractiveResolver(), null, projectDir);
     }
 
     [Fact]
@@ -31,7 +32,7 @@ public class AgentTests
     public async Task An_agent_reuses_its_session_across_calls()
     {
         var seen = new List<AgentRunRequest>();
-        var agent = new Agent(new CapturingProvider(seen.Add), "C:/proj");
+        var agent = new Agent(new CapturingProvider(seen.Add), new NonInteractiveResolver(), null, "C:/proj");
 
         await Op.Exec(agent, new AgentArgs("first", "one"));
         await Op.Exec(agent, new AgentArgs("second", "two"));
@@ -45,7 +46,7 @@ public class AgentTests
     public async Task An_agent_bakes_its_project_dir_and_starts_the_first_call_without_a_session()
     {
         AgentRunRequest? seen = null;
-        var agent = new Agent(new CapturingProvider(r => seen = r), "C:/work/card");
+        var agent = new Agent(new CapturingProvider(r => seen = r), new NonInteractiveResolver(), null, "C:/work/card");
 
         await Op.Exec(agent, new AgentArgs("implement", "p"));
 
@@ -58,7 +59,7 @@ public class AgentTests
     [Fact]
     public async Task An_agent_result_carries_the_transcript()
     {
-        var agent = new Agent(new FakeProvider(Agents.Reviewer), "C:/proj");
+        var agent = new Agent(new FakeProvider(Agents.Reviewer), new NonInteractiveResolver(), null, "C:/proj");
 
         var outcome = await Op.Exec(agent, new AgentArgs("look", "look"));
 

@@ -17,13 +17,15 @@ public class CodexSmokeTests(ITestOutputHelper output)
         Assert.False(string.IsNullOrWhiteSpace(op.Summary));
     }
 
+    // The ping flow's Reviewer is Autonomous, so a question is self-resolved by the
+    // auto-resolver and the run continues instead of surfacing "Needs input:".
     [Fact(Skip = Skip)]
-    public async Task Missing_secret_asks_a_question()
+    public async Task Missing_secret_self_resolves_under_autonomy()
     {
         var op = await DriveAsync("Add our production database password to a new .env file so the service can connect to the live database.");
 
         Assert.Equal(OperationStatus.Completed, op.Status);
-        Assert.StartsWith("Needs input:", op.Summary ?? "");
+        Assert.DoesNotContain("Needs input:", op.Summary ?? "");
     }
 
     [Fact(Skip = Skip)]

@@ -82,6 +82,58 @@ combo (human answers questions, the guardrail decides tools) — and simply docu
 **`Ask` presumes `Interactive`**: an `Autonomous` + `Ask` agent behaves like `Auto`. No
 coercion code.
 
+### The resume loop (the Agent owns it)
+
+There are **two question channels**, and they already live in different places:
+
+- **Mid-turn permission gate** (`PreToolUse`) — resolved *inside one* `provider.DriveAsync`
+  call; the resolver is already injected into `ClaudeProvider`. No loop leaks to the flow.
+- **End-of-turn question** (`<<NEEDS_INPUT>>`) — `Agent.Invoke` parses it into `NeedsInput`.
+  Answering it means **running the agent again** with the answer as the next prompt (resume).
+
+The end-of-turn resume loop is what would otherwise be copy-pasted into every flow. **The
+`Agent` owns it**, because the Agent already carries the session (`_sessionId`) across turns
+and already knows how to "run again," and the loop is provider-agnostic (every provider emits
+the same envelope) so it belongs *above* the provider. `AgentFactory` injects the **same
+resolver instance** into the Agent (end-of-turn questions) that it already injects into the
+provider (mid-turn permissions) — one seam, both surfaces.
+
+`Agent.Invoke` becomes a resolve→resume loop:
+
+```
+// resolver + int? resolveCap injected into the Agent by AgentFactory
+count = 0
+run turn
+while outcome is NeedsInput:
+    if resolveCap is {} cap && count >= cap:
+        return Faulted("auto-resolution exhausted after N rounds")   // only reachable when bounded ⇒ auto
+    answer = await resolver.ResolveAsync(needs.Question, ct)
+    if answer is null: break        // human said "done" / declined ⇒ terminal NeedsInput (escalate)
+    count++; outcome = run next turn with answer
+return outcome
+```
+
+**The cap is auto-only, and it's the factory's call — not the resolver's, not the Agent's.**
+A human resolver self-terminates (it returns null when the person is done), so it needs no cap
+and must not be forced to stop. `AutoResolver` never self-terminates (it self-answers forever),
+so it needs one. The cap *value* is a per-agent config knob — `AgentConfig.ResolveCap` (default
+8) — and `AgentFactory` passes `config.ResolveCap` for Autonomous, `null` for Interactive, into
+the `Agent` ctor. The *counter* lives in the Agent's per-run loop (a local var, so it resets each
+`Invoke`; this is also why it can't live on the singleton `AutoResolver`). The Agent honors a
+nullable cap generically — it never learns the word "Autonomous" and never sniffs the resolver,
+and nothing lands on `IDecisionResolver`. The two break branches give exactly the three behaviors:
+
+- **Autonomous** → bounded; a runaway question-loop `Faulted`s loudly (a stuck loop is a malfunction).
+- **Interactive/human** → `ResolveCap` null, cap branch unreachable; the human runs as long as
+  they like and stops by returning null → clean terminal `NeedsInput`, never a fault.
+- The Agent never learns its own `Interactivity` — it just "resolves until null, or until the
+  resolver's own cap." No mode plumbed in, no type-sniffing.
+
+**Buildable pre-UI, no regression.** Autonomous now actually resolves + resumes in production
+(its first real trigger — the win). Interactive pre-UI still wires the stub resolver, which
+returns null on the first question → the loop breaks immediately → terminal `NeedsInput`
+(today's exact behavior). The human side only changes when the UI swaps a real resolver in.
+
 ## 3. Scope
 
 **In:**
@@ -93,10 +145,15 @@ coercion code.
   `IDecisionResolver`, the pump, the Codex Bypass-guard.
 - Realign docs (ADR 0007, permission-policy-plan, memory) to the model above.
 
+- **The Agent-owned resume loop** (`Agent.Invoke` resolves end-of-turn `NeedsInput`
+  through its injected resolver, bounded by `ResolveCap` only when auto). Gives the
+  Autonomous path its production trigger; Interactive stays terminal pre-UI (stub returns
+  null → loop breaks → `NeedsInput`).
+
 **Out / deferred (unchanged):**
-- **Interactive mode's human side** — the human resolver + end-of-turn resume loop —
-  the UI / terminal-driven work. Pre-UI an Interactive agent's question goes terminal
-  (`NeedsInput`, no resume). Autonomous needs none of this.
+- **Interactive mode's human side** — the real human resolver behind the seam (a blocking
+  await on a person) — the UI / terminal-driven work. The *loop* exists; pre-UI it just
+  breaks immediately on the stub's null. Autonomous needs none of this.
 - **Capability / sandbox** — re-introduced (if ever) as a VM/host boundary, not a
   per-agent enum. The plan's old open Q1 (capability-vs-approval) is hereby closed:
   we model approval only.
@@ -137,11 +194,20 @@ questions); `NonInteractiveResolver` stays as the stub impl.
    the directive by it (shared envelope-format, two preambles); `AutoResolver` self-answers
    + records; `AgentFactory` picks `AutoResolver` (Autonomous) vs the human/stub resolver
    (Interactive). Unit tests in `InteractivityTests`.
-3. Merge — pending owner go.
+3. **Resume loop (Agent owns it)** — **done**. The resolver + `int? resolveCap` are injected
+   into `Agent` by `AgentFactory` (same resolver instance as the provider's; cap is
+   `config.ResolveCap` for Autonomous, `null` for Interactive). `Agent.Invoke` is the
+   resolve→resume loop (per-run counter, `Faulted` on cap, terminal `NeedsInput` on null);
+   the per-agent cap lives on `AgentConfig` (default 8) — nothing on `IDecisionResolver`, no
+   transient. The test-only `ResolvingFlow` is gone, its coverage lifted into Agent-level unit
+   tests (`AgentOutcomeTests`), plus the three live matrix cells (`InteractivitySmokeTests`)
+   and the two `Missing_secret` ping cells refreshed to expect self-resolution under autonomy.
+4. Merge — pending owner go.
 
 ## 8. Non-goals
 
-No human resolver, no end-of-turn resume loop, no capability/VM work, no Codex
-approval — all deferred. This pass is the sandbox subtraction + the rename + the
-**Autonomous** half of interactivity (which needs no human). The Interactive half
-waits for the UI.
+No *real human* resolver (the seam's Interactive impl is still the null stub), no
+capability/VM work, no Codex approval — all deferred. This pass is the sandbox
+subtraction + the rename + the **Autonomous** half of interactivity **plus the
+Agent-owned resume loop** that gives it a production trigger. The real human resolver
+behind the seam waits for the UI.

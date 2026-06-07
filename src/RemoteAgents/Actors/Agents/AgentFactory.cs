@@ -8,12 +8,16 @@ public sealed class AgentFactory(IDecisionResolver humanResolver, AutoResolver a
 {
     public Agent Create(AgentConfig config, string projectDir) => config switch
     {
-        FakeAgentConfig fake => new Agent(new FakeProvider(fake), projectDir),
-        CodexConfig codex => new Agent(new CodexProvider(codex), projectDir),
-        ClaudeConfig claude => new Agent(new ClaudeProvider(claude, ResolverFor(claude.Interactivity), autoPolicy), projectDir),
+        FakeAgentConfig fake => new Agent(new FakeProvider(fake), ResolverFor(config), CapFor(config), projectDir),
+        CodexConfig codex => new Agent(new CodexProvider(codex), ResolverFor(config), CapFor(config), projectDir),
+        ClaudeConfig claude => new Agent(new ClaudeProvider(claude, ResolverFor(config), autoPolicy), ResolverFor(config), CapFor(config), projectDir),
         _ => throw new NotSupportedException($"No provider for config type '{config.GetType().Name}'."),
     };
 
-    private IDecisionResolver ResolverFor(Interactivity interactivity)
-        => interactivity == Interactivity.Autonomous ? autoResolver : humanResolver;
+    private IDecisionResolver ResolverFor(AgentConfig config)
+        => config.Interactivity == Interactivity.Autonomous ? autoResolver : humanResolver;
+
+    // The auto-resolver never self-terminates, so cap its loop; a human returns null when done.
+    private static int? CapFor(AgentConfig config)
+        => config.Interactivity == Interactivity.Autonomous ? config.ResolveCap : null;
 }

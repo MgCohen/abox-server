@@ -6,4 +6,5 @@ public abstract record AgentConfig(
     string Model,
     string SystemPrompt,
     PermissionPolicy Policy = PermissionPolicy.Bypass,
-    Interactivity Interactivity = Interactivity.Autonomous);
+    Interactivity Interactivity = Interactivity.Autonomous,
+    int ResolveCap = 8);
