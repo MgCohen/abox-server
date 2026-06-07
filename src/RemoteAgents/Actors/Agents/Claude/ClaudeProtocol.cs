@@ -5,12 +5,27 @@ namespace RemoteAgents.Actors.Agents.Claude;
 
 public static class ClaudeProtocol
 {
-    // Keybind hint shown only on Claude's live input bar — the positive "ready" signal.
-    private const string PromptReadyMarker = "shift+tab";
+    // Hints shown only on Claude's live input bar — the positive "ready" signal.
+    // "shift+tab" rides the bypass-mode footer; "? for shortcuts" shows in default
+    // mode where the permission-cycle hint is absent. Match either.
+    private static readonly string[] PromptReadyMarkers = ["shift+tab", "forshortcuts"];
     private static readonly Regex Whitespace = new(@"\s+", RegexOptions.Compiled);
 
-    public static bool IsPromptReady(string buffer) =>
-        Normalize(buffer).Contains(PromptReadyMarker, StringComparison.OrdinalIgnoreCase);
+    public static bool IsPromptReady(string buffer)
+    {
+        var normalized = Normalize(buffer);
+        return PromptReadyMarkers.Any(m => normalized.Contains(m, StringComparison.OrdinalIgnoreCase));
+    }
+
+    // Bypass skips every check; Auto auto-accepts edits but never blocks on a
+    // human; Ask runs the default prompt-mode so the PreToolUse hook can gate.
+    public static string PermissionMode(PermissionPolicy policy) => policy switch
+    {
+        PermissionPolicy.Bypass => "bypassPermissions",
+        PermissionPolicy.Auto => "acceptEdits",
+        PermissionPolicy.Ask => "default",
+        _ => throw new ArgumentOutOfRangeException(nameof(policy), policy, "Unknown permission policy."),
+    };
 
     // The TUI positions each glyph with cursor moves, so the ANSI-stripped
     // buffer has no inter-word spaces — markers must be matched whitespace-free.

@@ -1,7 +1,10 @@
 # ADR 0006 — Scoped hooks: Claude `Stop` for turn-completion
 
 - **Status:** Accepted (2026-06-06). Spike-validated (two live runs) and landed in
-  `ClaudeProvider` / `ClaudeStopHook`.
+  `ClaudeProvider` / `ClaudeStopHook`. **Superseded in part by
+  [ADR 0007](0007-permission-policy-pretooluse.md):** `ClaudeStopHook` is generalized
+  to `ClaudeHooks` (renders `Stop` *and* the `PreToolUse` permission hook), and the
+  "`PreToolUse` allowed but not built" note (Decision 6) is now built.
 - **Scope:** the rebuild (`/src`) Claude provider's turn-completion + final-text
   signal, over the ConPTY/subscription path.
 - **Amends:** R-ARCH-3 ([03-implementation-plan.md](../../PLANS/rebuild/03-implementation-plan.md))

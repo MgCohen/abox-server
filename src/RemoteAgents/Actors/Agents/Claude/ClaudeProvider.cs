@@ -3,7 +3,7 @@ using RemoteAgents.Tools.CommandLine;
 
 namespace RemoteAgents.Actors.Agents.Claude;
 
-public sealed class ClaudeProvider(ClaudeConfig config) : IProvider
+public sealed class ClaudeProvider(ClaudeConfig config, IQuestionResolver resolver) : IProvider
 {
     private const int Cols = 120;
     private const int Rows = 40;
@@ -24,17 +24,18 @@ public sealed class ClaudeProvider(ClaudeConfig config) : IProvider
         var isResume = request.SessionId is not null;
         var sessionId = request.SessionId ?? Guid.NewGuid().ToString();
         var systemPromptFile = WriteSystemPromptFile(AgentDirective.ComposeSystemPrompt(config.SystemPrompt));
-        using var hook = ClaudeStopHook.Create();
+        using var hook = ClaudeHooks.Create(gatePermissions: config.Policy == PermissionPolicy.Ask);
         try
         {
-            var args = ClaudeProtocol.BuildArgs(sessionId, isResume, config.PermissionMode, config.Model, systemPromptFile, hook.SettingsFile);
+            var permissionMode = ClaudeProtocol.PermissionMode(config.Policy);
+            var args = ClaudeProtocol.BuildArgs(sessionId, isResume, permissionMode, config.Model, systemPromptFile, hook.SettingsFile);
             var launchLine = "claude " + string.Join(' ', args.Select(Shell.QuoteArg));
 
             using var deadlineCts = new CancellationTokenSource(MaxOverallMs);
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, deadlineCts.Token);
             var dct = linkedCts.Token;
 
-            var pty = await PtyProvider.SpawnAsync(BuildPtyOptions(request.ProjectDir, hook.SignalFile), dct);
+            var pty = await PtyProvider.SpawnAsync(BuildPtyOptions(request.ProjectDir, hook), dct);
             await using var session = new PtySession(pty, dct);
 
             await session.WriteLineAsync(launchLine, dct);
@@ -45,7 +46,7 @@ public sealed class ClaudeProvider(ClaudeConfig config) : IProvider
                 throw new InvalidOperationException("Claude input bar did not become ready in time; cannot submit the prompt.");
 
             await session.SubmitAsync(request.Prompt, SubmitSettleMs, dct);
-            await WaitForStopAsync(hook, dct);
+            await PumpUntilStopAsync(hook, dct);
 
             // The Stop hook fired: the final message and JSONL transcript are
             // already on disk. Read them, then let `await using` dispose kill the
@@ -102,17 +103,30 @@ public sealed class ClaudeProvider(ClaudeConfig config) : IProvider
         _ => "",
     };
 
-    // The Stop hook fires once when Claude's turn truly ends (oracle A-Stop),
-    // carrying the final message — deterministic, unlike waiting for terminal silence.
-    private static async Task WaitForStopAsync(ClaudeStopHook hook, CancellationToken ct)
+    // Pump the turn: the Stop hook fires once when Claude truly ends (oracle
+    // A-Stop), but a gated tool can raise a mid-turn PreToolUse request first.
+    // Drain and resolve each before treating Stop as terminal (plan §6).
+    private async Task PumpUntilStopAsync(ClaudeHooks hook, CancellationToken ct)
     {
         var deadline = DateTimeOffset.UtcNow.AddMilliseconds(ResponseCapMs);
         while (DateTimeOffset.UtcNow < deadline)
         {
+            foreach (var pending in hook.DrainRequests())
+                await ResolvePermissionAsync(hook, pending, ct);
+
             if (hook.HasFired) return;
             try { await Task.Delay(ResponseStopPollMs, ct); }
             catch (OperationCanceledException) { return; }
         }
+    }
+
+    // A gated tool is a Choice question; an unresolvable one (null) denies — the
+    // safe, non-hanging default that replaces acceptEdits' silent mid-turn block.
+    private async Task ResolvePermissionAsync(ClaudeHooks hook, PermissionRequest request, CancellationToken ct)
+    {
+        var answer = await resolver.ResolveAsync(ClaudePermission.ToQuestion(request), ct).ConfigureAwait(false);
+        var allow = ClaudePermission.IsAllow(answer);
+        hook.Respond(request, ClaudePermission.RenderResponse(allow, allow ? "approved" : "denied (no approval)"));
     }
 
     // Fallback only: if the Stop hook never delivered the final text, recover it
@@ -129,13 +143,14 @@ public sealed class ClaudeProvider(ClaudeConfig config) : IProvider
         return "";
     }
 
-    private static PtyOptions BuildPtyOptions(string projectDir, string stopSignalFile)
+    private static PtyOptions BuildPtyOptions(string projectDir, ClaudeHooks hook)
     {
         var env = new Dictionary<string, string>();
         foreach (System.Collections.DictionaryEntry kv in Environment.GetEnvironmentVariables())
             if (kv.Key is string k && kv.Value is string v) env[k] = v;
         foreach (var key in EnvScrub.SubscriptionKeys) env[key] = "";
-        env[ClaudeStopHook.SignalEnvVar] = stopSignalFile;
+        env[ClaudeHooks.SignalEnvVar] = hook.SignalFile;
+        if (hook.PermissionDir is not null) env[ClaudeHooks.PermissionEnvVar] = hook.PermissionDir;
 
         return new PtyOptions
         {

@@ -1,9 +1,18 @@
+using RemoteAgents.Actors.Agents;
 using RemoteAgents.Actors.Agents.Claude;
 
 namespace RemoteAgents.Tests;
 
 public class ClaudeProtocolTests
 {
+    [Theory]
+    [InlineData(PermissionPolicy.Bypass, "bypassPermissions")]
+    [InlineData(PermissionPolicy.Auto, "acceptEdits")]
+    [InlineData(PermissionPolicy.Ask, "default")]
+    public void PermissionMode_maps_each_policy_to_its_claude_flag(PermissionPolicy policy, string expected)
+        => Assert.Equal(expected, ClaudeProtocol.PermissionMode(policy));
+
+
     [Fact]
     public void BuildArgs_fresh_run_uses_session_id_not_resume()
     {
@@ -57,6 +66,16 @@ public class ClaudeProtocolTests
         Assert.DoesNotContain("--model", args);
         Assert.DoesNotContain("--append-system-prompt-file", args);
     }
+
+    [Theory]
+    [InlineData("⏵⏵ bypass permissions on (shift+tab to cycle)")]
+    [InlineData("? for shortcuts · ← for agents")]
+    public void IsPromptReady_recognizes_the_input_bar_in_either_permission_mode(string footer)
+        => Assert.True(ClaudeProtocol.IsPromptReady(footer));
+
+    [Fact]
+    public void IsPromptReady_is_false_for_a_startup_dialog()
+        => Assert.False(ClaudeProtocol.IsPromptReady("Is this a project you trust? Enter to confirm · Esc to cancel"));
 
     [Theory]
     [InlineData("Do you trust this folder?", StartupDialog.Trust)]
