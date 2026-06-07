@@ -79,13 +79,13 @@ public class AgentOutcomeTests
         }
     }
 
-    private sealed class FixedResolver(string answer) : IQuestionResolver
+    private sealed class FixedResolver(string answer) : IDecisionResolver
     {
         public Task<string?> ResolveAsync(AgentQuestion question, CancellationToken ct)
             => Task.FromResult<string?>(answer);
     }
 
-    private sealed class ResolvingFlow(Agent agent, IQuestionResolver resolver, string prompt) : Flow
+    private sealed class ResolvingFlow(Agent agent, IDecisionResolver resolver, string prompt) : Flow
     {
         public AgentOutcome Final { get; private set; } = default!;
 

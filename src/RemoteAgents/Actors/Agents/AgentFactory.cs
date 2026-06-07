@@ -3,7 +3,7 @@ using RemoteAgents.Actors.Agents.Codex;
 
 namespace RemoteAgents.Actors.Agents;
 
-public sealed class AgentFactory(IQuestionResolver resolver, AutoPolicy autoPolicy) : IAgentFactory
+public sealed class AgentFactory(IDecisionResolver resolver, AutoPolicy autoPolicy) : IAgentFactory
 {
     public Agent Create(AgentConfig config, string projectDir) => config switch
     {

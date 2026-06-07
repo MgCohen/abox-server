@@ -74,7 +74,7 @@ public class ClaudeAskSmokeTests(ITestOutputHelper output)
         foreach (var q in resolver.Questions) output.WriteLine($"gated: {q.Prompt}");
     }
 
-    private async Task DriveAsync(PermissionPolicy policy, IQuestionResolver resolver, string projectDir, string prompt)
+    private async Task DriveAsync(PermissionPolicy policy, IDecisionResolver resolver, string projectDir, string prompt)
     {
         var config = new ClaudeConfig("asker", "Asks before acting.", "", "You implement.", policy);
         var provider = new ClaudeProvider(config, resolver, new AutoPolicy());
@@ -86,7 +86,7 @@ public class ClaudeAskSmokeTests(ITestOutputHelper output)
         output.WriteLine($"text={drive.Text}");
     }
 
-    private sealed class RecordingResolver(string? answer) : IQuestionResolver
+    private sealed class RecordingResolver(string? answer) : IDecisionResolver
     {
         public List<AgentQuestion> Questions { get; } = [];
 

@@ -3,7 +3,7 @@ using RemoteAgents.Tools.CommandLine;
 
 namespace RemoteAgents.Actors.Agents.Claude;
 
-public sealed class ClaudeProvider(ClaudeConfig config, IQuestionResolver resolver, AutoPolicy autoPolicy) : IProvider
+public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolver, AutoPolicy autoPolicy) : IProvider
 {
     private const int Cols = 120;
     private const int Rows = 40;

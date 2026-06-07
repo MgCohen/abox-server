@@ -10,7 +10,15 @@
 > Codex stays Sandbox-driven and ignores `Policy`. Remaining `Auto` follow-ups (YAGNI):
 > a strict allowlist/default-deny mode and out-of-workspace-write rules (ADR 0007 §6).
 > Builds on the `Stop` hook ([ADR 0006](../design/adr/0006-scoped-hooks-claude-stop.md))
-> and is the first consumer of the `IQuestionResolver` / `AgentQuestion` seam.
+> and is the first consumer of the resolve / `AgentQuestion` seam.
+>
+> **Amended (2026-06-07) by [permission-interaction-model.md](permission-interaction-model.md):**
+> the current model is **two concerns sharing one resolve seam** — Permission (the gate)
+> and Interaction (the intercom). Sandbox was killed as a layer (capability is the host/VM's
+> wall, not a per-agent knob), so this plan's Q1 capability-vs-approval axis is closed (we
+> model approval only) and `CodexConfig.Sandbox` / the `read-only` Reviewer are gone. The
+> seam was renamed `IQuestionResolver` → `IDecisionResolver`. Read the model doc for the
+> settled relationships; the sections below are the original Claude `Ask`/`Auto` build record.
 
 ## 1. Why
 

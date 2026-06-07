@@ -5,6 +5,5 @@ public sealed record CodexConfig(
     string Description,
     string Model,
     string SystemPrompt,
-    string Sandbox = "workspace-write",
     int JsonStreamTimeoutMs = 60_000)
     : AgentConfig(Name, Description, Model, SystemPrompt);

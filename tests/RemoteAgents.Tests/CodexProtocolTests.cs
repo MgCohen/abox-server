@@ -8,7 +8,7 @@ public class CodexProtocolTests
     [Fact]
     public void BuildArgs_fresh_run_starts_with_exec_and_reads_stdin()
     {
-        var args = CodexProtocol.BuildArgs(null, "C:/proj", "C:/tmp/last.txt", "gpt-5.5", "read-only");
+        var args = CodexProtocol.BuildArgs(null, "C:/proj", "C:/tmp/last.txt", "gpt-5.5");
 
         Assert.Equal("exec", args[0]);
         Assert.DoesNotContain("resume", args);
@@ -18,7 +18,7 @@ public class CodexProtocolTests
     [Fact]
     public void BuildArgs_resumed_run_threads_the_session_id()
     {
-        var args = CodexProtocol.BuildArgs("sess-12345678", "C:/proj", "C:/tmp/last.txt", "gpt-5.5", "read-only");
+        var args = CodexProtocol.BuildArgs("sess-12345678", "C:/proj", "C:/tmp/last.txt", "gpt-5.5");
 
         Assert.Equal(new[] { "exec", "resume", "sess-12345678" }, args.Take(3));
     }
@@ -26,12 +26,12 @@ public class CodexProtocolTests
     [Fact]
     public void BuildArgs_carries_dir_output_sandbox_model_and_json()
     {
-        var args = CodexProtocol.BuildArgs(null, "C:/proj", "C:/tmp/last.txt", "gpt-5.5", "read-only");
+        var args = CodexProtocol.BuildArgs(null, "C:/proj", "C:/tmp/last.txt", "gpt-5.5");
 
         AssertPair(args, "--cd", "C:/proj");
         AssertPair(args, "-o", "C:/tmp/last.txt");
-        // Sandbox is OS-aware: Windows can't spawn codex's sandbox, so it's bypassed there.
-        AssertPair(args, "--sandbox", OperatingSystem.IsWindows() ? "danger-full-access" : "read-only");
+        // Sandbox is a baked default, OS-aware: Windows can't spawn codex's sandbox, so it's bypassed there.
+        AssertPair(args, "--sandbox", OperatingSystem.IsWindows() ? "danger-full-access" : "workspace-write");
         AssertPair(args, "--model", "gpt-5.5");
         Assert.Contains("--json", args);
         Assert.Contains("--skip-git-repo-check", args);
@@ -40,7 +40,7 @@ public class CodexProtocolTests
     [Fact]
     public void BuildArgs_omits_model_flag_when_model_is_blank()
     {
-        var args = CodexProtocol.BuildArgs(null, "C:/proj", "C:/tmp/last.txt", "", "read-only");
+        var args = CodexProtocol.BuildArgs(null, "C:/proj", "C:/tmp/last.txt", "");
 
         Assert.DoesNotContain("--model", args);
     }
