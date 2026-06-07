@@ -5,8 +5,8 @@ using Xunit.Abstractions;
 namespace RemoteAgents.Tests;
 
 // Live validation of the Agent-owned resume loop (permission-interaction-model §2): an
-// Autonomous agent self-resolves its own question and completes; an Interactive agent
-// resumes from a supplied answer, or escalates as NeedsInput when none is available.
+// Auto agent self-resolves its own question and completes; a Human agent resumes from a
+// supplied answer, or escalates as NeedsInput when none is available.
 // Skip-gated like the rest of the matrix.
 public class InteractivitySmokeTests(ITestOutputHelper output)
 {
@@ -16,45 +16,45 @@ public class InteractivitySmokeTests(ITestOutputHelper output)
     private static readonly TimeSpan Timeout = TimeSpan.FromMinutes(3);
 
     [Fact(Skip = Skip)]
-    public async Task Autonomous_self_resolves_the_question_and_completes()
+    public async Task Auto_self_resolves_the_question_and_completes()
     {
         var resolver = new AutoResolver();
 
-        var outcome = await DriveAsync(Interactivity.Autonomous, resolver, AmbiguousPrompt);
+        var outcome = await DriveAsync(Resolution.Auto, resolver, AmbiguousPrompt);
 
         Assert.IsType<AgentOutcome.Completed>(outcome);
         Assert.NotEmpty(resolver.Assumptions);
     }
 
     [Fact(Skip = Skip)]
-    public async Task Interactive_resumes_from_a_supplied_answer()
+    public async Task Human_resumes_from_a_supplied_answer()
     {
         var resolver = new FixedResolver("Use the literal placeholder PLACEHOLDER as the value.");
 
-        var outcome = await DriveAsync(Interactivity.Interactive, resolver, AmbiguousPrompt);
+        var outcome = await DriveAsync(Resolution.Human, resolver, AmbiguousPrompt);
 
         Assert.IsType<AgentOutcome.Completed>(outcome);
     }
 
     [Fact(Skip = Skip)]
-    public async Task Interactive_with_no_answer_escalates_as_needs_input()
+    public async Task Human_with_no_answer_escalates_as_needs_input()
     {
-        var outcome = await DriveAsync(Interactivity.Interactive, new NonInteractiveResolver(), AmbiguousPrompt);
+        var outcome = await DriveAsync(Resolution.Human, new NonInteractiveResolver(), AmbiguousPrompt);
 
         Assert.IsType<AgentOutcome.NeedsInput>(outcome);
     }
 
-    private async Task<AgentOutcome> DriveAsync(Interactivity interactivity, IDecisionResolver resolver, string prompt)
+    private async Task<AgentOutcome> DriveAsync(Resolution resolution, IDecisionResolver resolver, string prompt)
     {
         var projectDir = Directory.CreateTempSubdirectory("claude-interactivity-").FullName;
         try
         {
             var config = new ClaudeConfig("asker", "Asks before acting.", "", "You implement.")
             {
-                Interactivity = interactivity,
+                Resolution = resolution,
             };
             var provider = new ClaudeProvider(config, resolver, new AutoPolicy());
-            var cap = interactivity == Interactivity.Autonomous ? config.ResolveCap : (int?)null;
+            var cap = resolution == Resolution.Auto ? config.ResolveCap : (int?)null;
             var agent = new Agent(provider, resolver, cap, projectDir);
 
             using var cts = new CancellationTokenSource(Timeout);
@@ -67,7 +67,7 @@ public class InteractivitySmokeTests(ITestOutputHelper output)
 
     private sealed class FixedResolver(string answer) : IDecisionResolver
     {
-        public Task<string?> ResolveAsync(AgentQuestion question, CancellationToken ct)
+        public Task<string?> ResolveAsync(AgentQuestion question, DecisionKind kind, CancellationToken ct)
             => Task.FromResult<string?>(answer);
     }
 

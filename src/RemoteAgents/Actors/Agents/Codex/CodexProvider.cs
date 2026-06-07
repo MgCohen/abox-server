@@ -52,7 +52,7 @@ public sealed class CodexProvider(CodexConfig config) : IProvider
         });
 
     private string ComposePrompt(AgentRunRequest request) =>
-        AgentDirective.ComposeSystemPrompt(config.SystemPrompt, config.Interactivity) + "\n\n" + request.Prompt;
+        AgentDirective.ComposeSystemPrompt(config.SystemPrompt, config.Resolution) + "\n\n" + request.Prompt;
 
     private static void TryDelete(string dir)
     {

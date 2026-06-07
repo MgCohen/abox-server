@@ -18,7 +18,7 @@ public sealed class Agent(IProvider provider, IDecisionResolver resolver, int? r
                 return new AgentOutcome.Faulted(needs.Result,
                     new AgentError(-1, $"auto-resolution exhausted after {cap} rounds"));
 
-            var answer = await resolver.ResolveAsync(needs.Question, ct).ConfigureAwait(false);
+            var answer = await resolver.ResolveAsync(needs.Question, DecisionKind.Question, ct).ConfigureAwait(false);
             if (answer is null) return outcome;
 
             resolved++;

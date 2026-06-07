@@ -90,7 +90,7 @@ public class ClaudeAskSmokeTests(ITestOutputHelper output)
     {
         public List<AgentQuestion> Questions { get; } = [];
 
-        public Task<string?> ResolveAsync(AgentQuestion question, CancellationToken ct)
+        public Task<string?> ResolveAsync(AgentQuestion question, DecisionKind kind, CancellationToken ct)
         {
             Questions.Add(question);
             return Task.FromResult(answer);

@@ -5,9 +5,9 @@ public static class AgentDirective
     public const string Unattended = AutonomousPreamble + "\n\n" + EnvelopeFormat;
     public const string Interactive = InteractivePreamble + "\n\n" + EnvelopeFormat;
 
-    public static string ComposeSystemPrompt(string systemPrompt, Interactivity interactivity = Interactivity.Autonomous)
+    public static string ComposeSystemPrompt(string systemPrompt, Resolution resolution = Resolution.Auto)
     {
-        var directive = interactivity == Interactivity.Autonomous ? Unattended : Interactive;
+        var directive = resolution == Resolution.Human ? Interactive : Unattended;
         return string.IsNullOrEmpty(systemPrompt) ? directive : systemPrompt + "\n\n" + directive;
     }
 
