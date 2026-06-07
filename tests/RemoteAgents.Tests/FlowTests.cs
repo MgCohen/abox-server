@@ -23,21 +23,28 @@ public class FlowTests
     {
         protected override async Task RunAsync(FlowConfig config, FlowContext ctx, CancellationToken ct)
         {
-            await Run(new FixedOp(), new StepArgs("a", "ra"), ct);
-            await Run(new FixedOp(), new StepArgs("b", "rb"), ct);
+            await Run(ctx, new FixedOp(), new StepArgs("a", "ra"), ct);
+            await Run(ctx, new FixedOp(), new StepArgs("b", "rb"), ct);
         }
     }
 
     private sealed class FailingFlow : Flow
     {
         protected override Task RunAsync(FlowConfig config, FlowContext ctx, CancellationToken ct) =>
-            Run(new ThrowingOp(), new StepArgs("boom", ""), ct);
+            Run(ctx, new ThrowingOp(), new StepArgs("boom", ""), ct);
     }
 
     private sealed class EchoRequestFlow : Flow
     {
         protected override Task RunAsync(FlowConfig config, FlowContext ctx, CancellationToken ct) =>
-            Run(new FixedOp(), new StepArgs("echo", ctx.Request), ct);
+            Run(ctx, new FixedOp(), new StepArgs("echo", ctx.Request), ct);
+    }
+
+    private sealed class ParallelFlow(int count) : Flow
+    {
+        protected override Task RunAsync(FlowConfig config, FlowContext ctx, CancellationToken ct) =>
+            Task.WhenAll(Enumerable.Range(0, count)
+                .Select(i => Task.Run(() => Run(ctx, new FixedOp(), new StepArgs($"op{i}", $"v{i}"), ct), ct)));
     }
 
     private static FlowContext ContextFor(FlowConfig config) =>
@@ -105,6 +112,26 @@ public class FlowTests
     }
 
     [Fact]
+    public async Task Concurrent_operations_are_all_recorded_without_corruption()
+    {
+        const int count = 64;
+        var config = new FlowConfig("parallel", "t");
+        var flow = new ParallelFlow(count);
+        var ctx = ContextFor(config);
+        var stream = new SnapshotStream(flow, ctx);
+
+        await flow.ExecuteAsync(config, ctx, CancellationToken.None);
+
+        var snap = stream.Latest;
+        Assert.Equal(FlowPhase.Completed, snap.Phase);
+        Assert.Equal(count, snap.Operations.Count);
+        Assert.All(snap.Operations, s => Assert.Equal(OperationStatus.Completed, s.Status));
+        Assert.Equal(
+            Enumerable.Range(0, count).Select(i => $"op{i}").OrderBy(n => n, StringComparer.Ordinal),
+            snap.Operations.Select(s => s.Name).OrderBy(n => n, StringComparer.Ordinal));
+    }
+
+    [Fact]
     public async Task Changes_replays_latest_for_a_finished_run_then_completes()
     {
         var config = new FlowConfig("two-step", "t");
@@ -120,4 +147,14 @@ public class FlowTests
         Assert.Single(seen);
         Assert.Equal(FlowPhase.Completed, seen[0].Phase);
     }
+
+    [Fact]
+    public void FlowDefinition_rejects_a_non_Flow_type() =>
+        Assert.Throws<ArgumentException>(() =>
+            new FlowDefinition(typeof(string), new FlowConfig("x", "y")));
+
+    [Fact]
+    public void FlowDefinition_accepts_a_concrete_flow_type() =>
+        Assert.Equal(typeof(TwoStepFlow),
+            new FlowDefinition(typeof(TwoStepFlow), new FlowConfig("x", "y")).FlowType);
 }

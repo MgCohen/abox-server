@@ -15,8 +15,8 @@ public sealed class StubFlow(IAgentFactory agents) : Flow
     protected override async Task RunAsync(FlowConfig config, FlowContext ctx, CancellationToken ct)
     {
         var agent = agents.Create(Placeholder, ctx.ProjectDir);
-        await Run(new DelayOperation(), new DelayArgs("prepare", 800, "ready"), ct);
-        await Run(agent, new AgentArgs("process", $"process: {ctx.Request}"), ct);
-        await Run(new DelayOperation(), new DelayArgs("finish", 600, "done"), ct);
+        await Run(ctx, new DelayOperation(), new DelayArgs("prepare", 800, "ready"), ct);
+        await Run(ctx, agent, new AgentArgs("process", $"process: {ctx.Request}"), ct);
+        await Run(ctx, new DelayOperation(), new DelayArgs("finish", 600, "done"), ct);
     }
 }

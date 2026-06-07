@@ -7,7 +7,7 @@ namespace RemoteAgents.Engine.Flows;
 public sealed class SnapshotStream
 {
     private readonly FlowContext _ctx;
-    private readonly object _gate = new();
+    private readonly Lock _gate = new();
     private readonly HashSet<Channel<FlowSnapshot>> _subscribers = [];
 
     private long _version;
@@ -55,9 +55,9 @@ public sealed class SnapshotStream
 
     private void OnChanged()
     {
-        var snap = Build();
         lock (_gate)
         {
+            var snap = Build();
             _latest = snap;
             foreach (var ch in _subscribers)
                 ch.Writer.TryWrite(snap);
@@ -72,11 +72,11 @@ public sealed class SnapshotStream
         }
     }
 
-    // Runs only on the run task (ctor, then synchronously from OnChanged) — single
-    // writer, so the version bump needs no interlock. HTTP/SSE threads read _latest.
-    private FlowSnapshot Build() =>
-        new(_ctx.Id, _ctx.FlowName, _ctx.Project, _ctx.Phase, ++_version, _ctx.CreatedAt,
-            [.. _ctx.Operations.Select(o => o.ToDto())], [.. _ctx.Decisions]);
+    private FlowSnapshot Build()
+    {
+        var (phase, operations, decisions) = _ctx.Capture();
+        return new(_ctx.Id, _ctx.FlowName, _ctx.Project, phase, ++_version, _ctx.CreatedAt, operations, decisions);
+    }
 
     private static bool IsTerminal(FlowPhase p) =>
         p is FlowPhase.Completed or FlowPhase.Failed or FlowPhase.Canceled;
