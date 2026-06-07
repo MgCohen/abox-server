@@ -130,7 +130,8 @@ change required for v1 (revisit grouping/labels only if it reads poorly).
   `SnapshotStream` builds under its lock from `Capture()`. Added
   `Concurrent_operations_are_all_recorded_without_corruption` (64-op fan via
   `Task.Run`). Warning-free build + full suite 155 green on net10. Clears
-  engine-audit #1/#2/#4/#7; the `FlowDefinition` guard (#3/#5) is **not** included.
+  engine-audit #1/#2/#4/#7. The `FlowDefinition` concrete-Flow constructor guard
+  (#3/#5) followed in a separate commit (also verified on net10).
 
 **Stage 2 — the combinators.**
 - Extract `RunOne(op, args, ct)`; implement `RunAll` (linked-CTS fail-fast) and

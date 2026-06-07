@@ -146,4 +146,14 @@ public class FlowTests
         Assert.Single(seen);
         Assert.Equal(FlowPhase.Completed, seen[0].Phase);
     }
+
+    [Fact]
+    public void FlowDefinition_rejects_a_non_Flow_type() =>
+        Assert.Throws<ArgumentException>(() =>
+            new FlowDefinition(typeof(string), new FlowConfig("x", "y")));
+
+    [Fact]
+    public void FlowDefinition_accepts_a_concrete_flow_type() =>
+        Assert.Equal(typeof(TwoStepFlow),
+            new FlowDefinition(typeof(TwoStepFlow), new FlowConfig("x", "y")).FlowType);
 }
