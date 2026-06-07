@@ -25,12 +25,29 @@ public class InteractivitySmokeTests(ITestOutputHelper output)
         Assert.IsType<AgentOutcome.Completed>(outcome);
     }
 
+    // Exercises the real registry: InteractiveResolver parks the question and a
+    // background fulfiller (standing in for the inbox/endpoint) Resolves it, so the
+    // run resumes against a live CLI.
     [Fact(Skip = Skip)]
-    public async Task Human_resumes_from_a_supplied_answer()
+    public async Task Human_resumes_from_a_registry_answer()
     {
-        var resolver = new FixedResolver("Use the literal placeholder PLACEHOLDER as the value.");
+        var pending = new PendingDecisions();
+        var resolver = new InteractiveResolver(pending);
+
+        using var fulfillerCts = new CancellationTokenSource();
+        var fulfiller = Task.Run(async () =>
+        {
+            while (!fulfillerCts.IsCancellationRequested)
+            {
+                foreach (var d in pending.List())
+                    pending.Resolve(d.Id, "Use the literal placeholder PLACEHOLDER as the value.");
+                try { await Task.Delay(50, fulfillerCts.Token); } catch (OperationCanceledException) { return; }
+            }
+        });
 
         var outcome = await DriveAsync(Resolution.Human, resolver, AmbiguousPrompt);
+        await fulfillerCts.CancelAsync();
+        await fulfiller;
 
         Assert.IsType<AgentOutcome.Completed>(outcome);
     }
@@ -62,14 +79,6 @@ public class InteractivitySmokeTests(ITestOutputHelper output)
             return outcome;
         }
         finally { TryDeleteDir(projectDir); }
-    }
-
-    private sealed class FixedResolver(string answer) : IDecisionResolver
-    {
-        public Resolution Source => Resolution.Human;
-
-        public Task<string?> ResolveAsync(AgentQuestion question, DecisionKind kind, CancellationToken ct)
-            => Task.FromResult<string?>(answer);
     }
 
     private static void TryDeleteDir(string dir)
