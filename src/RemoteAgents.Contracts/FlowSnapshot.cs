@@ -7,4 +7,5 @@ public sealed record FlowSnapshot(
     FlowPhase Phase,
     long Version,
     DateTimeOffset CreatedAt,
-    IReadOnlyList<OperationDto> Operations);
+    IReadOnlyList<OperationDto> Operations,
+    IReadOnlyList<DecisionDto> Decisions);

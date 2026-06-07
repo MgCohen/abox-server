@@ -3,8 +3,9 @@ using RemoteAgents.Actors.Agents.Codex;
 
 namespace RemoteAgents.Actors.Agents;
 
-// Pre-UI the Interactive resolver is the non-interactive stub; Autonomous gets the auto-resolver.
-public sealed class AgentFactory(IDecisionResolver humanResolver, AutoResolver autoResolver, AutoPolicy autoPolicy) : IAgentFactory
+// Resolution selects the resolver: Auto self-answers, Deny refuses, Human awaits the
+// person via the injected resolver. Llm is reserved (deferred).
+public sealed class AgentFactory(IDecisionResolver humanResolver, AutoResolver autoResolver, DenyResolver denyResolver, AutoPolicy autoPolicy) : IAgentFactory
 {
     public Agent Create(AgentConfig config, string projectDir) => config switch
     {
@@ -14,10 +15,19 @@ public sealed class AgentFactory(IDecisionResolver humanResolver, AutoResolver a
         _ => throw new NotSupportedException($"No provider for config type '{config.GetType().Name}'."),
     };
 
-    private IDecisionResolver ResolverFor(AgentConfig config)
-        => config.Interactivity == Interactivity.Autonomous ? autoResolver : humanResolver;
+    private IDecisionResolver ResolverFor(AgentConfig config) => config.Resolution switch
+    {
+        Resolution.Auto => autoResolver,
+        Resolution.Deny => denyResolver,
+        Resolution.Human => humanResolver,
+        var r => throw new NotSupportedException($"Resolution.{r} is not wired yet."),
+    };
 
-    // The auto-resolver never self-terminates, so cap its loop; a human returns null when done.
-    private static int? CapFor(AgentConfig config)
-        => config.Interactivity == Interactivity.Autonomous ? config.ResolveCap : null;
+    // Cap the resolvers that always produce an answer and could loop forever; the
+    // self-terminating ones (Deny/Human return null when done) run uncapped.
+    private static int? CapFor(AgentConfig config) => config.Resolution switch
+    {
+        Resolution.Auto or Resolution.Llm => config.ResolveCap,
+        _ => null,
+    };
 }

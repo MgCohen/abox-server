@@ -60,6 +60,9 @@ public abstract class Flow
         {
             IGate<TArgs, TResult> gate = op;
             var result = await gate.Execute(args, ct).ConfigureAwait(false);
+            if (op is IDecisionSource src)
+                foreach (var decision in src.Decisions)
+                    _ctx.RecordDecision(decision);
             _ctx.CompleteOperation(result?.ToString());
             Changed?.Invoke();
             return result;

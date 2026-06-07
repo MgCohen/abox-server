@@ -23,7 +23,7 @@ public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolv
 
         var isResume = request.SessionId is not null;
         var sessionId = request.SessionId ?? Guid.NewGuid().ToString();
-        var systemPromptFile = WriteSystemPromptFile(AgentDirective.ComposeSystemPrompt(config.SystemPrompt, config.Interactivity));
+        var systemPromptFile = WriteSystemPromptFile(AgentDirective.ComposeSystemPrompt(config.SystemPrompt, config.Resolution));
         using var hook = ClaudeHooks.Create(gatePermissions: config.Policy != PermissionPolicy.Bypass);
         try
         {
@@ -133,7 +133,7 @@ public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolv
             return;
         }
 
-        var allow = ClaudePermission.IsAllow(await resolver.ResolveAsync(ClaudePermission.ToQuestion(request), ct));
+        var allow = ClaudePermission.IsAllow(await resolver.ResolveAsync(ClaudePermission.ToQuestion(request), DecisionKind.Permission, ct));
         hook.Respond(request, ClaudePermission.RenderResponse(allow, allow ? "approved" : "denied (no approval)"));
     }
 

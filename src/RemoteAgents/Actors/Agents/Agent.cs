@@ -1,14 +1,19 @@
+using RemoteAgents.Contracts;
 using RemoteAgents.Engine.Operations;
 
 namespace RemoteAgents.Actors.Agents;
 
 public sealed class Agent(IProvider provider, IDecisionResolver resolver, int? resolveCap, string projectDir)
-    : Operation<AgentArgs, AgentOutcome>
+    : Operation<AgentArgs, AgentOutcome>, IDecisionSource
 {
     private string? _sessionId;
+    private readonly List<DecisionDto> _decisions = [];
+
+    public IReadOnlyList<DecisionDto> Decisions => _decisions;
 
     protected override async Task<AgentOutcome> Invoke(AgentArgs args, CancellationToken ct)
     {
+        _decisions.Clear();
         var outcome = await RunTurn(args.Prompt, ct).ConfigureAwait(false);
 
         var resolved = 0;
@@ -18,8 +23,12 @@ public sealed class Agent(IProvider provider, IDecisionResolver resolver, int? r
                 return new AgentOutcome.Faulted(needs.Result,
                     new AgentError(-1, $"auto-resolution exhausted after {cap} rounds"));
 
-            var answer = await resolver.ResolveAsync(needs.Question, ct).ConfigureAwait(false);
+            var answer = await resolver.ResolveAsync(needs.Question, DecisionKind.Question, ct).ConfigureAwait(false);
             if (answer is null) return outcome;
+
+            _decisions.Add(new DecisionDto(
+                DecisionKind.Question.ToString(), needs.Question.Prompt, answer,
+                resolver.Source.ToString(), DateTimeOffset.UtcNow));
 
             resolved++;
             outcome = await RunTurn(answer, ct).ConfigureAwait(false);
