@@ -124,7 +124,7 @@ public sealed class ClaudeProvider(ClaudeConfig config, IQuestionResolver resolv
     // safe, non-hanging default that replaces acceptEdits' silent mid-turn block.
     private async Task ResolvePermissionAsync(ClaudeHooks hook, PermissionRequest request, CancellationToken ct)
     {
-        var answer = await resolver.ResolveAsync(ClaudePermission.ToQuestion(request), ct).ConfigureAwait(false);
+        var answer = await resolver.ResolveAsync(ClaudePermission.ToQuestion(request), ct);
         var allow = ClaudePermission.IsAllow(answer);
         hook.Respond(request, ClaudePermission.RenderResponse(allow, allow ? "approved" : "denied (no approval)"));
     }

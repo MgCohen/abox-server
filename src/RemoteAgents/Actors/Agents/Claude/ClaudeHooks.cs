@@ -8,9 +8,11 @@ public sealed class ClaudeHooks : IDisposable
     public const string SignalEnvVar = "RA_STOP_SIGNAL";
     public const string PermissionEnvVar = "RA_PERM_DIR";
 
-    // The settings timeout sits above the shim's own deadline so the shim always
-    // gets to write its deterministic deny rather than Claude killing it first.
-    private const int PermissionHookTimeoutSec = 660;
+    private const int PermissionShimDeadlineMs = 600_000;
+
+    // A minute above the shim's own deadline so the shim always writes its
+    // deterministic deny before Claude would kill the hook on its timeout.
+    private const int PermissionHookTimeoutSec = PermissionShimDeadlineMs / 1000 + 60;
 
     private static readonly string[] GatedTools = ["Bash", "Write", "Edit", "MultiEdit"];
 
@@ -71,8 +73,10 @@ public sealed class ClaudeHooks : IDisposable
         {
             var id = Path.GetFileNameWithoutExtension(file)["req-".Length..];
             if (!_drained.Add(id)) continue;
+            // The shim renames wip-→req atomically, but a read can still catch the
+            // file briefly locked mid-rename on Windows; undrain it and retry next poll.
             try { requests.Add(new PermissionRequest(id, File.ReadAllText(file))); }
-            catch (IOException) { _drained.Remove(id); }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException) { _drained.Remove(id); }
         }
         return requests;
     }
@@ -101,7 +105,7 @@ public sealed class ClaudeHooks : IDisposable
     // Reads the tool payload, drops it as a request file, then blocks on the
     // provider's response. Self-denies past its own deadline so a missing
     // responder never hangs Claude's turn (plan §6).
-    private const string PermShimScript =
+    private static readonly string PermShimScript =
         "$payload = [Console]::In.ReadToEnd()\n" +
         "$id = [guid]::NewGuid().ToString('N')\n" +
         "$dir = $env:RA_PERM_DIR\n" +
@@ -114,7 +118,7 @@ public sealed class ClaudeHooks : IDisposable
         "while (-not (Test-Path -LiteralPath $resp)) {\n" +
         "    Start-Sleep -Milliseconds 100\n" +
         "    $elapsedMs += 100\n" +
-        "    if ($elapsedMs -ge 600000) {\n" +
+        "    if ($elapsedMs -ge " + PermissionShimDeadlineMs + ") {\n" +
         "        Write-Output '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"resolver timed out\"}}'\n" +
         "        exit 0\n" +
         "    }\n" +

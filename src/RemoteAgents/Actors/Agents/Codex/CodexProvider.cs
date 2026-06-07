@@ -7,6 +7,10 @@ public sealed class CodexProvider(CodexConfig config) : IProvider
 {
     public async Task<DriveResult> DriveAsync(AgentRunRequest request, CancellationToken ct)
     {
+        if (config.Policy != PermissionPolicy.Bypass)
+            throw new NotSupportedException(
+                $"Codex does not yet honor PermissionPolicy.{config.Policy} (ADR 0007 §5); it runs Sandbox-driven. Leave Policy at the default Bypass.");
+
         var tmpDir = Directory.CreateTempSubdirectory("agents-codex-").FullName;
         try
         {

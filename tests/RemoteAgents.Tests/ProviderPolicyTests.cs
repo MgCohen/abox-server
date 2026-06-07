@@ -31,6 +31,20 @@ public class ProviderPolicyTests
     }
 
     [Fact]
+    public async Task Codex_rejects_a_non_bypass_policy_with_an_actionable_error()
+    {
+        var config = new CodexConfig("reviewer", "Reviews.", "gpt-5.5", "You review.", Sandbox: "read-only")
+        {
+            Policy = PermissionPolicy.Ask,
+        };
+        var provider = new CodexProvider(config);
+
+        var ex = await Assert.ThrowsAsync<NotSupportedException>(
+            () => provider.DriveAsync(new AgentRunRequest("do it", "C:/proj"), CancellationToken.None));
+        Assert.Contains("Ask", ex.Message);
+    }
+
+    [Fact]
     public void The_directive_appends_to_a_role_system_prompt()
     {
         var composed = AgentDirective.ComposeSystemPrompt("You review.");
