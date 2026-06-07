@@ -38,6 +38,30 @@ public class ClaudePermissionTests
         Assert.Equal(new[] { "Allow", "Deny" }, question.Options);
     }
 
+    [Fact]
+    public void Describe_returns_the_full_untruncated_command_for_the_guardrail()
+    {
+        var command = "echo " + new string('x', 500) + " && rm -rf /";
+        var payload = $"{{\"tool_name\":\"Bash\",\"tool_input\":{{\"command\":{System.Text.Json.JsonSerializer.Serialize(command)}}}}}";
+
+        var (tool, detail) = ClaudePermission.Describe(payload);
+
+        Assert.Equal("Bash", tool);
+        Assert.Equal(command, detail);
+    }
+
+    [Fact]
+    public void ToQuestion_truncates_a_long_command_for_display()
+    {
+        var command = new string('x', 500);
+        var payload = $"{{\"tool_name\":\"Bash\",\"tool_input\":{{\"command\":{System.Text.Json.JsonSerializer.Serialize(command)}}}}}";
+
+        var question = ClaudePermission.ToQuestion(new PermissionRequest("1", payload));
+
+        Assert.Contains("…", question.Prompt);
+        Assert.True(question.Prompt.Length < command.Length);
+    }
+
     [Theory]
     [InlineData("Allow", true)]
     [InlineData("allow", true)]

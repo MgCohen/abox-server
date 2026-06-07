@@ -61,15 +61,17 @@ Two facts shaped the mechanism:
    app-server protocol is unproven. Codex stays **Sandbox-driven** for now (the
    `read-only` Reviewer is unchanged) and ignores `Policy`. No cross-provider hook
    framework (ADR 0006 holds).
-6. **`Auto` = the gate with no human: auto-approve every tool.** `Auto` runs
-   `default` perm-mode + the same `PreToolUse` hook as `Ask`, but the pump approves
-   each call automatically instead of consulting the resolver — no human, no hang,
-   every tool observable. It deliberately does **not** use `acceptEdits` (which still
-   prompts on `Bash` and would hang unattended — the very bug that started this).
-   The v1 decision is a flat auto-allow; the **allowlist/denylist policy engine**
-   (allow `ls`/build/test, deny `rm -rf`/`curl|sh`/`git push`/out-of-workspace writes)
-   is the deferred refinement (YAGNI) — that "second use" is where the decision logic
-   would move into an `AutoResolver` rather than a provider branch.
+6. **`Auto` = the gate with no human, governed by a denylist guardrail.** `Auto` runs
+   `default` perm-mode + the same `PreToolUse` hook as `Ask`, but the pump decides via
+   `AutoPolicy` instead of consulting the resolver — no human, no hang, every tool
+   observable. It deliberately does **not** use `acceptEdits` (which still prompts on
+   `Bash` and would hang unattended — the very bug that started this). `AutoPolicy` is
+   **default-allow with a denylist**: it blocks the catastrophic, hard-to-undo commands
+   (`rm -rf`, `Remove-Item -Recurse`, `git push`, `curl|sh`, `sudo`, disk format) and
+   allows everything else. It is a **guardrail, not a sandbox** — the OS sandbox / VM is
+   the real boundary; this just stops the obvious footguns. A stricter **allowlist
+   (default-deny)** mode and **out-of-workspace-write** rules are the noted next steps
+   (YAGNI — added when an agent needs them).
 
 ## Consequences
 

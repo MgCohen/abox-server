@@ -10,7 +10,8 @@ public static class ClaudePermission
     public static AgentQuestion.Choice ToQuestion(PermissionRequest request)
     {
         var (tool, detail) = Describe(request.Payload);
-        var prompt = detail is null ? $"Allow `{tool}`?" : $"Allow `{tool}`: {detail} ?";
+        var shown = Shorten(detail);
+        var prompt = shown is null ? $"Allow `{tool}`?" : $"Allow `{tool}`: {shown} ?";
         return new AgentQuestion.Choice(prompt, ["Allow", "Deny"], AllowFreeText: false, request.Payload);
     }
 
@@ -31,7 +32,7 @@ public static class ClaudePermission
         return root.ToJsonString();
     }
 
-    private static (string Tool, string? Detail) Describe(string payload)
+    public static (string Tool, string? Detail) Describe(string payload)
     {
         try
         {
@@ -46,6 +47,8 @@ public static class ClaudePermission
         }
     }
 
+    // Full, untruncated — the guardrail must see the whole command, not the
+    // display-shortened form (truncation happens only in ToQuestion).
     private static string? Detail(string tool, JsonElement? input)
     {
         if (input is not { ValueKind: JsonValueKind.Object } obj) return null;
@@ -56,7 +59,8 @@ public static class ClaudePermission
             _ => null,
         };
         if (key is null || !obj.TryGetProperty(key, out var v) || v.ValueKind != JsonValueKind.String) return null;
-        return Shorten(v.GetString());
+        var s = v.GetString();
+        return string.IsNullOrWhiteSpace(s) ? null : s.Trim();
     }
 
     private static string? Shorten(string? s)

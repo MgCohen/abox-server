@@ -3,7 +3,7 @@ using RemoteAgents.Tools.CommandLine;
 
 namespace RemoteAgents.Actors.Agents.Claude;
 
-public sealed class ClaudeProvider(ClaudeConfig config, IQuestionResolver resolver) : IProvider
+public sealed class ClaudeProvider(ClaudeConfig config, IQuestionResolver resolver, AutoPolicy autoPolicy) : IProvider
 {
     private const int Cols = 120;
     private const int Rows = 40;
@@ -120,16 +120,16 @@ public sealed class ClaudeProvider(ClaudeConfig config, IQuestionResolver resolv
         }
     }
 
-    // Auto applies an automatic policy with no human in the loop. v1 minimal:
-    // auto-approve every gated tool (the allowlist/denylist engine is the deferred
-    // refinement, ADR 0007 §6 — the "second use" that would earn an AutoResolver).
-    // Ask routes to the resolver; an unresolvable call (null) denies — the safe,
-    // non-hanging default that replaces acceptEdits' silent mid-turn block.
+    // Auto applies the guardrail policy with no human in the loop (allow unless a
+    // denylist rule blocks the command). Ask routes to the resolver; an unresolvable
+    // call (null) denies — the safe, non-hanging default that replaces acceptEdits'
+    // silent mid-turn block.
     private async Task ResolvePermissionAsync(ClaudeHooks hook, PermissionRequest request, CancellationToken ct)
     {
         if (config.Policy == PermissionPolicy.Auto)
         {
-            hook.Respond(request, ClaudePermission.RenderResponse(allow: true, "auto-approved"));
+            var verdict = autoPolicy.Evaluate(request);
+            hook.Respond(request, ClaudePermission.RenderResponse(verdict.Allow, verdict.Reason));
             return;
         }
 

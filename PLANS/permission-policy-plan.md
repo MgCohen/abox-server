@@ -3,11 +3,12 @@
 > **Status.** LANDED for Claude (2026-06-06) — see
 > [ADR 0007](../design/adr/0007-permission-policy-pretooluse.md). Phases 0–3 built,
 > unit-tested, and live-validated end-to-end (allow path runs the gated `Write`;
-> deny-on-null denies it and the turn completes without hanging). `Auto` also landed:
-> same `PreToolUse` gate, pump auto-approves (no `acceptEdits`, no hang). Phase 4
-> (Codex `Ask` spike) remains deferred — Codex stays Sandbox-driven and ignores
-> `Policy`. Phase 5 narrows to just the allowlist/denylist engine that would replace
-> `Auto`'s flat auto-allow (see ADR 0007 §6).
+> deny-on-null denies it and the turn completes without hanging). `Auto` landed:
+> same `PreToolUse` gate, pump decides via `AutoPolicy` — a default-allow **denylist
+> guardrail** (blocks `rm -rf`/`git push`/`curl|sh`/`sudo`/disk-format, allows the
+> rest), no `acceptEdits`, no hang. Phase 4 (Codex `Ask` spike) remains deferred —
+> Codex stays Sandbox-driven and ignores `Policy`. Remaining `Auto` follow-ups (YAGNI):
+> a strict allowlist/default-deny mode and out-of-workspace-write rules (ADR 0007 §6).
 > Builds on the `Stop` hook ([ADR 0006](../design/adr/0006-scoped-hooks-claude-stop.md))
 > and is the first consumer of the `IQuestionResolver` / `AgentQuestion` seam.
 
@@ -126,10 +127,14 @@ the registered default). The same resolver later handles end-of-turn `NeedsInput
 when the flow layer learns to route it — one seam, both surfaces.
 
 ### 4.5 `Auto` ("don't ask")
-Auto decides without a human. v1 minimal: map to `acceptEdits` (Claude) /
-`workspace-write` (Codex) — allow edits, never block on a human. A richer
-allowlist/denylist policy engine (allow safe commands, deny `rm -rf`/deploy/curl)
-is **deferred** until there's a concrete need (YAGNI) — the enum reserves the slot.
+Auto decides without a human, through the **same `PreToolUse` gate** as Ask (not
+`acceptEdits`, which still prompts on `Bash` and would hang unattended). The pump
+consults `AutoPolicy` instead of the resolver. `AutoPolicy` is **default-allow with a
+denylist guardrail**: it blocks the catastrophic commands (`rm -rf`,
+`Remove-Item -Recurse`, `git push`, `curl|sh`, `sudo`, disk format) and allows the
+rest — a guardrail, not a sandbox (the OS sandbox / VM is the real boundary). A
+stricter allowlist/default-deny mode and out-of-workspace-write rules are the noted
+follow-ups (YAGNI). Codex `Auto` stays deferred with the rest of Codex policy (§4.6).
 
 ### 4.6 Codex
 - **Bypass / Auto** map cleanly to sandbox levels — implementable now.
