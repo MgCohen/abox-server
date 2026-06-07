@@ -38,6 +38,14 @@ Today (`src/RemoteAgents/Engine/`):
 - `Flow.Run` fires `Changed?.Invoke()` from the running task
   (`Flow.cs:56,63,75`); fine sequentially, concurrent under fan-out.
 
+> **Independently corroborated (2026-06-07).** A first-party dynamic-workflow run
+> (a read-only fan-out audit we generated + ran over `Engine/` — see
+> [`research/examples/engine-audit.report.md`](../research/examples/engine-audit.report.md))
+> surfaced exactly these issues unprompted: `StartOperation`/`Changed` outside the
+> `try` (poisons `_inFlight`), the object-identity guard + `_operations[^1]`
+> closing the wrong record under concurrency, and the mutable `_ctx`
+> non-re-entrancy. Stage 1 below is the fix for all three.
+
 `Flow._inFlight` (`Flow.cs:52-54`) is **already correct** for our needs: it keys
 on the operation object and throws on *re-entrant use of the same instance*.
 Fan-out mints **one actor per branch** (distinct objects → distinct keys), so the

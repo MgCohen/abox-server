@@ -113,10 +113,13 @@ contract:
 
 ---
 
-## 3. What actually gets generated — four real scripts, dissected
+## 3. What actually gets generated — real scripts, dissected
 
-These are verbatim public `.claude/workflows/*.js` files. Each is annotated for
-its **logic** and its **map to our flows**.
+§3.1–3.4 are **third-party** public `.claude/workflows/*.js` files (community
+repos — individuals who saved their generated scripts; *not* authoritative, kept
+for breadth). **§3.6 is the authoritative one: a workflow we generated and ran
+ourselves**, captured verbatim. Each is annotated for its **logic** and its **map
+to our flows**.
 
 ### 3.1 `codebase-audit.js` (Zenetusken/memex) — fan-out + adversarial verify + synthesize
 
@@ -238,6 +241,55 @@ Across all four (and the other 487), the recurring DNA:
 | **Concurrency** | `parallel`/`pipeline`, manual throttle, disk gate | **sequential**, per-actor in-flight guard |
 
 ---
+
+### 3.6 `engine-audit` — our own first-party run (2026-06-07) [A-self]
+
+We stopped quoting strangers and generated one ourselves. From inside the
+container (`claude` 2.1.168, `claude -p "ultracode: <read-only audit of
+src/RemoteAgents/Engine/>"` — the headless/SDK path), the runtime wrote and
+executed a workflow. Captured verbatim:
+[`research/examples/engine-audit.generated-workflow.js`](examples/engine-audit.generated-workflow.js)
+(the script) + [`engine-audit.report.md`](examples/engine-audit.report.md) (the
+result). Cost **~$1.06**, 17 turns, ~8 min, **19 raw findings → 12 refuted → 7
+confirmed**.
+
+**The generated script (structure):**
+- `meta` literal + 3 phases (Review / Verify / Synthesize); a static `FILES` list.
+- **Three JSON Schemas** (`FINDINGS_SCHEMA`, `VERDICT_SCHEMA`, `SYNTHESIS_SCHEMA`)
+  passed as `agent(prompt, { schema })` — confirms §10's forced-`StructuredOutput`
+  mechanism in live use.
+- Review = `await parallel(FILES.map(f => () => agent(reviewPrompt, {schema})))`
+  — the **barrier fan-out**, one reviewer per file.
+- Verify = `await pipeline(flatFindings, (finding, original, idx) => agent(skeptic,
+  {schema}), (verdict, original) => merge)` — the **no-barrier** per-item stage,
+  and it uses exactly the `(item, originalItem, idx)` stage-arg signature the
+  research inferred. The skeptic prompt: *"Try hard to REFUTE the finding … only
+  confirm if you genuinely cannot."*
+- Synthesize = one `agent(..., {schema})` barrier; returns a structured
+  `{summary, report, confirmedFindings}`.
+
+**What it tells us vs. our model:**
+- It is a **concrete instance of the exact combinator our plan adds**: `parallel`
+  (= `Flow.RunAll` barrier) + `pipeline` (the no-barrier variant we list as a
+  non-goal). And it's a **read-only audit** — precisely the "read-only fan-out is
+  cheap and safe *now*" case from §9 / `PLANS/parallel-fanout.md`.
+- Every agent returns a **schema-validated object**, not text — the §10 borrow,
+  shown working.
+- Tellingly, the model's generated script is **less robust than the hardened
+  community ones**: it has **no `try/catch` resilience** (relies on
+  `.filter(Boolean)`), so one dead branch silently vanishes. Our planned
+  `RunAllSettled` (explicit `Ok|Failed` per branch) is actually *more* careful
+  than what the runtime auto-generated — worth noting before we treat generated
+  scripts as a gold standard.
+
+**The kicker — it independently found our ledger bugs.** Pointed read-only at our
+own `Engine/`, the audit surfaced (and a skeptic pass confirmed) exactly the
+issues `PLANS/parallel-fanout.md` exists to fix: `Flow.cs` `StartOperation`/
+`Changed` **outside the `try`** (poisons `_inFlight` on throw), the **object-
+identity `_inFlight` guard + `_operations[^1]`** completing the wrong record under
+concurrency, and the **mutable `_ctx`** making `ExecuteAsync` non-re-entrant —
+plus a bonus real one (`FlowDefinition.FlowType` is an unconstrained `System.Type`).
+A first-party workflow run doubling as a free corroboration of the plan.
 
 ## 4. Community reception [M/L]
 
