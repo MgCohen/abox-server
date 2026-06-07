@@ -2,9 +2,9 @@ using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using RemoteAgents.Contracts;
 
-namespace RemoteAgents.Flows;
+namespace RemoteAgents.Engine.Flows;
 
-public sealed class FlowRegistry(IHistoryStore history)
+public sealed class FlowRegistry(IFlowHistory history)
 {
     private readonly ConcurrentDictionary<Guid, TrackedRun> _live = new();
 

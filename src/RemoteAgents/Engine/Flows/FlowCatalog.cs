@@ -1,4 +1,6 @@
-namespace RemoteAgents.Flows;
+using RemoteAgents.Flows;
+
+namespace RemoteAgents.Engine.Flows;
 
 public sealed class FlowCatalog
 {

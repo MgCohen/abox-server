@@ -1,6 +1,6 @@
 using RemoteAgents.Contracts;
 
-namespace RemoteAgents.Flows;
+namespace RemoteAgents.Engine.Flows;
 
 public sealed class FlowLauncher(FlowCatalog catalog, IFlowFactory factory, FlowRegistry registry)
 {

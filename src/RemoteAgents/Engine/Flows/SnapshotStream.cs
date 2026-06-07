@@ -2,7 +2,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using RemoteAgents.Contracts;
 
-namespace RemoteAgents.Flows;
+namespace RemoteAgents.Engine.Flows;
 
 public sealed class SnapshotStream
 {

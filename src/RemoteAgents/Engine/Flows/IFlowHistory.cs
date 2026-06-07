@@ -1,8 +1,8 @@
 using RemoteAgents.Contracts;
 
-namespace RemoteAgents.Flows;
+namespace RemoteAgents.Engine.Flows;
 
-public interface IHistoryStore
+public interface IFlowHistory
 {
     Task Save(FlowSnapshot snapshot);
     FlowSnapshot? Get(Guid id);
