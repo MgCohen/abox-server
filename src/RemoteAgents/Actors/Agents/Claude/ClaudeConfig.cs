@@ -5,5 +5,5 @@ public sealed record ClaudeConfig(
     string Description,
     string Model,
     string SystemPrompt,
-    string PermissionMode = "acceptEdits")
-    : AgentConfig(Name, Description, Model, SystemPrompt);
+    PermissionPolicy Policy = PermissionPolicy.Bypass)
+    : AgentConfig(Name, Description, Model, SystemPrompt, Policy);

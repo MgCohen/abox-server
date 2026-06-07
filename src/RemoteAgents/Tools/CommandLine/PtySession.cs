@@ -29,11 +29,6 @@ public sealed class PtySession : IAsyncDisposable
         get { lock (_bufLock) return _buffer.ToString(); }
     }
 
-    private int? ExitCode
-    {
-        get { try { return _pty.ExitCode; } catch { return null; } }
-    }
-
     public async Task WriteAsync(string s, CancellationToken ct = default)
     {
         var bytes = Encoding.UTF8.GetBytes(s);
@@ -50,21 +45,6 @@ public sealed class PtySession : IAsyncDisposable
         await WriteAsync(text, ct);
         await Task.Delay(settleMs, ct);
         await WriteAsync("\r", ct);
-    }
-
-    public async Task<bool> WaitIdleAsync(
-        int idleThresholdMs,
-        int maxWaitMs,
-        int pollMs = 100,
-        CancellationToken ct = default)
-    {
-        var deadline = DateTimeOffset.UtcNow.AddMilliseconds(maxWaitMs);
-        while (DateTimeOffset.UtcNow < deadline)
-        {
-            await Task.Delay(pollMs, ct);
-            if ((DateTimeOffset.UtcNow - _lastChunkAt).TotalMilliseconds > idleThresholdMs) return true;
-        }
-        return false;
     }
 
     // Wait for a positive readiness signal: the predicate holds over the
@@ -85,29 +65,6 @@ public sealed class PtySession : IAsyncDisposable
             if ((DateTimeOffset.UtcNow - _lastChunkAt).TotalMilliseconds >= settleMs) return true;
         }
         return false;
-    }
-
-    // Oracle B2: on the happy path the reader is NOT cancelled (that would
-    // truncate the final chunk); on the kill path the exit code is forced to
-    // -1 because a kill is never a success.
-    public async Task<int> ShutdownAsync(int waitForExitMs, int readerDrainMs)
-    {
-        if (_pty.WaitForExit(waitForExitMs))
-        {
-            var drained = await Task.WhenAny(_readerTask, Task.Delay(readerDrainMs));
-            if (drained != _readerTask)
-            {
-                _readerCts.Cancel();
-                try { await _readerTask; } catch { /* drained best-effort after timeout */ }
-            }
-            return ExitCode ?? 0;
-        }
-
-        KillQuietly();
-        _readerCts.Cancel();
-        try { await _readerTask; } catch { /* drained best-effort after kill */ }
-        var exitCode = ExitCode ?? -1;
-        return exitCode == 0 ? -1 : exitCode;
     }
 
     private async Task ReadLoopAsync()

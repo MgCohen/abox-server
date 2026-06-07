@@ -30,6 +30,10 @@ re-authors.
 - **R-ARCH-3 · Hooks is an isolated, deferrable layer (L11).** v1 resolves agent
   text directly (Claude JSONL, Codex `-o`); the hook machinery is built last and
   only if the flows demonstrably need it — which, given D4, they should not.
+  **Amended by [ADR 0006](../../design/adr/0006-scoped-hooks-claude-stop.md)
+  (2026-06-06):** one Claude `Stop` hook lands with the provider (turn-completion
+  is undetectable from terminal idle under high-effort thinking). The rest of the
+  hook layer (Q&A, guardrails) stays L11-deferred; Codex stays hook-free.
 
 These compose with the PRD's spine rules: R-ARCH-2's "guards with agents" and the
 Step-shaped invocation seam (R-SPINE-1) are one discipline — each thing where it
@@ -250,6 +254,11 @@ contradicting ADR 0001. High-volume live terminal bytes get their own channel
 `Flow.Run<T>`; its canned text is the operation summary (proven in tests, headless). Build +
 tests green.
 
+> **Forward note (2026-06-06).** `AgentResult` stays the success payload but the run's
+> *return* becomes a closed `AgentOutcome` (`Completed`/`NeedsInput`/`Faulted`) — see
+> the L6 "Structured agent questions" block. The wrapper is introduced with the parse
+> step that can produce the non-`Completed` cases, not retrofitted here.
+
 ## L6 · Concrete agents — PORT
 
 > **Reshaped by [ADR 0004](../../design/adr/0004-provider-seam.md) (2026-06-02).** Concrete
@@ -272,6 +281,63 @@ unit tests.
 
 **Done when.** Arg-builder + dialog-detect + JSONL/`-o` parsing tests pass
 against fixtures; guards refuse on API keys set; build green. No real CLI yet.
+
+### Structured agent questions — folded in (2026-06-06, post-spike)
+
+> Decisions from the validated spike ([`PLANS/structured-questions-spike.md`](../structured-questions-spike.md),
+> results in [`spikes/structured-questions/FINDINGS.md`](../../spikes/structured-questions/FINDINGS.md)).
+> The output-level detect → `<<NEEDS_INPUT>>` + JSON envelope → lenient-parse →
+> resume approach is proven on both providers (parser 14/14 fixtures + 17/17 live,
+> 0 degrades; `open` + negatives solid; continuity holds). Five locked calls:
+
+1. **Closed outcome hierarchy (the result type).** Replace the bare
+   `AgentResult` return with `AgentOutcome`:
+   `Completed(AgentResult) | NeedsInput(AgentResult, AgentQuestion) | Faulted(AgentResult, AgentError)`.
+   `AgentResult` is unchanged (the success payload; `NeedsInput` carries it for the
+   resume `SessionId`); **status is the type** — illegal states can't compile. Flows
+   through the ADR-0003 operation contract → `OperationDto`/SSE.
+2. **Detection in the provider parse step.** Lift `QuestionParser` + `AgentQuestion`
+   from `spikes/structured-questions/` **verbatim** (dependency-free; drop `Diagnose`
+   if unwanted). Run `TryParse` on the `DriveResult` final text once, above the seam —
+   it's provider-agnostic. `Choice` is opportunistic enrichment; `open` is the
+   reliable signal.
+3. **Executor health is a separate signal; `Faulted` beats `NeedsInput`.** A broken
+   executor emits a *valid* envelope (spike Issue 1), so never infer health from the
+   question: non-zero exit / fatal stream error → `Faulted`, which suppresses any
+   parsed question. Cheap guard, no health subsystem (YAGNI).
+4. **Provider owns an OS-aware sandbox/permission policy** (extends the B1 shell
+   seam, lives behind `IProvider`/ADR 0004). Windows codex needs `-s
+   danger-full-access`; **`codex exec resume` rejects `--cd`/`-s`** — cwd comes from
+   the session, sandbox off via `--dangerously-bypass-approvals-and-sandbox` (spike
+   Issues 1, 8). This deletes the dominant broken-executor case.
+5. **Resolver seam, stubbed.** `IQuestionResolver : AgentQuestion → answer?` with a
+   `NonInteractive` default returning no answer (a detected question is a *terminal*
+   `NeedsInput` outcome, prototype behavior). Resolver stays pure; the **flow/operation
+   owns the resume loop** (re-invoke on the session id). `Choice` auto-match + UI
+   picker land later with interaction-modes/UI.
+
+**Directive (the unattended addendum).** Ships as `--append-system-prompt` (Claude) /
+prepended to stdin (Codex). The ask-trigger is **reversibility/stakes, not
+optionality** — add a "STOP and ask when the choice is irreversible / outward-facing"
+clause; **interaction mode scales the threshold** (strict → lower bar; unattended →
+genuine blockers + irreversible forks only). Mode decides *what we do* with a detected
+question, not *whether* we detect (cf. `interaction-modes.md` Q2/Q3, which this
+supersedes for the question model).
+
+**Done when.** Lifted parser tests green in-engine; a provider run that emits the
+envelope yields `AgentOutcome.NeedsInput` with a typed `AgentQuestion`; a broken
+executor yields `Faulted` (not a question); `NonInteractive` resolver makes
+`NeedsInput` terminal; build green.
+
+**Landed 2026-06-06 (first pass).** All five decisions shipped in
+`src/RemoteAgents/Actors/Agents/`: `QuestionParser` + `AgentQuestion` (lifted),
+`AgentOutcome`/`AgentError`, `Agent` returns the outcome with Faulted-beats-Question
+precedence, OS-aware codex sandbox + corrected resume args (`CodexProtocol`),
+`AgentDirective` appended for both providers, `IQuestionResolver` +
+`NonInteractiveResolver`. 23 new tests; full suite 92 green, warning-free. Deferred
+until proven in real use: `RawTail` on the wire DTO, interaction-mode default/home
+(both still open in the spike doc §9). Provider-owned resolve→resume loop is
+demonstrated by test; its production home is the L8 agent-step.
 
 ## L7 · Named-agent roles — NEW (D1)
 

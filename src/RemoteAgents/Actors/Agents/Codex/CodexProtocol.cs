@@ -7,12 +7,25 @@ public static class CodexProtocol
 {
     public static List<string> BuildArgs(string? sessionId, string projectDir, string lastMessageFile, string model, string sandbox)
     {
+        var isResume = sessionId is not null;
         var args = new List<string> { "exec" };
-        if (sessionId is not null) { args.Add("resume"); args.Add(sessionId); }
 
-        args.Add("--cd"); args.Add(projectDir);
-        args.Add("-o"); args.Add(lastMessageFile);
-        args.Add("--sandbox"); args.Add(sandbox);
+        // `codex exec resume` rejects --cd and --sandbox: cwd comes from the recorded
+        // session and sandboxing is toggled via the bypass flag instead (structured-
+        // questions FINDINGS Issue 8). New turns set both explicitly.
+        if (isResume)
+        {
+            args.Add("resume"); args.Add(sessionId!);
+            args.Add("-o"); args.Add(lastMessageFile);
+            args.Add("--dangerously-bypass-approvals-and-sandbox");
+        }
+        else
+        {
+            args.Add("--cd"); args.Add(projectDir);
+            args.Add("-o"); args.Add(lastMessageFile);
+            args.Add("--sandbox"); args.Add(EffectiveSandbox(sandbox));
+        }
+
         // codex refuses to run unattended in a non-git or first-seen dir without this.
         args.Add("--skip-git-repo-check");
         args.Add("--json");
@@ -20,6 +33,12 @@ public static class CodexProtocol
         args.Add("-");
         return args;
     }
+
+    // Codex's OS sandbox fails to spawn on Windows ("windows sandbox: spawn setup
+    // refresh"), so bypass it there; honor the configured policy elsewhere
+    // (structured-questions FINDINGS Issue 1).
+    private static string EffectiveSandbox(string sandbox)
+        => OperatingSystem.IsWindows() ? "danger-full-access" : sandbox;
 
     public static string? ScanSessionId(string line)
     {

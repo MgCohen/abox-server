@@ -30,7 +30,8 @@ public class CodexProtocolTests
 
         AssertPair(args, "--cd", "C:/proj");
         AssertPair(args, "-o", "C:/tmp/last.txt");
-        AssertPair(args, "--sandbox", "read-only");
+        // Sandbox is OS-aware: Windows can't spawn codex's sandbox, so it's bypassed there.
+        AssertPair(args, "--sandbox", OperatingSystem.IsWindows() ? "danger-full-access" : "read-only");
         AssertPair(args, "--model", "gpt-5.5");
         Assert.Contains("--json", args);
         Assert.Contains("--skip-git-repo-check", args);
