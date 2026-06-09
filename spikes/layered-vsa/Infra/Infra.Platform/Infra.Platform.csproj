@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>Infra.Platform</AssemblyName>
+    <RootNamespace>Infra.Platform</RootNamespace>
+  </PropertyGroup>
+</Project>

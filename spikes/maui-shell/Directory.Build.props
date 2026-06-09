@@ -1,0 +1,5 @@
+<Project>
+  <!-- Throwaway MAUI spike. Stops MSBuild's upward search so it does NOT
+       inherit the repo root's net10.0 TargetFramework / artifacts output /
+       warnings-as-errors, which fight the MAUI multi-target build. -->
+</Project>

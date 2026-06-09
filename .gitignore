@@ -7,6 +7,10 @@ node_modules/
 artifacts/
 **/artifacts/
 
+# Default MSBuild output (spikes using the standard bin/obj layout)
+bin/
+obj/
+
 # Claude Code project state (per-user: launch.json, settings.local.json, skills)
 .claude/
 

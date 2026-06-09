@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>ArchCheck</AssemblyName>
+    <RootNamespace>ArchCheck</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Features\Flows\Flows.Feature\Flows.Feature.csproj" />
+    <ProjectReference Include="..\Features\Notifications\Notifications.Feature\Notifications.Feature.csproj" />
+  </ItemGroup>
+</Project>

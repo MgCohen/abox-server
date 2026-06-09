@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>Flows.Contracts</AssemblyName>
+    <RootNamespace>Flows.Contracts</RootNamespace>
+  </PropertyGroup>
+</Project>

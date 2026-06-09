@@ -1,0 +1,87 @@
+:root {
+    --bg: #e0e5ec;
+    --shadow-dark: #a3b1c6;
+    --shadow-light: #ffffff;
+    --ink: #5a6678;
+    --layer-interval: 140ms;
+    --exit-dur: 420ms;
+    --enter-dur: 480ms;
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    color: var(--ink);
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.stage {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2.5rem;
+}
+
+.caption {
+    font-size: 0.95rem;
+    letter-spacing: 0.04em;
+    opacity: 0.7;
+}
+
+.card {
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 9px 9px 18px var(--shadow-dark), -9px -9px 18px var(--shadow-light);
+}
+
+.l0 { width: 280px; height: 280px; border-radius: 26px; }
+.l1 { width: 168px; height: 168px; border-radius: 20px; }
+.l2 { width: 84px; height: 84px; border-radius: 14px; }
+
+.morph-item { will-change: transform, opacity, box-shadow; }
+
+[data-phase="exiting"] .morph-item {
+    animation: melt-exit var(--exit-dur) var(--ease) forwards;
+    animation-delay: calc((var(--max-depth) - var(--depth)) * var(--layer-interval));
+}
+
+[data-phase="entering"] .morph-item {
+    animation: morph-enter var(--enter-dur) var(--ease) backwards;
+    animation-delay: calc(var(--depth) * var(--layer-interval));
+}
+
+@keyframes melt-exit {
+    from { box-shadow: 9px 9px 18px var(--shadow-dark), -9px -9px 18px var(--shadow-light); transform: scale(1); opacity: 1; }
+    to   { box-shadow: 0 0 0 var(--shadow-dark), 0 0 0 var(--shadow-light); transform: scale(0.88); opacity: 0.2; }
+}
+
+@keyframes morph-enter {
+    from { box-shadow: 0 0 0 var(--shadow-dark), 0 0 0 var(--shadow-light); transform: scale(0.88); opacity: 0.2; }
+    to   { box-shadow: 9px 9px 18px var(--shadow-dark), -9px -9px 18px var(--shadow-light); transform: scale(1); opacity: 1; }
+}
+
+.replay {
+    background: var(--bg);
+    color: var(--ink);
+    border: none;
+    border-radius: 16px;
+    padding: 0.9rem 1.8rem;
+    font-size: 0.95rem;
+    cursor: pointer;
+    box-shadow: 6px 6px 12px var(--shadow-dark), -6px -6px 12px var(--shadow-light);
+}
+
+.replay:active { box-shadow: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light); }
+.replay:disabled { opacity: 0.5; cursor: default; }
+
+@media (prefers-reduced-motion: reduce) {
+    .morph-item { animation: none !important; }
+}

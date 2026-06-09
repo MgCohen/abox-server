@@ -1,0 +1,32 @@
+@page "/detail"
+@page "/detail/{Id}"
+<PageTitle>Probe — Detail</PageTitle>
+
+<h1 class="morph-item" style="--i:0">Detail route @(Id is null ? "" : $"#{Id}")</h1>
+
+<div class="card neu-raised morph-item run-detail" style="--i:1">
+    <div class="run-head"><span class="run-name">Detail header</span></div>
+    <div class="run-project">/detail@(Id is null ? "" : $"/{Id}")</div>
+</div>
+
+<div class="detail-grid">
+    <div class="card neu-raised morph-item" style="--i:2">
+        <div class="card-head"><h2>Steps</h2></div>
+        <div class="step-row"><span class="step-glyph ok">●</span><span class="step-name">Plan</span></div>
+        <div class="step-row"><span class="step-glyph ok">●</span><span class="step-name">Build</span></div>
+        <div class="step-row"><span class="step-glyph active">●</span><span class="step-name">Verify</span></div>
+    </div>
+    <div class="card neu-raised morph-item log" style="--i:3">
+        <div class="log-line">[detail] this is the /detail route</div>
+        <div class="log-line">[detail] cards carry .morph-item</div>
+    </div>
+</div>
+
+<div class="card neu-raised morph-item" style="--i:4">
+    <a href="/" class="btn-outline sm">&lt;a&gt; link back to /</a>
+    <NavLink href="/detail/42" class="btn-outline sm">NavLink: /detail/42</NavLink>
+</div>
+
+@code {
+    [Parameter] public string? Id { get; set; }
+}

@@ -1,0 +1,158 @@
+:root {
+    --bg: #ded4c4;
+    --surface: #e9e1d3;
+    --surface-alt: #d8e0e9;
+    --text: #5c5446;
+    --text-muted: #a99e8a;
+    --accent: #6c5ce7;
+    --accent-grad: linear-gradient(145deg, #7d6ef2, #6151df);
+    --shadow-dark: #c5bca7;
+    --shadow-light: #fdf7ec;
+    --shadow-dark-alt: #a9b4c2;
+    --shadow-light-alt: #f2f7fd;
+
+    --melt-dur: 600ms;
+    --extrude-dur: 700ms;
+    --layer-interval: 220ms;
+    --max-depth: 2;
+    --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    min-height: 100%;
+    font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+}
+
+button { font-family: inherit; cursor: pointer; border: none; }
+
+.app-shell {
+    max-width: 1000px;
+    margin: 38px auto;
+    padding: 26px;
+    min-height: calc(100vh - 76px);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    border-radius: 34px;
+    background: var(--surface);
+    box-shadow: 10px 10px 30px var(--shadow-dark), -10px -10px 30px var(--shadow-light);
+}
+
+.topbar { display: flex; align-items: center; gap: 16px; }
+.brand { display: flex; align-items: center; gap: 10px; }
+
+.logo {
+    width: 34px; height: 34px; border-radius: 11px;
+    background: var(--accent-grad); color: #fff; font-weight: 700;
+    display: grid; place-items: center;
+    box-shadow: 3px 3px 7px var(--shadow-dark);
+}
+
+.brand-name { font-weight: 700; font-size: 18px; }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+
+.provider-pill {
+    border-radius: 13px; padding: 7px 14px; font-size: 13px;
+    color: var(--text-muted); white-space: nowrap;
+    background: var(--surface);
+    box-shadow: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
+}
+
+.btn-primary {
+    background: var(--accent-grad); color: #fff; font-weight: 600;
+    border-radius: 14px; padding: 9px 18px; font-size: 14px;
+    box-shadow: 4px 4px 10px var(--shadow-dark);
+}
+
+.stage { display: flex; flex-direction: column; gap: 20px; }
+
+.card {
+    border-radius: 24px; padding: 22px;
+    background: var(--surface);
+    box-shadow: 6px 6px 14px var(--shadow-dark), -6px -6px 14px var(--shadow-light);
+}
+
+.card.alt {
+    background: var(--surface-alt);
+    box-shadow: 6px 6px 14px var(--shadow-dark-alt), -6px -6px 14px var(--shadow-light-alt);
+}
+
+.card-title { font-weight: 700; font-size: 16px; margin-bottom: 14px; }
+
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+
+.card.mid { padding: 18px; }
+
+.leaf {
+    border-radius: 14px; padding: 12px 16px; margin-top: 10px;
+    font-size: 13px; color: var(--text);
+    background: var(--surface);
+    box-shadow: 4px 4px 9px var(--shadow-dark), -4px -4px 9px var(--shadow-light);
+}
+
+.leaf.alt {
+    background: var(--surface-alt);
+    box-shadow: 4px 4px 9px var(--shadow-dark-alt), -4px -4px 9px var(--shadow-light-alt);
+}
+
+/* ============================================================
+   Depth-layered melt / extrude
+   - Stagger axis is nesting DEPTH (--depth), not sibling index.
+   - Extrude (appear): outermost-first, delay = depth * interval.
+   - Melt (disappear): default outermost-first; .melt-inverse flips
+     it to innermost-first, delay = (max-depth - depth) * interval.
+   ============================================================ */
+
+.stage.extruding .morph-item {
+    animation: extrude var(--extrude-dur) var(--motion-ease) backwards;
+    animation-delay: calc(var(--depth, 0) * var(--layer-interval));
+}
+
+.stage.melting .morph-item {
+    animation: melt var(--melt-dur) var(--motion-ease) forwards;
+    animation-delay: calc(var(--depth, 0) * var(--layer-interval));
+}
+
+.stage.melting.melt-inverse .morph-item {
+    animation-delay: calc((var(--max-depth) - var(--depth, 0)) * var(--layer-interval));
+}
+
+@keyframes melt {
+    from {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+        box-shadow: 6px 6px 14px var(--shadow-dark), -6px -6px 14px var(--shadow-light);
+    }
+    to {
+        opacity: 0;
+        transform: scale(0.95) translateY(6px);
+        box-shadow: 0 0 0 rgba(0,0,0,0), 0 0 0 rgba(0,0,0,0);
+    }
+}
+
+@keyframes extrude {
+    from {
+        opacity: 0;
+        transform: scale(0.93) translateY(8px);
+        box-shadow: 0 0 0 rgba(0,0,0,0), 0 0 0 rgba(0,0,0,0);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+        box-shadow: 6px 6px 14px var(--shadow-dark), -6px -6px 14px var(--shadow-light);
+    }
+}
+
+.loading-progress-text { padding: 40px; color: var(--text); font-weight: bold; }
+
+#blazor-error-ui {
+    color: #5c5446; background: #f5d9b0; bottom: 0;
+    display: none; left: 0; padding: 0.8rem 1.2rem;
+    position: fixed; width: 100%; z-index: 1000;
+}

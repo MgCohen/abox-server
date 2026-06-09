@@ -1,0 +1,51 @@
+@page "/"
+
+<div class="stage" data-phase="@_phase" style="--max-depth:2">
+    <div class="caption">melt → extrude · depth-staggered · BlazorWebView</div>
+
+    <div class="card l0 morph-item" style="--depth:0">
+        <div class="card l1 morph-item" style="--depth:1">
+            <div class="card l2 morph-item" style="--depth:2"></div>
+        </div>
+    </div>
+
+    <button class="replay" @onclick="Replay" disabled="@_busy">
+        @(_busy ? "playing…" : "Replay")
+    </button>
+</div>
+
+@code {
+    const int LayerInterval = 140;
+    const int MaxDepth = 2;
+    const int ExitDur = 420;
+    const int EnterDur = 480;
+    const int Tail = 60;
+
+    string _phase = "idle";
+    bool _busy;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await Replay();
+    }
+
+    async Task Replay()
+    {
+        if (_busy)
+            return;
+        _busy = true;
+
+        _phase = "exiting";
+        StateHasChanged();
+        await Task.Delay(ExitDur + MaxDepth * LayerInterval + Tail);
+
+        _phase = "entering";
+        StateHasChanged();
+        await Task.Delay(EnterDur + MaxDepth * LayerInterval + Tail);
+
+        _phase = "idle";
+        _busy = false;
+        StateHasChanged();
+    }
+}

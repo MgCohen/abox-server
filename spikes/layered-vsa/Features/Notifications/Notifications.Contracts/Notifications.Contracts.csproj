@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>Notifications.Contracts</AssemblyName>
+    <RootNamespace>Notifications.Contracts</RootNamespace>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,101 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject NavigationManager Nav
+
+<div class="app-shell" style="@MotionVars">
+    <header class="topbar">
+        <div class="brand">
+            <div class="logo">P</div>
+            <span class="brand-name">Probe Router</span>
+        </div>
+        <nav class="topbar-right">
+            <NavLink class="btn-outline sm" href="/" Match="NavLinkMatch.All">NavLink: Home</NavLink>
+            <NavLink class="btn-outline sm" href="/detail">NavLink: Detail</NavLink>
+            <button class="btn-primary" @onclick="GoProgrammatic">NavigateTo()</button>
+            <div class="provider-pill neu-inset">phase: @PhaseLabel</div>
+        </nav>
+    </header>
+
+    <div class="stage @PhaseClass">
+        @Body
+    </div>
+</div>
+
+@if (_phase != Phase.Idle)
+{
+    <div class="status-pill neu-raised">
+        <span class="dot @(_phase == Phase.Melting ? "orange" : "blue")"></span>
+        @PhaseLabel
+    </div>
+}
+
+@code {
+    private enum Phase { Idle, Melting, Extruding }
+    private Phase _phase = Phase.Idle;
+
+    private const int MeltMs = 520;
+    private const int ExtrudeMs = 600;
+    private const int StaggerMs = 55;
+    private const int MaxStaggerIndex = 8;
+    private const string Ease = "cubic-bezier(0.34, 1.56, 0.64, 1)";
+
+    private IDisposable? _locationChangingReg;
+    private bool _pendingExtrude;
+
+    protected override void OnInitialized()
+    {
+        _locationChangingReg = Nav.RegisterLocationChangingHandler(OnLocationChanging);
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    private async ValueTask OnLocationChanging(LocationChangingContext context)
+    {
+        _phase = Phase.Melting;
+        StateHasChanged();
+        await Task.Delay(MeltMs + MaxStaggerIndex * StaggerMs + 60);
+        _pendingExtrude = true;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        if (!_pendingExtrude)
+            return;
+
+        _pendingExtrude = false;
+        _phase = Phase.Extruding;
+        StateHasChanged();
+        _ = RunExtrude();
+    }
+
+    private async Task RunExtrude()
+    {
+        await Task.Delay(ExtrudeMs + MaxStaggerIndex * StaggerMs + 60);
+        _phase = Phase.Idle;
+        StateHasChanged();
+    }
+
+    private void GoProgrammatic() => Nav.NavigateTo("/detail");
+
+    private string PhaseClass => _phase switch
+    {
+        Phase.Melting => "melting",
+        Phase.Extruding => "extruding",
+        _ => "",
+    };
+
+    private string PhaseLabel => _phase switch
+    {
+        Phase.Melting => "melting…",
+        Phase.Extruding => "extruding…",
+        _ => "idle",
+    };
+
+    private string MotionVars =>
+        $"--melt-dur:{MeltMs}ms;--extrude-dur:{ExtrudeMs}ms;--stagger:{StaggerMs}ms;--motion-ease:{Ease};";
+
+    public void Dispose()
+    {
+        _locationChangingReg?.Dispose();
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+}

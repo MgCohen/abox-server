@@ -1,0 +1,116 @@
+@implements IDisposable
+
+<div class="app-shell" style="@MotionVars">
+    <header class="topbar">
+        <div class="brand">
+            <div class="logo">D</div>
+            <span class="brand-name">Depth Probe</span>
+        </div>
+        <div class="topbar-right">
+            <span class="provider-pill">tree: @(_tree == Tree.A ? "A" : "B") &nbsp;|&nbsp; phase: @PhaseLabel</span>
+            <button id="swap" class="btn-primary" @onclick="Swap">Swap tree</button>
+        </div>
+    </header>
+
+    <div class="stage @PhaseClass @MeltDirClass">
+        @if (_tree == Tree.A)
+        {
+            @* Tree A: outer[0] -> two mid[1] -> two leaf[2] each *@
+            <div class="card morph-item" style="--depth:0" data-depth="0">
+                <div class="card-title">A · outer (depth 0)</div>
+                <div class="row">
+                    <div class="card mid morph-item" style="--depth:1" data-depth="1">
+                        <div class="card-title">mid A1 (d1)</div>
+                        <div class="leaf morph-item" style="--depth:2" data-depth="2">leaf A1a</div>
+                        <div class="leaf morph-item" style="--depth:2" data-depth="2">leaf A1b</div>
+                    </div>
+                    <div class="card mid morph-item" style="--depth:1" data-depth="1">
+                        <div class="card-title">mid A2 (d1)</div>
+                        <div class="leaf morph-item" style="--depth:2" data-depth="2">leaf A2a</div>
+                        <div class="leaf morph-item" style="--depth:2" data-depth="2">leaf A2b</div>
+                    </div>
+                </div>
+            </div>
+        }
+        else
+        {
+            @* Tree B: distinct content + colour so swap is unmistakable *@
+            <div class="card alt morph-item" style="--depth:0" data-depth="0">
+                <div class="card-title">B · outer (depth 0)</div>
+                <div class="row">
+                    <div class="card mid alt morph-item" style="--depth:1" data-depth="1">
+                        <div class="card-title">mid B1 (d1)</div>
+                        <div class="leaf alt morph-item" style="--depth:2" data-depth="2">leaf B1a</div>
+                        <div class="leaf alt morph-item" style="--depth:2" data-depth="2">leaf B1b</div>
+                    </div>
+                    <div class="card mid alt morph-item" style="--depth:1" data-depth="1">
+                        <div class="card-title">mid B2 (d1)</div>
+                        <div class="leaf alt morph-item" style="--depth:2" data-depth="2">leaf B2a</div>
+                        <div class="leaf alt morph-item" style="--depth:2" data-depth="2">leaf B2b</div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private enum Tree { A, B }
+    private enum Phase { Idle, Melting, Extruding }
+
+    private Tree _tree = Tree.A;
+    private Phase _phase = Phase.Idle;
+
+    // Long, easy-to-film timing for the probe.
+    private const int MeltMs = 600;
+    private const int ExtrudeMs = 700;
+    private const int LayerIntervalMs = 220;
+    private const int MaxDepth = 2;
+    private const int SlackMs = 80;
+
+    // Melt runs innermost-first (depth 2 -> 0); extrude outermost-first (0 -> 2).
+    private const bool MeltInverse = true;
+
+    private string PhaseClass => _phase switch
+    {
+        Phase.Melting => "melting",
+        Phase.Extruding => "extruding",
+        _ => "",
+    };
+
+    private string MeltDirClass => MeltInverse ? "melt-inverse" : "";
+
+    private string PhaseLabel => _phase switch
+    {
+        Phase.Melting => "melting",
+        Phase.Extruding => "extruding",
+        _ => "idle",
+    };
+
+    private string MotionVars =>
+        $"--melt-dur:{MeltMs}ms;--extrude-dur:{ExtrudeMs}ms;--layer-interval:{LayerIntervalMs}ms;--max-depth:{MaxDepth};";
+
+    private bool _busy;
+
+    private async Task Swap()
+    {
+        if (_busy)
+            return;
+        _busy = true;
+
+        _phase = Phase.Melting;
+        StateHasChanged();
+        await Task.Delay(MeltMs + MaxDepth * LayerIntervalMs + SlackMs);
+
+        _tree = _tree == Tree.A ? Tree.B : Tree.A;
+        _phase = Phase.Extruding;
+        StateHasChanged();
+        await Task.Delay(ExtrudeMs + MaxDepth * LayerIntervalMs + SlackMs);
+
+        _phase = Phase.Idle;
+        _busy = false;
+        StateHasChanged();
+    }
+
+    public void Dispose() { }
+}

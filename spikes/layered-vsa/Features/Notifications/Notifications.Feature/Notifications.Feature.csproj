@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>Notifications.Feature</AssemblyName>
+    <RootNamespace>Notifications</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Notifications.Contracts\Notifications.Contracts.csproj" />
+    <ProjectReference Include="..\..\Flows\Flows.Contracts\Flows.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\Domain\Domain.csproj" />
+    <ProjectReference Include="..\..\..\Infra\Infra.AgentRuntime\Infra.AgentRuntime.csproj" />
+  </ItemGroup>
+</Project>
