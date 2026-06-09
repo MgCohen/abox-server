@@ -1,0 +1,50 @@
+@namespace UiShell.Components
+
+@{
+    var run = StubData.Runs[0];
+}
+
+<button class="btn-ghost sm back morph-item" style="--i:0" @onclick="OnBack">← Back</button>
+
+<div class="card neu-raised run-detail morph-item" style="--i:1">
+    <div class="run-head">
+        <span class="dot blue"></span>
+        <span class="run-name">@run.Name</span>
+    </div>
+    <div class="run-project">@run.Project</div>
+    <div class="progress neu-inset">
+        <div class="progress-fill" style="width:@(run.Percent)%"></div>
+    </div>
+    <div class="run-meta">
+        <span>◷ @run.Elapsed</span>
+        <span>@run.Cost</span>
+        <span>@run.Phase</span>
+    </div>
+</div>
+
+<div class="detail-grid">
+    <div class="card neu-raised morph-item" style="--i:2">
+        <h3 class="section-label">STEPS</h3>
+        @foreach (var s in StubData.Steps)
+        {
+            <div class="step-row">
+                <span class="step-glyph @s.State neu-inset">@s.Glyph</span>
+                <span class="step-name">@s.Name</span>
+            </div>
+        }
+    </div>
+
+    <div class="card neu-raised morph-item" style="--i:3">
+        <h3 class="section-label">LIVE LOG</h3>
+        <div class="log neu-inset">
+            @foreach (var line in StubData.Log)
+            {
+                <div class="log-line">@line</div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback OnBack { get; set; }
+}

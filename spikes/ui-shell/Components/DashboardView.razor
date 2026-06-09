@@ -1,0 +1,133 @@
+@namespace UiShell.Components
+
+<section class="kpi-row">
+    @foreach (var (k, i) in StubData.Kpis.Select((x, i) => (x, i)))
+    {
+        <div class="kpi neu-raised morph-item" style="--i:@i">
+            <span class="kpi-label">@k.Label</span>
+            <span class="kpi-value @k.Accent">
+                @k.Value
+                @if (k.Dot)
+                {
+                    <span class="dot @k.Accent"></span>
+                }
+            </span>
+        </div>
+    }
+</section>
+
+<section class="main-grid">
+    <div class="card neu-raised attention morph-item" style="--i:4">
+        <div class="card-head">
+            <span class="bell">🔔</span>
+            <h2>Needs attention</h2>
+            <span class="count-badge">@StubData.Attention.Length</span>
+        </div>
+        @foreach (var a in StubData.Attention)
+        {
+            <div class="attention-row">
+                <div class="attention-text">
+                    <div class="attention-actor">
+                        <span class="actor-name">@a.Actor</span>
+                        <span class="tag"><span class="dot orange"></span>@a.Tag</span>
+                    </div>
+                    <div class="attention-body">
+                        @a.Body
+                        @if (a.Mono is not null)
+                        {
+                            <code>@a.Mono</code>
+                        }
+                    </div>
+                </div>
+                <div class="attention-actions">
+                    @switch (a.Action)
+                    {
+                        case AttentionAction.ApproveDeny:
+                            <button class="btn-primary sm">Approve</button>
+                            <button class="btn-ghost sm">Deny</button>
+                            break;
+                        case AttentionAction.Answer:
+                            <button class="btn-outline sm">Answer...</button>
+                            break;
+                        case AttentionAction.Review:
+                            <button class="btn-primary sm">Review</button>
+                            break;
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="card neu-raised activity morph-item" style="--i:5">
+        <div class="card-head">
+            <h3 class="section-label">RECENT ACTIVITY</h3>
+        </div>
+        @foreach (var act in StubData.Activity)
+        {
+            <div class="activity-row">
+                <span class="activity-glyph @act.GlyphKind neu-inset">@act.Glyph</span>
+                <span class="activity-text">@act.Text</span>
+                <span class="activity-age">@act.Age</span>
+            </div>
+        }
+    </div>
+</section>
+
+<section class="bottom-grid">
+    @{
+        var hero = StubData.Runs[0];
+    }
+    <div class="card neu-raised run morph-item clickable" style="--i:6" @onclick="OnOpenRun">
+        <div class="run-head">
+            <span class="dot blue"></span>
+            <span class="run-name">@hero.Name</span>
+        </div>
+        <div class="run-project">@hero.Project</div>
+        <div class="progress neu-inset">
+            <div class="progress-fill" style="width:@(hero.Percent)%"></div>
+        </div>
+        <div class="run-foot">
+            <span class="run-phase">@hero.Phase</span>
+        </div>
+        <div class="run-meta">
+            <span>◷ @hero.Elapsed</span>
+            <span>@hero.Cost</span>
+        </div>
+    </div>
+
+    @foreach (var r in StubData.Runs[1..])
+    {
+        <div class="card neu-raised run morph-item" style="--i:7">
+            <div class="run-head">
+                <span class="dot blue"></span>
+                <span class="run-name">@r.Name</span>
+            </div>
+            <div class="run-project">@r.Project</div>
+            <div class="progress neu-inset">
+                <div class="progress-fill" style="width:@(r.Percent)%"></div>
+            </div>
+            <div class="run-foot">
+                <span class="run-phase">@r.Phase</span>
+            </div>
+            <div class="run-meta">
+                <span>◷ @r.Elapsed</span>
+                <span>@r.Cost</span>
+            </div>
+        </div>
+    }
+
+    <div class="card neu-raised quick morph-item" style="--i:8">
+        <h3 class="section-label">QUICK ACTIONS</h3>
+        @foreach (var q in StubData.QuickActions)
+        {
+            <button class="quick-row neu-inset">
+                <span class="quick-glyph">@q.Glyph</span>
+                <span>@q.Label</span>
+            </button>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter] public EventCallback OnOpenRun { get; set; }
+}

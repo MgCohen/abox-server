@@ -1,0 +1,100 @@
+@page "/"
+@using UiShell.Components
+<PageTitle>Orchestrator</PageTitle>
+
+<div class="app-shell" style="@MotionVars">
+    <header class="topbar">
+        <div class="brand">
+            <div class="logo">O</div>
+            <span class="brand-name">Orchestrator</span>
+        </div>
+        <div class="search neu-inset">
+            <span class="search-icon">⌕</span>
+            <span class="search-placeholder">Search flows, agents, runs...</span>
+        </div>
+        <div class="topbar-right">
+            <div class="motion-control neu-inset">
+                @foreach (var p in _presets)
+                {
+                    <button class="motion-btn @(_active.Name == p.Name ? "on" : "")" @onclick="() => _active = p">@p.Name</button>
+                }
+            </div>
+            <div class="provider-pill neu-inset">@StubData.Provider</div>
+            <button class="btn-primary">+ Quick Chat</button>
+        </div>
+    </header>
+
+    <div class="stage @PhaseClass">
+        @if (_view == View.Dashboard)
+        {
+            <DashboardView OnOpenRun="GoToRun" />
+        }
+        else
+        {
+            <RunDetailView OnBack="GoToDashboard" />
+        }
+    </div>
+</div>
+
+@if (_phase != Phase.Idle)
+{
+    <div class="status-pill neu-raised">
+        <span class="dot @(_phase == Phase.Melting ? "orange" : "blue")"></span>
+        @(_phase == Phase.Melting ? "melting…" : "extruding…")
+    </div>
+}
+
+@code {
+    private enum View { Dashboard, Run }
+    private enum Phase { Idle, Melting, Extruding }
+
+    private View _view = View.Dashboard;
+    private Phase _phase = Phase.Idle;
+
+    private record Preset(string Name, int MeltMs, int ExtrudeMs, int StaggerMs, string Ease);
+
+    private readonly Preset[] _presets =
+    [
+        new("Snappy", 260, 300, 22, "cubic-bezier(0.4, 0, 0.2, 1)"),
+        new("Smooth", 420, 480, 35, "cubic-bezier(0.22, 1, 0.36, 1)"),
+        new("Bouncy", 520, 600, 55, "cubic-bezier(0.34, 1.56, 0.64, 1)"),
+    ];
+
+    private Preset _active = null!;
+
+    // Highest --i used across the views, so the phase wait covers the last item.
+    private const int MaxStaggerIndex = 8;
+
+    protected override void OnInitialized() => _active = _presets[1];
+
+    private string PhaseClass => _phase switch
+    {
+        Phase.Melting => "melting",
+        Phase.Extruding => "extruding",
+        _ => "",
+    };
+
+    private string MotionVars =>
+        $"--melt-dur:{_active.MeltMs}ms;--extrude-dur:{_active.ExtrudeMs}ms;--stagger:{_active.StaggerMs}ms;--motion-ease:{_active.Ease};";
+
+    private Task GoToRun() => SwitchTo(View.Run);
+    private Task GoToDashboard() => SwitchTo(View.Dashboard);
+
+    private async Task SwitchTo(View target)
+    {
+        if (_phase != Phase.Idle || _view == target)
+            return;
+
+        _phase = Phase.Melting;
+        StateHasChanged();
+        await Task.Delay(_active.MeltMs + MaxStaggerIndex * _active.StaggerMs + 60);
+
+        _view = target;
+        _phase = Phase.Extruding;
+        StateHasChanged();
+        await Task.Delay(_active.ExtrudeMs + MaxStaggerIndex * _active.StaggerMs + 60);
+
+        _phase = Phase.Idle;
+        StateHasChanged();
+    }
+}
