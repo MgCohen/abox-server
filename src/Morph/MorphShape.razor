@@ -1,0 +1,13 @@
+<div class="morph-item @Class" style="--depth:@Depth">
+    <CascadingValue Name="MorphDepth" Value="@(Depth + 1)" IsFixed="true">
+        @ChildContent
+    </CascadingValue>
+</div>
+
+@code {
+    [CascadingParameter(Name = "MorphDepth")] private int Depth { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

@@ -1,0 +1,71 @@
+body {
+    margin: 0;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+}
+
+.boot {
+    padding: 2rem;
+    color: var(--text-muted);
+}
+
+.shell {
+    max-width: 720px;
+    margin: 40px auto;
+    padding: 24px;
+}
+
+.nav {
+    margin-bottom: 16px;
+    font-size: 14px;
+}
+
+.nav a {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.swap {
+    margin-bottom: 24px;
+    padding: 10px 18px;
+    border: none;
+    border-radius: 12px;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.card {
+    border-radius: 24px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.inner {
+    border-radius: 18px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.leaf {
+    border-radius: 14px;
+    padding: 14px;
+    font-size: 13px;
+}
+
+h2 {
+    margin: 0;
+    font-size: 20px;
+}
+
+#blazor-error-ui {
+    display: none;
+}

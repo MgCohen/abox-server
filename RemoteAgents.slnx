@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Morph/Morph.csproj" />
     <Project Path="src/RemoteAgents.Contracts/RemoteAgents.Contracts.csproj" />
     <Project Path="src/RemoteAgents/RemoteAgents.csproj" />
     <Project Path="src/RemoteAgents.Host/RemoteAgents.Host.csproj" />

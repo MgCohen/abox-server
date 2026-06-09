@@ -1,0 +1,55 @@
+@inherits MorphStageBase
+@implements IDisposable
+
+<div class="morph-stage" data-phase="@DataPhase" style="@_definition.Vars" @onanimationend="OnAnimationEnd">
+    <CascadingValue Name="MorphDepth" Value="@(0)" IsFixed="true">
+        @Body
+    </CascadingValue>
+</div>
+
+@code {
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+
+    [Parameter, EditorRequired] public RenderFragment? Body { get; set; }
+
+    [Parameter] public string? Transition { get; set; }
+
+    private IDisposable? _registration;
+    private TransitionDefinition _definition = default!;
+
+    protected override void OnInitialized()
+    {
+        _registration = Nav.RegisterLocationChangingHandler(OnLocationChanging);
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    protected override void OnParametersSet() => _definition = Options.Resolve(Transition);
+
+    private async ValueTask OnLocationChanging(LocationChangingContext context)
+    {
+        if (Phase != MorphPhase.Idle)
+            return;
+
+        if (string.Equals(context.TargetLocation, Nav.Uri, StringComparison.Ordinal))
+            return;
+
+        await RunPhaseAsync(MorphPhase.Exiting, _definition);
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs args) => _ = EnterAsync();
+
+    private async Task EnterAsync()
+    {
+        if (Phase != MorphPhase.Exiting)
+            return;
+
+        await RunPhaseAsync(MorphPhase.Entering, _definition);
+        Settle();
+    }
+
+    public void Dispose()
+    {
+        _registration?.Dispose();
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+}

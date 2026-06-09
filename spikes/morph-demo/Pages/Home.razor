@@ -1,0 +1,41 @@
+@page "/"
+@namespace MorphDemo.Pages
+
+<nav class="nav"><a href="">Home</a> · <a href="b">Page B</a></nav>
+
+<button class="swap" @onclick="Toggle">Swap (now @_view)</button>
+
+<MorphStage Screen="_view" Context="v">
+    @if (v == 0)
+    {
+        <MorphShape Class="neu-raised card">
+            <h2>Screen A</h2>
+            <MorphShape Class="neu-inset inner">
+                <span>A · inner 1</span>
+            </MorphShape>
+            <MorphShape Class="neu-inset inner">
+                <span>A · inner 2</span>
+                <MorphShape Class="neu-raised leaf">A · leaf</MorphShape>
+            </MorphShape>
+        </MorphShape>
+    }
+    else
+    {
+        <MorphShape Class="neu-raised card">
+            <h2>Screen B</h2>
+            <MorphShape Class="neu-inset inner">
+                <span>B · inner 1</span>
+                <MorphShape Class="neu-raised leaf">B · leaf</MorphShape>
+            </MorphShape>
+            <MorphShape Class="neu-inset inner">
+                <span>B · inner 2</span>
+            </MorphShape>
+        </MorphShape>
+    }
+</MorphStage>
+
+@code {
+    private int _view;
+
+    private void Toggle() => _view = _view == 0 ? 1 : 0;
+}

@@ -1,0 +1,23 @@
+.morph-stage {
+    display: block;
+}
+
+.morph-screen {
+    display: block;
+}
+
+.morph-stage[data-phase="exit"] .morph-item {
+    animation: var(--anim-exit) var(--exit-dur) var(--ease) forwards;
+    animation-delay: calc(var(--depth, 0) * var(--layer-interval));
+}
+
+.morph-stage[data-phase="enter"] .morph-item {
+    animation: var(--anim-enter) var(--enter-dur) var(--ease) backwards;
+    animation-delay: calc(var(--depth, 0) * var(--layer-interval));
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .morph-stage .morph-item {
+        animation: none !important;
+    }
+}

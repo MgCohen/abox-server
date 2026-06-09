@@ -1,0 +1,54 @@
+@typeparam TKey
+@inherits MorphStageBase
+
+<div class="morph-stage" data-phase="@DataPhase" style="@_definition.Vars" @onanimationend="OnAnimationEnd">
+    <CascadingValue Name="MorphDepth" Value="@(0)" IsFixed="true">
+        <div @key="_current" class="morph-screen">
+            @ChildContent(_current)
+        </div>
+    </CascadingValue>
+</div>
+@if (Phase == MorphPhase.Loading && LoadingContent is not null)
+{
+    <div class="morph-loader">@LoadingContent</div>
+}
+
+@code {
+    [Parameter, EditorRequired] public TKey Screen { get; set; } = default!;
+
+    [Parameter, EditorRequired] public RenderFragment<TKey> ChildContent { get; set; } = default!;
+
+    [Parameter] public string? Transition { get; set; }
+
+    [Parameter] public Func<TKey, Task>? Load { get; set; }
+
+    [Parameter] public RenderFragment? LoadingContent { get; set; }
+
+    private TKey _current = default!;
+    private bool _initialized;
+    private TransitionDefinition _definition = default!;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _definition = Options.Resolve(Transition);
+
+        if (!_initialized)
+        {
+            _current = Screen;
+            _initialized = true;
+            return;
+        }
+
+        if (Phase != MorphPhase.Idle)
+            return;
+
+        if (EqualityComparer<TKey>.Default.Equals(Screen, _current))
+            return;
+
+        var target = Screen;
+        await TransitionAsync(
+            _definition,
+            Load is null ? null : () => Load(target),
+            () => _current = target);
+    }
+}
