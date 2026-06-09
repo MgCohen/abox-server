@@ -65,7 +65,9 @@ the no-comments rule at L3, so existing files already conform.
 - **DI services over statics.** Construct collaborators from the container; no
   hidden static singletons.
 - **Results own their display** via `ToString()` — no per-call `summarize` lambda.
-- **Fakes are first-class** test doubles, kept behind the seams — not throwaway.
+- **Test doubles live with the test that uses them.** Fakes and stubs stay local
+  to the consuming test; promote to a shared location only when genuinely reused
+  (a shared harness/fixture).
 - **Throw actionable errors; never swallow them silently.** Messages say what to
   do; an intentional ignore gets a one-line *why*.
 - **Label provisional/scaffolding code as provisional** (e.g. `DelayStep` / the stub

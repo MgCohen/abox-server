@@ -41,7 +41,27 @@ src/
                           Business-agnostic only: observability · persistence ·
                           IRepository<T> · event bus · SubprocessSession/RunCommand ·
                           git · filesystem · Result<T>.
+
+tests/                  test SOURCE only — zero build output (→ /artifacts).
+  Unit/                 fast, isolated. MIRRORS src/. fakes/stubs live in each .Tests.
+    Features/<F>.Tests/   Domain/<Aggregate>.Tests/   Infrastructure.Tests/
+  Integration/          real I/O: ConPTY, subprocess, Claude/Codex CLI, JSONL.
+    <Subsystem>.Tests/
+  Architecture/         reference-graph enforcement (ArchUnitNET), whole-solution.
+    Architecture.Tests/
+  Acceptance/           PRD AC1–AC6 / oracle Tier-A, end-to-end through the spine.
+    Spine.Tests/
+  TestSupport/          ONLY genuinely-shared harness/fixtures/builders (lib, not a test project).
+
+artifacts/              ALL build output. The ONLY place artifacts may exist.
+  bin/<project>/<config>_<tfm>/    obj/<project>/    publish/    package/
+  test-results/         .trx + coverage
+  logs/                 run logs
 ```
+
+`UseArtifactsOutput` (root `Directory.Build.props`) redirects every project's
+bin/obj here; test results + logs target the subfolders above. Wipe with
+`rm -rf artifacts/` — it is the single, regenerable output folder.
 
 ---
 
@@ -57,6 +77,8 @@ src/
 | `Domain/<Aggregate>/` | **Yes** — one per aggregate | aggregate state + invariants; or a domain service |
 | `Domain/Kernel/` | Optional — leaf | primitives only, zero entities |
 | `Infrastructure/` | **Yes** — the floor | business-agnostic plumbing |
+| `tests/<Type>/<Area>.Tests/` | **Yes** — one per feature / aggregate / infra-lib (NOT per use case) | tests + their local fakes/stubs |
+| `tests/TestSupport/` | **Yes** — plain lib | shared harness / fixtures / builders only |
 
 ---
 
@@ -71,6 +93,7 @@ src/
 | `<F>.Contracts` | **nothing** (leaf) — or `Domain.Kernel` only, if WASM-safe |
 | `Domain.<Aggregate>` | `Infrastructure`, `Domain.Kernel`; peers **by Id only** |
 | `Infrastructure` | nothing (third-party only) |
+| `<Area>.Tests` | the source assembly under test (+ `TestSupport`) — **nothing references a test project** |
 
 ---
 
@@ -114,6 +137,18 @@ src/
     own compile loop and are tamper-evident (a `<ProjectReference>` diff, not a
     suppressible `#pragma`). `PtySession` is `internal` to `Domain.Agents`; only
     `IAgentRuntime` is public — the money-losing spawn path is closed by the compiler.
+13. **Build output lives ONLY in `/artifacts` — nowhere else.** `UseArtifactsOutput`
+    centralizes bin/obj; test results + logs target `/artifacts` subfolders. No
+    `bin/` `obj/` or `artifacts/` directory may exist under `src/` or `tests/` — a
+    stray one is a config bug (a project escaping the root props), gitignored only
+    as a backstop. Everywhere outside `/artifacts` is source + `.csproj` and nothing else.
+14. **Test type is the top-level split; under `Unit/`, mirror `src/`.** Unit /
+    Integration / Architecture / Acceptance decides the project, its dependencies,
+    and its speed tier. One test project per feature / aggregate / infra-lib — **not
+    per use case** (test projects are leaves, so compile walls don't apply; cohesion
+    and tooling weight decide).
+15. **Test doubles live with the test that uses them.** Fakes/stubs stay local to the
+    consuming test; promote to `TestSupport` only when genuinely reused as a harness.
 
 ---
 
