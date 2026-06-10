@@ -2,21 +2,17 @@ namespace Morph;
 
 public sealed class MorphStageContext
 {
-    private readonly Action<int> _report;
-    private readonly MorphOrderCounter _order;
+    private readonly Action<int> _reportDepth;
 
-    public MorphStageContext(int depth, Action<int> report, MorphOrderCounter order)
+    public MorphStageContext(int depth, Action<int> reportDepth)
     {
         Depth = depth;
-        _report = report;
-        _order = order;
+        _reportDepth = reportDepth;
     }
 
     public int Depth { get; }
 
-    public MorphStageContext Child() => new(Depth + 1, _report, _order);
+    public MorphStageContext Child() => new(Depth + 1, _reportDepth);
 
-    public void Report() => _report(Depth);
-
-    public int NextOrder() => _order.Next();
+    public void Report() => _reportDepth(Depth);
 }

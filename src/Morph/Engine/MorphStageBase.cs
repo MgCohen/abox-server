@@ -15,10 +15,9 @@ public abstract class MorphStageBase : ComponentBase
     protected int MaxDepth { get; private set; }
     protected ElementReference StageElement { get; set; }
 
-    private readonly MorphOrderCounter _order = new();
     private readonly PhaseCompletion _completion = new();
 
-    protected MorphStageBase() => RootContext = new MorphStageContext(0, ReportDepth, _order);
+    protected MorphStageBase() => RootContext = new MorphStageContext(0, ReportDepth);
 
     private void ReportDepth(int depth)
     {
@@ -116,7 +115,6 @@ public abstract class MorphStageBase : ComponentBase
     protected void ResetDepth()
     {
         MaxDepth = 0;
-        _order.Reset();
     }
 
     protected void Settle()

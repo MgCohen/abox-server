@@ -9,7 +9,7 @@ public static class CutoutStyle
     public static readonly TransitionDefinition Transition = new(
         Name,
         ExitMs: 700, EnterMs: 1100,
-        LayerInterval: 0, Scatter: 0);
+        DepthStep: 0, ScatterMax: 0);
 
     public static IServiceCollection AddCutout(this IServiceCollection services) =>
         services.AddTransition(Transition);

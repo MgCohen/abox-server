@@ -1,8 +1,8 @@
 # Morph reference-fidelity transition
 
-**Status:** ✅ built (A, B, D, E shipped; C tried + reverted) · **next:** sequential
-order-based cascade · **Scope:** `src/Morph` (engine CSS + `SwapDelay`) +
-`spikes/morph-demo` (showcase) + host CSS · **Owner:** —
+**Status:** ✅ built (A, B, D, E shipped; C and order-cascade tried + reverted) ·
+**Scope:** `src/Morph` (engine CSS + `SwapDelay`) + `spikes/morph-demo` (showcase)
++ host CSS · **Owner:** —
 
 This document is standalone. Read it cold and you should understand what the
 Morph page transition does today, what the reference design does, the precise
@@ -31,17 +31,24 @@ gap, and exactly what to touch to close it.
 > - **E (empty hold)** — `MorphOptions.SwapDelay` (ms, default 0). Awaited at the
 >   empty midpoint in `TransitionAsync` + `MorphRouteStage.EnterAsync`; skipped
 >   under reduced motion. Verified toggleable: 0 → exit ends ~817ms; 400 → ~1238ms.
-> - **Stagger** — `Scatter` bumped 30→140 (raised + inset) so same-depth siblings
->   visibly cascade. Measured: depth staggering works correctly (d2@105ms →
->   d1@~275ms → d0@315–437ms, deepest-first on exit), but reads as concurrent
->   because (a) duration 440ms ≫ the 150ms inter-depth gap → heavy overlap, (b)
->   scatter≈layer smears the bands, (c) 8 of 11 containers share the depth-0 band.
->   Random scatter can't produce a *directional* cascade — hence the next step.
-> - **NEXT — sequential order-based cascade.** Emit `--order` from `MorphShape`;
->   delay = `order × interval` (reversed on exit) for one clean monotonic sweep;
->   trim per-item duration so starts aren't buried under overlap. Replaces random
->   scatter as the legibility mechanism. *(Not yet built.)*
-> - Q1 (nesting) checked on the depth-2 cards: inner shells flatten cleanly, no
+> - **Stagger — settled on depth-directional + random sibling jitter, with named
+>   data knobs.** An **order-based sequential cascade** was built (global `--order`
+>   counter, `--max-order`, reversed on exit) and **reverted**: order is not depth,
+>   it only *looked* depth-correct because nested items happen to initialize last;
+>   it bypasses depth on any tree where document-order ≠ depth-order. The keeper:
+>   depth is the guaranteed driver, a per-shape random fans out same-depth siblings.
+>     - **enter:** `depth × DepthStep + rand × ScatterMax`
+>     - **exit:** `(maxDepth − depth) × DepthStep + rand × ScatterMax`
+>   - `rand` = `Random.Shared.NextDouble()` picked once per shape (cached so the
+>     delay can't change mid-animation). `MorphOrderCounter` deleted entirely.
+>   - **All knobs are data** on the `TransitionDefinition` record — `DepthStep`,
+>     `ScatterMax`, `ContentLead`, `ContentTrail` (the last two replace the
+>     hard-coded `0.45`/`0.5` CSS magic numbers) — plus `MorphOptions.SwapDelay`.
+>     Keep `ScatterMax < DepthStep` so jitter never bleeds across a depth band.
+>   - **Verified** with `DepthStep=600, ScatterMax=0`: on Profile, every depth maps
+>     to exactly one delay (`(maxDepth−depth)×600`, d3@0 → d0@1800ms) — no depth
+>     skipped. Shipped values: `DepthStep=140, ScatterMax=80`.
+> - Q1 (nesting) checked on the depth-2/3 trees: inner shells flatten cleanly, no
 >   vanishing glitch. slnx 0 warnings, Morph.Tests 5/5, console clean.
 
 > **Why now.** Reviewing the live `Gallery → Dashboard` transition against the
