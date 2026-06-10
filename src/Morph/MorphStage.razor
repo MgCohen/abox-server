@@ -1,7 +1,7 @@
 @typeparam TKey
 @inherits MorphStageBase
 
-<div class="morph-stage" data-phase="@DataPhase" style="@_definition.Vars;--max-depth:@MaxDepth" @onanimationend="OnAnimationEnd">
+<div class="morph-stage" data-phase="@DataPhase" style="@_definition.Vars;--max-depth:@MaxDepth" @ref="StageElement" @onanimationend="OnAnimationEnd">
     <CascadingValue Value="RootContext" IsFixed="true">
         <div @key="_current" class="morph-screen">
             @ChildContent(_current)
@@ -53,7 +53,6 @@
 
         var target = Screen;
         await TransitionAsync(
-            _definition,
             Load is null ? null : () => Load(target),
             () => _current = target);
     }

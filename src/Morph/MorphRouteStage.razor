@@ -1,7 +1,7 @@
 @inherits MorphStageBase
 @implements IDisposable
 
-<div class="morph-stage" data-phase="@DataPhase" style="@_definition.Vars;--max-depth:@MaxDepth" @onanimationend="OnAnimationEnd">
+<div class="morph-stage" data-phase="@DataPhase" style="@_definition.Vars;--max-depth:@MaxDepth" @ref="StageElement" @onanimationend="OnAnimationEnd">
     <CascadingValue Value="RootContext" IsFixed="true">
         @Body
     </CascadingValue>
@@ -33,7 +33,7 @@
         if (string.Equals(context.TargetLocation, Nav.Uri, StringComparison.Ordinal))
             return;
 
-        await RunPhaseAsync(MorphPhase.Exiting, _definition);
+        await RunPhaseAsync(MorphPhase.Exiting);
         ResetDepth();
     }
 
@@ -44,7 +44,7 @@
         if (Phase != MorphPhase.Exiting)
             return;
 
-        await RunPhaseAsync(MorphPhase.Entering, _definition);
+        await RunPhaseAsync(MorphPhase.Entering);
         Settle();
     }
 

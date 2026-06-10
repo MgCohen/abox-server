@@ -4,19 +4,20 @@ namespace Morph;
 
 public abstract class MorphStageBase : ComponentBase
 {
-    private const int QuietSlackMs = 50;
-
     [Inject] protected MorphOptions Options { get; set; } = default!;
+    [Inject] protected MorphInterop Interop { get; set; } = default!;
 
     protected MorphPhase Phase { get; private set; } = MorphPhase.Idle;
     protected Exception? LoadError { get; private set; }
 
     protected MorphStageContext RootContext { get; }
     protected int MaxDepth { get; private set; }
+    protected ElementReference StageElement { get; set; }
 
     private TaskCompletionSource? _phaseComplete;
-    private int _animationGeneration;
-    private int _quietWindowMs;
+    private int _animEnd;
+    private int _target = -1;
+    private bool _countScheduled;
 
     protected MorphStageBase() => RootContext = new MorphStageContext(0, ReportDepth);
 
@@ -36,33 +37,55 @@ public abstract class MorphStageBase : ComponentBase
         _ => string.Empty,
     };
 
-    protected void OnAnimationEnd(EventArgs args)
+    protected void OnAnimationEnd()
     {
-        var generation = ++_animationGeneration;
-        _ = ResolveWhenQuiet(generation);
+        _animEnd++;
+        TryComplete();
     }
 
-    protected async Task RunPhaseAsync(MorphPhase phase, TransitionDefinition definition)
+    private void TryComplete()
+    {
+        if (_phaseComplete is not null && _target >= 0 && _animEnd >= _target)
+            _phaseComplete.TrySetResult();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_phaseComplete is null || _countScheduled)
+            return;
+
+        _countScheduled = true;
+        _target = await Interop.CountItemsAsync(StageElement);
+        TryComplete();
+    }
+
+    protected async Task RunPhaseAsync(MorphPhase phase)
     {
         Phase = phase;
+        _animEnd = 0;
+        _target = -1;
+        _countScheduled = false;
         _phaseComplete = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        _quietWindowMs = definition.LayerInterval + QuietSlackMs;
         StateHasChanged();
 
         if (Options.ReducedMotion)
+        {
+            _phaseComplete = null;
             return;
+        }
 
-        await Task.WhenAny(_phaseComplete.Task, Task.Delay(Options.Ceiling));
+        await _phaseComplete.Task;
+        _phaseComplete = null;
     }
 
-    protected async Task TransitionAsync(TransitionDefinition definition, Func<Task>? load, Action swap)
+    protected async Task TransitionAsync(Func<Task>? load, Action swap)
     {
         LoadError = null;
         try
         {
             var loading = load?.Invoke() ?? Task.CompletedTask;
 
-            await RunPhaseAsync(MorphPhase.Exiting, definition);
+            await RunPhaseAsync(MorphPhase.Exiting);
 
             if (!loading.IsCompleted)
             {
@@ -78,14 +101,14 @@ public abstract class MorphStageBase : ComponentBase
                         $"Load did not finish within the {Options.LoadTimeout}ms LoadTimeout budget.");
                     Phase = MorphPhase.Error;
                     StateHasChanged();
-                    await RunPhaseAsync(MorphPhase.Entering, definition);
+                    await RunPhaseAsync(MorphPhase.Entering);
                     return;
                 }
             }
 
             swap();
             ResetDepth();
-            await RunPhaseAsync(MorphPhase.Entering, definition);
+            await RunPhaseAsync(MorphPhase.Entering);
         }
         finally
         {
@@ -99,12 +122,5 @@ public abstract class MorphStageBase : ComponentBase
     {
         Phase = MorphPhase.Idle;
         StateHasChanged();
-    }
-
-    private async Task ResolveWhenQuiet(int generation)
-    {
-        await Task.Delay(_quietWindowMs);
-        if (generation == _animationGeneration)
-            _phaseComplete?.TrySetResult();
     }
 }

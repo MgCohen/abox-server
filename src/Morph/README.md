@@ -40,7 +40,6 @@ global knobs:
 builder.Services.AddMorph(o =>
 {
     o.Default     = "morph";   // transition used when a stage names none
-    o.Ceiling     = 1200;      // ms safety cap per phase if an animationend is missed
     o.LoadTimeout = 10_000;    // ms async-gate budget → error path on expiry
 });
 ```
@@ -102,10 +101,30 @@ For a genuinely new trigger (neither param-watch nor router), subclass
 `MorphStageBase` and drive `RunPhaseAsync` / `TransitionAsync` yourself — the same
 engine `MorphStage` and `MorphRouteStage` use.
 
+## How a phase completes
+
+A phase ends when every animated layer has finished — driven by real
+`animationend` events, not a timer. Each `MorphShape` renders a `.morph-item`;
+the CSS animates **every** item under a transitioning stage (descendant selector),
+so the stage waits for exactly one `animationend` per item. The count is read once
+per phase from the DOM (`countItems`), and the bubbling events tick it down — which
+is what lets an outer `MorphRouteStage` wait for items owned by inner stages.
+
+Two pieces make this work and are easy to miss:
+
+- `EventHandlers.cs` registers `onanimationend` via `[EventHandler]`. Animation and
+  transition events are **not** in Blazor's built-in set, so without this class the
+  `@onanimationend` binding is silently inert — the handler never fires. The class
+  must be named exactly `EventHandlers` for the Razor compiler to find it.
+- No fallback timer. If the gate could never be satisfied the phase would hang, so
+  the two no-animation cases short-circuit explicitly: reduced motion (below) and a
+  zero-item count complete immediately.
+
 ## Reduced motion
 
 CSS zeroes the animation under `prefers-reduced-motion: reduce`, so no
-`animationend` ever fires. `DetectReducedMotionAsync` reads the same media query
-once at startup (the library's only JS interop) and sets `MorphOptions.ReducedMotion`,
-which makes the engine skip its await — CSS and engine stay in agreement instead
-of stalling for the full `Ceiling` per phase. Call it once after `Build()`.
+`animationend` ever fires. `DetectReducedMotionAsync` reads the media query once at
+startup and sets `MorphOptions.ReducedMotion`, which makes the engine skip its await
+entirely — CSS and engine stay in agreement instead of waiting for events that will
+never arrive. Call it once after `Build()`. This and the per-phase item count are
+the library's only JS interop, both through `morph.js` via `MorphInterop`.

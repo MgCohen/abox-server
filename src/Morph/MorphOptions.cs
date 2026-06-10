@@ -5,7 +5,6 @@ public sealed class MorphOptions
     private readonly Dictionary<string, TransitionDefinition> _transitions = new();
 
     public string Default { get; set; } = "morph";
-    public int Ceiling { get; set; } = 1200;
     public int LoadTimeout { get; set; } = 10_000;
     public bool ReducedMotion { get; set; }
 

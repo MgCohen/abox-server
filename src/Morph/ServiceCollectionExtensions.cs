@@ -8,6 +8,7 @@ public static class ServiceCollectionExtensions
     {
         var options = new MorphOptions().Add(DefaultTransition);
         configure?.Invoke(options);
+        services.AddScoped<MorphInterop>();
         return services.AddSingleton(options);
     }
 
