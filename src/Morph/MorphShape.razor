@@ -1,4 +1,4 @@
-<div class="morph-item @Class" style="--depth:@Depth">
+<div class="morph-item @Class" style="--depth:@Depth;--rand:@_rand">
     <CascadingValue Value="_childContext" IsFixed="true">
         @ChildContent
     </CascadingValue>
@@ -12,12 +12,22 @@
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     private MorphStageContext _childContext = default!;
+    private int _order;
+    private string _rand = "0";
 
     private int Depth => Stage?.Depth ?? 0;
 
     protected override void OnInitialized()
     {
         Stage?.Report();
-        _childContext = Stage?.Child() ?? new MorphStageContext(1, static _ => { });
+        _order = Stage?.NextOrder() ?? 0;
+        _rand = Scatter(_order);
+        _childContext = Stage?.Child() ?? new MorphStageContext(1, static _ => { }, new MorphOrderCounter());
+    }
+
+    private static string Scatter(int i)
+    {
+        var v = Math.Sin(i * 127.1 + 311.7) * 43758.5453;
+        return (v - Math.Floor(v)).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
     }
 }

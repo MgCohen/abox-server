@@ -23,9 +23,16 @@ Reference the bundled CSS from `index.html`:
 <link rel="stylesheet" href="_content/Morph/morph.css" />
 ```
 
-`morph.css` is the engine (stage rules + reduced-motion); `neu.css` is one theme
-(tokens + the `morph-exit`/`morph-enter` keyframes). Swap the theme without
-touching the engine.
+`morph.css` is the engine (stage rules + reduced-motion + the `morph-melt`/
+`morph-strude` keyframes that drive the `--lift` variable); `neu.css` is one theme
+(tokens, the `@property --lift` registration, and the lift-driven `.neu-raised`/
+`.neu-inset` shadow recipes). Swap the theme without touching the engine.
+
+The built-in "morph" is a **melt & extrude**: a panel's fill matches the surface,
+so its shadow is the only thing that makes it visible. Melt animates `--lift` → 0
+(the panel sinks flush and dissolves into the clay); extrude animates `--lift`
+0 → 1 with an overshoot ease (it squeezes back out). Every shadow offset and blur
+is `calc(var(--lift) * …)`, so at `--lift: 0` the panel is genuinely shadowless.
 
 ## The four extension axes
 
@@ -50,9 +57,18 @@ A transition *type* is data. Register it, ship its keyframe pair in **your** CSS
 and select it by name:
 
 ```csharp
+//          name     exit-kf       enter-kf       exit  enter  layer  scatter  exit-ease                     enter-ease
 builder.Services.AddMorph(o => o.Add(new TransitionDefinition(
-    "slide", "slide-exit", "slide-enter", 300, 340, 90, "cubic-bezier(0.4,0,0.2,1)")));
+    "slide", "slide-exit", "slide-enter", 300, 340, 60, 20,
+    "cubic-bezier(0.4,0,0.2,1)", "cubic-bezier(0.4,0,0.2,1)")));
 ```
+
+`layer` is the per-**depth** stagger step (ms): nested panels cascade layer by
+layer — exit melts deepest-first (leaves sink before their container), enter
+extrudes outermost-first (each layer surfaces in turn). `scatter` adds a small
+stable per-container jitter (ms) so same-layer siblings aren't in lockstep. Exit
+and enter take their own eases — the built-in morph pairs an ease-in collapse with
+an overshoot extrude.
 
 ```css
 /* in the consumer's CSS — animate transform/opacity, disjoint from a per-shape extra */
@@ -71,7 +87,7 @@ touches no library code and adds no branch.
 ### 3. Add shapes — `<MorphShape Class="…">` + CSS
 
 `MorphShape` is the one container. A new variant is a CSS class; the component is
-unchanged. Nesting is the depth model — children animate one band deeper:
+unchanged. Nest them freely — each renders a `.morph-item` and joins the ripple:
 
 ```razor
 <MorphShape Class="neu-raised card">
@@ -79,8 +95,13 @@ unchanged. Nesting is the depth model — children animate one band deeper:
 </MorphShape>
 ```
 
+Each shape emits `--depth` (its nesting level) and `--rand` (a stable scatter
+hash); the stage rule turns `--depth` (against the stage's `--max-depth`) into a
+layer-by-layer `animation-delay`, with `--rand` adding the within-layer jitter —
+so nested panels peel depth by depth rather than all at once.
+
 A per-shape extra animation must use **disjoint** properties (`filter`, `color`,
-…) from the base keyframes (`transform`/`opacity`/`box-shadow`) — same-property
+…) from the base keyframes (`--lift`/`box-shadow`/`opacity`) — same-property
 collisions resolve silently by last-declared-wins.
 
 ### 4. Add components — RenderFragments into a stage, or subclass `MorphStageBase`

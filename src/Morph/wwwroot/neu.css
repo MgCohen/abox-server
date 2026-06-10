@@ -1,44 +1,32 @@
+@property --lift {
+    syntax: "<number>";
+    inherits: false;
+    initial-value: 1;
+}
+
 :root {
-    --bg: #ded4c4;
-    --surface: #e9e1d3;
-    --text: #5c5446;
-    --text-muted: #a99e8a;
-    --accent: #6c5ce7;
+    --bg: #e7ddcd;
+    --surface: #ece3d5;
+    --text: #4d4434;
+    --text-muted: #9a8f78;
+    --accent: #6d5efc;
     --green: #4a9e57;
     --orange: #d39a2c;
     --blue: #5d8cf0;
-    --shadow-dark: #c5bca7;
-    --shadow-light: #fdf7ec;
+    --shadow-dark: rgba(166, 143, 108, 0.72);
+    --shadow-light: rgba(255, 255, 255, 0.95);
 }
 
 .neu-raised {
     background: var(--surface);
-    box-shadow: 6px 6px 14px var(--shadow-dark), -6px -6px 14px var(--shadow-light);
+    box-shadow:
+        calc(var(--lift) * 10px) calc(var(--lift) * 10px) calc(var(--lift) * 22px) var(--shadow-dark),
+        calc(var(--lift) * -9px) calc(var(--lift) * -9px) calc(var(--lift) * 20px) var(--shadow-light);
 }
 
 .neu-inset {
     background: var(--surface);
-    box-shadow: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
-}
-
-@keyframes morph-exit {
-    from {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-    }
-    to {
-        opacity: 0;
-        transform: scale(0.95) translateY(6px);
-    }
-}
-
-@keyframes morph-enter {
-    from {
-        opacity: 0;
-        transform: scale(0.93) translateY(8px);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-    }
+    box-shadow:
+        inset calc(var(--lift) * 5px) calc(var(--lift) * 5px) calc(var(--lift) * 10px) var(--shadow-dark),
+        inset calc(var(--lift) * -5px) calc(var(--lift) * -5px) calc(var(--lift) * 10px) var(--shadow-light);
 }

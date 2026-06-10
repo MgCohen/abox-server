@@ -31,6 +31,7 @@
     [Parameter] public RenderFragment<Exception>? ErrorContent { get; set; }
 
     private TKey _current = default!;
+    private TKey _requested = default!;
     private bool _initialized;
     private TransitionDefinition _definition = default!;
 
@@ -41,16 +42,15 @@
         if (!_initialized)
         {
             _current = Screen;
+            _requested = Screen;
             _initialized = true;
             return;
         }
 
-        if (Phase != MorphPhase.Idle)
+        if (EqualityComparer<TKey>.Default.Equals(Screen, _requested))
             return;
 
-        if (EqualityComparer<TKey>.Default.Equals(Screen, _current))
-            return;
-
+        _requested = Screen;
         var target = Screen;
         await TransitionAsync(
             Load is null ? null : () => Load(target),

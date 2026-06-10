@@ -27,14 +27,11 @@
 
     private async ValueTask OnLocationChanging(LocationChangingContext context)
     {
-        if (Phase != MorphPhase.Idle)
-            return;
-
         if (string.Equals(context.TargetLocation, Nav.Uri, StringComparison.Ordinal))
             return;
 
-        await RunPhaseAsync(MorphPhase.Exiting);
-        ResetDepth();
+        if (await RunPhaseAsync(MorphPhase.Exiting))
+            ResetDepth();
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs args) => _ = EnterAsync();
@@ -44,8 +41,8 @@
         if (Phase != MorphPhase.Exiting)
             return;
 
-        await RunPhaseAsync(MorphPhase.Entering);
-        Settle();
+        if (await RunPhaseAsync(MorphPhase.Entering))
+            Settle();
     }
 
     public void Dispose()
