@@ -19,7 +19,7 @@ structure migration are violated, so the clean DAG we reached can't silently reg
 | Want to… | Do this |
 |----------|---------|
 | Add a rule | append a `###` block to `rules.md`, add a `[Rule("<that name>")]` test in `RuleTests.cs` |
-| Add a production assembly | add a `ProjectReference` (csproj) + one `Assembly.Load("…")` in `ArchitectureModel` |
+| Add a production assembly / feature / slice | **nothing** — the csproj globs `src\**\RemoteAgents.*.csproj` and `ArchitectureModel` loads them from the output dir, so a new project named `RemoteAgents.*` is discovered and governed automatically (Web is the one deliberate exclude) |
 | Add a category / band | add one `IObjectProvider<IType>` in `ArchitectureModel`, plus the rule(s) that constrain it |
 
 The orphan-guard rule (*Every type belongs to a category*) fires if a new assembly lands in a

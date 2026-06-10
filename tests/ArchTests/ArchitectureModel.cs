@@ -6,31 +6,33 @@ using Assembly = System.Reflection.Assembly;
 
 namespace RemoteAgents.Tests.ArchTests;
 
-// Single source of truth for the architecture under test. Extend HERE, not in the rule files:
-//   * New production assembly -> add a ProjectReference (csproj) + an Assembly.Load below.
-//   * New category (band)      -> add one IObjectProvider keyed by namespace convention; the
-//                                 rules are written against these categories, so any assembly
-//                                 that lands in an existing band is covered with no rule change.
+// Single source of truth for the architecture under test. Nothing is registered by hand:
+//   * Production assemblies are DISCOVERED from the output dir (every RemoteAgents.* the csproj
+//     glob copied in, minus test assemblies) — a new feature is covered with zero edits here.
+//   * New category (band) -> add one IObjectProvider keyed by namespace convention; the rules are
+//     written against these categories, so any assembly that lands in an existing band is covered.
 internal static class ArchitectureModel
 {
     public static readonly Architecture Architecture =
-        new ArchLoader()
-            .LoadAssemblies(
-                Assembly.Load("RemoteAgents.Contracts"),
-                Assembly.Load("RemoteAgents.Infrastructure"),
-                Assembly.Load("RemoteAgents.Domain.Flow"),
-                Assembly.Load("RemoteAgents.Domain.Agents"),
-                Assembly.Load("RemoteAgents.Flows.Definitions"),
-                Assembly.Load("RemoteAgents.Flows.Start"),
-                Assembly.Load("RemoteAgents.Flows.List"),
-                Assembly.Load("RemoteAgents.Flows.Get"),
-                Assembly.Load("RemoteAgents.Flows.Cancel"),
-                Assembly.Load("RemoteAgents.Flows.Watch"),
-                Assembly.Load("RemoteAgents.Flows.Catalog"),
-                Assembly.Load("RemoteAgents.Flows.Module"),
-                Assembly.Load("RemoteAgents.Git"),
-                Assembly.Load("RemoteAgents.Host"))
-            .Build();
+        new ArchLoader().LoadAssemblies(ProductionAssemblies()).Build();
+
+    // The csproj globs every src\**\RemoteAgents.*.csproj (excluding Web), so their dlls sit beside
+    // this one. Load them all and drop the test assemblies — the production graph, self-assembling.
+    private static Assembly[] ProductionAssemblies()
+    {
+        var assemblies = Directory
+            .GetFiles(AppContext.BaseDirectory, "RemoteAgents.*.dll")
+            .Where(path => !Path.GetFileName(path).Contains(".Tests.", StringComparison.Ordinal))
+            .Select(Assembly.LoadFrom)
+            .ToArray();
+
+        if (assemblies.Length == 0)
+            throw new InvalidOperationException(
+                $"No RemoteAgents.* production assemblies found in '{AppContext.BaseDirectory}'. " +
+                "The csproj glob that copies them in is broken — the model would be vacuously empty.");
+
+        return assemblies;
+    }
 
     // Categories, keyed by namespace convention — every assembly that lands in a band is covered.
     // Boundary anchor (\.|$) stops a prefix from leaking into a same-named sibling (e.g. a future
