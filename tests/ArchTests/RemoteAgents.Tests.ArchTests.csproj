@@ -22,9 +22,10 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
-  <!-- The rule book is the source of truth; the parity test reads it at runtime. -->
+  <!-- The rule book is the source of truth; the parity test reads it at runtime. Glob the .md so a
+       rename of the fixture file needs no edit here (and never collides with the Compile glob). -->
   <ItemGroup>
-    <None Include="Rules\**" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Fixtures\*.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <!-- Every production assembly under inspection, by glob: a new feature/slice is governed the

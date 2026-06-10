@@ -3,7 +3,7 @@ namespace RemoteAgents.Tests.ArchTests;
 // Guards the link between the rule book and the enforcing tests. A block with no test would pass
 // vacuously (a documented rule no one checks); a test citing a missing/renamed block would drift
 // from the spec. Either way this fails with the exact names to fix.
-public class RuleParityTest
+public class RuleBookTests
 {
     [Fact]
     public void Every_rule_block_has_exactly_one_test()
@@ -18,7 +18,7 @@ public class RuleParityTest
         Assert.True(
             unenforced.Count == 0 && undocumented.Count == 0 && duplicated.Count == 0,
             $"""
-            Rule book (Rules/rules.md) and rule tests are out of sync:
+            Rule book (Fixtures/rules.md) and rule tests are out of sync:
               blocks with no test:         {Fmt(unenforced)}
               tests citing a missing block:{Fmt(undocumented)}
               rules tested more than once: {Fmt(duplicated)}

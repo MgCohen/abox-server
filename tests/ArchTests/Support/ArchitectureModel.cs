@@ -44,6 +44,13 @@ internal static class ArchitectureModel
     public const string FeaturesNs = @"^RemoteAgents\.Features\.";
     public const string HostNs = @"^RemoteAgents\.Host(\.|$)";
 
+    // The orphan guard's vocabulary: a governed type must match one of the category namespaces.
+    // Built from the constants above so a new band updates both the bands and this union in one place.
+    public static readonly string KnownCategoryNs =
+        OursPrefix + "(" + string.Join("|",
+            new[] { ContractsNs, InfrastructureNs, DomainNs, FeaturesNs, HostNs }
+                .Select(ns => ns[OursPrefix.Length..])) + ")";
+
     // Suffixed *Band so the identifiers don't collide with the same-named namespaces (Contracts,
     // Domain, Host, ...) reachable from this test's RemoteAgents.* namespace under `using static`.
     public static readonly IObjectProvider<IType> ContractsBand = Band("Contracts", ContractsNs);

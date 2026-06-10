@@ -4,12 +4,12 @@ using static RemoteAgents.Tests.ArchTests.ArchitectureModel;
 
 namespace RemoteAgents.Tests.ArchTests;
 
-// One enforcing test per block in Rules/rules.md, linked by the [Rule] id. The block carries the
-// human spec + rationale; this carries the executable assertion. RuleParityTest keeps the two in sync.
+// One enforcing test per block in Rules/rules.md, linked by the [Rule] id. The header carries the
+// rule itself + its rationale; this carries the executable assertion. RuleParityTest keeps them in sync.
 public class RuleTests
 {
-    [Rule("Contracts is a leaf")]
-    public void ContractsIsALeaf() =>
+    [Rule("Contracts must not depend on internal assemblies")]
+    public void ContractsHaveNoInternalDependencies() =>
         Types().That().Are(ContractsBand).Should()
             .NotDependOnAny(InfrastructureBand).AndShould()
             .NotDependOnAny(DomainBand).AndShould()
@@ -17,8 +17,8 @@ public class RuleTests
             .NotDependOnAny(HostBand)
             .Check(Architecture);
 
-    [Rule("Infrastructure is the floor")]
-    public void InfrastructureIsTheFloor() =>
+    [Rule("Infrastructure must not depend on other internal assemblies")]
+    public void InfrastructureDependsOnNothingInternal() =>
         Types().That().Are(InfrastructureBand).Should()
             .NotDependOnAny(ContractsBand).AndShould()
             .NotDependOnAny(DomainBand).AndShould()
@@ -26,21 +26,21 @@ public class RuleTests
             .NotDependOnAny(HostBand)
             .Check(Architecture);
 
-    [Rule("Host is referenced by nothing")]
-    public void HostIsReferencedByNothing() =>
+    [Rule("Nothing may depend on Host")]
+    public void NothingDependsOnHost() =>
         Types().That().ResideInNamespaceMatching(OursPrefix)
             .And().DoNotResideInNamespaceMatching(HostNs).Should()
             .NotDependOnAny(HostBand)
             .Check(Architecture);
 
-    [Rule("Domains sit below features")]
-    public void DomainsSitBelowFeatures() =>
+    [Rule("Domain must not depend on Features")]
+    public void DomainDoesNotDependOnFeatures() =>
         Types().That().Are(DomainBand).Should()
             .NotDependOnAny(FeaturesBand)
             .Check(Architecture);
 
-    [Rule("Features are isolated")]
-    public void FeaturesAreIsolated()
+    [Rule("Features must not depend on each other")]
+    public void FeaturesDoNotDependOnEachOther()
     {
         var features = FeatureNames();
         Assert.NotEmpty(features);
@@ -52,13 +52,9 @@ public class RuleTests
                         .Check(Architecture);
     }
 
-    [Rule("Every type belongs to a category")]
-    public void EveryTypeBelongsToACategory() =>
+    [Rule("Every type must belong to a known category")]
+    public void EveryTypeBelongsToAKnownCategory() =>
         Types().That().ResideInNamespaceMatching(OursPrefix).Should()
-            .ResideInNamespaceMatching(KnownCategories)
+            .ResideInNamespaceMatching(KnownCategoryNs)
             .Check(Architecture);
-
-    // Union of the category prefixes — a RemoteAgents type matching none of these is an orphan band.
-    private const string KnownCategories =
-        @"^RemoteAgents\.(Contracts(\.|$)|Infrastructure(\.|$)|Domain\.|Features\.|Host(\.|$))";
 }
