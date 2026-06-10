@@ -17,6 +17,13 @@
     </MorphInset>
 </div>
 
+<h2 class="section">Variable style · MorphSurface</h2>
+<button class="swap" @onclick="ToggleStyle">Style: @_style</button>
+<MorphSurface Style="_style" Class="card">
+    <h2>Same component, switchable look</h2>
+    <p class="muted">One MorphSurface, dispatched to @_style via a type-safe switch — no DynamicComponent.</p>
+</MorphSurface>
+
 <h2 class="section">In-page swap · MorphStage</h2>
 <button class="swap" @onclick="Toggle">Swap layout (now @(_view == 0 ? "A" : "B"))</button>
 
@@ -70,6 +77,10 @@
     private int _view;
     private int _loadKey;
     private bool _slowNext;
+    private MorphStyle _style = MorphStyle.Raised;
+
+    private void ToggleStyle() =>
+        _style = _style == MorphStyle.Raised ? MorphStyle.Inset : MorphStyle.Raised;
 
     protected override void OnInitialized() => State.Changed += OnTransitionChanged;
 
