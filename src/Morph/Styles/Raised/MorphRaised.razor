@@ -1,0 +1,9 @@
+@namespace Morph
+
+<MorphShape Class="@($"neu-raised {Class}")">@ChildContent</MorphShape>
+
+@code {
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

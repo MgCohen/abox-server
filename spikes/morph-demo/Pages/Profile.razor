@@ -4,33 +4,33 @@
 <h1 class="page-title">Profile</h1>
 <p class="page-sub">One deep tree — depth-3 stagger inside a single route.</p>
 
-<MorphShape Class="neu-raised card">
+<MorphRaised Class="card">
     <div class="row">
-        <MorphShape Class="neu-inset circle big">JD</MorphShape>
+        <MorphInset Class="circle big">JD</MorphInset>
         <div class="col">
             <h2>Jordan Doe</h2>
             <span class="muted">depth-0 hero · nested sections below</span>
         </div>
     </div>
 
-    <MorphShape Class="neu-inset inner">
+    <MorphInset Class="inner">
         <strong>About</strong>
         <p class="lead">A nested inset section (depth 1) that carries its own nested leaf.</p>
-        <MorphShape Class="neu-raised leaf">
+        <MorphRaised Class="leaf">
             <span>depth-2 raised leaf</span>
-            <MorphShape Class="neu-inset leaf small">depth-3 inset leaf</MorphShape>
-        </MorphShape>
-    </MorphShape>
+            <MorphInset Class="leaf small">depth-3 inset leaf</MorphInset>
+        </MorphRaised>
+    </MorphInset>
 
-    <MorphShape Class="neu-inset inner">
+    <MorphInset Class="inner">
         <strong>Media</strong>
         <img class="thumb neu-raised" src="@Banner" alt="banner" />
         <div class="btn-row">
             <button class="btn primary">Follow</button>
             <button class="btn">Message</button>
         </div>
-    </MorphShape>
-</MorphShape>
+    </MorphInset>
+</MorphRaised>
 
 @code {
     private const string Banner =

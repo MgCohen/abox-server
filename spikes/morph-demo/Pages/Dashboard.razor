@@ -7,14 +7,14 @@
 <p class="page-sub">The interactive paths: in-page swaps and async load / error.</p>
 
 <div class="grid">
-    <MorphShape Class="neu-inset tile">
+    <MorphInset Class="tile">
         <div class="stat-num">42</div>
         <div class="stat-label">open</div>
-    </MorphShape>
-    <MorphShape Class="neu-inset tile">
+    </MorphInset>
+    <MorphInset Class="tile">
         <div class="stat-num">7</div>
         <div class="stat-label">failing</div>
-    </MorphShape>
+    </MorphInset>
 </div>
 
 <h2 class="section">In-page swap · MorphStage</h2>
@@ -23,25 +23,25 @@
 <MorphStage Screen="_view" Context="v" Transition="@State.Current">
     @if (v == 0)
     {
-        <MorphShape Class="neu-raised card">
+        <MorphRaised Class="card">
             <h2>Layout A</h2>
             <div class="row">
-                <MorphShape Class="neu-inset circle">A</MorphShape>
-                <MorphShape Class="neu-inset inner">
+                <MorphInset Class="circle">A</MorphInset>
+                <MorphInset Class="inner">
                     <span class="muted">circle + inset, siblings</span>
-                </MorphShape>
+                </MorphInset>
             </div>
-        </MorphShape>
+        </MorphRaised>
     }
     else
     {
-        <MorphShape Class="neu-inset card">
+        <MorphInset Class="card">
             <h2>Layout B</h2>
-            <MorphShape Class="neu-raised inner">
+            <MorphRaised Class="inner">
                 <span>raised inner</span>
-                <MorphShape Class="neu-inset leaf">depth-2 inset leaf</MorphShape>
-            </MorphShape>
-        </MorphShape>
+                <MorphInset Class="leaf">depth-2 inset leaf</MorphInset>
+            </MorphRaised>
+        </MorphInset>
     }
 </MorphStage>
 
@@ -53,10 +53,10 @@
 
 <MorphStage Screen="_loadKey" Load="LoadAsync" Transition="@State.Current">
     <ChildContent Context="k">
-        <MorphShape Class="neu-raised card">
+        <MorphRaised Class="card">
             <h2>Loaded item #@k</h2>
             <p class="muted">Swapped in after the async gate resolved.</p>
-        </MorphShape>
+        </MorphRaised>
     </ChildContent>
     <LoadingContent>
         <div class="status">loading…</div>
