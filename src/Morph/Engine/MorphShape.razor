@@ -1,6 +1,6 @@
 @namespace Morph
 
-<div class="morph-item @Class" style="@Vars--depth:@Depth;--rand:@_rand">
+<div class="morph-item @Class" style="@StyleString">
     <CascadingValue Value="_childContext" IsFixed="true">
         @ChildContent
     </CascadingValue>
@@ -20,6 +20,10 @@
     private string _rand = "0";
 
     private int Depth => Stage?.Depth ?? 0;
+
+    private string StyleString => string.IsNullOrEmpty(Vars)
+        ? $"--depth:{Depth};--rand:{_rand}"
+        : $"{Vars};--depth:{Depth};--rand:{_rand}";
 
     protected override void OnInitialized()
     {

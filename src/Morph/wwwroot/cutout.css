@@ -87,18 +87,20 @@
     animation: cutout-close-ring var(--exit-dur) linear both;
 }
 
-/* Content reveal — slides in once the aperture is opening, leaves first on close. */
+/* Content reveal — slides in once the aperture is opening, leaves first on
+   close. Timed as a fraction of the aperture's own duration so it tracks
+   --enter-dur / --exit-dur instead of pinning to fixed ms. */
 @keyframes cutout-content {
     from { opacity: 0; transform: translateY(14px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
 .morph-stage[data-phase="enter"] .neu-cutout .cutout-floor > * {
-    animation: cutout-content 450ms ease-out 600ms both;
+    animation: cutout-content calc(var(--enter-dur) * 0.41) ease-out calc(var(--enter-dur) * 0.55) both;
 }
 
 .morph-stage[data-phase="exit"] .neu-cutout .cutout-floor > * {
-    animation: cutout-content 350ms ease-in 150ms reverse both;
+    animation: cutout-content calc(var(--exit-dur) * 0.5) ease-in calc(var(--exit-dur) * 0.21) reverse both;
 }
 
 @media (prefers-reduced-motion: reduce) {

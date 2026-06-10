@@ -48,8 +48,11 @@
 
         _requested = Screen;
         var target = Screen;
-        await TransitionAsync(
+        var outcome = await TransitionAsync(
             Load is null ? null : () => Load(target),
             () => _current = target);
+
+        if (outcome == MorphTransitionOutcome.LoadFailed)
+            _requested = _current;
     }
 }

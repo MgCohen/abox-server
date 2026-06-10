@@ -14,6 +14,7 @@
     [Parameter, EditorRequired] public RenderFragment? Body { get; set; }
 
     private IDisposable? _registration;
+    private bool _awaitingEnter;
 
     protected override void OnInitialized()
     {
@@ -27,16 +28,20 @@
             return;
 
         if (await RunPhaseAsync(MorphPhase.Exiting))
+        {
             ResetDepth();
+            _awaitingEnter = true;
+        }
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs args) => _ = EnterAsync();
 
     private async Task EnterAsync()
     {
-        if (Phase != MorphPhase.Exiting)
+        if (!_awaitingEnter)
             return;
 
+        _awaitingEnter = false;
         if (await RunPhaseAsync(MorphPhase.Entering))
             Settle();
     }

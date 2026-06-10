@@ -16,10 +16,7 @@ public abstract class MorphStageBase : ComponentBase
     protected ElementReference StageElement { get; set; }
 
     private readonly MorphOrderCounter _order = new();
-
-    private TaskCompletionSource? _phaseComplete;
-    private int _phaseGen;
-    private bool _waitScheduled;
+    private readonly PhaseCompletion _completion = new();
 
     protected MorphStageBase() => RootContext = new MorphStageContext(0, ReportDepth, _order);
 
@@ -41,59 +38,44 @@ public abstract class MorphStageBase : ComponentBase
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (_phaseComplete is null || _waitScheduled)
+        if (!_completion.TryBeginWait(out var generation))
             return;
 
-        _waitScheduled = true;
-        var generation = _phaseGen;
         try
         {
             await Interop.WaitForAnimationsAsync(StageElement);
         }
         catch (JSException)
         {
-            // AbortError: the phase was superseded mid-flight; _phaseGen discards it below.
+            // AbortError: the phase was superseded mid-flight; the generation check discards it.
         }
 
-        if (generation == _phaseGen)
-            _phaseComplete?.TrySetResult();
+        _completion.CompleteIfCurrent(generation);
     }
 
     protected async Task<bool> RunPhaseAsync(MorphPhase phase)
     {
-        var generation = ++_phaseGen;
-        _phaseComplete?.TrySetResult();
-
+        var (generation, completion) = _completion.Begin();
         Phase = phase;
-        _waitScheduled = false;
-        var complete = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        _phaseComplete = complete;
         StateHasChanged();
 
-        if (Options.ReducedMotion)
-        {
-            if (generation != _phaseGen)
-                return false;
-            _phaseComplete = null;
-            return true;
-        }
+        if (!Options.ReducedMotion)
+            await completion;
 
-        await complete.Task;
-
-        if (generation != _phaseGen)
+        if (!_completion.IsCurrent(generation))
             return false;
 
-        _phaseComplete = null;
+        _completion.Clear();
         return true;
     }
 
-    protected async Task TransitionAsync(Func<Task>? load, Action swap)
+    protected async Task<MorphTransitionOutcome> TransitionAsync(Func<Task>? load, Action swap)
     {
         LoadError = null;
         var loading = load?.Invoke() ?? Task.CompletedTask;
 
         if (!await RunPhaseAsync(MorphPhase.Exiting))
-            return;
+            return MorphTransitionOutcome.Superseded;
 
         if (!loading.IsCompleted)
         {
@@ -111,7 +93,7 @@ public abstract class MorphStageBase : ComponentBase
                 StateHasChanged();
                 if (await RunPhaseAsync(MorphPhase.Entering))
                     Settle();
-                return;
+                return MorphTransitionOutcome.LoadFailed;
             }
         }
 
@@ -119,6 +101,7 @@ public abstract class MorphStageBase : ComponentBase
         ResetDepth();
         if (await RunPhaseAsync(MorphPhase.Entering))
             Settle();
+        return MorphTransitionOutcome.Completed;
     }
 
     protected void ResetDepth()

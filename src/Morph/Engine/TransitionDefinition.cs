@@ -12,5 +12,5 @@ public sealed record TransitionDefinition(
     public string Vars =>
         $"--exit-dur:{ExitMs}ms;--enter-dur:{EnterMs}ms;" +
         $"--layer:{LayerInterval}ms;--scatter:{Scatter}ms;" +
-        $"--exit-ease:{ExitEase};--enter-ease:{EnterEase};";
+        $"--exit-ease:{ExitEase};--enter-ease:{EnterEase}";
 }
