@@ -9,6 +9,7 @@ public abstract class MorphStageBase : ComponentBase
     [Inject] protected MorphOptions Options { get; set; } = default!;
 
     protected MorphPhase Phase { get; private set; } = MorphPhase.Idle;
+    protected Exception? LoadError { get; private set; }
 
     protected MorphStageContext RootContext { get; }
     protected int MaxDepth { get; private set; }
@@ -30,7 +31,7 @@ public abstract class MorphStageBase : ComponentBase
 
     protected string DataPhase => Phase switch
     {
-        MorphPhase.Exiting or MorphPhase.Loading => "exit",
+        MorphPhase.Exiting or MorphPhase.Loading or MorphPhase.Error => "exit",
         MorphPhase.Entering => "enter",
         _ => string.Empty,
     };
@@ -56,6 +57,7 @@ public abstract class MorphStageBase : ComponentBase
 
     protected async Task TransitionAsync(TransitionDefinition definition, Func<Task>? load, Action swap)
     {
+        LoadError = null;
         try
         {
             var loading = load?.Invoke() ?? Task.CompletedTask;
@@ -66,19 +68,32 @@ public abstract class MorphStageBase : ComponentBase
             {
                 Phase = MorphPhase.Loading;
                 StateHasChanged();
-                await loading.WaitAsync(TimeSpan.FromMilliseconds(Options.LoadTimeout));
+                try
+                {
+                    await loading.WaitAsync(TimeSpan.FromMilliseconds(Options.LoadTimeout));
+                }
+                catch (TimeoutException)
+                {
+                    LoadError = new TimeoutException(
+                        $"Load did not finish within the {Options.LoadTimeout}ms LoadTimeout budget.");
+                    Phase = MorphPhase.Error;
+                    StateHasChanged();
+                    await RunPhaseAsync(MorphPhase.Entering, definition);
+                    return;
+                }
             }
 
             swap();
+            ResetDepth();
             await RunPhaseAsync(MorphPhase.Entering, definition);
-            Settle();
         }
         finally
         {
-            if (Phase != MorphPhase.Idle)
-                Settle();
+            Settle();
         }
     }
+
+    protected void ResetDepth() => MaxDepth = 0;
 
     protected void Settle()
     {

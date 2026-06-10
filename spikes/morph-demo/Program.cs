@@ -7,6 +7,14 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-builder.Services.AddMorph();
+builder.Services.AddMorph(o =>
+{
+    o.LoadTimeout = 1500;
+    o.Add(new TransitionDefinition(
+        "slide", "slide-exit", "slide-enter", 300, 340, 90, "cubic-bezier(0.4, 0, 0.2, 1)"));
+});
+builder.Services.AddSingleton<DemoTransitionState>();
 
-await builder.Build().RunAsync();
+var host = builder.Build();
+await host.Services.DetectReducedMotionAsync();
+await host.RunAsync();

@@ -1,6 +1,23 @@
 @namespace MorphDemo.Layout
 @inherits LayoutComponentBase
+@implements IDisposable
+@inject DemoTransitionState State
 
 <div class="shell">
-    <MorphRouteStage Body="@Body" />
+    <label class="transition-picker">
+        Transition:
+        <select @bind="State.Current">
+            <option value="morph">morph</option>
+            <option value="slide">slide</option>
+        </select>
+    </label>
+    <MorphRouteStage Body="@Body" Transition="@State.Current" />
 </div>
+
+@code {
+    protected override void OnInitialized() => State.Changed += OnTransitionChanged;
+
+    private void OnTransitionChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => State.Changed -= OnTransitionChanged;
+}

@@ -34,6 +34,7 @@
             return;
 
         await RunPhaseAsync(MorphPhase.Exiting, _definition);
+        ResetDepth();
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs args) => _ = EnterAsync();

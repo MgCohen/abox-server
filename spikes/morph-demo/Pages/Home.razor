@@ -1,11 +1,13 @@
 @page "/"
 @namespace MorphDemo.Pages
+@implements IDisposable
+@inject DemoTransitionState State
 
 <nav class="nav"><a href="">Home</a> · <a href="b">Page B</a></nav>
 
 <button class="swap" @onclick="Toggle">Swap (now @_view)</button>
 
-<MorphStage Screen="_view" Context="v">
+<MorphStage Screen="_view" Context="v" Transition="@State.Current">
     @if (v == 0)
     {
         <MorphShape Class="neu-raised card">
@@ -34,8 +36,49 @@
     }
 </MorphStage>
 
+<div class="load-demo">
+    <button class="swap" @onclick="LoadFast">Load fast</button>
+    <button class="swap" @onclick="LoadSlow">Load slow (times out)</button>
+
+    <MorphStage Screen="_loadKey" Load="LoadAsync" Transition="@State.Current">
+        <ChildContent Context="k">
+            <MorphShape Class="neu-raised card">
+                <h2>Loaded item #@k</h2>
+            </MorphShape>
+        </ChildContent>
+        <LoadingContent>
+            <div class="status">loading…</div>
+        </LoadingContent>
+        <ErrorContent Context="ex">
+            <div class="status error">@ex.Message</div>
+        </ErrorContent>
+    </MorphStage>
+</div>
+
 @code {
     private int _view;
+    private int _loadKey;
+    private bool _slowNext;
+
+    protected override void OnInitialized() => State.Changed += OnTransitionChanged;
+
+    private void OnTransitionChanged() => InvokeAsync(StateHasChanged);
 
     private void Toggle() => _view = _view == 0 ? 1 : 0;
+
+    private void LoadFast()
+    {
+        _slowNext = false;
+        _loadKey++;
+    }
+
+    private void LoadSlow()
+    {
+        _slowNext = true;
+        _loadKey++;
+    }
+
+    private async Task LoadAsync(int key) => await Task.Delay(_slowNext ? 3000 : 200);
+
+    public void Dispose() => State.Changed -= OnTransitionChanged;
 }

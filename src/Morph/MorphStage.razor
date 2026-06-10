@@ -12,6 +12,10 @@
 {
     <div class="morph-loader">@LoadingContent</div>
 }
+@if (LoadError is not null && ErrorContent is not null)
+{
+    <div class="morph-error">@ErrorContent(LoadError)</div>
+}
 
 @code {
     [Parameter, EditorRequired] public TKey Screen { get; set; } = default!;
@@ -23,6 +27,8 @@
     [Parameter] public Func<TKey, Task>? Load { get; set; }
 
     [Parameter] public RenderFragment? LoadingContent { get; set; }
+
+    [Parameter] public RenderFragment<Exception>? ErrorContent { get; set; }
 
     private TKey _current = default!;
     private bool _initialized;
