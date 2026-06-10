@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>RemoteAgents.Tests.ArchTests</RootNamespace>
+    <AssemblyName>RemoteAgents.Tests.ArchTests</AssemblyName>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <PackageReference Include="TngTech.ArchUnitNET" Version="0.13.1" />
+    <PackageReference Include="TngTech.ArchUnitNET.xUnit" Version="0.13.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <!-- The rule book is the source of truth; the parity test reads it at runtime. -->
+  <ItemGroup>
+    <None Include="Rules\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- Production assemblies under inspection. Add one ProjectReference when a new assembly
+       is created, plus a matching Assembly.Load in ArchitectureModel; band rules then cover it. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\RemoteAgents.Contracts\RemoteAgents.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Infrastructure\RemoteAgents.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Domain\Flow\RemoteAgents.Domain.Flow.csproj" />
+    <ProjectReference Include="..\..\src\Domain\Agents\RemoteAgents.Domain.Agents.csproj" />
+    <ProjectReference Include="..\..\src\Features\Flows\Definitions\RemoteAgents.Flows.Definitions.csproj" />
+    <ProjectReference Include="..\..\src\Features\Git\RemoteAgents.Git.csproj" />
+    <ProjectReference Include="..\..\src\RemoteAgents.Host\RemoteAgents.Host.csproj" />
+  </ItemGroup>
+
+</Project>
