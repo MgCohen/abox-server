@@ -7,6 +7,7 @@
     <Project Path="src/RemoteAgents.Web/RemoteAgents.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Morph.Tests/Morph.Tests.csproj" />
     <Project Path="tests/RemoteAgents.Tests/RemoteAgents.Tests.csproj" />
   </Folder>
 </Solution>

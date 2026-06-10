@@ -1,32 +1,34 @@
 @page "/"
 @namespace MorphDemo.Pages
 
-<h1 class="page-title">Gallery</h1>
-<p class="page-sub">Every shape, size, and nesting depth on one screen — eyeball any transition without rebuilding.</p>
+<MorphRaised Class="page-head">
+    <h1 class="page-title">Gallery</h1>
+    <p class="page-sub">Every shape, size, and nesting depth on one screen — eyeball any transition without rebuilding.</p>
+</MorphRaised>
 
 <div class="grid">
-    <MorphShape Class="neu-raised card">
+    <MorphRaised Class="card">
         <h2>Raised card</h2>
         <p class="lead">A flat depth-0 panel: a heading and a line of copy, so you can see text ride the morph.</p>
-    </MorphShape>
+    </MorphRaised>
 
-    <MorphShape Class="neu-inset card">
+    <MorphInset Class="card">
         <h2>Inset card</h2>
         <p class="muted">Two muted lines —</p>
         <p class="muted">— pressed into the surface.</p>
-    </MorphShape>
+    </MorphInset>
 
-    <MorphShape Class="neu-raised card">
+    <MorphRaised Class="card">
         <h2>Nested · depth 2</h2>
-        <MorphShape Class="neu-inset inner">
+        <MorphInset Class="inner">
             <span class="muted">inner · inset</span>
-            <MorphShape Class="neu-raised leaf">leaf · raised</MorphShape>
-        </MorphShape>
-    </MorphShape>
+            <MorphRaised Class="leaf">leaf · raised</MorphRaised>
+        </MorphInset>
+    </MorphRaised>
 
-    <MorphShape Class="neu-raised card">
+    <MorphRaised Class="card">
         <div class="row">
-            <MorphShape Class="neu-inset circle">MC</MorphShape>
+            <MorphInset Class="circle">MC</MorphInset>
             <div class="col">
                 <strong>Avatar row</strong>
                 <span class="muted">round shape, nested one deep</span>
@@ -36,19 +38,19 @@
             <span class="chip">tag</span>
             <span class="chip">pill chip</span>
         </div>
-    </MorphShape>
+    </MorphRaised>
 
-    <MorphShape Class="neu-inset tile">
+    <MorphInset Class="tile">
         <div class="stat-num">128</div>
         <div class="stat-label">flat stat tile</div>
-    </MorphShape>
+    </MorphInset>
 
-    <MorphShape Class="neu-raised card">
+    <MorphRaised Class="card">
         <img class="thumb neu-inset" src="@SwatchA" alt="swatch" />
         <span class="muted">image + caption</span>
-    </MorphShape>
+    </MorphRaised>
 
-    <MorphShape Class="neu-raised card wide">
+    <MorphRaised Class="card wide">
         <div class="spread">
             <div class="col">
                 <strong>Wide panel</strong>
@@ -59,7 +61,7 @@
                 <button class="btn primary">Primary</button>
             </div>
         </div>
-    </MorphShape>
+    </MorphRaised>
 </div>
 
 @code {

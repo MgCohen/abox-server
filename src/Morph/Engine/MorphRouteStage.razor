@@ -1,7 +1,8 @@
+@namespace Morph
 @inherits MorphStageBase
 @implements IDisposable
 
-<div class="morph-stage" data-phase="@DataPhase" style="@_definition.Vars;--max-depth:@MaxDepth" @ref="StageElement" @onanimationend="OnAnimationEnd">
+<div class="morph-stage" data-phase="@DataPhase" style="--max-depth:@MaxDepth" @ref="StageElement">
     <CascadingValue Value="RootContext" IsFixed="true">
         @Body
     </CascadingValue>
@@ -12,10 +13,8 @@
 
     [Parameter, EditorRequired] public RenderFragment? Body { get; set; }
 
-    [Parameter] public string? Transition { get; set; }
-
     private IDisposable? _registration;
-    private TransitionDefinition _definition = default!;
+    private bool _awaitingEnter;
 
     protected override void OnInitialized()
     {
@@ -23,24 +22,27 @@
         Nav.LocationChanged += OnLocationChanged;
     }
 
-    protected override void OnParametersSet() => _definition = Options.Resolve(Transition);
-
     private async ValueTask OnLocationChanging(LocationChangingContext context)
     {
         if (string.Equals(context.TargetLocation, Nav.Uri, StringComparison.Ordinal))
             return;
 
         if (await RunPhaseAsync(MorphPhase.Exiting))
+        {
             ResetDepth();
+            _awaitingEnter = true;
+        }
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs args) => _ = EnterAsync();
 
     private async Task EnterAsync()
     {
-        if (Phase != MorphPhase.Exiting)
+        if (!_awaitingEnter)
             return;
 
+        _awaitingEnter = false;
+        await HoldAtEmptyAsync();
         if (await RunPhaseAsync(MorphPhase.Entering))
             Settle();
     }

@@ -1,114 +1,146 @@
 # Morph
 
 A theme-agnostic Blazor WASM animation/transition library. One phase engine
-(`exit → await load → enter`, driven by the browser's `animationend`), two
-triggers on it (`MorphStage<TKey>` for in-page swaps, `MorphRouteStage` for
-routes), and one shape (`MorphShape`) that owns its transition so callers never
-write animation.
+(`exit → await load → enter`), two triggers on it (`MorphStage<TKey>` for in-page
+swaps, `MorphRouteStage` for routes), and **one component per visual style** so
+callers never write animation or type a raw style class.
+
+Layout mirrors that split:
+
+```
+Engine/   the phase machine (MorphStageBase + the two triggers), MorphShape,
+          interop, options, the TransitionDefinition record
+Surface/  MorphStyle (the closed enum) + MorphSurface (type-safe dispatch)
+Styles/   one folder per style: <X>/Morph<X>.razor + <X>Style.cs (values + AddX)
+wwwroot/  theme.css + morph.css (engine) + one stylesheet per style
+```
 
 ## Setup
 
 ```csharp
-builder.Services.AddMorph();                 // ships the built-in "morph" transition
+builder.Services.AddMorph(o =>
+{
+    o.LoadTimeout = 10_000;   // async-gate budget (ms) before a load is treated as failed
+    o.SwapDelay = 0;          // optional hold (ms) at the empty midpoint, between exit and enter
+});   // composes raised + inset + cutout
 
 var host = builder.Build();
-await host.Services.DetectReducedMotionAsync();   // one matchMedia read; see "Reduced motion"
+await host.Services.DetectReducedMotionAsync();           // one matchMedia read; see "Reduced motion"
 await host.RunAsync();
 ```
 
-Reference the bundled CSS from `index.html`:
+Reference the bundled CSS from `index.html` (no JS wiring needed):
 
 ```html
-<link rel="stylesheet" href="_content/Morph/neu.css" />
+<link rel="stylesheet" href="_content/Morph/theme.css" />
+<link rel="stylesheet" href="_content/Morph/raised.css" />
+<link rel="stylesheet" href="_content/Morph/inset.css" />
+<link rel="stylesheet" href="_content/Morph/cutout.css" />
 <link rel="stylesheet" href="_content/Morph/morph.css" />
 ```
 
-`morph.css` is the engine (stage rules + reduced-motion + the `morph-melt`/
-`morph-strude` keyframes that drive the `--lift` variable); `neu.css` is one theme
-(tokens, the `@property --lift` registration, and the lift-driven `.neu-raised`/
-`.neu-inset` shadow recipes). Swap the theme without touching the engine.
+`theme.css` is one theme (design tokens + the `@property --lift` registration);
+`morph.css` is the engine (stage layout); each **style** ships its own stylesheet
+(class + keyframes + the phase rules that key off `data-phase`). Swap the theme
+without touching the engine.
 
-The built-in "morph" is a **melt & extrude**: a panel's fill matches the surface,
-so its shadow is the only thing that makes it visible. Melt animates `--lift` → 0
-(the panel sinks flush and dissolves into the clay); extrude animates `--lift`
-0 → 1 with an overshoot ease (it squeezes back out). Every shadow offset and blur
-is `calc(var(--lift) * …)`, so at `--lift: 0` the panel is genuinely shadowless.
+## Using a style
 
-## The four extension axes
-
-Everything below is a **consumer** action — none of it edits this library.
-
-### 1. Change configs — `AddMorph` options
-
-`MorphOptions` is the DI singleton holding the registered transition set and the
-global knobs:
-
-```csharp
-builder.Services.AddMorph(o =>
-{
-    o.Default     = "morph";   // transition used when a stage names none
-    o.LoadTimeout = 10_000;    // ms async-gate budget → error path on expiry
-});
-```
-
-### 2. Control transitions — `TransitionDefinition` + keyframe pair + `Transition="name"`
-
-A transition *type* is data. Register it, ship its keyframe pair in **your** CSS,
-and select it by name:
-
-```csharp
-//          name     exit-kf       enter-kf       exit  enter  layer  scatter  exit-ease                     enter-ease
-builder.Services.AddMorph(o => o.Add(new TransitionDefinition(
-    "slide", "slide-exit", "slide-enter", 300, 340, 60, 20,
-    "cubic-bezier(0.4,0,0.2,1)", "cubic-bezier(0.4,0,0.2,1)")));
-```
-
-`layer` is the per-**depth** stagger step (ms): nested panels cascade layer by
-layer — exit melts deepest-first (leaves sink before their container), enter
-extrudes outermost-first (each layer surfaces in turn). `scatter` adds a small
-stable per-container jitter (ms) so same-layer siblings aren't in lockstep. Exit
-and enter take their own eases — the built-in morph pairs an ease-in collapse with
-an overshoot extrude.
-
-```css
-/* in the consumer's CSS — animate transform/opacity, disjoint from a per-shape extra */
-@keyframes slide-exit  { to   { transform: translateX(-40px); opacity: 0 } }
-@keyframes slide-enter { from { transform: translateX(40px);  opacity: 0 } }
-```
+Every style is a thin component over `MorphShape`; the call site is uniform no
+matter how gnarly the style's internals are. Nest freely — each renders a
+`.morph-item` and joins the depth-staggered ripple:
 
 ```razor
-<MorphStage Screen="_view" Transition="slide" Context="v"> … </MorphStage>
-<MorphRouteStage Body="@Body" Transition="slide" />
+<MorphRaised Class="card">
+    <MorphInset Class="inner">…</MorphInset>
+</MorphRaised>
+
+<MorphCutout Class="panel">…</MorphCutout>   @* a hole that opens from a point *@
 ```
 
-`Transition` is a normal parameter — bind it to switch at runtime. Adding a type
-touches no library code and adds no branch.
+`Class` is a **size/role modifier** (`card`, `tile`, `wide`) — never a `neu-*`
+identity class, which the component owns. Each style brings its own motion
+(raised rises from flat, inset presses in, cut-out opens from a point); they are
+independent, not poles of one transition.
 
-### 3. Add shapes — `<MorphShape Class="…">` + CSS
+### Variable style — `MorphSurface`
 
-`MorphShape` is the one container. A new variant is a CSS class; the component is
-unchanged. Nest them freely — each renders a `.morph-item` and joins the ripple:
+When a single spot needs a *changeable* look, `MorphSurface` maps a `MorphStyle`
+to the right component via a compile-checked switch expression (not
+`DynamicComponent` — the set is closed and homogeneous):
 
 ```razor
-<MorphShape Class="neu-raised card">
-    <MorphShape Class="neu-inset inner">…</MorphShape>
-</MorphShape>
+<MorphSurface Style="@_style" Class="card">…</MorphSurface>
 ```
 
-Each shape emits `--depth` (its nesting level) and `--rand` (a stable scatter
-hash); the stage rule turns `--depth` (against the stage's `--max-depth`) into a
-layer-by-layer `animation-delay`, with `--rand` adding the within-layer jitter —
-so nested panels peel depth by depth rather than all at once.
+## Adding a style
 
-A per-shape extra animation must use **disjoint** properties (`filter`, `color`,
-…) from the base keyframes (`--lift`/`box-shadow`/`opacity`) — same-property
-collisions resolve silently by last-declared-wins.
+A new style is one self-contained folder under `Styles/` plus two one-line edits:
 
-### 4. Add components — RenderFragments into a stage, or subclass `MorphStageBase`
+1. `Styles/<X>/Morph<X>.razor` — wrap `MorphShape` with the style's class (+ any
+   scaffold divs the look needs; see the cut-out), and project its timing:
+   `Vars="@Options.Resolve(<X>Style.Name).Vars"`.
+2. `wwwroot/<x>.css` — the `.neu-<x>` recipe, its `@keyframes`, and the phase
+   rules: `.morph-stage[data-phase="exit"|"enter"] .neu-<x> { animation: … var(--enter-dur) … }`.
+3. `Styles/<X>/<X>Style.cs` — a `TransitionDefinition` (timing/easing only; its
+   `Vars` emit generic `--enter-dur`/`--exit-dur`/`--layer`/`--scatter`/eases) and
+   an `AddX()` that calls `AddTransition(...)`.
+4. Add the enum value to `MorphStyle` and a switch arm to `MorphSurface`; compose
+   `AddX()` into `AddMorph`.
 
-`MorphStage<TKey>` takes `ChildContent` (the screen), `LoadingContent` (held-melted
-overlay), and `ErrorContent` (a `RenderFragment<Exception>` shown when a load
-times out). Pour any component in:
+**Timing is per-style, per-subtree.** Each style component projects its own
+`TransitionDefinition.Vars` onto the `.morph-item` it renders (via a `MorphShape`
+`Vars` passthrough), so `var(--enter-dur)` resolves to *that style's* value even
+when a single stage mixes raised + inset + cut-out. The stage emits only
+`--max-depth`.
+
+## How a phase completes
+
+A phase ends when the animations it started have finished — and the engine waits
+on the **actual scheduled set**, not a count or a timer:
+
+```js
+// morph.js — the only completion primitive
+export function waitForAnimations(el) {
+  return new Promise((resolve) => requestAnimationFrame(() => {
+    const anims = el.getAnimations({ subtree: true })
+      .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity); // skip infinite
+    resolve(Promise.all(anims.map((a) => a.finished)));
+  }));
+}
+```
+
+`MorphStageBase` awaits `Interop.WaitForAnimationsAsync(StageElement)` once per
+phase (after the phase's render, via `OnAfterRenderAsync`). This is **correct by
+construction** for any delay, gap, nesting, or count — a style just declares its
+keyframes and the engine waits for exactly what runs. Consequences:
+
+- **Styles never touch completion.** The cut-out's motion lives on inner
+  `floor`/`ring` layers, not its `.morph-item`; the engine waits for those layers
+  with no sentinel, count, or special-casing.
+- **Interruption** cancels the in-flight animations, so `.finished` rejects with
+  `AbortError` → `JSException`; the engine catches it and the `_phaseGen`
+  generation check discards the superseded phase.
+- **No silent hang.** An empty set resolves instantly (static phase, reduced
+  motion), so there is no count to mismatch.
+
+This is the library's only JS beyond `prefersReducedMotion` — JS is admitted only
+for a browser primitive C#/CSS can't express ("this subtree's animations are
+done"). All phase logic, dispatch, timing, and config stay in C#/CSS.
+
+## Reduced motion
+
+Each style's CSS zeroes its animation under `prefers-reduced-motion: reduce`.
+`DetectReducedMotionAsync` reads the media query once at startup and sets
+`MorphOptions.ReducedMotion`, which makes the engine skip its await entirely. Call
+it once after `Build()`. (Even without the short-circuit, `getAnimations` would
+return an empty set and resolve instantly — the two agree.)
+
+## Composing stages
+
+`MorphStage<TKey>` takes `ChildContent` (the screen), `LoadingContent` (overlay
+held during an async gate), and `ErrorContent` (a `RenderFragment<Exception>`
+shown when a load times out):
 
 ```razor
 <MorphStage Screen="_id" Load="LoadAsync">
@@ -120,32 +152,4 @@ times out). Pour any component in:
 
 For a genuinely new trigger (neither param-watch nor router), subclass
 `MorphStageBase` and drive `RunPhaseAsync` / `TransitionAsync` yourself — the same
-engine `MorphStage` and `MorphRouteStage` use.
-
-## How a phase completes
-
-A phase ends when every animated layer has finished — driven by real
-`animationend` events, not a timer. Each `MorphShape` renders a `.morph-item`;
-the CSS animates **every** item under a transitioning stage (descendant selector),
-so the stage waits for exactly one `animationend` per item. The count is read once
-per phase from the DOM (`countItems`), and the bubbling events tick it down — which
-is what lets an outer `MorphRouteStage` wait for items owned by inner stages.
-
-Two pieces make this work and are easy to miss:
-
-- `EventHandlers.cs` registers `onanimationend` via `[EventHandler]`. Animation and
-  transition events are **not** in Blazor's built-in set, so without this class the
-  `@onanimationend` binding is silently inert — the handler never fires. The class
-  must be named exactly `EventHandlers` for the Razor compiler to find it.
-- No fallback timer. If the gate could never be satisfied the phase would hang, so
-  the two no-animation cases short-circuit explicitly: reduced motion (below) and a
-  zero-item count complete immediately.
-
-## Reduced motion
-
-CSS zeroes the animation under `prefers-reduced-motion: reduce`, so no
-`animationend` ever fires. `DetectReducedMotionAsync` reads the media query once at
-startup and sets `MorphOptions.ReducedMotion`, which makes the engine skip its await
-entirely — CSS and engine stay in agreement instead of waiting for events that will
-never arrive. Call it once after `Build()`. This and the per-phase item count are
-the library's only JS interop, both through `morph.js` via `MorphInterop`.
+engine the two built-in triggers use.

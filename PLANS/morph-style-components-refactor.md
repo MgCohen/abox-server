@@ -1,10 +1,57 @@
 # Morph style-components refactor
 
-**Status:** proposed (not started) · **Scope:** `src/Morph` + its consumers · **Owner:** —
+**Status:** ✅ built (all 7 steps shipped, runtime-verified) · **Scope:** `src/Morph` + its consumers · **Owner:** —
 
 This document is standalone. It assumes no prior conversation. Read it cold and
 you should understand what Morph is today, what we're changing, why, and exactly
 what the target looks like.
+
+> **Build outcome (2026-06-10).** Implemented exactly as specified. Conflict A
+> (completion) is the `getAnimations({subtree:true})` + `Promise.all(...finished)`
+> seam awaited from C# (`AbortError`→`JSException` caught, `_phaseGen` guards
+> interruption); the counting/sentinel/custom-event machinery is gone, and the
+> cut-out needs no completion plumbing. Conflict B (timing) projects each style's
+> `TransitionDefinition.Vars` onto its `.morph-item` via a `MorphShape` `Vars`
+> passthrough; the stage emits only `--max-depth`. C (no `Type` registry) and D
+> (keyframe-name fields dropped) as written. Verified in a real browser: per-subtree
+> `--enter-dur` differs in one route (raised 500ms vs cut-out 1100ms); route /
+> swap / async / cut-out (two cycles) / interruption all settle with no hang;
+> reduced motion swaps in ~32ms; no console/page errors. The cut-out look/open/close
+> was tuned in `spikes/cutout-demo` (now deleted) and lives in `Styles/Cutout`.
+> *(Note: an earlier parallel branch had built the pre-revision counting approach;
+> this branch was realigned to this revised plan and the dead machinery removed.)*
+
+> **Revision note (post-review).** Four conflicts surfaced when the design was
+> checked against the actual engine; their resolutions are folded into the
+> decisions below and supersede the first draft. **A and B (the runtime-risky ones)
+> are spike-validated** (`spikes/morph-getanimations/`, `spikes/morph-completion-cascade/`);
+> **C and D are pure-refactor decisions with no runtime risk to spike.**
+> - **A (completion, D6).** The original counted model has no timer fallback, so a
+>   miscount hangs *silently* — and the cut-out's inner-layer animations make a
+>   correct count hard. Several C#-only fixes were explored (target-filter — not
+>   expressible, Blazor's `AnimationEventArgs` carries no DOM target; a named
+>   sentinel animation; balancing `animationstart`/`animationend`) and each carries
+>   a fragility (sentinel must be hand-sized ≥ its content; balance-counting
+>   false-completes on *gapped* staggers — proven, it fires at 273ms on a layer
+>   that truly ends at 873ms). Resolved instead with a **tiny JS seam**:
+>   `element.getAnimations({subtree:true})` + `Promise.all(...finished)`, awaited
+>   from C#. It waits on the *actual* scheduled animation set — any delay, gap,
+>   nesting, or count — so completion is **correct by construction**. This retires
+>   the silent-hang risk and deletes the sentinel/counting machinery entirely.
+>   (Resolves Q1; see **D7** for the principle that admits the JS.)
+> - **B (timing scope, D2/D5).** Durations are emitted once on `.morph-stage`, but
+>   a single stage mixes styles (the demo nests raised+inset) and the cut-out's
+>   timing differs (700/1100 vs 440/500). Resolved: **each style component emits
+>   its own timing vars onto its `.morph-item`** (via a `MorphShape` passthrough);
+>   `var(--enter-dur)` then resolves per-subtree. The stage keeps only `--max-depth`.
+> - **C (dead registry, D4).** The `MorphStyle → Type` map has no consumer — the
+>   switch references component tags at compile time. Resolved: **drop
+>   `AddMorphStyle`**; each style registers only its `TransitionDefinition`.
+>   (Resolves Q2 by removal.)
+> - **D (record shape, D5).** The single `Exit/EnterKeyframes` fields can't name a
+>   multi-layer style (cut-out needs floor+ring) and go unused once CSS owns
+>   motion. Resolved: **drop the keyframe-name fields**; each style names its
+>   keyframes literally in its own CSS. Easing fields stay (default `linear`).
 
 ---
 
@@ -25,7 +72,8 @@ The pieces today (`src/Morph`):
 - **Completion** — counted via `animationend`. `morph.js#countItems` returns
   `stage.querySelectorAll(".morph-item").length`; every bubbled `animationend`
   increments a tally; the phase resolves when the tally reaches the count.
-  **There is no timer fallback** — a miscount hangs the phase.
+  **There is no timer fallback** — a miscount hangs the phase. *(This counted model
+  is exactly what D6 replaces — it's described here as today's behavior, not the target.)*
 
 ### Current state of the relevant types (accurate as of writing)
 
@@ -165,12 +213,19 @@ worth it for the safety. (If styles ever become plugin-extensible, *that* is whe
 The dispatch references components by name only — per-style scaffold/CSS/values
 stay in each style's folder, so D3's locality is preserved.
 
+**No runtime style registry.** The switch *is* the `MorphStyle → component` map,
+resolved at compile time. There is deliberately **no** `MorphStyle → Type`
+registry: nothing would consume it (the switch names component tags directly), and
+a runtime Type map is exactly the `DynamicComponent` indirection this decision
+rejects. Each style therefore self-registers only its **timing**
+(`TransitionDefinition`), never its component type. (Conflict C.)
+
 ### D5 — What controls what (config layering).
 
 | Concern | Lives in | Notes |
 |---|---|---|
 | **Motion *shape*** (the choreography: pop → hold → open) | CSS `@keyframes` in the style folder | The style's identity; not a per-instance knob. The cut-out's phased timing lives in multi-stop keyframes with per-stop `animation-timing-function`. |
-| **Motion *timing/easing*** (durations, ease) | a `TransitionDefinition` instance in the style folder | The single tuning point. Registered centrally, applied everywhere that style is used. |
+| **Motion *timing/easing*** (durations, ease) | a `TransitionDefinition` instance in the style folder, **emitted by the style component onto its own `.morph-item`** | The single tuning point. Registered centrally; the style component projects its `Vars` onto the `.morph-item` it renders (via a `MorphShape` passthrough), so `var(--enter-dur)` resolves *per style/per subtree*. **The stage no longer emits `--*-dur`/`--*-ease`/`--anim-*`** — only `--max-depth`. This is what lets one stage mix raised+inset+cut-out, each with its own timing. (Conflict B.) |
 | **Style *structure*** (which scaffold) | the style component (`MorphCutout.razor`) | Owns the divs; consumers never see them. |
 | **Which style** (fixed or variable) | the product component (`Card`/`Panel`) | A fixed style is the default; a variable one is an optional `Style` param forwarded to `MorphSurface`. |
 | **Size / layout** | a `Class` modifier + CSS (`card`, `tile`, `wide`) | Not animation; never C#. |
@@ -180,29 +235,78 @@ stay in each style's folder, so D3's locality is preserved.
 The product component decides **structure + which style**; it stays free of
 numbers. Timing is data; motion-shape is keyframes; size is CSS.
 
-### D6 — The cut-out must integrate with counted completion. (critical)
+### D6 — Completion: await the actual animations via `getAnimations`. (critical)
 
-Completion counts `.morph-item` elements and expects **one `animationend` per
-counted item**, with no timer fallback. The cut-out breaks this assumption: its
-motion runs on inner `floor`/`ring` layers (which are *not* `.morph-item`s), so a
-naive cut-out could emit **zero** `animationend` on its `.morph-item` (→ tally
-never reaches count → **permanent hang**) or **extra** bubbled events from the
-inner layers (→ completes early / miscounts).
+**The problem with the inherited model.** Today completion *counts*: `countItems`
+returns `.morph-item` count, every bubbled `animationend` increments a tally, the
+phase resolves when they're equal — and there is **no timer fallback, so a
+miscount hangs silently.** The cut-out breaks the count (its motion is on inner
+`floor`/`ring` layers, not the `.morph-item`), and animated screen content
+inflates it. Every C#-only fix re-encodes the same fragility somewhere:
 
-**Proposed resolution (validate during the build):**
+- *Filter the tally by event `target`* — **impossible**: Blazor's
+  `AnimationEventArgs` carries no DOM element (not serializable), so there's
+  nothing to filter on.
+- *Named `morph-sentinel` animation + `AnimationName` filter* — works, but the
+  sentinel must be **hand-sized ≥ its subtree's longest motion** or the phase
+  resolves early; a footgun on every future style.
+- *Balance `animationstart`/`animationend`* — clean and number-free, but
+  **false-completes on gapped staggers**: `animationstart` fires only *after*
+  `animation-delay`, so a delayed layer is invisible until it starts. Proven in
+  `spikes/morph-getanimations/`: the counter matched at **273ms** on a layer that
+  truly ended at **873ms**. Only safe for *overlapping* cascades.
 
-1. **Filter the tally to the counted element.** Change the stage's `animationend`
-   handler to count only events whose `target` is a `.morph-item` (ignore events
-   bubbling from descendant layers and from animated screen content). This makes
-   the engine robust to *any* style with internal animation, not just the cut-out.
-2. **Give the cut-out's `.morph-item` exactly one completing animation.** The
-   primary open/close animation (the one whose duration defines "done") is hosted
-   such that the counted `.morph-item` emits a single `animationend` of the right
-   duration; secondary inner-layer animations are timed to finish no later and do
-   not participate in the count (covered by step 1).
+**Resolution — a tiny JS seam (admitted by D7).** CSS has no "subtree is done"
+signal; the Web Animations API does. The engine awaits the real animation set:
 
-This is the highest-risk part of the work. It must be proven by running it (a
-hung phase is silent), not just by a green build. See §7.
+```js
+// morph.js — observes whatever is actually running; no count, no duration, no timer
+export function waitForAnimations(el) {
+  return new Promise((resolve) => requestAnimationFrame(() => {
+    const anims = el.getAnimations({ subtree: true })
+      .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity); // skip infinite
+    resolve(Promise.all(anims.map((a) => a.finished)));
+  }));
+}
+```
+
+```csharp
+// MorphStageBase — replaces the animationend tally + countItems + TCS dance
+try { await Interop.WaitForAnimationsAsync(StageElement); }
+catch (JSException) { /* AbortError: phase superseded mid-flight — _phaseGen handles it */ }
+```
+
+Why this wins: it waits on the *actual* scheduled set — any delay, gap, nesting,
+data-driven count, or none — so completion is **correct by construction**. It
+**deletes** the sentinel, the comma-list discipline, the `AnimationName` filter,
+`countItems`, the `@onanimationend` binding, `EventHandlers.cs`, and the
+`_animEnd`/`_target`/`_countScheduled`/`TaskCompletionSource` state. The cut-out
+needs no special handling — its layers animate, the engine waits. **Styles stop
+caring about completion entirely** (a footgun removed from every future style),
+and the silent-hang risk is gone (empty set → resolves instantly; reduced-motion
+falls out for free).
+
+Validated in `spikes/morph-getanimations/` (6/6): gapped stagger waits correctly
+(873ms), interruption rejects cleanly with `AbortError` (no hang), a fresh phase
+recovers, a static phase resolves in 12ms. The three caveats handled in the
+helper/engine: filter infinite animations, snapshot on the next frame (`rAF`),
+catch `AbortError` as "superseded" (maps onto the engine's existing `_phaseGen`
+interruption model). One thing to verify at build: `{subtree:true}` support on the
+lowest target WebView (the base `getAnimations()` is broadly supported; the
+`subtree` option shipped slightly later — MDN documents a descendant-map fallback).
+
+### D7 — JS is the thin adapter for browser primitives C#/CSS can't express.
+
+The seam in D6 establishes a rule, not a free-for-all. **JS is admitted only for
+browser primitives that have no C#/CSS expression** (here: "all animations in this
+subtree have finished" — CSS provably has no completion callback). Everything else
+— phase logic, per-style timing, dispatch, config — stays in C#/CSS. Concretely
+that means: no business logic in JS, no chatty per-frame round-trips, no
+`DotNetObjectReference` callback graphs. The D6 helper is the canonical shape: a
+stateless, promise-returning function, awaited once per phase, owning nothing.
+`morph.js` keeps its one existing adapter of this kind (`prefersReducedMotion`);
+`waitForAnimations` is the second, replacing the old `countItems`. This line is the
+deliverable — it answers the *next* JS question too.
 
 ---
 
@@ -211,25 +315,29 @@ hung phase is silent), not just by a green build. See §7.
 Namespaces stay flat (`namespace Morph;`) — folders organize files, not
 assemblies, consistent with the repo's "folders not walls" stance.
 
+The two columns are **independent file lists** — read each top-to-bottom; rows do
+*not* line up as a before→after mapping. The `←` annotations flag what changes in
+the target.
+
 ```
 BEFORE  (src/Morph, flat)              AFTER  (src/Morph, sliced)
 ────────────────────────────          ─────────────────────────────────────────
 MorphStage.razor                       Engine/
 MorphRouteStage.razor                    MorphStage.razor
 MorphStageBase.cs                        MorphRouteStage.razor
-MorphStageContext.cs                     MorphStageBase.cs        ← +animationend target filter (D6.1)
+MorphStageContext.cs                     MorphStageBase.cs        ← await WaitForAnimationsAsync; drop tally/TCS/count state (D6)
 MorphOrderCounter.cs                     MorphStageContext.cs
 MorphPhase.cs                            MorphOrderCounter.cs
 MorphShape.razor                         MorphPhase.cs
-MorphInterop.cs                          MorphShape.razor
-MorphOptions.cs                          MorphInterop.cs          ← countItems unchanged; tally filtered in C#
+MorphInterop.cs                          MorphShape.razor         ← +Vars passthrough onto .morph-item (conflict B)
+MorphOptions.cs                          MorphInterop.cs          ← WaitForAnimationsAsync (replaces CountItemsAsync)
 TransitionDefinition.cs                  MorphOptions.cs
-ServiceCollectionExtensions.cs           TransitionDefinition.cs  ← the generic RECORD (shared)
-ServiceProviderExtensions.cs             ServiceProviderExtensions.cs
-wwwroot/morph.css                        wwwroot/morph.css        ← engine rules only
-wwwroot/morph.js                         wwwroot/morph.js
-wwwroot/neu.css                        Surface/
-                                         MorphStyle.cs            ← the enum (the one closed list)
+ServiceCollectionExtensions.cs           TransitionDefinition.cs  ← shared RECORD, keyframe-name fields dropped (conflict D)
+EventHandlers.cs  (deleted, see below)   ServiceProviderExtensions.cs
+ServiceProviderExtensions.cs             wwwroot/morph.css        ← engine rules only (no sentinel)
+wwwroot/morph.css                        wwwroot/morph.js         ← waitForAnimations (replaces countItems) (D6/D7)
+wwwroot/morph.js                       Surface/
+wwwroot/neu.css                          MorphStyle.cs            ← the enum (the one closed list)
                                          MorphSurface.razor       ← the type-safe dispatch (D4)
                                        Styles/
                                          Raised/
@@ -248,7 +356,10 @@ wwwroot/neu.css                        Surface/
 ```
 
 `neu.css`'s `:root` tokens move to a shared theme file; its `.neu-raised`/
-`.neu-inset` rules move into the respective style folders.
+`.neu-inset` rules move into the respective style folders. **`EventHandlers.cs` is
+deleted** (it only registered the `@onanimationend` event, which `getAnimations`
+makes unnecessary — D6), and `morph.js`'s `countItems` is removed in favor of
+`waitForAnimations`.
 
 ---
 
@@ -279,6 +390,23 @@ wwwroot/neu.css                        Surface/
 }
 ```
 
+### The shared record (conflict D — keyframe names dropped)
+
+```csharp
+// TransitionDefinition.cs — timing + stagger + easing only. No keyframe NAMES:
+// each style names its keyframes literally in its own CSS (a multi-layer style
+// like the cut-out needs two — floor + ring — which one name field can't carry).
+public sealed record TransitionDefinition(
+    string Name, int ExitMs, int EnterMs, int LayerInterval, int Scatter,
+    string ExitEase = "linear", string EnterEase = "linear")
+{
+    public string Vars =>
+        $"--exit-dur:{ExitMs}ms;--enter-dur:{EnterMs}ms;" +
+        $"--layer:{LayerInterval}ms;--scatter:{Scatter}ms;" +
+        $"--exit-ease:{ExitEase};--enter-ease:{EnterEase};";
+}
+```
+
 ### Style values + self-registration (co-located with the component)
 
 ```csharp
@@ -287,14 +415,14 @@ public static class CutoutStyle
 {
     public static readonly TransitionDefinition Transition = new(
         Name: "cutout",
-        ExitKeyframes: "cutout-close", EnterKeyframes: "cutout-open",
-        ExitMs: 700, EnterMs: 1100,      // tuned in spikes/cutout-demo
-        LayerInterval: 0, Scatter: 0,    // cut-out is a depth-0 container, no stagger
-        ExitEase: "linear", EnterEase: "linear"); // phased easing lives per-stop in the keyframes
+        ExitMs: 700, EnterMs: 1100,   // tuned in spikes/cutout-demo
+        LayerInterval: 0, Scatter: 0); // cut-out is a depth-0 container, no stagger;
+                                       // easing is per-stop in the keyframes → default linear
 
-    public static IServiceCollection AddCutout(this IServiceCollection s) => s
-        .AddMorphStyle(MorphStyle.Cutout, typeof(MorphCutout)) // registry entry for MorphSurface
-        .AddTransition(CutoutStyle.Transition);                // into MorphOptions
+    // No component-type registration (conflict C): MorphSurface's switch is the map.
+    // Register only the timing. (`AddTransition` is the renamed MorphOptions.Add.)
+    public static IServiceCollection AddCutout(this IServiceCollection s) =>
+        s.AddTransition(CutoutStyle.Transition);
 }
 ```
 
@@ -305,10 +433,18 @@ public static IServiceCollection AddMorph(this IServiceCollection s, Action<Morp
         .ConfigureMorph(configure);
 ```
 
+`AddTransition` and `ConfigureMorph` are thin `IServiceCollection` helpers over
+`MorphOptions`: `AddTransition` is today's `MorphOptions.Add` lifted to the service
+collection (it registers one `TransitionDefinition`), and `ConfigureMorph` applies
+the caller's `configure` delegate to the options. Both operate on the same single
+`MorphOptions` instance.
+
 ### Style-specific motion (CSS keyed on the style class — D2)
 
 ```css
-/* Styles/Cutout/cutout.css — motion lives WITH the style, not on the generic .morph-item */
+/* Styles/Cutout/cutout.css — motion lives WITH the style, not on the generic .morph-item.
+   var(--enter-dur)/var(--exit-dur) resolve to the cut-out's OWN values because the
+   style component emitted them onto this subtree's .morph-item (conflict B). */
 .morph-stage[data-phase="enter"] .neu-cutout .cutout-floor { animation: cutout-open-floor var(--enter-dur) both; }
 .morph-stage[data-phase="enter"] .neu-cutout .cutout-ring  { animation: cutout-open-ring  var(--enter-dur) both; }
 .morph-stage[data-phase="exit"]  .neu-cutout .cutout-floor { animation: cutout-close-floor var(--exit-dur) both; }
@@ -316,6 +452,27 @@ public static IServiceCollection AddMorph(this IServiceCollection s, Action<Morp
 
 @keyframes cutout-open-ring { /* phased: pop → hold → scale, per-stop timing functions */ }
 /* … cutout-open-floor / cutout-close-* … (ported from spikes/cutout-demo) */
+```
+
+**Completion needs nothing from the style.** Because the engine awaits the real
+animation set via `getAnimations` (D6), a style just declares its keyframes — no
+sentinel, no counted name, no comma-list, no overlap or duration discipline. The
+cut-out's `.morph-item` runs no visible animation of its own and that's fine: its
+`floor`/`ring`/content layers animate, the engine waits for exactly those. The
+engine CSS keeps only the reduced-motion guard (which now *also* doubles as
+correctness insurance — no animations means `getAnimations` resolves instantly):
+
+```css
+/* morph.css (engine) — no sentinel; reduced-motion guard covers the new inner layers too. */
+@media (prefers-reduced-motion: reduce) { .morph-stage .morph-item, .neu-cutout * { animation: none !important; } }
+```
+
+For single-layer styles (raised/inset) the visible `--lift` motion stays a single
+ordinary `animation` on the `.morph-item` — no special shape required:
+
+```css
+/* raised.css — morph-strude is the existing raise/extrude ENTER keyframe (morph-melt is its exit) */
+.morph-stage[data-phase="enter"] .neu-raised { animation: morph-strude var(--enter-dur) var(--enter-ease) both; }
 ```
 
 ### Product component with optional style
@@ -355,28 +512,39 @@ self-contained.
    shared theme tokens + per-style CSS. No new behavior. Build + existing
    `spikes/morph-demo` renders identically. One commit.
 2. **Introduce `MorphStyle` + `MorphRaised`/`MorphInset` + self-registration.**
-   Wire `AddRaised()`/`AddInset()` and the `AddMorphStyle` registry. Migrate the
-   demo to the named components. Behavior identical. One commit.
-3. **Add `MorphSurface`** (the switch-expression dispatch) + the registry-backed
-   `Type` lookup. Add a `Style` param to one demo component to prove variable
-   style works. One commit.
-4. **Adopt motion-per-style (D2) for raised/inset.** Move the melt/extrude
-   keyframes onto `.neu-raised`/`.neu-inset` rules; confirm each animates with its
-   own motion (an inset no longer borrows the raised keyframes). Verify visually.
-   One commit.
-5. **Harden completion for inner-layer animation (D6.1).** Filter the stage tally
-   to `animationend` whose `target` is a `.morph-item`. Verify existing
-   transitions still complete; add a regression for an animated child inside a
-   screen *not* inflating the count. One commit.
-6. **Build the cut-out (D6.2).** Port the `floor`/`ring` scaffold + phased
-   keyframes + tuned values from `spikes/cutout-demo` into `Styles/Cutout`.
-   Validate open *and* close complete with no hang, content timing correct, depth
-   reads from frame one. Verify in a real browser (the in-tool preview can't see
-   CSS animation — use `tools/frontend-verify`). One commit.
+   Wire `AddRaised()`/`AddInset()` (each registers only its `TransitionDefinition`
+   — no component-type registry, conflict C). Migrate the demo to the named
+   components. Behavior identical. One commit.
+3. **Add `MorphSurface`** (the switch-expression dispatch — the compile-time map,
+   no runtime `Type` lookup). Add a `Style` param to one demo component to prove
+   variable style works. One commit.
+4. **Adopt motion-per-style (D2) + per-style timing (conflict B) for raised/inset.**
+   Move the melt/extrude keyframes onto `.neu-raised`/`.neu-inset` rules; relocate
+   `TransitionDefinition.Vars` emission from the stage onto each style's
+   `.morph-item` (a `Vars` passthrough on `MorphShape`); the stage keeps only
+   `--max-depth`. Confirm each style animates with its own motion *and* that
+   per-subtree `var(--enter-dur)` overrides work in a mixed stage. Verify visually.
+   One commit. *(De-risked first by the §7 spike.)*
+5. **Switch completion to `getAnimations` (D6 / D7).** Add `waitForAnimations` to
+   `morph.js`; add `WaitForAnimationsAsync` to `MorphInterop`; in `MorphStageBase`
+   replace the `animationend` tally + `countItems` + `TaskCompletionSource` with
+   `await Interop.WaitForAnimationsAsync(StageElement)` (`StageElement` is the
+   captured `.morph-stage` `ElementReference`), catching `JSException`
+   (`AbortError`) as a superseded phase (the `_phaseGen` check already guards it).
+   **Delete** `EventHandlers.cs`, the `@onanimationend` binding, `countItems`, and
+   the now-dead tally state. Verify existing transitions still complete, an
+   interrupted phase doesn't hang, and reduced-motion resolves instantly. One
+   commit. *(Mechanism proven by `spikes/morph-getanimations/`.)*
+6. **Build the cut-out.** Port the `floor`/`ring` scaffold + phased keyframes +
+   tuned values from `spikes/cutout-demo` into `Styles/Cutout`. No sentinel, no
+   completion plumbing — the engine waits for the layers automatically. Validate
+   open *and* close complete with no hang, content timing correct, depth reads from
+   frame one. Verify in a real browser (`tools/frontend-verify`). One commit.
 7. **Delete `spikes/cutout-demo`** once parity is confirmed in the component.
 
-Steps 1–4 are pure refactor/encapsulation and low-risk. Steps 5–6 carry the real
-risk (D6) and must be runtime-verified.
+Steps 1–3 are pure refactor/encapsulation and low-risk. Steps 4–6 carry the real
+risk (conflicts A + B) and must be runtime-verified — the §7 spikes prove the
+mechanisms before they touch `src/Morph`.
 
 ---
 
@@ -387,6 +555,13 @@ animation is invisible to the in-tool preview. Every animated step (4, 5, 6) mus
 be driven in a real browser via `tools/frontend-verify/` (Playwright over system
 Chrome/Edge): confirm the phase resolves (no hang), capture animation frames for
 the open/close, and check the console for errors.
+
+The mechanism-level spikes are already done and passing (each has a `FINDINGS.md`):
+- `spikes/morph-completion-cascade/` — per-style timing override + stagger in a
+  mixed stage (conflict B). Driven by `tools/frontend-verify/probe-morph.mjs`.
+- `spikes/morph-getanimations/` — `getAnimations` completion across gapped stagger,
+  interruption (`AbortError`), and a static phase (conflict A / D6). Driven by
+  `tools/frontend-verify/probe-getanimations.mjs`.
 
 ---
 
@@ -404,16 +579,19 @@ the open/close, and check the console for errors.
 
 ## 9. Open questions
 
-- **Q1 (D6.2 mechanism).** Does hosting the cut-out's single completing
-  `animationend` on the `.morph-item` (vs. on the `ring`/`floor`) read correctly,
-  or does the primary animation need to live on an inner layer with the
-  `.morph-item` carrying a duration-matched sentinel animation? Resolve by
-  building step 6 and observing.
-- **Q2 (registry shape).** Key the `MorphStyle → Type` registry by the enum
-  (closed, discoverable, one central enum file) or by the transition `Name` string
-  (open, fully co-located, less type-safe)? Default: **enum**, unless Non-goal #1
-  changes.
+- **Q1 (completion mechanism). RESOLVED → `getAnimations`.** The engine awaits
+  `element.getAnimations({subtree:true})` + `Promise.all(...finished)`; no sentinel,
+  no counting. Correct by construction for any delay/gap/nesting. See D6/D7. Proven
+  by `spikes/morph-getanimations/` (6/6). Supersedes the earlier sentinel answer.
+- **Q2 (registry shape). RESOLVED by removal.** There is no `MorphStyle → Type`
+  registry — the `MorphSurface` switch is the compile-time map (conflict C / D4).
+  The only registry that exists, `MorphOptions`' transition table, stays keyed by
+  the transition `Name` string (the stage's `Transition` param resolves by name).
 - **Q3 (product-component home).** Do `Card`/`Panel` live inside the Morph package
   or in the product UI layer? Leaning product UI — Morph ships the *style*
   primitives + `MorphSurface`; the app composes them into domain components.
+- **Q4 (`{subtree:true}` reach).** The base `getAnimations()` is broadly supported;
+  the `subtree` option shipped slightly later on some engines. Verify against the
+  lowest target browser/WebView at step 5; MDN documents a descendant-map fallback
+  if a target lacks it. (Not a blocker on current evergreen Chrome/Edge/Firefox/Safari.)
 ```

@@ -1,7 +1,8 @@
+@namespace Morph
 @typeparam TKey
 @inherits MorphStageBase
 
-<div class="morph-stage" data-phase="@DataPhase" style="@_definition.Vars;--max-depth:@MaxDepth" @ref="StageElement" @onanimationend="OnAnimationEnd">
+<div class="morph-stage" data-phase="@DataPhase" style="--max-depth:@MaxDepth" @ref="StageElement">
     <CascadingValue Value="RootContext" IsFixed="true">
         <div @key="_current" class="morph-screen">
             @ChildContent(_current)
@@ -22,8 +23,6 @@
 
     [Parameter, EditorRequired] public RenderFragment<TKey> ChildContent { get; set; } = default!;
 
-    [Parameter] public string? Transition { get; set; }
-
     [Parameter] public Func<TKey, Task>? Load { get; set; }
 
     [Parameter] public RenderFragment? LoadingContent { get; set; }
@@ -33,12 +32,9 @@
     private TKey _current = default!;
     private TKey _requested = default!;
     private bool _initialized;
-    private TransitionDefinition _definition = default!;
 
     protected override async Task OnParametersSetAsync()
     {
-        _definition = Options.Resolve(Transition);
-
         if (!_initialized)
         {
             _current = Screen;
@@ -52,8 +48,11 @@
 
         _requested = Screen;
         var target = Screen;
-        await TransitionAsync(
+        var outcome = await TransitionAsync(
             Load is null ? null : () => Load(target),
             () => _current = target);
+
+        if (outcome == MorphTransitionOutcome.LoadFailed)
+            _requested = _current;
     }
 }

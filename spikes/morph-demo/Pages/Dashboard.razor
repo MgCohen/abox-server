@@ -1,62 +1,94 @@
 @page "/dashboard"
 @namespace MorphDemo.Pages
-@implements IDisposable
-@inject DemoTransitionState State
 
-<h1 class="page-title">Dashboard</h1>
-<p class="page-sub">The interactive paths: in-page swaps and async load / error.</p>
+<MorphRaised Class="page-head">
+    <h1 class="page-title">Dashboard</h1>
+    <p class="page-sub">The interactive paths: in-page swaps and async load / error.</p>
+</MorphRaised>
 
 <div class="grid">
-    <MorphShape Class="neu-inset tile">
+    <MorphInset Class="tile">
         <div class="stat-num">42</div>
         <div class="stat-label">open</div>
-    </MorphShape>
-    <MorphShape Class="neu-inset tile">
+    </MorphInset>
+    <MorphInset Class="tile">
         <div class="stat-num">7</div>
         <div class="stat-label">failing</div>
-    </MorphShape>
+    </MorphInset>
 </div>
 
-<h2 class="section">In-page swap · MorphStage</h2>
-<button class="swap" @onclick="Toggle">Swap layout (now @(_view == 0 ? "A" : "B"))</button>
+<MorphRaised Class="section-head">
+    <h2 class="section">Variable style · MorphSurface</h2>
+    <button class="swap" @onclick="ToggleStyle">Style: @_style</button>
+</MorphRaised>
+<MorphSurface Style="_style" Class="card">
+    <h2>Same component, switchable look</h2>
+    <p class="muted">One MorphSurface, dispatched to @_style via a type-safe switch — no DynamicComponent.</p>
+</MorphSurface>
 
-<MorphStage Screen="_view" Context="v" Transition="@State.Current">
+<MorphRaised Class="section-head">
+    <h2 class="section">Cut-out · open &amp; close</h2>
+    <button class="swap" @onclick="ToggleCut">Reopen (panel @(_cut + 1))</button>
+</MorphRaised>
+<MorphStage Screen="_cut" Context="c">
+    <MorphCutout Class="cutout-panel">
+        <div class="cutout-body">
+            <div class="cutout-head">
+                <strong>Panel @(c + 1)</strong>
+                <span>opens from a point</span>
+            </div>
+            <div class="cutout-grid">
+                <div class="cutout-tile"><b>@(c == 0 ? "14" : "27")</b><span>runs</span></div>
+                <div class="cutout-tile"><b>86%</b><span>success</span></div>
+            </div>
+        </div>
+    </MorphCutout>
+</MorphStage>
+
+<MorphRaised Class="section-head">
+    <h2 class="section">In-page swap · MorphStage</h2>
+    <button class="swap" @onclick="Toggle">Swap layout (now @(_view == 0 ? "A" : "B"))</button>
+</MorphRaised>
+
+<MorphStage Screen="_view" Context="v">
     @if (v == 0)
     {
-        <MorphShape Class="neu-raised card">
+        <MorphRaised Class="card">
             <h2>Layout A</h2>
             <div class="row">
-                <MorphShape Class="neu-inset circle">A</MorphShape>
-                <MorphShape Class="neu-inset inner">
+                <MorphInset Class="circle">A</MorphInset>
+                <MorphInset Class="inner">
                     <span class="muted">circle + inset, siblings</span>
-                </MorphShape>
+                </MorphInset>
             </div>
-        </MorphShape>
+        </MorphRaised>
     }
     else
     {
-        <MorphShape Class="neu-inset card">
+        <MorphInset Class="card">
             <h2>Layout B</h2>
-            <MorphShape Class="neu-raised inner">
+            <MorphRaised Class="inner">
                 <span>raised inner</span>
-                <MorphShape Class="neu-inset leaf">depth-2 inset leaf</MorphShape>
-            </MorphShape>
-        </MorphShape>
+                <MorphInset Class="leaf">depth-2 inset leaf</MorphInset>
+            </MorphRaised>
+        </MorphInset>
     }
 </MorphStage>
 
-<h2 class="section">Async load · Loading / Error</h2>
-<div class="btn-row">
-    <button class="swap" @onclick="LoadFast">Load fast</button>
-    <button class="swap" @onclick="LoadSlow">Load slow (times out)</button>
-</div>
+<MorphRaised Class="section-head">
+    <h2 class="section">Async load · Loading / Error</h2>
+    <div class="btn-row">
+        <button class="swap" @onclick="LoadFast">Load fast</button>
+        <button class="swap" @onclick="LoadSlow">Load slow (times out)</button>
+    </div>
+</MorphRaised>
 
-<MorphStage Screen="_loadKey" Load="LoadAsync" Transition="@State.Current">
+<MorphStage Screen="_loadKey" Load="LoadAsync">
     <ChildContent Context="k">
-        <MorphShape Class="neu-raised card">
+        <MorphRaised Class="card">
             <h2>Loaded item #@k</h2>
             <p class="muted">Swapped in after the async gate resolved.</p>
-        </MorphShape>
+        </MorphRaised>
     </ChildContent>
     <LoadingContent>
         <div class="status">loading…</div>
@@ -70,10 +102,17 @@
     private int _view;
     private int _loadKey;
     private bool _slowNext;
+    private MorphStyle _style = MorphStyle.Raised;
+    private int _cut;
 
-    protected override void OnInitialized() => State.Changed += OnTransitionChanged;
+    private void ToggleStyle() => _style = _style switch
+    {
+        MorphStyle.Raised => MorphStyle.Inset,
+        MorphStyle.Inset => MorphStyle.Cutout,
+        _ => MorphStyle.Raised,
+    };
 
-    private void OnTransitionChanged() => InvokeAsync(StateHasChanged);
+    private void ToggleCut() => _cut = _cut == 0 ? 1 : 0;
 
     private void Toggle() => _view = _view == 0 ? 1 : 0;
 
@@ -90,6 +129,4 @@
     }
 
     private async Task LoadAsync(int key) => await Task.Delay(_slowNext ? 3000 : 200);
-
-    public void Dispose() => State.Changed -= OnTransitionChanged;
 }

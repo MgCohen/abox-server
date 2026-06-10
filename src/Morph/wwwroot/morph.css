@@ -6,32 +6,22 @@
     display: block;
 }
 
-@keyframes morph-melt {
-    to {
-        --lift: 0;
-        opacity: 0;
-    }
-}
-
-@keyframes morph-strude {
-    from {
-        --lift: 0;
-        opacity: 0;
-    }
-}
-
 .morph-stage[data-phase="exit"] .morph-item {
-    animation: var(--anim-exit) var(--exit-dur) var(--exit-ease) both;
-    animation-delay: calc((var(--max-depth, 0) - var(--depth, 0)) * var(--layer, 0ms) + var(--rand, 0) * var(--scatter, 0ms));
+    --morph-delay: calc((var(--max-depth, 0) - var(--depth, 0)) * var(--depth-step, 0ms) + var(--rand, 0) * var(--scatter, 0ms));
 }
 
 .morph-stage[data-phase="enter"] .morph-item {
-    animation: var(--anim-enter) var(--enter-dur) var(--enter-ease) both;
-    animation-delay: calc(var(--depth, 0) * var(--layer, 0ms) + var(--rand, 0) * var(--scatter, 0ms));
+    --morph-delay: calc(var(--depth, 0) * var(--depth-step, 0ms) + var(--rand, 0) * var(--scatter, 0ms));
 }
 
-@media (prefers-reduced-motion: reduce) {
-    .morph-stage .morph-item {
-        animation: none !important;
+@keyframes morph-content-out {
+    to {
+        opacity: 0;
+    }
+}
+
+@keyframes morph-content-in {
+    from {
+        opacity: 0;
     }
 }

@@ -13,10 +13,10 @@ public sealed class MorphInterop(IJSRuntime js) : IAsyncDisposable
         return await module.InvokeAsync<bool>("prefersReducedMotion");
     }
 
-    public async Task<int> CountItemsAsync(ElementReference stage)
+    public async Task WaitForAnimationsAsync(ElementReference stage)
     {
         var module = await ModuleAsync();
-        return await module.InvokeAsync<int>("countItems", stage);
+        await module.InvokeVoidAsync("waitForAnimations", stage);
     }
 
     private async ValueTask<IJSObjectReference> ModuleAsync() =>

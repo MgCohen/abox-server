@@ -1,0 +1,20 @@
+@namespace Morph
+
+@(Style switch
+{
+    MorphStyle.Cutout => CutoutFrag,
+    MorphStyle.Inset  => InsetFrag,
+    _                 => RaisedFrag,
+})
+
+@code {
+    [Parameter] public MorphStyle Style { get; set; } = MorphStyle.Raised;
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private RenderFragment RaisedFrag => @<MorphRaised Class="@Class">@ChildContent</MorphRaised>;
+    private RenderFragment InsetFrag => @<MorphInset Class="@Class">@ChildContent</MorphInset>;
+    private RenderFragment CutoutFrag => @<MorphCutout Class="@Class">@ChildContent</MorphCutout>;
+}

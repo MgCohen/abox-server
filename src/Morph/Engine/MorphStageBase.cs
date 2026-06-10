@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 
 namespace Morph;
 
@@ -14,15 +15,9 @@ public abstract class MorphStageBase : ComponentBase
     protected int MaxDepth { get; private set; }
     protected ElementReference StageElement { get; set; }
 
-    private readonly MorphOrderCounter _order = new();
+    private readonly PhaseCompletion _completion = new();
 
-    private TaskCompletionSource? _phaseComplete;
-    private int _phaseGen;
-    private int _animEnd;
-    private int _target = -1;
-    private bool _countScheduled;
-
-    protected MorphStageBase() => RootContext = new MorphStageContext(0, ReportDepth, _order);
+    protected MorphStageBase() => RootContext = new MorphStageContext(0, ReportDepth);
 
     private void ReportDepth(int depth)
     {
@@ -40,65 +35,46 @@ public abstract class MorphStageBase : ComponentBase
         _ => string.Empty,
     };
 
-    protected void OnAnimationEnd()
-    {
-        _animEnd++;
-        TryComplete();
-    }
-
-    private void TryComplete()
-    {
-        if (_phaseComplete is not null && _target >= 0 && _animEnd >= _target)
-            _phaseComplete.TrySetResult();
-    }
-
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (_phaseComplete is null || _countScheduled)
+        if (!_completion.TryBeginWait(out var generation))
             return;
 
-        _countScheduled = true;
-        _target = await Interop.CountItemsAsync(StageElement);
-        TryComplete();
+        try
+        {
+            await Interop.WaitForAnimationsAsync(StageElement);
+        }
+        catch (JSException)
+        {
+            // AbortError: the phase was superseded mid-flight; the generation check discards it.
+        }
+
+        _completion.CompleteIfCurrent(generation);
     }
 
     protected async Task<bool> RunPhaseAsync(MorphPhase phase)
     {
-        var generation = ++_phaseGen;
-        _phaseComplete?.TrySetResult();
-
+        var (generation, completion) = _completion.Begin();
         Phase = phase;
-        _animEnd = 0;
-        _target = -1;
-        _countScheduled = false;
-        var complete = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        _phaseComplete = complete;
         StateHasChanged();
 
-        if (Options.ReducedMotion)
-        {
-            if (generation != _phaseGen)
-                return false;
-            _phaseComplete = null;
-            return true;
-        }
+        if (!Options.ReducedMotion)
+            await completion;
 
-        await complete.Task;
-
-        if (generation != _phaseGen)
+        if (!_completion.IsCurrent(generation))
             return false;
 
-        _phaseComplete = null;
+        _completion.Clear();
         return true;
     }
 
-    protected async Task TransitionAsync(Func<Task>? load, Action swap)
+    protected async Task<MorphTransitionOutcome> TransitionAsync(Func<Task>? load, Action swap)
     {
         LoadError = null;
         var loading = load?.Invoke() ?? Task.CompletedTask;
 
         if (!await RunPhaseAsync(MorphPhase.Exiting))
-            return;
+            return MorphTransitionOutcome.Superseded;
 
         if (!loading.IsCompleted)
         {
@@ -116,20 +92,29 @@ public abstract class MorphStageBase : ComponentBase
                 StateHasChanged();
                 if (await RunPhaseAsync(MorphPhase.Entering))
                     Settle();
-                return;
+                return MorphTransitionOutcome.LoadFailed;
             }
         }
 
         swap();
         ResetDepth();
+        await HoldAtEmptyAsync();
         if (await RunPhaseAsync(MorphPhase.Entering))
             Settle();
+        return MorphTransitionOutcome.Completed;
+    }
+
+    protected async Task HoldAtEmptyAsync()
+    {
+        if (Options.ReducedMotion || Options.SwapDelay <= 0)
+            return;
+
+        await Task.Delay(Options.SwapDelay);
     }
 
     protected void ResetDepth()
     {
         MaxDepth = 0;
-        _order.Reset();
     }
 
     protected void Settle()

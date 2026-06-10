@@ -1,3 +1,7 @@
+html {
+    scrollbar-gutter: stable;
+}
+
 body {
     margin: 0;
     font-family: 'Segoe UI', system-ui, sans-serif;
@@ -11,8 +15,8 @@ body {
 }
 
 .shell {
-    max-width: 760px;
-    margin: 40px auto;
+    max-width: 1080px;
+    margin: 32px auto;
     padding: 24px;
 }
 
@@ -43,20 +47,10 @@ body {
     box-shadow: inset 2px 2px 5px var(--shadow-dark), inset -2px -2px 5px var(--shadow-light);
 }
 
-.transition-picker {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-muted);
-}
-
-.transition-picker select {
-    margin-left: 8px;
-    padding: 6px 10px;
-    border-radius: 10px;
-    border: none;
-    background: var(--surface);
-    color: var(--text);
-    font-weight: 600;
+.page-head {
+    border-radius: 20px;
+    padding: 18px 24px;
+    margin-bottom: 22px;
 }
 
 .page-title {
@@ -67,13 +61,35 @@ body {
 .page-sub {
     color: var(--text-muted);
     font-size: 14px;
-    margin: 0 0 22px;
+    margin: 0;
 }
 
 .section {
     font-size: 16px;
     margin: 30px 0 14px;
     color: var(--text-muted);
+}
+
+.section-head {
+    border-radius: 16px;
+    padding: 12px 18px;
+    margin: 30px 0 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.section-head .section {
+    margin: 0;
+}
+
+.section-head .swap {
+    margin: 0;
+}
+
+.section-head .btn-row {
+    margin: 0;
 }
 
 /* layout helpers */
@@ -264,18 +280,53 @@ h2 {
     font-weight: 600;
 }
 
-@keyframes slide-exit {
-    to {
-        transform: translateX(-40px);
-        opacity: 0;
-    }
+/* cut-out demo content — sits on the floor's purple gradient, so light text */
+.cutout-panel {
+    max-width: 360px;
 }
 
-@keyframes slide-enter {
-    from {
-        transform: translateX(40px);
-        opacity: 0;
-    }
+.cutout-body {
+    padding: 20px;
+}
+
+.cutout-head {
+    color: #fff;
+    margin-bottom: 14px;
+}
+
+.cutout-head strong {
+    display: block;
+    font-size: 16px;
+}
+
+.cutout-head span {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+.cutout-grid {
+    display: flex;
+    gap: 12px;
+}
+
+.cutout-tile {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+    border-radius: 14px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.cutout-tile b {
+    font-size: 22px;
+}
+
+.cutout-tile span {
+    font-size: 11px;
+    opacity: 0.85;
 }
 
 #blazor-error-ui {

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Morph spike — sentinel completion + per-style timing</title>
+<!--
+  De-risks two silent-failure mechanisms from the Morph style-components refactor,
+  PURE HTML/CSS (no <script>). All observation is done by the Playwright harness
+  (tools/frontend-verify/probe-morph.mjs), which sets data-phase and listens for
+  animationend — exactly what the C# engine will do.
+
+  Conflict A (completion): every .morph-item runs a no-op `morph-sentinel`
+  animation; that is the ONE name the engine counts. Visible motion (melt/strude
+  on the item for raised/inset; floor/ring/content for the cut-out) fires
+  animationend under OTHER names and must NOT be counted.
+
+  Conflict B (timing): the stage carries only --max-depth. Each .morph-item
+  carries its OWN --enter-dur / --layer, so var(--enter-dur) resolves per subtree
+  (raised 500ms, inset 900ms, cut-out 1100ms) inside ONE mixed stage.
+-->
+<style>
+  @property --lift { syntax: "<number>"; inherits: false; initial-value: 1; }
+
+  :root {
+    --bg: #e7ddcd; --surface: #ece3d5; --text: #4d4434;
+    --shadow-dark: rgba(166, 143, 108, 0.72);
+    --shadow-light: rgba(255, 255, 255, 0.95);
+  }
+  body {
+    margin: 0; padding: 40px; min-height: 100vh;
+    background: var(--bg); color: var(--text);
+    font-family: "Segoe UI", system-ui, sans-serif;
+  }
+  h1 { font-size: 18px; font-weight: 600; }
+  .sub { color: #9a8f78; font-size: 13px; margin-bottom: 28px; }
+
+  .morph-stage { display: block; }
+  .morph-screen { display: block; }
+
+  /* ---- visible keyframes (raised/inset borrow the existing engine motion) ---- */
+  @keyframes morph-melt   { to   { --lift: 0; opacity: 0; } }
+  @keyframes morph-strude { from { --lift: 0; opacity: 0; } }
+
+  /* ---- the universal COUNTED animation: no visual change, just fires one event ---- */
+  @keyframes morph-sentinel { from {} to {} }
+
+  /* ---- cut-out inner-layer motion (NOT on the .morph-item) ---- */
+  @keyframes cutout-open-floor { from { clip-path: inset(50% round 14px); } to { clip-path: inset(0 round 14px); } }
+  @keyframes cutout-open-ring  { 0% { width: 0; height: 0; } 100% { width: 100%; height: 100%; } }
+  @keyframes content-in        { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+  /* ===========================================================================
+     ENTER rules. data-phase is flipped to "enter" by the harness.
+     raised/inset: the .morph-item carries BOTH the sentinel AND its visible
+     motion, combined in ONE comma-separated list (two separate `animation`
+     declarations would clobber each other — this is the real shipping shape).
+     =========================================================================== */
+  .morph-stage[data-phase="enter"] .neu-raised,
+  .morph-stage[data-phase="enter"] .neu-inset {
+    animation:
+      morph-sentinel var(--enter-dur) both,
+      morph-strude   var(--enter-dur) var(--enter-ease, linear) both;
+    animation-delay: calc(var(--depth, 0) * var(--layer, 0ms) + var(--rand, 0) * var(--scatter, 0ms));
+  }
+
+  /* cut-out: the .morph-item carries the sentinel ONLY; motion is on the layers. */
+  .morph-stage[data-phase="enter"] .neu-cutout {
+    animation: morph-sentinel var(--enter-dur) both;
+  }
+  .morph-stage[data-phase="enter"] .neu-cutout .cutout-floor { animation: cutout-open-floor var(--enter-dur) both; }
+  .morph-stage[data-phase="enter"] .neu-cutout .cutout-ring  { animation: cutout-open-ring  var(--enter-dur) both; }
+  .morph-stage[data-phase="enter"] .neu-cutout .content-tile { animation: content-in 400ms ease-out both; }
+
+  /* reduced-motion safety must now cover the inner layers too (D5 note) */
+  @media (prefers-reduced-motion: reduce) {
+    .morph-stage .morph-item, .neu-cutout * { animation: none !important; }
+  }
+
+  /* ---- neumorphic look so screenshots are legible ---- */
+  .neu-raised {
+    background: var(--surface); padding: 24px; border-radius: 18px; margin-bottom: 26px; max-width: 340px;
+    box-shadow:
+      calc(var(--lift) * 10px) calc(var(--lift) * 10px) calc(var(--lift) * 22px) var(--shadow-dark),
+      calc(var(--lift) * -9px) calc(var(--lift) * -9px) calc(var(--lift) * 20px) var(--shadow-light);
+  }
+  .neu-inset {
+    background: var(--surface); padding: 16px; border-radius: 12px; margin-top: 16px;
+    box-shadow:
+      inset calc(var(--lift) * 5px) calc(var(--lift) * 5px) calc(var(--lift) * 10px) var(--shadow-dark),
+      inset calc(var(--lift) * -5px) calc(var(--lift) * -5px) calc(var(--lift) * 10px) var(--shadow-light);
+  }
+  .neu-cutout {
+    position: relative; width: 300px; height: 170px; border-radius: 18px; overflow: hidden;
+    box-shadow: 0 16px 36px rgba(60,30,120,.35);
+  }
+  .cutout-ring {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    width: 100%; height: 100%; border-radius: 18px; pointer-events: none;
+    box-shadow: inset 5px 7px 12px rgba(18,8,38,.85);
+  }
+  .cutout-floor {
+    position: relative; height: 100%;
+    background: linear-gradient(150deg, #6666e1 0%, #a679fb 100%);
+  }
+  .content-tile { padding: 18px; color: #fff; font-size: 14px; }
+  .tag { font-size: 12px; color: #9a8f78; }
+</style>
+</head>
+<body>
+  <h1>Morph spike · sentinel completion + per-style timing</h1>
+  <p class="sub">One stage, three styles, three independent durations. Harness flips <code>data-phase</code> and tallies <code>animationend</code>.</p>
+
+  <div class="morph-stage" data-phase="" style="--max-depth:1">
+    <div class="morph-screen">
+
+      <div class="morph-item neu-raised" data-name="raised"
+           style="--depth:0;--rand:.2;--enter-dur:500ms;--exit-dur:440ms;--enter-ease:ease;--layer:150ms;--scatter:30ms">
+        Raised card <span class="tag">· enter 500ms</span>
+        <div class="morph-item neu-inset" data-name="inset"
+             style="--depth:1;--rand:.5;--enter-dur:900ms;--exit-dur:600ms;--enter-ease:ease;--layer:60ms;--scatter:0ms">
+          Inset inner <span class="tag">· enter 900ms · own --layer 60ms</span>
+        </div>
+      </div>
+
+      <div class="morph-item neu-cutout" data-name="cutout"
+           style="--depth:0;--rand:0;--enter-dur:1100ms;--exit-dur:700ms">
+        <div class="cutout-ring"></div>
+        <div class="cutout-floor">
+          <div class="content-tile">Cut-out <span class="tag">· item enter 1100ms · floor/ring/content animate separately</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>
