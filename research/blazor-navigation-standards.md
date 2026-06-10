@@ -161,6 +161,7 @@ Mostly already idiomatic — the gaps are small and additive:
 | File | State | Action |
 |---|---|---|
 | `Pages/RunView.razor` | `@page "/runs/{Id:guid}"`, typed param ✅; redirects to `/runs` on missing id | Switch the missing-id path to `NavigationManager.NotFound()` for a true 404. |
+| `Pages/RunView.razor` | loads snapshot + opens SSE in `OnInitializedAsync` ⚠️ | **Latent bug** (deep pass §2.1): `OnInitialized` won't re-fire on a run→run nav. Move id-driven load to `OnParametersSetAsync` with a prev-id guard, or `@key="Id"`. |
 | `Pages/RunHistory.razor` | Row click via `Nav.NavigateTo($"runs/{r.Id}")` ✅ | Fine. Consider an `<a>`/`NavLink` wrapper for middle-click/open-in-new-tab + keyboard. |
 | `Layout/MainLayout.razor` | `NavLink` sidebar ✅; `@Body` rendered bare | Wrap `@Body` in `MorphRouteStage` at Morph adoption (Phase 6). |
 | `App.razor` | Legacy `<NotFound>` fragment | Migrate to `Router.NotFoundPage="typeof(Pages.NotFoundPage)"`; keep `FocusOnNavigate`. |
@@ -203,9 +204,189 @@ rule in §3, and it costs zero new code.
 
 ---
 
+---
+
+## Deep pass (multi-source, verified)
+
+A 5-angle fan-out (component-library conventions · state-location frameworks ·
+history/lifecycle bugs · route organization & abstractions · .NET 10 / a11y /
+transitions) across ~50 sources. Method: each angle returned falsifiable claims
+with confidence + source; the load-bearing and contradictory ones were
+re-checked against the .NET 10 Learn docs. The conclusions above held — the deep
+pass mostly *strengthened* them and surfaced a few high-value deltas, one of
+which is a latent bug in our current code.
+
+### What it confirmed (high confidence, official docs)
+
+- **Route-by-default + query-string-for-view-state is the documented mainstream.**
+  `[SupplyParameterFromQuery]` (types: `bool/DateTime/decimal/double/float/Guid/int/long/string`,
+  their nullables, and arrays via repeated keys `?x=1&x=2`) + `GetUriWithQueryParameter(s)`
+  is *the* Blazor deep-linking mechanism; the stated benefit is shareable links
+  that restore selections and survive back/forward. (Learn navigation; Jon Hilton,
+  *Blazor deep linking*.)
+- **The cross-framework consensus matches our rule.** React Router's official
+  state-management guidance buckets state identically: resource identity → route
+  segment; shareable UI state → query string; transient UI (modals, hover) →
+  component state; and argues URL-state "leads to less code … no state
+  synchronization bugs." TanStack frames search params as first-class state. So
+  "route/query by default, component-state by exception" is the prevailing SPA
+  position, not a house quirk. (reactrouter.com/explanation/state-management;
+  tanstack.com/blog/search-params-are-state.)
+- **Standalone WASM is the *easy* mode for nav guards and transitions.**
+  `RegisterLocationChangingHandler` fires reliably for `NavigateTo`, internal link
+  clicks, and back/forward in standalone WASM. Under **Blazor Web App + enhanced
+  navigation** handlers are *best-effort* (link clicks may not invoke them) — the
+  docs say "app logic must not depend on the handler running." We ship standalone
+  WASM, so Morph's `LocationChanging`-based exit trigger sits on the reliable side
+  of that line. (Learn routing, *enhanced navigation*; aspnetcore #44365/#49950.)
+
+### What it changed / added (the deltas worth acting on)
+
+1. **⚠️ Latent bug in `RunView.razor` — lifecycle, not routing.** `OnInitialized{Async}`
+   runs **once per component instance** and does **not** re-fire when you navigate
+   within the *same* `@page` to a different param (`/runs/{A}` → `/runs/{B}`):
+   Blazor reuses the instance and only re-runs `OnParametersSet`. `RunView` loads
+   its snapshot *and* opens the SSE stream in `OnInitializedAsync`, so a direct
+   run→run navigation would keep showing run A. Fix: move the id-driven load to
+   `OnParametersSetAsync` with a previous-id guard (`if (Id != _loadedId)`), or put
+   `@key="Id"` on the route content to force a remount. `OnParametersSet`+guard is
+   the lighter, recommended default; `@key` is the heavier hammer (full re-init,
+   drops state). *Today this is masked because the UI only reaches a run via the
+   list, but it's a real correctness gap to close when standardizing.*
+   (Jon Hilton, *navigating to the same page*; Learn lifecycle.)
+
+2. **Modal-as-route: nuance the draft under-stated.** "A modal isn't a location"
+   is the right *default* — Blazored.Modal and MudBlazor both model dialogs as
+   component/service state, and **Blazor has no equivalent to Next.js
+   intercepting/parallel routes**, so there's no clean native "routed modal."
+   *But* route/query-encode a dialog when deep-link / refresh-survival /
+   shareability genuinely matter — e.g. an Attention-Inbox item opened from a phone
+   notification is better as `/inbox?item={id}` (a modal-over-list whose open state
+   is in the URL) than pure component state. Rule: **modal = component state, unless
+   someone must be able to link straight to it.** (React Router "background
+   location"; Next.js intercepting+parallel routes as the gold standard we *can't*
+   replicate; Blazored/Modal.)
+
+3. **Shared RCL is *the* architecture for WASM + MAUI Hybrid — promote it.**
+   Microsoft's recommended pattern (and the .NET 9+ template) puts all routable
+   components, layouts, and the NavMenu in a **host-agnostic Razor Class Library**;
+   WASM and MAUI are thin shells that route into it via the Router's
+   `AdditionalAssemblies`. This is exactly the old `UI.Components` split in
+   `csharp-orchestrator-ui.md` — the deep pass says keep that as the standard, not
+   per-host page copies. MAUI-specific: a link is "internal" only when host+scheme
+   match; control external links via the `UrlLoading` event; `BlazorWebView.StartPath`
+   sets the initial route; OS deep links (Android App Links / Apple Universal Links,
+   and the service-worker `clients.openWindow` for PWA push) route *into* Blazor —
+   they aren't a Blazor-router feature. (Learn hybrid/class-libraries-best-practices;
+   Learn hybrid/routing; BethMassi/HybridSharedUI.)
+
+4. **Layout conventions for 30 screens (concrete, official).** Set the app default
+   via `Router`/`RouteView` `DefaultLayout` (Microsoft: "most general and flexible"),
+   not per page. Give an entity area its own layout by putting `@layout X` in that
+   folder's `_Imports.razor` (cascades to the subtree) — the idiomatic fit for an
+   entity-first sidebar with per-entity sub-nav. **Never** put `@layout` in the
+   *root* `_Imports.razor` (infinite layout loop); keep layout components in their
+   own folder. For page→shell content injection (per-screen title/toolbar/actions
+   into the top bar), use `SectionOutlet`/`SectionContent` (prefer the `SectionId`
+   static-object form over string `SectionName` to avoid collisions). (Learn
+   layouts; Learn sections; blazor-university nested layouts.)
+
+5. **Don't wrap `NavigationManager` — YAGNI wins this one with evidence.** The
+   usual pro-abstraction argument is testability, but bUnit ships a built-in
+   `FakeNavigationManager` (captures navigations, exposes a `History` stack to
+   assert against), so you can inject the real `NavigationManager` and still test.
+   A custom `INavigationService` only earns its place if a UI-agnostic MVVM
+   ViewModel layer needs navigation under test — which we don't have. Likewise,
+   typed-route **source generators** exist (PodNet.Blazor.TypedRoutes, safe-routing)
+   but carry caveats (regex scanning, no `@attribute [Route]` support, untested
+   lazy-load); a **hand-written route-constants class** is the lower-mechanism
+   option until the route count earns the generator. (bUnit docs; PodNet README.)
+
+6. **Morph vs. the "keep both routes mounted" school — a real design note.**
+   Morph drives the exit animation from `LocationChanging` (delay the old `@Body`'s
+   melt *before* the URL commits). Documented caveats of that approach: handlers
+   run **in parallel app-wide**, navigation is **reverted-then-replayed**,
+   overlapping navigations **collapse (last-wins)**, and a **same-URL `NavigateTo`
+   is a no-op**. Morph already guards the two that bite (re-entrancy `Phase != Idle`,
+   same-URL skip) and lives on the reliable standalone-WASM side. The main prior-art
+   alternative, **`BlazorTransitionableRoute`**, sidesteps the revert/replay
+   machinery by keeping previous+current route **both mounted** and animating on
+   `LocationChanged` (after the fact), which also preserves the outgoing page's
+   scroll/instance. Not a reason to change Morph (it's spike-validated and owns the
+   neumorphic box-shadow effect that library can't do — see `transition-prior-art.md`),
+   but the two-routes-mounted model is the pattern to reach for *if* the
+   revert/replay timing ever proves fragile under rapid navigation. (Learn
+   navigation async model; JByfordRew/BlazorTransitionableRoute.)
+
+### Version-sensitive & honestly-contested points
+
+- **`<NotFound>` fragment → `NotFoundPage`.** In the .NET 10 Learn docs the legacy
+  `<NotFound>` section is gated to ≤9.0; .NET 10 documents only `Router.NotFoundPage`
+  + `NavigationManager.NotFound()` (resolution precedence:
+  `OnNotFound`→`NotFoundPage`→status-code re-execution middleware). Treat the
+  fragment as **superseded**; migrate. (Residual uncertainty: how completely the
+  fragment still *functions* in *standalone WASM* specifically vs. just being
+  discouraged — verify at migration. This is the report's lowest-confidence claim.)
+- **`BlazorDisableThrowNavigationException` is opt-in *for upgraded apps*.** On by
+  default only in fresh .NET 10 templates; an upgraded project adds the MSBuild
+  property manually. Watch: once enabled, test harnesses that `catch
+  (NavigationException)` silently stop catching. (Mostly an SSR concern; lower
+  stakes for pure WASM, but set it for clean post-redirect flow.)
+- **Scroll restoration is a .NET 10 fix.** "Scroll to top on cross-page nav,
+  preserve on same-page, restore on back/forward" for enhanced navigation was only
+  fixed in .NET 10 (aspnetcore #51646). We're standalone WASM (no enhanced nav), so
+  this is the standard SPA history model for us — relevant mainly to the PWA/MAUI
+  surfaces. (aspnetcore #51338/#51646.)
+- **How aggressively to push state into the URL is genuinely debated.** Maximalists
+  (TanStack, React Router) push most shareable/persistent state to URL/cookies;
+  minimalists (LogRocket/freeCodeCamp) warn it's global state with sync cost,
+  string-only serialization, ~2–4k URL limits, and **never secrets**. Both agree on
+  the floor (filters/sort/paging/tab → URL) and ceiling (secrets, bulky/nested →
+  not URL); they split on the middle (modals, form drafts). Our rule lands in that
+  agreed band.
+- **`FocusOnNavigate` is necessary but not sufficient for a11y.** It moves focus to
+  `<h1>` but does **not** update the document `<title>` or use an ARIA live region;
+  the strongest screen-reader experience pairs it with a title update / live-region
+  announcement (WCAG 2.4.3). Worth adding given the phone-first audience. (Learn
+  routing; VA/Deque SPA focus-management prior art.)
+- **`NavigationLock ConfirmExternalNavigation` only fires after first user
+  interaction** (browser `beforeunload` security) — an immediate close/refresh isn't
+  intercepted. Fine for editor "discard?" guards; don't rely on it as a hard lock.
+
+### Net effect on the recommendation
+
+The standard above stands. The deep pass adds five concrete to-dos when
+standardizing: (1) fix the `RunView` `OnInitialized`→`OnParametersSet` lifecycle
+gap; (2) allow URL-encoded modals for the notification-deep-link cases (Inbox);
+(3) make the shared host-agnostic RCL explicit as the WASM+MAUI architecture;
+(4) adopt the layout conventions (`DefaultLayout`, per-folder `_Imports @layout`,
+`SectionOutlet` for the top bar); (5) skip a `NavigationManager` wrapper and a
+typed-route generator until a second real use appears. None require new
+abstractions; all are stock-Blazor conventions.
+
+---
+
 ## Sources
 
-- [ASP.NET Core Blazor routing (.NET 10)](https://learn.microsoft.com/en-us/aspnet/core/blazor/fundamentals/routing?view=aspnetcore-10.0) — Router, `@page`, route params/constraints, catch-all, `FocusOnNavigate`, `NotFoundPage`, `OnNavigateAsync`, `AdditionalAssemblies`.
-- [ASP.NET Core Blazor navigation (.NET 10)](https://learn.microsoft.com/en-us/aspnet/core/blazor/fundamentals/navigation?view=aspnetcore-10.0) — `NavigationManager`, `NavigateTo`/`NavigationOptions`, `LocationChanged`, `RegisterLocationChangingHandler`, `NavigationLock`, `NotFound()`, query strings, `GetUriWithQueryParameter`, enhanced navigation, `BlazorDisableThrowNavigationException`.
-- [Routing management and NotFound pages in Blazor (Telerik)](https://www.telerik.com/blogs/routing-management-creating-notfound-pages-blazor) — .NET 10 NotFound migration walkthrough.
-- Internal: `PLANS/product-ui-spec.md` (nav map / IA), `PLANS/csharp-orchestrator-ui.md` (WASM + phone/Tailscale + deep links), `PLANS/animation-ui-foundation.md` + `src/Morph/` (the two transition triggers).
+**Official (Microsoft Learn, .NET 10 / GA-era):**
+- [Blazor routing](https://learn.microsoft.com/en-us/aspnet/core/blazor/fundamentals/routing?view=aspnetcore-10.0) — Router, `@page`, route params/constraints, catch-all, `FocusOnNavigate`, `Router.NotFoundPage`, `OnNavigateAsync`, `AdditionalAssemblies`, enhanced-navigation handler caveats.
+- [Blazor navigation](https://learn.microsoft.com/en-us/aspnet/core/blazor/fundamentals/navigation?view=aspnetcore-10.0) — `NavigationManager`, `NavigateTo`/`NavigationOptions` (`ForceLoad`/`ReplaceHistoryEntry`/`HistoryEntryState`), `LocationChanged`, `RegisterLocationChangingHandler`, `NavigationLock`, `NotFound()`, query strings, `GetUriWithQueryParameter(s)`, `BlazorDisableThrowNavigationException`.
+- [Blazor layouts](https://learn.microsoft.com/en-us/aspnet/core/blazor/components/layouts?view=aspnetcore-10.0) · [sections](https://learn.microsoft.com/en-us/aspnet/core/blazor/components/sections?view=aspnetcore-10.0) · [lifecycle](https://learn.microsoft.com/en-us/aspnet/core/blazor/components/lifecycle?view=aspnetcore-8.0) · [project structure](https://learn.microsoft.com/en-us/aspnet/core/blazor/project-structure?view=aspnetcore-10.0) · [class libraries](https://learn.microsoft.com/en-us/aspnet/core/blazor/components/class-libraries?view=aspnetcore-8.0)
+- Hybrid: [shared-UI / class-library best practices](https://learn.microsoft.com/en-us/aspnet/core/blazor/hybrid/class-libraries-best-practices?view=aspnetcore-10.0) · [hybrid routing](https://learn.microsoft.com/en-us/aspnet/core/blazor/hybrid/routing?view=aspnetcore-10.0) · [PWA push](https://learn.microsoft.com/en-us/aspnet/core/blazor/progressive-web-app/push-notifications?view=aspnetcore-10.0) · [server state management](https://learn.microsoft.com/en-us/aspnet/core/blazor/state-management/server?view=aspnetcore-10.0)
+
+**Cross-framework prior art (state location, modals, history, a11y):**
+- [React Router — state management](https://reactrouter.com/explanation/state-management) · [TanStack — search params are state](https://tanstack.com/blog/search-params-are-state)
+- [Next.js intercepting routes](https://nextjs.org/docs/app/api-reference/file-conventions/intercepting-routes) · [parallel routes](https://nextjs.org/docs/app/api-reference/file-conventions/parallel-routes) (the routed-modal gold standard Blazor can't replicate)
+- [Correct modal navigation with React Router](https://markandruth.co.uk/2019/08/12/implementing-correct-modal-navigation-with-react-router) · [LogRocket — URL as state container](https://blog.logrocket.com/query-strings-underrated-using-url-apps-state-container/)
+- [Accessible route-change focus (React)](https://jshakespeare.com/accessible-route-change-react-router-autofocus-heading/) · [VA focus management](https://design.va.gov/accessibility/focus-management) · [Deque — SPA a11y](https://www.deque.com/blog/accessibility-tips-in-single-page-applications/)
+
+**Practitioner / libraries:**
+- Jon Hilton: [deep linking](https://jonhilton.net/blazor-deep-linking/), [navigating to the same page](https://jonhilton.net/blazor-navigation-same-page/), [focus](https://jonhilton.net/focus-blazor/), [folder structure](https://jonhilton.net/blazor-component-folder-structure/)
+- Component libs: [MudBlazor drawer/appbar](https://deepwiki.com/MudBlazor/MudBlazor/6.4-drawer-and-appbar) · [Radzen layout](https://blazor.radzen.com/layout) · [FluentUI NavMenu](https://fluentui-blazor.azurewebsites.net/NavMenu) · [Telerik — .NET 10 Blazor changes](https://www.telerik.com/blogs/net-10-has-arrived-heres-whats-changed-blazor)
+- Nav / testing / routes: [bUnit FakeNavigationManager](https://bunit.dev/docs/test-doubles/navigation-manager.html) · [PodNet.Blazor.TypedRoutes](https://github.com/podNET-Hungary/PodNet.Blazor.TypedRoutes) · [Blazing.Mvvm](https://github.com/gragra33/Blazing.Mvvm)
+- Transitions: [BlazorTransitionableRoute](https://github.com/JByfordRew/BlazorTransitionableRoute) · [Toolbelt.Blazor.ViewTransition](https://github.com/jsakamoto/Toolbelt.Blazor.ViewTransition)
+- Modals: [Blazored.Modal](https://github.com/Blazored/Modal)
+- Framework history (version-sensitive claims): aspnetcore [#51646](https://github.com/dotnet/aspnetcore/issues/51646) (scroll), [#42902](https://github.com/dotnet/aspnetcore/issues/42902) (Navigating remount), [#44365](https://github.com/dotnet/aspnetcore/issues/44365)/[#49950](https://github.com/dotnet/aspnetcore/issues/49950) (handler invocation)
+- Hybrid shared-UI sample: [BethMassi/HybridSharedUI](https://github.com/BethMassi/HybridSharedUI)
+
+**Internal:** `PLANS/product-ui-spec.md` (nav map / IA) · `PLANS/csharp-orchestrator-ui.md` (WASM + MAUI + phone/Tailscale + deep links) · `PLANS/animation-ui-foundation.md` + `src/Morph/` (transition triggers) · `research/transition-prior-art.md` (why Morph is custom).
