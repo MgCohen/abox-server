@@ -8,6 +8,7 @@ public sealed class MorphOptions
         _transitions = transitions.ToDictionary(t => t.Name);
 
     public int LoadTimeout { get; set; } = 10_000;
+    public int SwapDelay { get; set; }
     public bool ReducedMotion { get; set; }
 
     public TransitionDefinition Resolve(string name)

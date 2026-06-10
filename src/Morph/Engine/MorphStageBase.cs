@@ -99,9 +99,18 @@ public abstract class MorphStageBase : ComponentBase
 
         swap();
         ResetDepth();
+        await HoldAtEmptyAsync();
         if (await RunPhaseAsync(MorphPhase.Entering))
             Settle();
         return MorphTransitionOutcome.Completed;
+    }
+
+    protected async Task HoldAtEmptyAsync()
+    {
+        if (Options.ReducedMotion || Options.SwapDelay <= 0)
+            return;
+
+        await Task.Delay(Options.SwapDelay);
     }
 
     protected void ResetDepth()

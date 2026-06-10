@@ -29,8 +29,19 @@
     animation-delay: calc(var(--depth, 0) * var(--layer, 0ms) + var(--rand, 0) * var(--scatter, 0ms));
 }
 
+.morph-stage[data-phase="exit"] .neu-inset > *:not(.morph-item) {
+    animation: morph-content-out calc(var(--exit-dur) * 0.45) var(--exit-ease) both;
+    animation-delay: calc((var(--max-depth, 0) - var(--depth, 0)) * var(--layer, 0ms) + var(--rand, 0) * var(--scatter, 0ms));
+}
+
+.morph-stage[data-phase="enter"] .neu-inset > *:not(.morph-item) {
+    animation: morph-content-in calc(var(--enter-dur) * 0.5) var(--enter-ease) both;
+    animation-delay: calc(var(--depth, 0) * var(--layer, 0ms) + var(--enter-dur) * 0.5 + var(--rand, 0) * var(--scatter, 0ms));
+}
+
 @media (prefers-reduced-motion: reduce) {
-    .morph-stage .neu-inset {
+    .morph-stage .neu-inset,
+    .morph-stage .neu-inset > *:not(.morph-item) {
         animation: none !important;
     }
 }

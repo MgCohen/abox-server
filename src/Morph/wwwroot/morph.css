@@ -5,3 +5,15 @@
 .morph-screen {
     display: block;
 }
+
+@keyframes morph-content-out {
+    to {
+        opacity: 0;
+    }
+}
+
+@keyframes morph-content-in {
+    from {
+        opacity: 0;
+    }
+}

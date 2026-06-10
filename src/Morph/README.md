@@ -18,7 +18,11 @@ wwwroot/  theme.css + morph.css (engine) + one stylesheet per style
 ## Setup
 
 ```csharp
-builder.Services.AddMorph(o => o.LoadTimeout = 10_000);   // composes raised + inset + cutout
+builder.Services.AddMorph(o =>
+{
+    o.LoadTimeout = 10_000;   // async-gate budget (ms) before a load is treated as failed
+    o.SwapDelay = 0;          // optional hold (ms) at the empty midpoint, between exit and enter
+});   // composes raised + inset + cutout
 
 var host = builder.Build();
 await host.Services.DetectReducedMotionAsync();           // one matchMedia read; see "Reduced motion"

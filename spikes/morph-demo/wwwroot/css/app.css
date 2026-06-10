@@ -1,3 +1,7 @@
+html {
+    scrollbar-gutter: stable;
+}
+
 body {
     margin: 0;
     font-family: 'Segoe UI', system-ui, sans-serif;
@@ -11,8 +15,8 @@ body {
 }
 
 .shell {
-    max-width: 760px;
-    margin: 40px auto;
+    max-width: 1080px;
+    margin: 32px auto;
     padding: 24px;
 }
 
@@ -43,6 +47,12 @@ body {
     box-shadow: inset 2px 2px 5px var(--shadow-dark), inset -2px -2px 5px var(--shadow-light);
 }
 
+.page-head {
+    border-radius: 20px;
+    padding: 18px 24px;
+    margin-bottom: 22px;
+}
+
 .page-title {
     font-size: 26px;
     margin: 0 0 4px;
@@ -51,13 +61,35 @@ body {
 .page-sub {
     color: var(--text-muted);
     font-size: 14px;
-    margin: 0 0 22px;
+    margin: 0;
 }
 
 .section {
     font-size: 16px;
     margin: 30px 0 14px;
     color: var(--text-muted);
+}
+
+.section-head {
+    border-radius: 16px;
+    padding: 12px 18px;
+    margin: 30px 0 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.section-head .section {
+    margin: 0;
+}
+
+.section-head .swap {
+    margin: 0;
+}
+
+.section-head .btn-row {
+    margin: 0;
 }
 
 /* layout helpers */

@@ -7,7 +7,7 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-builder.Services.AddMorph(o => o.LoadTimeout = 1500);
+builder.Services.AddMorph(o => { o.LoadTimeout = 1500; o.SwapDelay = 0; });
 
 var host = builder.Build();
 await host.Services.DetectReducedMotionAsync();

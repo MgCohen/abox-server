@@ -1,8 +1,10 @@
 @page "/dashboard"
 @namespace MorphDemo.Pages
 
-<h1 class="page-title">Dashboard</h1>
-<p class="page-sub">The interactive paths: in-page swaps and async load / error.</p>
+<MorphRaised Class="page-head">
+    <h1 class="page-title">Dashboard</h1>
+    <p class="page-sub">The interactive paths: in-page swaps and async load / error.</p>
+</MorphRaised>
 
 <div class="grid">
     <MorphInset Class="tile">
@@ -15,15 +17,19 @@
     </MorphInset>
 </div>
 
-<h2 class="section">Variable style · MorphSurface</h2>
-<button class="swap" @onclick="ToggleStyle">Style: @_style</button>
+<MorphRaised Class="section-head">
+    <h2 class="section">Variable style · MorphSurface</h2>
+    <button class="swap" @onclick="ToggleStyle">Style: @_style</button>
+</MorphRaised>
 <MorphSurface Style="_style" Class="card">
     <h2>Same component, switchable look</h2>
     <p class="muted">One MorphSurface, dispatched to @_style via a type-safe switch — no DynamicComponent.</p>
 </MorphSurface>
 
-<h2 class="section">Cut-out · open &amp; close</h2>
-<button class="swap" @onclick="ToggleCut">Reopen (panel @(_cut + 1))</button>
+<MorphRaised Class="section-head">
+    <h2 class="section">Cut-out · open &amp; close</h2>
+    <button class="swap" @onclick="ToggleCut">Reopen (panel @(_cut + 1))</button>
+</MorphRaised>
 <MorphStage Screen="_cut" Context="c">
     <MorphCutout Class="cutout-panel">
         <div class="cutout-body">
@@ -39,8 +45,10 @@
     </MorphCutout>
 </MorphStage>
 
-<h2 class="section">In-page swap · MorphStage</h2>
-<button class="swap" @onclick="Toggle">Swap layout (now @(_view == 0 ? "A" : "B"))</button>
+<MorphRaised Class="section-head">
+    <h2 class="section">In-page swap · MorphStage</h2>
+    <button class="swap" @onclick="Toggle">Swap layout (now @(_view == 0 ? "A" : "B"))</button>
+</MorphRaised>
 
 <MorphStage Screen="_view" Context="v">
     @if (v == 0)
@@ -67,11 +75,13 @@
     }
 </MorphStage>
 
-<h2 class="section">Async load · Loading / Error</h2>
-<div class="btn-row">
-    <button class="swap" @onclick="LoadFast">Load fast</button>
-    <button class="swap" @onclick="LoadSlow">Load slow (times out)</button>
-</div>
+<MorphRaised Class="section-head">
+    <h2 class="section">Async load · Loading / Error</h2>
+    <div class="btn-row">
+        <button class="swap" @onclick="LoadFast">Load fast</button>
+        <button class="swap" @onclick="LoadSlow">Load slow (times out)</button>
+    </div>
+</MorphRaised>
 
 <MorphStage Screen="_loadKey" Load="LoadAsync">
     <ChildContent Context="k">

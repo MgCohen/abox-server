@@ -42,6 +42,7 @@
             return;
 
         _awaitingEnter = false;
+        await HoldAtEmptyAsync();
         if (await RunPhaseAsync(MorphPhase.Entering))
             Settle();
     }
