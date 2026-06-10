@@ -1,9 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
-    <ProjectReference Include="..\Domain\Flow\RemoteAgents.Domain.Flow.csproj" />
-    <ProjectReference Include="..\Features\Flows\Definitions\RemoteAgents.Flows.Definitions.csproj" />
-    <ProjectReference Include="..\Features\Git\RemoteAgents.Git.csproj" />
+    <ProjectReference Include="..\Features\Flows\Module\RemoteAgents.Flows.Module.csproj" />
     <ProjectReference Include="..\Domain\Agents\RemoteAgents.Domain.Agents.csproj" />
     <ProjectReference Include="..\Infrastructure\RemoteAgents.Infrastructure.csproj" />
     <ProjectReference Include="..\RemoteAgents.Contracts\RemoteAgents.Contracts.csproj" />

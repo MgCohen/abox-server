@@ -1,6 +1,5 @@
 using ArchUnitNET.xUnit;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
-using static ArchUnitNET.Fluent.Slices.SliceRuleDefinition;
 using static RemoteAgents.Tests.ArchTests.ArchitectureModel;
 
 namespace RemoteAgents.Tests.ArchTests;
@@ -41,10 +40,17 @@ public class RuleTests
             .Check(Architecture);
 
     [Rule("Features are isolated")]
-    public void FeaturesAreIsolated() =>
-        Slices().Matching("RemoteAgents.Features.(*)").Should()
-            .NotDependOnEachOther()
-            .Check(Architecture);
+    public void FeaturesAreIsolated()
+    {
+        var features = FeatureNames();
+        Assert.NotEmpty(features);
+        foreach (var from in features)
+            foreach (var to in features)
+                if (from != to)
+                    Types().That().ResideInNamespaceMatching(FeatureNamespace(from)).Should()
+                        .NotDependOnAny(Types().That().ResideInNamespaceMatching(FeatureNamespace(to)).As($"feature '{to}'"))
+                        .Check(Architecture);
+    }
 
     [Rule("Every type belongs to a category")]
     public void EveryTypeBelongsToACategory() =>

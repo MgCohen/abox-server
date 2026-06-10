@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using ArchUnitNET.Domain;
 using ArchUnitNET.Loader;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
@@ -20,6 +21,13 @@ internal static class ArchitectureModel
                 Assembly.Load("RemoteAgents.Domain.Flow"),
                 Assembly.Load("RemoteAgents.Domain.Agents"),
                 Assembly.Load("RemoteAgents.Flows.Definitions"),
+                Assembly.Load("RemoteAgents.Flows.Start"),
+                Assembly.Load("RemoteAgents.Flows.List"),
+                Assembly.Load("RemoteAgents.Flows.Get"),
+                Assembly.Load("RemoteAgents.Flows.Cancel"),
+                Assembly.Load("RemoteAgents.Flows.Watch"),
+                Assembly.Load("RemoteAgents.Flows.Catalog"),
+                Assembly.Load("RemoteAgents.Flows.Module"),
                 Assembly.Load("RemoteAgents.Git"),
                 Assembly.Load("RemoteAgents.Host"))
             .Build();
@@ -44,4 +52,21 @@ internal static class ArchitectureModel
 
     private static IObjectProvider<IType> Band(string name, string namespaceRegex) =>
         Types().That().ResideInNamespaceMatching(namespaceRegex).As(name);
+
+    // Features each own a sub-tree of use cases (RemoteAgents.Features.<Feature>.<UseCase>), so the
+    // feature is the FIRST segment under Features — derived from the namespaces, never registered.
+    // Cross-feature isolation is asserted over this set; intra-feature wiring (Module -> use case) is
+    // same-feature and therefore exempt. A new feature folder is covered the moment its types load.
+    public static IReadOnlyList<string> FeatureNames() =>
+        Architecture.Types
+            .Select(t => FeatureSegment.Match(t.FullName))
+            .Where(m => m.Success)
+            .Select(m => m.Groups[1].Value)
+            .Distinct()
+            .ToList();
+
+    public static string FeatureNamespace(string feature) =>
+        $@"^RemoteAgents\.Features\.{Regex.Escape(feature)}(\.|$)";
+
+    private static readonly Regex FeatureSegment = new(@"^RemoteAgents\.Features\.([^.]+)");
 }

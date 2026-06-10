@@ -35,6 +35,13 @@
     <ProjectReference Include="..\..\src\Domain\Flow\RemoteAgents.Domain.Flow.csproj" />
     <ProjectReference Include="..\..\src\Domain\Agents\RemoteAgents.Domain.Agents.csproj" />
     <ProjectReference Include="..\..\src\Features\Flows\Definitions\RemoteAgents.Flows.Definitions.csproj" />
+    <ProjectReference Include="..\..\src\Features\Flows\Start\RemoteAgents.Flows.Start.csproj" />
+    <ProjectReference Include="..\..\src\Features\Flows\List\RemoteAgents.Flows.List.csproj" />
+    <ProjectReference Include="..\..\src\Features\Flows\Get\RemoteAgents.Flows.Get.csproj" />
+    <ProjectReference Include="..\..\src\Features\Flows\Cancel\RemoteAgents.Flows.Cancel.csproj" />
+    <ProjectReference Include="..\..\src\Features\Flows\Watch\RemoteAgents.Flows.Watch.csproj" />
+    <ProjectReference Include="..\..\src\Features\Flows\Catalog\RemoteAgents.Flows.Catalog.csproj" />
+    <ProjectReference Include="..\..\src\Features\Flows\Module\RemoteAgents.Flows.Module.csproj" />
     <ProjectReference Include="..\..\src\Features\Git\RemoteAgents.Git.csproj" />
     <ProjectReference Include="..\..\src\RemoteAgents.Host\RemoteAgents.Host.csproj" />
   </ItemGroup>

@@ -1,8 +1,8 @@
-using Microsoft.AspNetCore.Http;
 using System.Text.Json;
+using Microsoft.AspNetCore.Http;
 using RemoteAgents.Contracts;
 
-namespace RemoteAgents.Host;
+namespace RemoteAgents.Features.Flows.Watch;
 
 internal static class Sse
 {
