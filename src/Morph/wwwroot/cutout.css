@@ -3,6 +3,12 @@
     border-radius: 22px;
 }
 
+/* The frame is a pure bevel: a consumer class (e.g. .card) sizes it, but its
+   padding must land on the floor — padding here would inset the floor and gap. */
+.morph-item.neu-cutout {
+    padding: 0;
+}
+
 .cutout-floor {
     position: relative;
     border-radius: 22px;
