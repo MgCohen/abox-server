@@ -1,0 +1,6 @@
+{
+  "B-flows": { "paths": ["src/RemoteAgents/Flows", "src/RemoteAgents/Engine/Flows"] },
+  "C1-claude-agent": { "paths": ["src/RemoteAgents/Actors/Agents/Claude"] },
+  "C2-codex-agent": { "paths": ["src/RemoteAgents/Actors/Agents/Codex"] },
+  "C7-git-ops": { "paths": ["src/RemoteAgents/Actors/Git"] }
+}
