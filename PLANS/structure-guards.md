@@ -7,7 +7,9 @@ migration). **Plan only — not built.**
 
 ## Why this exists
 
-Testing the namespace structure guard surfaced two real gaps:
+Testing the namespace structure guard surfaced two real gaps; a third is carried
+over from the thermo-nuclear review of the suite (finding **F1**, deferred at the
+time because it was small):
 
 1. **Load blind spot.** ArchUnitNET only sees *compiled + loaded* assemblies.
    Three ways to be invisible to it: on the csproj `Exclude` list (`Web`),
@@ -17,6 +19,14 @@ Testing the namespace structure guard surfaced two real gaps:
    a file can sit in the wrong folder with a hand-edited namespace and the guard
    won't notice. We want to check the **real folder**, and enforce
    *namespace-follows-folder* so the namespace-based dependency rules stay honest.
+3. **The layer rules are a hand-maintained denylist (F1).** Each dependency rule
+   hand-lists every forbidden target (`.NotDependOnAny(InfrastructureBand)`
+   `.AndShould().NotDependOnAny(DomainBand)…`). The categorical half landed (bands
+   auto-join their member assemblies), but adding a 6th band means editing *every*
+   prior rule to add `.NotDependOnAny(NewBand)` — and a missed edit is a silent
+   hole that fails nothing. `Web` and a future `Domain.Kernel` are exactly the
+   bands that would trip this. The fix is a single allow-graph the denylist is
+   *derived* from — see "Collapse the layer denylists" below.
 
 ## Principle: two kinds of guard, two mechanisms
 
@@ -34,13 +44,17 @@ moment they exist) and answers gap 2 (checks folders, not namespaces).
 |---|------|-----------|--------|
 | 1 | **Every project lives under an agreed home folder** | filesystem | **NEW** |
 | 2 | **A type's namespace mirrors its folder** | filesystem + parse | **NEW** |
-| 3 | Contracts must not depend on internal assemblies | ArchUnitNET | keep |
+| 3 | Contracts must not depend on internal assemblies | ArchUnitNET | keep (**dormant** — empty since Step 0 dissolved flat Contracts; runs `WithoutRequiringPositiveResults`, band matches any `*.Contracts` leaf, auto-activates on the first per-feature leaf) |
 | 4 | Infrastructure must not depend on other internal assemblies | ArchUnitNET | keep |
 | 5 | Nothing may depend on Host | ArchUnitNET | keep |
 | 6 | Domain must not depend on Features | ArchUnitNET | keep |
 | 7 | Features must not depend on each other | ArchUnitNET | keep |
 | 8 | No code lives outside the agreed structure (namespace orphan guard) | ArchUnitNET | **RETIRE** once 1+2 green |
 | 9 | Rule-book parity (block ↔ test) | reflection | keep (auto-covers 1, 2) |
+
+Rules 3–7 keep their headers and behavior, but their *implementation* gets
+rewritten once — from five hand-listed denylists into one allow-graph (F1, below).
+The rule book stays the same; only the C# behind it collapses.
 
 **Why retire #8:** folder-home (1) + namespace-mirrors-folder (2) together imply
 namespace-under-a-home-namespace. #8 becomes redundant. Keep it until 1+2 are
@@ -111,11 +125,11 @@ co-locating keeps **one rule book + one parity surface**. Add:
 tests/ArchTests/
   Fixtures/rules.md            + 2 blocks (rules 1, 2); 1 block removed (rule 8) at the end
   Support/
-    ArchitectureModel.cs       (unchanged — ArchUnitNET loaded model, namespace bands)
+    ArchitectureModel.cs       MODIFIED — add the Band allow-graph (F1); bands already exist
     SourceTree.cs              NEW — locate src root, enumerate projects + .cs, parse namespaces
     RuleBook.cs, RuleAttribute.cs
   Tests/
-    RuleTests.cs               ArchUnitNET dependency rules (drop rule 8 at the end)
+    RuleTests.cs               MODIFIED — collapse 5 denylists → 1 derived rule (F1); drop rule 8 at the end
     StructureTests.cs          NEW — rules 1 + 2, [Rule]-tagged
     RuleBookTests.cs           parity — auto-covers the new [Rule] methods
 ```
@@ -145,24 +159,96 @@ tests/ArchTests/
   agree. (Assembly name is a separate convention and is not folder-derived.)
 ```
 
+## Collapse the layer denylists into one allow-graph (F1)
+
+The dependency rules (3–7) today each hand-enumerate their forbidden
+targets. That's readable at five bands but has the maintenance hole in gap 3:
+add a band, edit every prior rule, miss one silently. Replace the denylists with
+a single **allow-graph** that mirrors the README's "allowed edges" table — the
+real source of truth — and *derive* "depend down only" from it:
+
+```csharp
+sealed record Band(string Name, string Ns, params Band[] MayDependOn);
+
+static readonly Band Contracts      = new("Contracts",      ContractsNs);  // empty MayDependOn: depends on nothing internal
+static readonly Band Infrastructure = new("Infrastructure", InfrastructureNs);
+static readonly Band Domain         = new("Domain",         DomainNs,    Infrastructure, Contracts);
+static readonly Band Features       = new("Features",       FeaturesNs,  Domain, Infrastructure, Contracts);
+static readonly Band Host           = new("Host",           HostNs,      Features, Domain, Infrastructure, Contracts);
+
+// one rule, derived: every band forbids every other band it does not list
+[Theory, MemberData(nameof(AllBands))]
+public void DependsDownOnly(Band band)
+{
+    foreach (var target in AllBands.Where(b => b != band && !band.MayDependOn.Contains(b)))
+        Types().That().Are(band).Should().NotDependOnAny(target).Check(Architecture);
+}
+```
+
+Now adding `Web` or `Domain.Kernel` is a one-line data change, the denylist can't
+go stale, and `MayDependOn` reads as the allow-graph — which is what the
+architecture *is*. Notes:
+
+- **Keep the few genuinely directional rules explicit and named.** If a real
+  intra-band invariant exists (e.g. a future `Domain.Flow ↛ Domain.Agents` once
+  Domain splits into peer bands), that's an architecture *decision*, not
+  mechanical floor/ceiling — it stays its own named `[Rule]`, not derived. The
+  allow-graph covers the blanket down-only rules; named rules cover the decisions.
+- **An empty band (Contracts today) needs the derived rule to run
+  `WithoutRequiringPositiveResults`** — a dormant-but-valid band must not fail for
+  matching zero types. The collapse must carry that tolerance per band.
+- **Rule-book headers 3–7 are unchanged** — parity stays green. Only the C#
+  collapses; the five constraint statements in `rules.md` still describe the same
+  edges. (If the collapse merges them under one header, update `rules.md` to match
+  and let parity confirm.)
+- This is a `RuleTests.cs` + `ArchitectureModel.cs` rewrite — the same two files
+  the filesystem guards touch — so it rides in Step 3, not a separate pass.
+
 ## Sequencing
 
-0. **Contracts decomposition** (the in-flight task) — move the 8 Flow DTOs to
-   `Features/Flows/Contracts/`, `ProjectInfo` → Host, `WireJson` →
-   `Infrastructure/Json`; push domain→DTO mapping into handlers. Turns the
-   committed namespace guard (#8) **green**, and pre-satisfies folder rule #1
-   (flat `Contracts` folder is gone). Do this first.
+0. **Contracts decomposition** — ✅ **DONE.** The 8 types did NOT all become a
+   feature Contracts leaf (the plan's original assumption): 5 are the Flow
+   domain's *working vocabulary* (`FlowSnapshot`, `OperationDto`, `DecisionDto`,
+   `FlowPhase`, `OperationStatus`) and moved into `Domain/Flow` + `Domain/Flow/
+   Operations` (Domain ↛ Features forbids a feature home). The genuinely-wire
+   types went feature-local (`StartRunRequest`/`Response` → Start, `FlowInfo` →
+   Catalog); `ProjectInfo` was **deleted** (it duplicated `Infrastructure.Projects.
+   ProjectEntry` — Host now returns that directly); `WireJson` → `Infrastructure/
+   Json`. Flat `RemoteAgents.Contracts` deleted; structure guard (#8) **green**.
+   **Web (Blazor WASM) dropped from `RemoteAgents.slnx`** — it can't safely
+   reference the server feature assemblies under warnings-as-errors; UI/Domain
+   separation deferred (Web is leaving the repo). **Consequence not foreseen:**
+   rule #3 (*Contracts must not depend on internal assemblies*) now governs an
+   empty set, and ArchUnit rejects an empty-subject rule. It was **kept dormant**
+   (not retired): `WithoutRequiringPositiveResults()` makes the empty period an
+   honest pass, and its band was repointed to match any `*.Contracts` leaf so it
+   auto-activates when the first per-feature leaf lands. Net −48 lines; build 0
+   warnings; arch 7/7; FlowTests 8/8.
 1. **Decide** canonical home-folder names (open decision above).
 2. **Rename** home folders to bare; move `Morph` (and later `Web`) out of repo.
 3. **Add** `SourceTree` + `StructureTests` + the 2 rule blocks → go green.
+   **In the same pass, collapse the layer denylists into the allow-graph (F1)** —
+   same two files, one coherent rule-model rewrite.
 4. **Retire** rule #8 (delete block + test) — now subsumed.
 5. **Commit** as one coherent green change (plus the README "Not yet enforced"
    row for `Web → Contracts` can drop "Web isn't loaded" once folder rule #1
    governs Web's placement; the *dependency* edge stays deferred).
 
+## Thermo-nuclear review findings — disposition
+
+The arch-test review (session `e184aca0`) raised four findings. For the record:
+
+- **F1** (hand-maintained layer denylist) — **carried into Step 3** here, as the
+  allow-graph collapse above.
+- **F2** (orphan-type guard) — **done**, then evolved into the `AgreedHomes` /
+  `IsOutsideStructure` structure guard (`c4db847`); subsumed by rules 1+2 at Step 4.
+- **F3** (band regexes need a `(\.|$)` boundary anchor) — **done**; every band in
+  `ArchitectureModel.cs` carries the anchor.
+- **F4** (`Web` ungoverned) — **deferred by decision**; see below.
+
 ## What this does NOT cover (still deferred)
 
-- **`Web → Contracts only`** dependency edge — still needs Web *loaded* into
+- **`Web → Contracts only`** dependency edge (F4) — still needs Web *loaded* into
   ArchUnitNET (separate from folder placement, which rule #1 now does cover).
 - **`PtySession` internal to `Domain.Agents`** — the spawn wall.
 - **Assembly-name convention** (`RemoteAgents.*`, `.Features.` dropped) — not
