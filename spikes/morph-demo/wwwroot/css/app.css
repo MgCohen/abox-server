@@ -329,6 +329,35 @@ h2 {
     opacity: 0.85;
 }
 
+.cutout-thin {
+    max-width: 360px;
+}
+
+.cutout-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 30px 18px;
+    color: #fff;
+}
+
+.cutout-wide {
+    max-width: 720px;
+}
+
+.cutout-wide .cutout-bar {
+    padding: 6px 18px;
+}
+
+.cutout-bar strong {
+    font-size: 14px;
+}
+
+.cutout-bar span {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
 #blazor-error-ui {
     display: none;
 }

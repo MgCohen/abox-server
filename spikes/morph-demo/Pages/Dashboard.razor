@@ -46,6 +46,32 @@
 </MorphStage>
 
 <MorphRaised Class="section-head">
+    <h2 class="section">Thin cut-out · slim bar</h2>
+    <button class="swap" @onclick="ToggleThin">Reopen (bar @(_thin + 1))</button>
+</MorphRaised>
+<MorphStage Screen="_thin" Context="t">
+    <MorphCutout Class="cutout-thin">
+        <div class="cutout-bar">
+            <strong>Bar @(t + 1)</strong>
+            <span>@(t == 0 ? "idle" : "running")</span>
+        </div>
+    </MorphCutout>
+</MorphStage>
+
+<MorphRaised Class="section-head">
+    <h2 class="section">Thin + wide cut-out · floor gap at the end-caps (bug)</h2>
+    <button class="swap" @onclick="ToggleWide">Reopen (bar @(_wide + 1))</button>
+</MorphRaised>
+<MorphStage Screen="_wide" Context="w">
+    <MorphCutout Class="cutout-wide">
+        <div class="cutout-bar">
+            <strong>Bar @(w + 1)</strong>
+            <span>@(w == 0 ? "idle" : "running")</span>
+        </div>
+    </MorphCutout>
+</MorphStage>
+
+<MorphRaised Class="section-head">
     <h2 class="section">In-page swap · MorphStage</h2>
     <button class="swap" @onclick="Toggle">Swap layout (now @(_view == 0 ? "A" : "B"))</button>
 </MorphRaised>
@@ -113,6 +139,14 @@
     };
 
     private void ToggleCut() => _cut = _cut == 0 ? 1 : 0;
+
+    private int _thin;
+
+    private void ToggleThin() => _thin = _thin == 0 ? 1 : 0;
+
+    private int _wide;
+
+    private void ToggleWide() => _wide = _wide == 0 ? 1 : 0;
 
     private void Toggle() => _view = _view == 0 ? 1 : 0;
 
