@@ -1,6 +1,42 @@
 # Morph style-components refactor
 
-**Status:** proposed (not started) · **Scope:** `src/Morph` + its consumers · **Owner:** —
+**Status:** ✅ built (steps 1–7 shipped, runtime-verified) · **Scope:** `src/Morph` + its consumers · **Owner:** —
+
+> **Build outcome (2026-06-10).** All seven steps landed as seven commits, each
+> warning-free + browser-verified. Decisions made while building, where the plan
+> was ambiguous or the snippets were illustrative:
+>
+> - **Q1 (D6.2) resolved → sentinel.** The cut-out's `.morph-item` carries a
+>   duration-matched no-op animation (`cutout-life`, a registered `@property`), so
+>   it emits exactly one counted `animationend`; the floor/ring/content motion runs
+>   on inner layers (filtered out by D6.1). Hosting the completing event on the item
+>   (not an inner layer) reads correctly — verified across two consecutive
+>   close→open cycles (no hang) + reduced motion (~36ms, no hang).
+> - **Q2 dropped, not chosen.** D4's switch-expression dispatch is the mechanism;
+>   the redundant runtime `MorphStyle→Type` registry (`AddMorphStyle`) was *not*
+>   built — it is the `DynamicComponent` path D4 rejects. Each `AddX()` registers
+>   only its `TransitionDefinition`; `MorphOptions` is built from the DI-registered
+>   set. Q2 is moot.
+> - **Stage-level transition retired (consequence of D2).** `MorphStage`/
+>   `MorphRouteStage` lost the `Transition` param; the demo lost its morph/slide
+>   picker + `DemoTransitionState`. Motion now lives entirely per style; the stage
+>   writes every registered style's namespaced vars (`Options.AllVars`) and only
+>   flips `data-phase`. `TransitionDefinition` is now pure timing (no keyframe-name
+>   fields — keyframes are named in each style's CSS).
+> - **CSS stays in `wwwroot/` (servability).** RCL static web assets must live under
+>   `wwwroot/`; `<Content Include>` from `Styles/` does *not* project to
+>   `_content/Morph/` (verified empirically). So per-style CSS is `wwwroot/<x>.css`
+>   while the component + values co-locate in `Styles/<X>/`. Consistent with the
+>   plan's "CSS-isolation filing is a non-issue here" note (§D3).
+> - **Cut-out layer order = floor then ring** (the spike's order), *not* the §5
+>   snippet's ring-then-floor — the ring must paint above the floor for the
+>   depth/bevel to show.
+> - **Completion now needs `registerMorphEvents()` before `Blazor.start()`**
+>   (`autostart=false`) — the only way to get `event.target` into the C# handler
+>   (D6.1). New consumer setup step, documented in the README.
+> - **Cut-out timing = the spike's tuned 1540ms** (both phases, phased percentages
+>   baked in), not the looser 700/1100 in §5 — the spike is the tuning source of
+>   truth.
 
 This document is standalone. It assumes no prior conversation. Read it cold and
 you should understand what Morph is today, what we're changing, why, and exactly
