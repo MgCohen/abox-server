@@ -10,9 +10,23 @@ public abstract class MorphStageBase : ComponentBase
 
     protected MorphPhase Phase { get; private set; } = MorphPhase.Idle;
 
+    protected MorphStageContext RootContext { get; }
+    protected int MaxDepth { get; private set; }
+
     private TaskCompletionSource? _phaseComplete;
     private int _animationGeneration;
     private int _quietWindowMs;
+
+    protected MorphStageBase() => RootContext = new MorphStageContext(0, ReportDepth);
+
+    private void ReportDepth(int depth)
+    {
+        if (depth <= MaxDepth)
+            return;
+
+        MaxDepth = depth;
+        StateHasChanged();
+    }
 
     protected string DataPhase => Phase switch
     {

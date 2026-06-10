@@ -1,13 +1,23 @@
 <div class="morph-item @Class" style="--depth:@Depth">
-    <CascadingValue Name="MorphDepth" Value="@(Depth + 1)" IsFixed="true">
+    <CascadingValue Value="_childContext" IsFixed="true">
         @ChildContent
     </CascadingValue>
 </div>
 
 @code {
-    [CascadingParameter(Name = "MorphDepth")] private int Depth { get; set; }
+    [CascadingParameter] private MorphStageContext? Stage { get; set; }
 
     [Parameter] public string? Class { get; set; }
 
     [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private MorphStageContext _childContext = default!;
+
+    private int Depth => Stage?.Depth ?? 0;
+
+    protected override void OnInitialized()
+    {
+        Stage?.Report();
+        _childContext = Stage?.Child() ?? new MorphStageContext(1, static _ => { });
+    }
 }

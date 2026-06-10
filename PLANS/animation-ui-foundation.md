@@ -55,7 +55,7 @@ and is introduced only on the second driver — until then the motion step is
 
 | Term | Meaning |
 |------|---------|
-| **Shape** | The one container component `MorphShape`. Knows its **depth** (a plain cascading int). Writes `--depth` inline. Themed by a CSS class. |
+| **Shape** | The one container component `MorphShape`. Knows its **depth** (via a cascading `MorphStageContext` — depth + `Child()` + `Report()`; see D-C). Writes `--depth` inline. Themed by a CSS class. |
 | **Depth / Layer** | Nesting depth → animation band. `--depth` is written **inline at render time** (validated: this is what prevents the layer-0 flash). |
 | **Stage** | A region that runs the phase engine. `MorphStage<TKey>` (declarative, in-page) or `MorphRouteStage` (wraps `@Body`). Both inherit `MorphStageBase`. |
 | **Phase engine** | `MorphStageBase`: sets `data-phase`, renders, and `await`s the last `animationend` (with a safety ceiling). The whole orchestrator. |
@@ -138,9 +138,12 @@ theme file; the motion core is untouched.
 }
 ```
 
-> No `MorphContext`, no counter, no child→parent reporting. Depth is a plain
-> cascading int; `--depth` is inline so it's correct on the first paint (the
-> validated no-flash requirement). `<MorphShape Class="neu-raised">` is the card;
+> **As-built note (supersedes this sketch):** depth is carried by a minimal
+> `MorphStageContext` (depth + `Child()` + `Report()`), not a bare int — see D-C.
+> It has no sibling counter (the bug Rev 1 had); `Child()` is structural `+1`, and
+> `Report()` feeds only the stage's `--max-depth` for innermost-first exit
+> (presentation, not timing). `--depth` is still inline so it's correct on first
+> paint (the no-flash requirement). `<MorphShape Class="neu-raised">` is the card;
 > `Class="neu-inset"` is the well — one component, not three wrappers.
 
 ### 6.2 `TransitionDefinition` + DI registration — types are data the consumer owns
@@ -390,8 +393,16 @@ green tests where applicable, motion verified by contact sheet, one commit.
 - **D-B. Reduced-motion detection.** `ReducedMotion` needs one `matchMedia` read
   (the single unavoidable interop) or a pure config flag. With `animationend`,
   reduced-motion simply skips the `await`. Decide at Phase 3.
-- **D-C. Exit order.** Default innermost-first melt (validated as physical).
-  Confirm whether any screen wants same-order exit.
+- **D-C. Exit order. RESOLVED → innermost-first melt** (contents collapse, then
+  the shell sinks; enter stays outermost-first). This needs the stage's max
+  depth, so the as-built code reintroduces a minimal `MorphStageContext` (depth +
+  `Child()` + `Report()`) — the *justified second use* of depth now that both
+  per-item `--depth` and the stage's `--max-depth` consume it. It drives
+  presentation only; phase timing stays `animationend`-driven, and reporting
+  happens at mount (idle), never mid-animation. Nested stages stay correct via
+  CSS nearest-ancestor `--max-depth` inheritance. Validated in `spikes/morph-demo`
+  (in-page + routing, incl. the nested inner-stage page). Exit CSS:
+  `animation-delay: calc((var(--max-depth) - var(--depth)) * var(--layer-interval))`.
 - **D-D. Theme packaging.** `neu.css` ships inside Morph; split into a separate
   theme package only on the second theme.
 - **D-E. Completion detection.** `animationend` debounce vs known-count vs a

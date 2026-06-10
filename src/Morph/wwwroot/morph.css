@@ -8,7 +8,7 @@
 
 .morph-stage[data-phase="exit"] .morph-item {
     animation: var(--anim-exit) var(--exit-dur) var(--ease) forwards;
-    animation-delay: calc(var(--depth, 0) * var(--layer-interval));
+    animation-delay: calc((var(--max-depth, 0) - var(--depth, 0)) * var(--layer-interval));
 }
 
 .morph-stage[data-phase="enter"] .morph-item {
