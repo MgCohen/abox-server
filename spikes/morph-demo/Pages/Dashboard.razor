@@ -1,7 +1,5 @@
 @page "/dashboard"
 @namespace MorphDemo.Pages
-@implements IDisposable
-@inject DemoTransitionState State
 
 <h1 class="page-title">Dashboard</h1>
 <p class="page-sub">The interactive paths: in-page swaps and async load / error.</p>
@@ -27,7 +25,7 @@
 <h2 class="section">In-page swap · MorphStage</h2>
 <button class="swap" @onclick="Toggle">Swap layout (now @(_view == 0 ? "A" : "B"))</button>
 
-<MorphStage Screen="_view" Context="v" Transition="@State.Current">
+<MorphStage Screen="_view" Context="v">
     @if (v == 0)
     {
         <MorphRaised Class="card">
@@ -58,7 +56,7 @@
     <button class="swap" @onclick="LoadSlow">Load slow (times out)</button>
 </div>
 
-<MorphStage Screen="_loadKey" Load="LoadAsync" Transition="@State.Current">
+<MorphStage Screen="_loadKey" Load="LoadAsync">
     <ChildContent Context="k">
         <MorphRaised Class="card">
             <h2>Loaded item #@k</h2>
@@ -82,10 +80,6 @@
     private void ToggleStyle() =>
         _style = _style == MorphStyle.Raised ? MorphStyle.Inset : MorphStyle.Raised;
 
-    protected override void OnInitialized() => State.Changed += OnTransitionChanged;
-
-    private void OnTransitionChanged() => InvokeAsync(StateHasChanged);
-
     private void Toggle() => _view = _view == 0 ? 1 : 0;
 
     private void LoadFast()
@@ -101,6 +95,4 @@
     }
 
     private async Task LoadAsync(int key) => await Task.Delay(_slowNext ? 3000 : 200);
-
-    public void Dispose() => State.Changed -= OnTransitionChanged;
 }

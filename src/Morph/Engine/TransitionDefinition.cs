@@ -2,8 +2,6 @@ namespace Morph;
 
 public sealed record TransitionDefinition(
     string Name,
-    string ExitKeyframes,
-    string EnterKeyframes,
     int ExitMs,
     int EnterMs,
     int LayerInterval,
@@ -12,8 +10,7 @@ public sealed record TransitionDefinition(
     string EnterEase)
 {
     public string Vars =>
-        $"--anim-exit:{ExitKeyframes};--anim-enter:{EnterKeyframes};" +
-        $"--exit-dur:{ExitMs}ms;--enter-dur:{EnterMs}ms;" +
-        $"--layer:{LayerInterval}ms;--scatter:{Scatter}ms;" +
-        $"--exit-ease:{ExitEase};--enter-ease:{EnterEase};";
+        $"--{Name}-exit-dur:{ExitMs}ms;--{Name}-enter-dur:{EnterMs}ms;" +
+        $"--{Name}-layer:{LayerInterval}ms;--{Name}-scatter:{Scatter}ms;" +
+        $"--{Name}-exit-ease:{ExitEase};--{Name}-enter-ease:{EnterEase};";
 }

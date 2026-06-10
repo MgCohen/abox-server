@@ -4,3 +4,33 @@
         inset calc(var(--lift) * 5px) calc(var(--lift) * 5px) calc(var(--lift) * 10px) var(--shadow-dark),
         inset calc(var(--lift) * -5px) calc(var(--lift) * -5px) calc(var(--lift) * 10px) var(--shadow-light);
 }
+
+@keyframes inset-out {
+    to {
+        --lift: 0;
+        opacity: 0;
+    }
+}
+
+@keyframes inset-in {
+    from {
+        --lift: 0;
+        opacity: 0;
+    }
+}
+
+.morph-stage[data-phase="exit"] .neu-inset {
+    animation: inset-out var(--inset-exit-dur) var(--inset-exit-ease) both;
+    animation-delay: calc((var(--max-depth, 0) - var(--depth, 0)) * var(--inset-layer, 0ms) + var(--rand, 0) * var(--inset-scatter, 0ms));
+}
+
+.morph-stage[data-phase="enter"] .neu-inset {
+    animation: inset-in var(--inset-enter-dur) var(--inset-enter-ease) both;
+    animation-delay: calc(var(--depth, 0) * var(--inset-layer, 0ms) + var(--rand, 0) * var(--inset-scatter, 0ms));
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .morph-stage .neu-inset {
+        animation: none !important;
+    }
+}

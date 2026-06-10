@@ -2,7 +2,7 @@
 @inherits MorphStageBase
 @implements IDisposable
 
-<div class="morph-stage" data-phase="@DataPhase" style="@_definition.Vars;--max-depth:@MaxDepth" @ref="StageElement" @onanimationend="OnAnimationEnd">
+<div class="morph-stage" data-phase="@DataPhase" style="@Options.AllVars;--max-depth:@MaxDepth" @ref="StageElement" @onanimationend="OnAnimationEnd">
     <CascadingValue Value="RootContext" IsFixed="true">
         @Body
     </CascadingValue>
@@ -13,18 +13,13 @@
 
     [Parameter, EditorRequired] public RenderFragment? Body { get; set; }
 
-    [Parameter] public string? Transition { get; set; }
-
     private IDisposable? _registration;
-    private TransitionDefinition _definition = default!;
 
     protected override void OnInitialized()
     {
         _registration = Nav.RegisterLocationChangingHandler(OnLocationChanging);
         Nav.LocationChanged += OnLocationChanged;
     }
-
-    protected override void OnParametersSet() => _definition = Options.Resolve(Transition);
 
     private async ValueTask OnLocationChanging(LocationChangingContext context)
     {

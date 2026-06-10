@@ -4,3 +4,33 @@
         calc(var(--lift) * 10px) calc(var(--lift) * 10px) calc(var(--lift) * 22px) var(--shadow-dark),
         calc(var(--lift) * -9px) calc(var(--lift) * -9px) calc(var(--lift) * 20px) var(--shadow-light);
 }
+
+@keyframes raise-out {
+    to {
+        --lift: 0;
+        opacity: 0;
+    }
+}
+
+@keyframes raise-in {
+    from {
+        --lift: 0;
+        opacity: 0;
+    }
+}
+
+.morph-stage[data-phase="exit"] .neu-raised {
+    animation: raise-out var(--raised-exit-dur) var(--raised-exit-ease) both;
+    animation-delay: calc((var(--max-depth, 0) - var(--depth, 0)) * var(--raised-layer, 0ms) + var(--rand, 0) * var(--raised-scatter, 0ms));
+}
+
+.morph-stage[data-phase="enter"] .neu-raised {
+    animation: raise-in var(--raised-enter-dur) var(--raised-enter-ease) both;
+    animation-delay: calc(var(--depth, 0) * var(--raised-layer, 0ms) + var(--rand, 0) * var(--raised-scatter, 0ms));
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .morph-stage .neu-raised {
+        animation: none !important;
+    }
+}
