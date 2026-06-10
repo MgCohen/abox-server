@@ -2,7 +2,7 @@
 @typeparam TKey
 @inherits MorphStageBase
 
-<div class="morph-stage" data-phase="@DataPhase" style="@Options.AllVars;--max-depth:@MaxDepth" @ref="StageElement" @onanimationend="OnAnimationEnd">
+<div class="morph-stage" data-phase="@DataPhase" style="@Options.AllVars;--max-depth:@MaxDepth" @ref="StageElement" @onmorphend="OnAnimationEnd">
     <CascadingValue Value="RootContext" IsFixed="true">
         <div @key="_current" class="morph-screen">
             @ChildContent(_current)

@@ -248,6 +248,27 @@ h2 {
     font-weight: 600;
 }
 
+/* animated *content* (not a .morph-item) — exercises the D6.1 tally filter:
+   it fires animationend during a transition but must not be counted. */
+.pulse {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--green);
+    vertical-align: middle;
+}
+
+@keyframes pulse {
+    from { transform: scale(0.5); opacity: 0.3; }
+    to   { transform: scale(1);   opacity: 1; }
+}
+
+.morph-stage[data-phase="exit"] .pulse,
+.morph-stage[data-phase="enter"] .pulse {
+    animation: pulse 200ms both;
+}
+
 #blazor-error-ui {
     display: none;
 }

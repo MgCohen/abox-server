@@ -40,8 +40,11 @@ public abstract class MorphStageBase : ComponentBase
         _ => string.Empty,
     };
 
-    protected void OnAnimationEnd()
+    protected void OnAnimationEnd(MorphEndEventArgs args)
     {
+        if (!args.IsItem)
+            return;
+
         _animEnd++;
         TryComplete();
     }

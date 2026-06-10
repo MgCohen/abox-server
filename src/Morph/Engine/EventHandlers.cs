@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Components;
 
 namespace Morph;
 
-[EventHandler("onanimationend", typeof(EventArgs))]
+[EventHandler("onmorphend", typeof(MorphEndEventArgs), enableStopPropagation: false, enablePreventDefault: false)]
 public static class EventHandlers
 {
 }
