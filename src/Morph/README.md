@@ -1,10 +1,9 @@
 # Morph
 
 A theme-agnostic Blazor WASM animation/transition library. One phase engine
-(`exit → await load → enter`, driven by the browser's `animationend`), two
-triggers on it (`MorphStage<TKey>` for in-page swaps, `MorphRouteStage` for
-routes), and **one component per visual style** so callers never write animation
-or type a raw style class.
+(`exit → await load → enter`), two triggers on it (`MorphStage<TKey>` for in-page
+swaps, `MorphRouteStage` for routes), and **one component per visual style** so
+callers never write animation or type a raw style class.
 
 Layout mirrors that split:
 
@@ -26,7 +25,7 @@ await host.Services.DetectReducedMotionAsync();           // one matchMedia read
 await host.RunAsync();
 ```
 
-Reference the bundled CSS and register the completion event before Blazor starts:
+Reference the bundled CSS from `index.html` (no JS wiring needed):
 
 ```html
 <link rel="stylesheet" href="_content/Morph/theme.css" />
@@ -34,13 +33,6 @@ Reference the bundled CSS and register the completion event before Blazor starts
 <link rel="stylesheet" href="_content/Morph/inset.css" />
 <link rel="stylesheet" href="_content/Morph/cutout.css" />
 <link rel="stylesheet" href="_content/Morph/morph.css" />
-
-<script src="_framework/blazor.webassembly.js" autostart="false"></script>
-<script type="module">
-    import { registerMorphEvents } from "./_content/Morph/morph.js";
-    registerMorphEvents();   // see "How a phase completes"
-    Blazor.start();
-</script>
 ```
 
 `theme.css` is one theme (design tokens + the `@property --lift` registration);
@@ -82,45 +74,63 @@ to the right component via a compile-checked switch expression (not
 A new style is one self-contained folder under `Styles/` plus two one-line edits:
 
 1. `Styles/<X>/Morph<X>.razor` — wrap `MorphShape` with the style's class (+ any
-   scaffold divs the look needs; see the cut-out).
+   scaffold divs the look needs; see the cut-out), and project its timing:
+   `Vars="@Options.Resolve(<X>Style.Name).Vars"`.
 2. `wwwroot/<x>.css` — the `.neu-<x>` recipe, its `@keyframes`, and the phase
-   rules: `.morph-stage[data-phase="exit"|"enter"] .neu-<x> { animation: … }`.
-3. `Styles/<X>/<X>Style.cs` — a `TransitionDefinition` (timing/easing only; emits
-   namespaced CSS vars like `--<x>-exit-dur`) and an `AddX()` extension that calls
-   `AddTransition(...)`.
+   rules: `.morph-stage[data-phase="exit"|"enter"] .neu-<x> { animation: … var(--enter-dur) … }`.
+3. `Styles/<X>/<X>Style.cs` — a `TransitionDefinition` (timing/easing only; its
+   `Vars` emit generic `--enter-dur`/`--exit-dur`/`--layer`/`--scatter`/eases) and
+   an `AddX()` that calls `AddTransition(...)`.
 4. Add the enum value to `MorphStyle` and a switch arm to `MorphSurface`; compose
    `AddX()` into `AddMorph`.
 
-The stage writes **every** registered style's vars onto itself (`Options.AllVars`)
-and only flips `data-phase` — motion lives entirely in each style's CSS.
+**Timing is per-style, per-subtree.** Each style component projects its own
+`TransitionDefinition.Vars` onto the `.morph-item` it renders (via a `MorphShape`
+`Vars` passthrough), so `var(--enter-dur)` resolves to *that style's* value even
+when a single stage mixes raised + inset + cut-out. The stage emits only
+`--max-depth`.
 
 ## How a phase completes
 
-A phase ends when every animated layer has finished — driven by real
-`animationend` events, not a timer. Each `MorphShape` renders a `.morph-item`; a
-style's CSS animates the item under a transitioning stage, so the stage waits for
-exactly one `animationend` **per `.morph-item`**. The count is read once per phase
-from the DOM (`countItems`), and bubbling events tick it down — which is what lets
-an outer `MorphRouteStage` wait for items owned by inner stages.
+A phase ends when the animations it started have finished — and the engine waits
+on the **actual scheduled set**, not a count or a timer:
 
-Three pieces make this robust and are easy to miss:
+```js
+// morph.js — the only completion primitive
+export function waitForAnimations(el) {
+  return new Promise((resolve) => requestAnimationFrame(() => {
+    const anims = el.getAnimations({ subtree: true })
+      .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity); // skip infinite
+    resolve(Promise.all(anims.map((a) => a.finished)));
+  }));
+}
+```
 
-- **Target filtering.** The stage counts only events whose original target *is* a
-  `.morph-item`, ignoring animations on descendant layers and on screen content.
-  Blazor's `[EventHandler]` for `animationend` yields a bare `EventArgs` (no
-  target), so `morph.js#registerMorphEvents` registers a custom `morphend` event
-  (→ `animationend`) whose `createEventArgs` reports `isItem`. The stage binds
-  `@onmorphend`; `EventHandlers.cs` (named exactly that, for the Razor compiler)
-  declares it. This is why setup calls `registerMorphEvents()` before
-  `Blazor.start()`.
-- **The sentinel pattern.** A style whose visible motion runs on *inner* layers
-  (the cut-out animates a clip-masked floor + a depth ring, because `clip-path`
-  would clip a pseudo-element) gives its `.morph-item` one duration-matched no-op
-  animation (`cutout-life`), so it still emits exactly one counting `animationend`
-  while the inner layers' events are filtered out.
-- **No fallback timer.** If the gate could never be satisfied the phase would
-  hang, so the no-animation cases short-circuit explicitly: reduced motion (below)
-  and a zero-item count complete immediately.
+`MorphStageBase` awaits `Interop.WaitForAnimationsAsync(StageElement)` once per
+phase (after the phase's render, via `OnAfterRenderAsync`). This is **correct by
+construction** for any delay, gap, nesting, or count — a style just declares its
+keyframes and the engine waits for exactly what runs. Consequences:
+
+- **Styles never touch completion.** The cut-out's motion lives on inner
+  `floor`/`ring` layers, not its `.morph-item`; the engine waits for those layers
+  with no sentinel, count, or special-casing.
+- **Interruption** cancels the in-flight animations, so `.finished` rejects with
+  `AbortError` → `JSException`; the engine catches it and the `_phaseGen`
+  generation check discards the superseded phase.
+- **No silent hang.** An empty set resolves instantly (static phase, reduced
+  motion), so there is no count to mismatch.
+
+This is the library's only JS beyond `prefersReducedMotion` — JS is admitted only
+for a browser primitive C#/CSS can't express ("this subtree's animations are
+done"). All phase logic, dispatch, timing, and config stay in C#/CSS.
+
+## Reduced motion
+
+Each style's CSS zeroes its animation under `prefers-reduced-motion: reduce`.
+`DetectReducedMotionAsync` reads the media query once at startup and sets
+`MorphOptions.ReducedMotion`, which makes the engine skip its await entirely. Call
+it once after `Build()`. (Even without the short-circuit, `getAnimations` would
+return an empty set and resolve instantly — the two agree.)
 
 ## Composing stages
 
@@ -139,13 +149,3 @@ shown when a load times out):
 For a genuinely new trigger (neither param-watch nor router), subclass
 `MorphStageBase` and drive `RunPhaseAsync` / `TransitionAsync` yourself — the same
 engine the two built-in triggers use.
-
-## Reduced motion
-
-Each style's CSS zeroes its animation under `prefers-reduced-motion: reduce`, so
-no `animationend` ever fires. `DetectReducedMotionAsync` reads the media query
-once at startup and sets `MorphOptions.ReducedMotion`, which makes the engine skip
-its await entirely — CSS and engine stay in agreement instead of waiting for
-events that never arrive. Call it once after `Build()`. This and the per-phase
-item count are the library's only JS interop, both through `morph.js` via
-`MorphInterop`.

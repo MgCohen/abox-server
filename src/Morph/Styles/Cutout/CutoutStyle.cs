@@ -4,11 +4,12 @@ namespace Morph;
 
 public static class CutoutStyle
 {
+    public const string Name = "cutout";
+
     public static readonly TransitionDefinition Transition = new(
-        Name: "cutout",
-        ExitMs: 1540, EnterMs: 1540,
-        LayerInterval: 0, Scatter: 0,
-        ExitEase: "linear", EnterEase: "linear");
+        Name,
+        ExitMs: 700, EnterMs: 1100,
+        LayerInterval: 0, Scatter: 0);
 
     public static IServiceCollection AddCutout(this IServiceCollection services) =>
         services.AddTransition(Transition);

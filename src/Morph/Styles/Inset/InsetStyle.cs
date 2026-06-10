@@ -4,8 +4,10 @@ namespace Morph;
 
 public static class InsetStyle
 {
+    public const string Name = "inset";
+
     public static readonly TransitionDefinition Transition = new(
-        Name: "inset",
+        Name,
         ExitMs: 440, EnterMs: 500,
         LayerInterval: 150, Scatter: 30,
         ExitEase: "cubic-bezier(0.52, 0, 0.74, 0.25)",

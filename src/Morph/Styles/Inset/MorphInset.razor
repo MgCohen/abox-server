@@ -1,6 +1,7 @@
 @namespace Morph
+@inject MorphOptions Options
 
-<MorphShape Class="@($"neu-inset {Class}")">@ChildContent</MorphShape>
+<MorphShape Class="@($"neu-inset {Class}")" Vars="@Options.Resolve(InsetStyle.Name).Vars">@ChildContent</MorphShape>
 
 @code {
     [Parameter] public string? Class { get; set; }

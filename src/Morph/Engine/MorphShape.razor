@@ -1,6 +1,6 @@
 @namespace Morph
 
-<div class="morph-item @Class" style="--depth:@Depth;--rand:@_rand">
+<div class="morph-item @Class" style="@Vars--depth:@Depth;--rand:@_rand">
     <CascadingValue Value="_childContext" IsFixed="true">
         @ChildContent
     </CascadingValue>
@@ -10,6 +10,8 @@
     [CascadingParameter] private MorphStageContext? Stage { get; set; }
 
     [Parameter] public string? Class { get; set; }
+
+    [Parameter] public string? Vars { get; set; }
 
     [Parameter] public RenderFragment? ChildContent { get; set; }
 

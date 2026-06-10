@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 
 namespace Morph;
 
@@ -18,9 +19,7 @@ public abstract class MorphStageBase : ComponentBase
 
     private TaskCompletionSource? _phaseComplete;
     private int _phaseGen;
-    private int _animEnd;
-    private int _target = -1;
-    private bool _countScheduled;
+    private bool _waitScheduled;
 
     protected MorphStageBase() => RootContext = new MorphStageContext(0, ReportDepth, _order);
 
@@ -40,29 +39,24 @@ public abstract class MorphStageBase : ComponentBase
         _ => string.Empty,
     };
 
-    protected void OnAnimationEnd(MorphEndEventArgs args)
-    {
-        if (!args.IsItem)
-            return;
-
-        _animEnd++;
-        TryComplete();
-    }
-
-    private void TryComplete()
-    {
-        if (_phaseComplete is not null && _target >= 0 && _animEnd >= _target)
-            _phaseComplete.TrySetResult();
-    }
-
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (_phaseComplete is null || _countScheduled)
+        if (_phaseComplete is null || _waitScheduled)
             return;
 
-        _countScheduled = true;
-        _target = await Interop.CountItemsAsync(StageElement);
-        TryComplete();
+        _waitScheduled = true;
+        var generation = _phaseGen;
+        try
+        {
+            await Interop.WaitForAnimationsAsync(StageElement);
+        }
+        catch (JSException)
+        {
+            // AbortError: the phase was superseded mid-flight; _phaseGen discards it below.
+        }
+
+        if (generation == _phaseGen)
+            _phaseComplete?.TrySetResult();
     }
 
     protected async Task<bool> RunPhaseAsync(MorphPhase phase)
@@ -71,9 +65,7 @@ public abstract class MorphStageBase : ComponentBase
         _phaseComplete?.TrySetResult();
 
         Phase = phase;
-        _animEnd = 0;
-        _target = -1;
-        _countScheduled = false;
+        _waitScheduled = false;
         var complete = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         _phaseComplete = complete;
         StateHasChanged();

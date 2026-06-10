@@ -6,11 +6,11 @@ public sealed record TransitionDefinition(
     int EnterMs,
     int LayerInterval,
     int Scatter,
-    string ExitEase,
-    string EnterEase)
+    string ExitEase = "linear",
+    string EnterEase = "linear")
 {
     public string Vars =>
-        $"--{Name}-exit-dur:{ExitMs}ms;--{Name}-enter-dur:{EnterMs}ms;" +
-        $"--{Name}-layer:{LayerInterval}ms;--{Name}-scatter:{Scatter}ms;" +
-        $"--{Name}-exit-ease:{ExitEase};--{Name}-enter-ease:{EnterEase};";
+        $"--exit-dur:{ExitMs}ms;--enter-dur:{EnterMs}ms;" +
+        $"--layer:{LayerInterval}ms;--scatter:{Scatter}ms;" +
+        $"--exit-ease:{ExitEase};--enter-ease:{EnterEase};";
 }

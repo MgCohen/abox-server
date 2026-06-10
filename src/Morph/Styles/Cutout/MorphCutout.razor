@@ -1,6 +1,7 @@
 @namespace Morph
+@inject MorphOptions Options
 
-<MorphShape Class="@($"neu-cutout {Class}")">
+<MorphShape Class="@($"neu-cutout {Class}")" Vars="@Options.Resolve(CutoutStyle.Name).Vars">
     <div class="cutout-floor">@ChildContent</div>
     <div class="cutout-ring"></div>
 </MorphShape>

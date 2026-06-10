@@ -2,7 +2,7 @@
 @inherits MorphStageBase
 @implements IDisposable
 
-<div class="morph-stage" data-phase="@DataPhase" style="@Options.AllVars;--max-depth:@MaxDepth" @ref="StageElement" @onmorphend="OnAnimationEnd">
+<div class="morph-stage" data-phase="@DataPhase" style="--max-depth:@MaxDepth" @ref="StageElement">
     <CascadingValue Value="RootContext" IsFixed="true">
         @Body
     </CascadingValue>
