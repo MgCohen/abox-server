@@ -25,7 +25,7 @@
     <ProjectReference Include="..\..\src\Features\Git\RemoteAgents.Git.csproj" />
     <ProjectReference Include="..\..\src\Domain\Agents\RemoteAgents.Domain.Agents.csproj" />
     <ProjectReference Include="..\..\src\Infrastructure\RemoteAgents.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\src\RemoteAgents.Host\RemoteAgents.Host.csproj" />
+    <ProjectReference Include="..\..\src\Host\RemoteAgents.Host.csproj" />
   </ItemGroup>
 
 </Project>

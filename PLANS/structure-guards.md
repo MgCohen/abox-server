@@ -91,10 +91,11 @@ Notes:
 | On disk | `structure.md` | Status |
 |---------|----------------|--------|
 | `src/Domain`, `src/Features`, `src/Infrastructure` | same | ✓ |
-| `src/RemoteAgents.Host` | `src/Host` | ✗ prefixed |
-| `src/RemoteAgents.Web` | `src/Web` | ✗ prefixed |
-| `src/RemoteAgents.Contracts` | `Features/<F>/Contracts` | ✗ flat + wrong place |
-| `src/Morph` | — | ✗ stray (out of scope) |
+| `src/Host` | `src/Host` | ✅ renamed bare (was `RemoteAgents.Host`) |
+| `src/RemoteAgents.Web` | `src/Web` | ✗ prefixed — out of slnx, deferred (own repo) |
+| `src/RemoteAgents.Contracts` | `Features/<F>/Contracts` | ✅ dissolved (Step 0) |
+| `src/Morph` | — | ✗ stray — out of slnx, deferred (own repo); live dev watch |
+| `src/RemoteAgents.Core` | — | ✅ deleted (empty untracked relic) |
 
 The namespace↔folder rule (2) **requires bare folders** — folder `RemoteAgents.Host`
 would map to expected namespace `RemoteAgents.RemoteAgents.Host`. So the
@@ -224,8 +225,22 @@ architecture *is*. Notes:
    honest pass, and its band was repointed to match any `*.Contracts` leaf so it
    auto-activates when the first per-feature leaf lands. Net −48 lines; build 0
    warnings; arch 7/7; FlowTests 8/8.
-1. **Decide** canonical home-folder names (open decision above).
-2. **Rename** home folders to bare; move `Morph` (and later `Web`) out of repo.
+1. **Decide** canonical home-folder names — ✅ **DONE** (owner: bare folders).
+2. **Rename** home folders to bare — ✅ **DONE.** `src/RemoteAgents.Host` →
+   `src/Host` (folder-only `git mv`, history preserved; assembly + namespace stay
+   `RemoteAgents.Host`; slnx + the one `RemoteAgents.Tests` ProjectReference
+   repointed). Empty untracked `src/RemoteAgents.Core` (Paths/, Projects/ — relics
+   of the dissolved monolith, no csproj, referenced nowhere) **deleted**. `Morph`
+   and `Web` were **not** physically evicted (no destination repo yet, and `Morph`
+   has the live port-5210 dev watch): per owner, **`Morph` dropped from
+   `RemoteAgents.slnx`** (matching how `Web` was handled at Step 0) so both are
+   build-inert, folders left on disk. The morph dev server is unaffected — `dotnet
+   watch` targets `src/Morph/Morph.csproj` directly, not the solution. Build 0
+   warnings; arch 7/7; FlowTests 8/8.
+   **→ Step 3 consequence:** `src/Morph` + `src/RemoteAgents.Web` still sit under
+   non-home folders, so the filesystem guard (rule #1) must carry an explicit,
+   documented known-pending-eviction list for those two — or they relocate to
+   their own repos before Step 3 — so the guard passes *honestly*, not vacuously.
 3. **Add** `SourceTree` + `StructureTests` + the 2 rule blocks → go green.
    **In the same pass, collapse the layer denylists into the allow-graph (F1)** —
    same two files, one coherent rule-model rewrite.
