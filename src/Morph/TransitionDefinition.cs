@@ -7,10 +7,13 @@ public sealed record TransitionDefinition(
     int ExitMs,
     int EnterMs,
     int LayerInterval,
-    string Ease)
+    int Scatter,
+    string ExitEase,
+    string EnterEase)
 {
     public string Vars =>
         $"--anim-exit:{ExitKeyframes};--anim-enter:{EnterKeyframes};" +
         $"--exit-dur:{ExitMs}ms;--enter-dur:{EnterMs}ms;" +
-        $"--layer-interval:{LayerInterval}ms;--ease:{Ease};";
+        $"--layer:{LayerInterval}ms;--scatter:{Scatter}ms;" +
+        $"--exit-ease:{ExitEase};--enter-ease:{EnterEase};";
 }

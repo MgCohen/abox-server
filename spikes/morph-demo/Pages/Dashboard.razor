@@ -1,0 +1,95 @@
+@page "/dashboard"
+@namespace MorphDemo.Pages
+@implements IDisposable
+@inject DemoTransitionState State
+
+<h1 class="page-title">Dashboard</h1>
+<p class="page-sub">The interactive paths: in-page swaps and async load / error.</p>
+
+<div class="grid">
+    <MorphShape Class="neu-inset tile">
+        <div class="stat-num">42</div>
+        <div class="stat-label">open</div>
+    </MorphShape>
+    <MorphShape Class="neu-inset tile">
+        <div class="stat-num">7</div>
+        <div class="stat-label">failing</div>
+    </MorphShape>
+</div>
+
+<h2 class="section">In-page swap · MorphStage</h2>
+<button class="swap" @onclick="Toggle">Swap layout (now @(_view == 0 ? "A" : "B"))</button>
+
+<MorphStage Screen="_view" Context="v" Transition="@State.Current">
+    @if (v == 0)
+    {
+        <MorphShape Class="neu-raised card">
+            <h2>Layout A</h2>
+            <div class="row">
+                <MorphShape Class="neu-inset circle">A</MorphShape>
+                <MorphShape Class="neu-inset inner">
+                    <span class="muted">circle + inset, siblings</span>
+                </MorphShape>
+            </div>
+        </MorphShape>
+    }
+    else
+    {
+        <MorphShape Class="neu-inset card">
+            <h2>Layout B</h2>
+            <MorphShape Class="neu-raised inner">
+                <span>raised inner</span>
+                <MorphShape Class="neu-inset leaf">depth-2 inset leaf</MorphShape>
+            </MorphShape>
+        </MorphShape>
+    }
+</MorphStage>
+
+<h2 class="section">Async load · Loading / Error</h2>
+<div class="btn-row">
+    <button class="swap" @onclick="LoadFast">Load fast</button>
+    <button class="swap" @onclick="LoadSlow">Load slow (times out)</button>
+</div>
+
+<MorphStage Screen="_loadKey" Load="LoadAsync" Transition="@State.Current">
+    <ChildContent Context="k">
+        <MorphShape Class="neu-raised card">
+            <h2>Loaded item #@k</h2>
+            <p class="muted">Swapped in after the async gate resolved.</p>
+        </MorphShape>
+    </ChildContent>
+    <LoadingContent>
+        <div class="status">loading…</div>
+    </LoadingContent>
+    <ErrorContent Context="ex">
+        <div class="status error">@ex.Message</div>
+    </ErrorContent>
+</MorphStage>
+
+@code {
+    private int _view;
+    private int _loadKey;
+    private bool _slowNext;
+
+    protected override void OnInitialized() => State.Changed += OnTransitionChanged;
+
+    private void OnTransitionChanged() => InvokeAsync(StateHasChanged);
+
+    private void Toggle() => _view = _view == 0 ? 1 : 0;
+
+    private void LoadFast()
+    {
+        _slowNext = false;
+        _loadKey++;
+    }
+
+    private void LoadSlow()
+    {
+        _slowNext = true;
+        _loadKey++;
+    }
+
+    private async Task LoadAsync(int key) => await Task.Delay(_slowNext ? 3000 : 200);
+
+    public void Dispose() => State.Changed -= OnTransitionChanged;
+}

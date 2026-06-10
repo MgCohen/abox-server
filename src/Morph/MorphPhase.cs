@@ -6,4 +6,5 @@ public enum MorphPhase
     Exiting,
     Loading,
     Entering,
+    Error,
 }

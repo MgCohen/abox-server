@@ -8,9 +8,11 @@ public static class ServiceCollectionExtensions
     {
         var options = new MorphOptions().Add(DefaultTransition);
         configure?.Invoke(options);
+        services.AddScoped<MorphInterop>();
         return services.AddSingleton(options);
     }
 
     private static TransitionDefinition DefaultTransition =>
-        new("morph", "morph-exit", "morph-enter", 420, 480, 140, "cubic-bezier(0.22, 1, 0.36, 1)");
+        new("morph", "morph-melt", "morph-strude", 440, 500, 150, 30,
+            "cubic-bezier(0.52, 0, 0.74, 0.25)", "cubic-bezier(0.34, 1.25, 0.64, 1)");
 }

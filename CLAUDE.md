@@ -50,6 +50,15 @@ dotnet build RemoteAgents.slnx
 dotnet test  RemoteAgents.slnx
 ```
 
+## Verifying the frontend
+
+A green build doesn't prove a Blazor UI works — the in-tool preview runs no WASM
+and can't see CSS animation or runtime errors. To check real rendering, console/
+page/network errors, or motion, drive an actual browser with
+[`tools/frontend-verify/`](tools/frontend-verify/README.md) (Playwright over
+system Chrome/Edge — no browser download; `npm install` once). It can `--serve` a
+project, gate on a selector, screenshot, and burst-capture animation frames.
+
 ## Code standards
 
 Judgment-call rules we operate by. Mechanical style (formatting, naming) moves
