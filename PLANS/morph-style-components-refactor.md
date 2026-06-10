@@ -1,10 +1,25 @@
 # Morph style-components refactor
 
-**Status:** reviewed + revised (not started) · **Scope:** `src/Morph` + its consumers · **Owner:** —
+**Status:** ✅ built (all 7 steps shipped, runtime-verified) · **Scope:** `src/Morph` + its consumers · **Owner:** —
 
 This document is standalone. It assumes no prior conversation. Read it cold and
 you should understand what Morph is today, what we're changing, why, and exactly
 what the target looks like.
+
+> **Build outcome (2026-06-10).** Implemented exactly as specified. Conflict A
+> (completion) is the `getAnimations({subtree:true})` + `Promise.all(...finished)`
+> seam awaited from C# (`AbortError`→`JSException` caught, `_phaseGen` guards
+> interruption); the counting/sentinel/custom-event machinery is gone, and the
+> cut-out needs no completion plumbing. Conflict B (timing) projects each style's
+> `TransitionDefinition.Vars` onto its `.morph-item` via a `MorphShape` `Vars`
+> passthrough; the stage emits only `--max-depth`. C (no `Type` registry) and D
+> (keyframe-name fields dropped) as written. Verified in a real browser: per-subtree
+> `--enter-dur` differs in one route (raised 500ms vs cut-out 1100ms); route /
+> swap / async / cut-out (two cycles) / interruption all settle with no hang;
+> reduced motion swaps in ~32ms; no console/page errors. The cut-out look/open/close
+> was tuned in `spikes/cutout-demo` (now deleted) and lives in `Styles/Cutout`.
+> *(Note: an earlier parallel branch had built the pre-revision counting approach;
+> this branch was realigned to this revised plan and the dead machinery removed.)*
 
 > **Revision note (post-review).** Four conflicts surfaced when the design was
 > checked against the actual engine; their resolutions are folded into the
