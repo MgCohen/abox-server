@@ -44,12 +44,23 @@ internal static class ArchitectureModel
     public const string FeaturesNs = @"^RemoteAgents\.Features\.";
     public const string HostNs = @"^RemoteAgents\.Host(\.|$)";
 
-    // The orphan guard's vocabulary: a governed type must match one of the category namespaces.
-    // Built from the constants above so a new band updates both the bands and this union in one place.
-    public static readonly string KnownCategoryNs =
-        OursPrefix + "(" + string.Join("|",
-            new[] { ContractsNs, InfrastructureNs, DomainNs, FeaturesNs, HostNs }
-                .Select(ns => ns[OursPrefix.Length..])) + ")";
+    // The agreed homes for production code — the entire legal structure, in one readable list (not a
+    // regex). A type belongs if its namespace IS a home or nests beneath it (segment-aware, so
+    // 'Infrastructure' never swallows a stray 'InfrastructureX'). THIS LIST is the source of truth:
+    // a RemoteAgents.* namespace under no home escaped the structure — flat RemoteAgents.Contracts
+    // today, any stray folder tomorrow. Add a home here only when the structure itself grows.
+    public static readonly string[] AgreedHomes =
+    {
+        "RemoteAgents.Infrastructure",
+        "RemoteAgents.Domain",
+        "RemoteAgents.Features",
+        "RemoteAgents.Host",
+    };
+
+    public static bool IsOutsideStructure(string @namespace) =>
+        @namespace.StartsWith("RemoteAgents.", StringComparison.Ordinal)
+        && !AgreedHomes.Any(home =>
+            @namespace == home || @namespace.StartsWith(home + ".", StringComparison.Ordinal));
 
     // Suffixed *Band so the identifiers don't collide with the same-named namespaces (Contracts,
     // Domain, Host, ...) reachable from this test's RemoteAgents.* namespace under `using static`.

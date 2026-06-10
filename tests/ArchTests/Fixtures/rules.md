@@ -31,5 +31,6 @@ are resolved to types by namespace convention in `ArchitectureModel`.
 - **Why:** Slices change independently. Cross-feature coupling goes through Contracts/events, never a direct implementation reference.
 - **Note:** Depending on a peer's Contracts is the legal channel.
 
-### Every type must belong to a known category
-- **Why:** Categories are the rulebook's vocabulary; a type outside all of them is ungoverned. This is the tripwire that fires when a band is added outside the known structure.
+### No code lives outside the agreed structure
+- **Why:** The agreed homes (Infrastructure, Domain, Features, Host) are the only legal places production code may live. A `RemoteAgents.*` namespace under none of them escaped the structure — this guard rejects it by default rather than waiting for someone to bless it with a new band.
+- **Note:** The homes are a positive allow-list in `ArchitectureModel.AgreedHomes`, matched as wildcards (a home or anything nested beneath it). A flat `RemoteAgents.Contracts` sits under no home, so it fails here until contracts move under `Features/<F>/Contracts`.

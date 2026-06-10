@@ -52,9 +52,22 @@ public class RuleTests
                         .Check(Architecture);
     }
 
-    [Rule("Every type must belong to a known category")]
-    public void EveryTypeBelongsToAKnownCategory() =>
-        Types().That().ResideInNamespaceMatching(OursPrefix).Should()
-            .ResideInNamespaceMatching(KnownCategoryNs)
-            .Check(Architecture);
+    [Rule("No code lives outside the agreed structure")]
+    public void NoCodeOutsideTheAgreedStructure()
+    {
+        var strays = Architecture.Types
+            .Select(t => t.Namespace.FullName)
+            .Where(IsOutsideStructure)
+            .Distinct()
+            .OrderBy(ns => ns, StringComparer.Ordinal)
+            .ToList();
+
+        var offenders = string.Join(
+            Environment.NewLine,
+            strays.Select(ns => $"{ns} is outside the agreed homes. Move it to the correct place."));
+        var homes = string.Join(Environment.NewLine, AgreedHomes.Select(h => $"* {h}"));
+
+        Assert.True(strays.Count == 0,
+            offenders + Environment.NewLine + Environment.NewLine + "Valid homes:" + Environment.NewLine + Environment.NewLine + homes);
+    }
 }
