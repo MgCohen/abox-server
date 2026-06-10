@@ -1,4 +1,4 @@
-namespace RemoteAgents.Contracts;
+namespace RemoteAgents.Features.Flows.Start;
 
 public sealed record StartRunRequest(
     string Project,

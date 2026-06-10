@@ -4,7 +4,6 @@
     <ProjectReference Include="..\Features\Flows\Module\RemoteAgents.Flows.Module.csproj" />
     <ProjectReference Include="..\Domain\Agents\RemoteAgents.Domain.Agents.csproj" />
     <ProjectReference Include="..\Infrastructure\RemoteAgents.Infrastructure.csproj" />
-    <ProjectReference Include="..\RemoteAgents.Contracts\RemoteAgents.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

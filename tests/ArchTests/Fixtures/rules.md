@@ -7,15 +7,14 @@ under a rule carry its rationale and any scoped notes — add bullets as a rule 
 the header as a question. To add a rule: append a `###` block here and its tagged test. Categories
 are resolved to types by namespace convention in `ArchitectureModel`.
 
-> Not yet covered (deliberate, see README): `Web → Contracts only` (Web isn't loaded into the
-> model yet) and `PtySession internal` (the spawn wall, once it's internalized). Per-feature
-> `Contracts/` nested inside a feature is a future graduation of *Contracts must not depend on
-> internal assemblies*.
+> Not yet covered (deliberate, see README): `PtySession internal` (the spawn wall, once it's
+> internalized).
 
 ---
 
 ### Contracts must not depend on internal assemblies
 - **Why:** Contracts are the bind surface the UI and peers consume — they must carry zero internal dependencies (Infrastructure, Domain, Features, Host) so anyone can reference them without dragging the system in.
+- **Note:** Scoped to a Contracts leaf wherever it lands (flat or per-feature `Features/<F>/Contracts`). **Empty today** — flat `RemoteAgents.Contracts` was dissolved into the Domain read-model + feature wire types, and the per-feature leaves don't exist yet. The test runs `WithoutRequiringPositiveResults()` so the dormant period is an honest pass, not a vacuous-green hole; it auto-activates the moment the first leaf lands. (The one rule we deliberately allow to be empty — it is *known* to be repopulating, unlike the orphan guard which must always have subjects.)
 
 ### Infrastructure must not depend on other internal assemblies
 - **Why:** Everything may depend on Infrastructure; it depends on nothing internal. Business-agnostic plumbing only — the floor of the graph.

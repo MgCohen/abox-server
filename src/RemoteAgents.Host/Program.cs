@@ -1,4 +1,3 @@
-using RemoteAgents.Contracts;
 using RemoteAgents.Features.Flows.Module;
 using RemoteAgents.Host;
 using RemoteAgents.Infrastructure.Projects;
@@ -11,8 +10,7 @@ app.UseCors(Composition.CorsPolicy);
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
-app.MapGet("/projects", (IProjectRegistry projects) =>
-    projects.List().Select(p => new ProjectInfo(p.Name, p.Path)));
+app.MapGet("/projects", (IProjectRegistry projects) => projects.List());
 
 app.MapFlows();
 

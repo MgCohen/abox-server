@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
-using RemoteAgents.Contracts;
 using RemoteAgents.Domain.Flow;
 
 namespace RemoteAgents.Features.Flows.Catalog;

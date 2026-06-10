@@ -1,5 +1,5 @@
 using System.Text.Json;
-using RemoteAgents.Contracts;
+using RemoteAgents.Infrastructure.Json;
 
 namespace RemoteAgents.Domain.Flow;
 

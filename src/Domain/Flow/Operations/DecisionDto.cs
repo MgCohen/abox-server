@@ -1,4 +1,4 @@
-namespace RemoteAgents.Contracts;
+namespace RemoteAgents.Domain.Flow.Operations;
 
 public sealed record DecisionDto(
     string Kind,

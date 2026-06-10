@@ -1,6 +1,6 @@
-namespace RemoteAgents.Contracts;
+namespace RemoteAgents.Domain.Flow;
 
-public enum OperationStatus
+public enum FlowPhase
 {
     Pending,
     Running,

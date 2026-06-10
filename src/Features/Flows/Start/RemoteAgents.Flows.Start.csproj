@@ -7,7 +7,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\Domain\Flow\RemoteAgents.Domain.Flow.csproj" />
     <ProjectReference Include="..\..\..\Infrastructure\RemoteAgents.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\..\RemoteAgents.Contracts\RemoteAgents.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

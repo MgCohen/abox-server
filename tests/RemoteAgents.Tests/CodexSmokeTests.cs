@@ -1,4 +1,4 @@
-using RemoteAgents.Contracts;
+using RemoteAgents.Domain.Flow.Operations;
 using Xunit.Abstractions;
 
 namespace RemoteAgents.Tests;

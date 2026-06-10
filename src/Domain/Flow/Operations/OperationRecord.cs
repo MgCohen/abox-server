@@ -1,5 +1,3 @@
-using RemoteAgents.Contracts;
-
 namespace RemoteAgents.Domain.Flow.Operations;
 
 internal class OperationRecord(string name)

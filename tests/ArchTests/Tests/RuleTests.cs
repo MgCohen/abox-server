@@ -15,6 +15,7 @@ public class RuleTests
             .NotDependOnAny(DomainBand).AndShould()
             .NotDependOnAny(FeaturesBand).AndShould()
             .NotDependOnAny(HostBand)
+            .WithoutRequiringPositiveResults()
             .Check(Architecture);
 
     [Rule("Infrastructure must not depend on other internal assemblies")]

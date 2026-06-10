@@ -36,9 +36,13 @@ internal static class ArchitectureModel
 
     // Categories, keyed by namespace convention — every assembly that lands in a band is covered.
     // Boundary anchor (\.|$) stops a prefix from leaking into a same-named sibling (e.g. a future
-    // RemoteAgents.Contracts<X> namespace does not get mistaken for the Contracts leaf).
+    // RemoteAgents.InfrastructureX namespace does not get mistaken for Infrastructure).
     public const string OursPrefix = @"^RemoteAgents\.";
-    public const string ContractsNs = @"^RemoteAgents\.Contracts(\.|$)";
+    // A Contracts leaf wherever it lives — flat RemoteAgents.Contracts or a nested per-feature
+    // Features/<F>/Contracts. Empty today (the flat one was dissolved, the leaves don't exist yet);
+    // the rule keyed to it runs WithoutRequiringPositiveResults so the dormant period passes
+    // honestly and the guard auto-activates the moment the first leaf lands.
+    public const string ContractsNs = @"^RemoteAgents\.(.+\.)?Contracts(\.|$)";
     public const string InfrastructureNs = @"^RemoteAgents\.Infrastructure(\.|$)";
     public const string DomainNs = @"^RemoteAgents\.Domain\.";
     public const string FeaturesNs = @"^RemoteAgents\.Features\.";
@@ -47,8 +51,8 @@ internal static class ArchitectureModel
     // The agreed homes for production code — the entire legal structure, in one readable list (not a
     // regex). A type belongs if its namespace IS a home or nests beneath it (segment-aware, so
     // 'Infrastructure' never swallows a stray 'InfrastructureX'). THIS LIST is the source of truth:
-    // a RemoteAgents.* namespace under no home escaped the structure — flat RemoteAgents.Contracts
-    // today, any stray folder tomorrow. Add a home here only when the structure itself grows.
+    // a RemoteAgents.* namespace under no home escaped the structure — any stray top-level band.
+    // Add a home here only when the structure itself grows.
     public static readonly string[] AgreedHomes =
     {
         "RemoteAgents.Infrastructure",

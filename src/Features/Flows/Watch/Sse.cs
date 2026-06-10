@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
-using RemoteAgents.Contracts;
+using RemoteAgents.Domain.Flow;
+using RemoteAgents.Infrastructure.Json;
 
 namespace RemoteAgents.Features.Flows.Watch;
 

@@ -1,5 +1,3 @@
-using RemoteAgents.Contracts;
-
 namespace RemoteAgents.Domain.Flow;
 
 public interface IFlowHistory

@@ -1,4 +1,6 @@
-namespace RemoteAgents.Contracts;
+using RemoteAgents.Domain.Flow.Operations;
+
+namespace RemoteAgents.Domain.Flow;
 
 public sealed record FlowSnapshot(
     Guid Id,
