@@ -24,8 +24,8 @@ src/
     Agents/             PURE CONTAINER folder — no csproj.
       Run/              ASSEMBLY — one use case (handler only).
       List/             ASSEMBLY — one use case.
-      Shared/           ASSEMBLY [optional] — non-domain code shared by this
-                          feature's use cases. On probation.
+      Shared/           ASSEMBLY when present — non-domain code shared by this
+                          feature's use cases. Optional folder; on probation.
       Contracts/        LEAF ASSEMBLY — one per feature. request/response/DTO/events.
       Module/           ASSEMBLY (thin) — refs Run/List/Shared/Contracts; exposes AddAgents().
     Flows/ Validation/ Evaluation/ BuildLoop/ Notifications/ …   (same template)
@@ -34,7 +34,7 @@ src/
     Agents/             ASSEMBLY (one aggregate) — agent runtime domain service:
                           IAgentRuntime (public) + PtySession (internal) +
                           SubscriptionGuard + EnvScrub + teardown + TUI choreography.
-    Kernel/             LEAF [optional] — primitives (Id<T>, value types). ZERO entities.
+    Kernel/             LEAF when present — primitives (Id<T>, value types). Optional; ZERO entities.
     (Verdict/ Project/ …  appear ONLY on a shared-invariant case, referenced by Id.)
 
   Infrastructure/       THE FLOOR. depends on nothing; anything may depend on it.
@@ -51,7 +51,7 @@ tests/                  test SOURCE only — zero build output (→ /artifacts).
     Architecture.Tests/
   Acceptance/           PRD AC1–AC6 / oracle Tier-A, end-to-end through the spine.
     Spine.Tests/
-  TestSupport/          ONLY genuinely-shared harness/fixtures/builders (lib, not a test project).
+  Support/              ONLY genuinely-shared harness/fixtures/builders (lib, not a test project).
 
 artifacts/              ALL build output. The ONLY place artifacts may exist.
   bin/<project>/<config>_<tfm>/    obj/<project>/    publish/    package/
@@ -65,20 +65,28 @@ bin/obj here; test results + logs target the subfolders above. Wipe with
 
 ---
 
-## Where assemblies go
+## Folder matrix
 
-| Unit | Assembly? | Holds |
-|---|---|---|
-| `Features/<F>/` | No — pure container folder | nothing (no csproj) |
-| `Features/<F>/<UseCase>/` | **Yes** — one per use case | one handler, end-to-end |
-| `Features/<F>/Shared/` | Optional | non-domain code shared across the feature's use cases |
-| `Features/<F>/Contracts/` | **Yes** — leaf, one per feature | request/response/DTO/events |
-| `Features/<F>/Module/` | **Yes** — thin | `AddX()` registration; refs the feature's assemblies |
-| `Domain/<Aggregate>/` | **Yes** — one per aggregate | aggregate state + invariants; or a domain service |
-| `Domain/Kernel/` | Optional — leaf | primitives only, zero entities |
-| `Infrastructure/` | **Yes** — the floor | business-agnostic plumbing |
-| `tests/<Type>/<Area>.Tests/` | **Yes** — one per feature / aggregate / infra-lib (NOT per use case) | tests + their local fakes/stubs |
-| `tests/TestSupport/` | **Yes** — plain lib | shared harness / fixtures / builders only |
+Every folder in the structure. **Required?** = must exist for the structure to be
+valid. **Assembly?** = is a `.csproj` (vs. a plain container folder).
+
+| Folder | Required? | Assembly? | Holds | Notes |
+|---|---|---|---|---|
+| `src/Host/` | Y | Y | composition root + service registration | refs `*.Module` (+ `Infrastructure`) only |
+| `src/Web/` | Y | Y | Blazor UI | refs `*.Contracts` leaves only |
+| `Features/<F>/` | Y | **N** | — | pure container folder, no csproj |
+| `Features/<F>/<UseCase>/` | Y | Y | one handler, end-to-end | one per use case; can't reach a sibling use case |
+| `Features/<F>/Shared/` | **N** | Y | non-domain code shared across the feature's use cases | optional folder — **if present, it's an assembly**; on probation |
+| `Features/<F>/Contracts/` | Y | Y | request/response/DTO/events | leaf, one per feature; WASM-safe |
+| `Features/<F>/Module/` | Y | Y | `AddX()` registration | thin; refs the feature's own assemblies |
+| `Domain/` | Y | **N** | — | container band; shared RULES only, starts ~empty |
+| `Domain/<Aggregate>/` | **N** | Y | aggregate state + invariants, or a domain service | one per aggregate; only on a shared-invariant case; peers by Id |
+| `Domain/Kernel/` | **N** | Y | primitives only (`Id<T>`, value types) | optional folder — **if present, it's a leaf**; ZERO entities |
+| `Infrastructure/` | Y | Y | business-agnostic plumbing | the floor; depends on nothing |
+| `tests/<Type>/` | Y | **N** | `<Area>.Tests` projects | container; `<Type>` ∈ Unit / Integration / Architecture / Acceptance. Unit mirrors `src/` |
+| `tests/<Type>/<Area>.Tests/` | — | Y | tests + local fakes/stubs | one per feature / aggregate / infra-lib — NOT per use case |
+| `tests/Support/` | N | Y | shared harness / fixtures / builders | plain lib; only on genuine reuse |
+| `artifacts/` | — | **N** | all build output | generated, never source; the ONLY place artifacts exist |
 
 ---
 
@@ -93,7 +101,7 @@ bin/obj here; test results + logs target the subfolders above. Wipe with
 | `<F>.Contracts` | **nothing** (leaf) — or `Domain.Kernel` only, if WASM-safe |
 | `Domain.<Aggregate>` | `Infrastructure`, `Domain.Kernel`; peers **by Id only** |
 | `Infrastructure` | nothing (third-party only) |
-| `<Area>.Tests` | the source assembly under test (+ `TestSupport`) — **nothing references a test project** |
+| `<Area>.Tests` | the source assembly under test (+ `Support`) — **nothing references a test project** |
 
 ---
 
@@ -148,22 +156,28 @@ bin/obj here; test results + logs target the subfolders above. Wipe with
     per use case** (test projects are leaves, so compile walls don't apply; cohesion
     and tooling weight decide).
 15. **Test doubles live with the test that uses them.** Fakes/stubs stay local to the
-    consuming test; promote to `TestSupport` only when genuinely reused as a harness.
+    consuming test; promote to `Support` only when genuinely reused as a harness.
+16. **Repositories inherit downward.** Generic `IRepository<T>` (+ impl) lives in
+    `Infrastructure`; a typed `IAgentRepository : IRepository<Agent>` lives in
+    `Domain.Agents` and inherits down — `Infrastructure` never references `Agent`. The
+    `where T : IEntity` marker is an agnostic primitive in `Infrastructure`/`Kernel`.
 
 ---
 
-## Repositories
+## Slice anatomy & composition
 
-Generic `IRepository<T>` (+ impl) lives in `Infrastructure`. A typed
-`IAgentRepository : IRepository<Agent>` lives in `Domain.Agents` and inherits down —
-`Infrastructure` never references `Agent`. The `where T : IEntity` marker is an
-agnostic primitive in Infra/Kernel.
+One feature slice, end to end:
 
----
+```
+Features/<F>/
+  <UseCase>/   handler        refs own Contracts + the Domain.<Aggregate> it needs + Infrastructure
+  Shared/      (if present)    non-domain code shared by this feature's use cases
+  Contracts/   leaf            request/response/DTO/events — what the outside binds to
+  Module/      AddX()          registers the above; the ONLY public registration seam
+```
 
-## Composition (deliberately revertable)
+Composition (deliberately revertable):
 
-Per-feature `Module` assembly exposes `AddX()` and references the feature's use cases;
-`Host` references only `*.Module`. This is *only* the registration entry point —
-swapping it later (root `Application` assembly, assembly scanning, Host-references-each)
-touches the Add wiring only, never the use-case assemblies or their reference graph.
+- `Host` references `*.Module` only; each `Module` exposes `AddX()`.
+- Swapping the seam later (root `Application` assembly, assembly scan, Host-refs-each)
+  touches the Add wiring only — never the use-case assemblies or the reference graph.
