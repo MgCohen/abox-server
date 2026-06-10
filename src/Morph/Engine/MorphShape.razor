@@ -11,7 +11,7 @@
 
     [Parameter] public string? Class { get; set; }
 
-    [Parameter] public string? Vars { get; set; }
+    [Parameter, EditorRequired] public string Vars { get; set; } = default!;
 
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
@@ -20,9 +20,7 @@
 
     private int Depth => Stage?.Depth ?? 0;
 
-    private string StyleString => string.IsNullOrEmpty(Vars)
-        ? $"--depth:{Depth};--rand:{_rand}"
-        : $"{Vars};--depth:{Depth};--rand:{_rand}";
+    private string StyleString => $"{Vars};--depth:{Depth};--rand:{_rand}";
 
     protected override void OnInitialized()
     {

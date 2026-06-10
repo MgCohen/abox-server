@@ -30,13 +30,13 @@
 }
 
 .morph-stage[data-phase="exit"] .neu-raised > *:not(.morph-item) {
-    animation: morph-content-out calc(var(--exit-dur) * var(--content-lead, 0.45)) var(--exit-ease) both;
+    animation: morph-content-out calc(var(--exit-dur) * var(--content-lead)) var(--exit-ease) both;
     animation-delay: calc((var(--max-depth, 0) - var(--depth, 0)) * var(--depth-step, 0ms) + var(--rand, 0) * var(--scatter, 0ms));
 }
 
 .morph-stage[data-phase="enter"] .neu-raised > *:not(.morph-item) {
-    animation: morph-content-in calc(var(--enter-dur) * var(--content-trail, 0.5)) var(--enter-ease) both;
-    animation-delay: calc(var(--depth, 0) * var(--depth-step, 0ms) + var(--enter-dur) * (1 - var(--content-trail, 0.5)) + var(--rand, 0) * var(--scatter, 0ms));
+    animation: morph-content-in calc(var(--enter-dur) * var(--content-trail)) var(--enter-ease) both;
+    animation-delay: calc(var(--depth, 0) * var(--depth-step, 0ms) + var(--enter-dur) * (1 - var(--content-trail)) + var(--rand, 0) * var(--scatter, 0ms));
 }
 
 @media (prefers-reduced-motion: reduce) {
