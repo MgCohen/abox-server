@@ -1,84 +1,68 @@
 @page "/"
 @namespace MorphDemo.Pages
-@implements IDisposable
-@inject DemoTransitionState State
 
-<nav class="nav"><a href="">Home</a> · <a href="b">Page B</a></nav>
+<h1 class="page-title">Gallery</h1>
+<p class="page-sub">Every shape, size, and nesting depth on one screen — eyeball any transition without rebuilding.</p>
 
-<button class="swap" @onclick="Toggle">Swap (now @_view)</button>
+<div class="grid">
+    <MorphShape Class="neu-raised card">
+        <h2>Raised card</h2>
+        <p class="lead">A flat depth-0 panel: a heading and a line of copy, so you can see text ride the morph.</p>
+    </MorphShape>
 
-<MorphStage Screen="_view" Context="v" Transition="@State.Current">
-    @if (v == 0)
-    {
-        <MorphShape Class="neu-raised card">
-            <h2>Screen A</h2>
-            <MorphShape Class="neu-inset inner">
-                <span>A · inner 1</span>
-            </MorphShape>
-            <MorphShape Class="neu-inset inner">
-                <span>A · inner 2</span>
-                <MorphShape Class="neu-raised leaf">A · leaf</MorphShape>
-            </MorphShape>
+    <MorphShape Class="neu-inset card">
+        <h2>Inset card</h2>
+        <p class="muted">Two muted lines —</p>
+        <p class="muted">— pressed into the surface.</p>
+    </MorphShape>
+
+    <MorphShape Class="neu-raised card">
+        <h2>Nested · depth 2</h2>
+        <MorphShape Class="neu-inset inner">
+            <span class="muted">inner · inset</span>
+            <MorphShape Class="neu-raised leaf">leaf · raised</MorphShape>
         </MorphShape>
-    }
-    else
-    {
-        <MorphShape Class="neu-raised card">
-            <h2>Screen B</h2>
-            <MorphShape Class="neu-inset inner">
-                <span>B · inner 1</span>
-                <MorphShape Class="neu-raised leaf">B · leaf</MorphShape>
-            </MorphShape>
-            <MorphShape Class="neu-inset inner">
-                <span>B · inner 2</span>
-            </MorphShape>
-        </MorphShape>
-    }
-</MorphStage>
+    </MorphShape>
 
-<div class="load-demo">
-    <button class="swap" @onclick="LoadFast">Load fast</button>
-    <button class="swap" @onclick="LoadSlow">Load slow (times out)</button>
+    <MorphShape Class="neu-raised card">
+        <div class="row">
+            <MorphShape Class="neu-inset circle">MC</MorphShape>
+            <div class="col">
+                <strong>Avatar row</strong>
+                <span class="muted">round shape, nested one deep</span>
+            </div>
+        </div>
+        <div>
+            <span class="chip">tag</span>
+            <span class="chip">pill chip</span>
+        </div>
+    </MorphShape>
 
-    <MorphStage Screen="_loadKey" Load="LoadAsync" Transition="@State.Current">
-        <ChildContent Context="k">
-            <MorphShape Class="neu-raised card">
-                <h2>Loaded item #@k</h2>
-            </MorphShape>
-        </ChildContent>
-        <LoadingContent>
-            <div class="status">loading…</div>
-        </LoadingContent>
-        <ErrorContent Context="ex">
-            <div class="status error">@ex.Message</div>
-        </ErrorContent>
-    </MorphStage>
+    <MorphShape Class="neu-inset tile">
+        <div class="stat-num">128</div>
+        <div class="stat-label">flat stat tile</div>
+    </MorphShape>
+
+    <MorphShape Class="neu-raised card">
+        <img class="thumb neu-inset" src="@SwatchA" alt="swatch" />
+        <span class="muted">image + caption</span>
+    </MorphShape>
+
+    <MorphShape Class="neu-raised card wide">
+        <div class="spread">
+            <div class="col">
+                <strong>Wide panel</strong>
+                <span class="muted">spans the grid; the buttons are content, not shapes</span>
+            </div>
+            <div class="btn-row">
+                <button class="btn">Secondary</button>
+                <button class="btn primary">Primary</button>
+            </div>
+        </div>
+    </MorphShape>
 </div>
 
 @code {
-    private int _view;
-    private int _loadKey;
-    private bool _slowNext;
-
-    protected override void OnInitialized() => State.Changed += OnTransitionChanged;
-
-    private void OnTransitionChanged() => InvokeAsync(StateHasChanged);
-
-    private void Toggle() => _view = _view == 0 ? 1 : 0;
-
-    private void LoadFast()
-    {
-        _slowNext = false;
-        _loadKey++;
-    }
-
-    private void LoadSlow()
-    {
-        _slowNext = true;
-        _loadKey++;
-    }
-
-    private async Task LoadAsync(int key) => await Task.Delay(_slowNext ? 3000 : 200);
-
-    public void Dispose() => State.Changed -= OnTransitionChanged;
+    private const string SwatchA =
+        "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 100'%3E%3Crect width='160' height='100' fill='%236c5ce7'/%3E%3Ccircle cx='52' cy='52' r='26' fill='%23fdf7ec' fill-opacity='.85'/%3E%3Crect x='96' y='30' width='44' height='42' rx='9' fill='%235d8cf0'/%3E%3C/svg%3E";
 }

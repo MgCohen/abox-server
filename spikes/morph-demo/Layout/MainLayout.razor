@@ -4,13 +4,20 @@
 @inject DemoTransitionState State
 
 <div class="shell">
-    <label class="transition-picker">
-        Transition:
-        <select @bind="State.Current">
-            <option value="morph">morph</option>
-            <option value="slide">slide</option>
-        </select>
-    </label>
+    <header class="topbar">
+        <nav class="nav">
+            <NavLink href="" Match="NavLinkMatch.All">Gallery</NavLink>
+            <NavLink href="dashboard">Dashboard</NavLink>
+            <NavLink href="profile">Profile</NavLink>
+        </nav>
+        <label class="transition-picker">
+            Transition:
+            <select @bind="State.Current">
+                <option value="morph">morph</option>
+                <option value="slide">slide</option>
+            </select>
+        </label>
+    </header>
     <MorphRouteStage Body="@Body" Transition="@State.Current" />
 </div>
 
