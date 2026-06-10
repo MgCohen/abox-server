@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Infrastructure\RemoteAgents.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\RemoteAgents.Contracts\RemoteAgents.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

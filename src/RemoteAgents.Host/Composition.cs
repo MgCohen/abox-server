@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.DependencyInjection;
 using RemoteAgents.Engine.Flows;
+using RemoteAgents.Flows;
 using RemoteAgents.Actors.Agents;
 using RemoteAgents.Actors.Agents.Claude;
 using RemoteAgents.Tools.Paths;
@@ -35,7 +36,10 @@ internal static class Composition
         services.AddSingleton<IAgentFactory, AgentFactory>();
 
         // Eager build → fail-fast on a bad entry. Flows are stateless (config is a run arg), so transient. See ADR 0001.
-        var catalog = FlowCatalog.Build();
+        var catalog = new FlowCatalog();
+        catalog.Register<StubFlow>(new FlowConfig("stub", "Walking-skeleton stub: placeholder steps, no real work."));
+        catalog.Register<CodexPingFlow>(new FlowConfig("codex-ping", "Drive the Codex reviewer with the run prompt."));
+        catalog.Register<ClaudePingFlow>(new FlowConfig("claude-ping", "Drive the Claude implementer with the run prompt."));
         foreach (var def in catalog.All())
             services.AddTransient(def.FlowType);
         services.AddSingleton(catalog);

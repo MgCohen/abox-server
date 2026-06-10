@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Domain\Flow\RemoteAgents.Domain.Flow.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\RemoteAgents.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -2,7 +2,11 @@
   <Folder Name="/src/">
     <Project Path="src/Morph/Morph.csproj" />
     <Project Path="src/RemoteAgents.Contracts/RemoteAgents.Contracts.csproj" />
-    <Project Path="src/RemoteAgents/RemoteAgents.csproj" />
+    <Project Path="src/Infrastructure/RemoteAgents.Infrastructure.csproj" />
+    <Project Path="src/Domain/Flow/RemoteAgents.Domain.Flow.csproj" />
+    <Project Path="src/Domain/Agents/RemoteAgents.Domain.Agents.csproj" />
+    <Project Path="src/Features/Flows/Definitions/RemoteAgents.Flows.Definitions.csproj" />
+    <Project Path="src/Features/Git/RemoteAgents.Git.csproj" />
     <Project Path="src/RemoteAgents.Host/RemoteAgents.Host.csproj" />
     <Project Path="src/RemoteAgents.Web/RemoteAgents.Web.csproj" />
   </Folder>
