@@ -1,3 +1,3 @@
-namespace RemoteAgents.Actors.Agents.Claude;
+namespace RemoteAgents.Domain.Agents.Claude;
 
 public sealed record PermissionRequest(string Id, string Payload);

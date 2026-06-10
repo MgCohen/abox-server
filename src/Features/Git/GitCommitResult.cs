@@ -1,4 +1,4 @@
-namespace RemoteAgents.Actors.Git;
+namespace RemoteAgents.Features.Git;
 
 public sealed record GitCommitResult(string Hash, string Subject)
 {

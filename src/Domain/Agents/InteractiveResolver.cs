@@ -1,4 +1,4 @@
-namespace RemoteAgents.Actors.Agents;
+namespace RemoteAgents.Domain.Agents;
 
 // Parks the decision in the registry and blocks until a human answers it or the run
 // is cancelled (token trip ⇒ null ⇒ terminal NeedsInput). Pre-UI a scripted

@@ -1,7 +1,7 @@
 using System.Text;
 using Porta.Pty;
 
-namespace RemoteAgents.Tools.CommandLine;
+namespace RemoteAgents.Infrastructure.CommandLine;
 
 public sealed class PtySession : IAsyncDisposable
 {

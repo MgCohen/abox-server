@@ -1,5 +1,5 @@
-using RemoteAgents.Engine.Operations;
+using RemoteAgents.Domain.Flow.Operations;
 
-namespace RemoteAgents.Actors.Agents;
+namespace RemoteAgents.Domain.Agents;
 
 public sealed record AgentArgs(string Intent, string Prompt) : OperationArgs(Intent);

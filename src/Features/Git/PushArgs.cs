@@ -1,6 +1,6 @@
-using RemoteAgents.Engine.Operations;
+using RemoteAgents.Domain.Flow.Operations;
 
-namespace RemoteAgents.Actors.Git;
+namespace RemoteAgents.Features.Git;
 
 public sealed record PushArgs(string Remote = "origin", string? Branch = null, bool Force = false)
     : OperationArgs("git-push");

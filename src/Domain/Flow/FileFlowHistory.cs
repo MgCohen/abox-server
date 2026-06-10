@@ -1,7 +1,7 @@
 using System.Text.Json;
 using RemoteAgents.Contracts;
 
-namespace RemoteAgents.Engine.Flows;
+namespace RemoteAgents.Domain.Flow;
 
 public sealed class FileFlowHistory : IFlowHistory
 {

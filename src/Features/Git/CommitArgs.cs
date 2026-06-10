@@ -1,6 +1,6 @@
-using RemoteAgents.Engine.Operations;
+using RemoteAgents.Domain.Flow.Operations;
 
-namespace RemoteAgents.Actors.Git;
+namespace RemoteAgents.Features.Git;
 
 public sealed record CommitArgs(string Message, IReadOnlyList<string> Files, string? CoAuthor = null)
     : OperationArgs("git-commit");

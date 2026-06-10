@@ -1,4 +1,4 @@
-namespace RemoteAgents.Actors.Agents;
+namespace RemoteAgents.Domain.Agents;
 
 public interface IProvider
 {

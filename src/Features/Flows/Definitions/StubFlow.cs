@@ -1,8 +1,8 @@
-using RemoteAgents.Actors.Agents;
-using RemoteAgents.Engine.Flows;
-using RemoteAgents.Engine.Operations;
+using RemoteAgents.Domain.Agents;
+using RemoteAgents.Domain.Flow;
+using RemoteAgents.Domain.Flow.Operations;
 
-namespace RemoteAgents.Flows;
+namespace RemoteAgents.Features.Flows.Definitions;
 
 // PROVISIONAL walking skeleton — placeholder operations around one fake agent.
 // Keeps its own fake so it stays CLI-free now that Agents.Implementer is real

@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace RemoteAgents.Tools.CommandLine;
+namespace RemoteAgents.Infrastructure.CommandLine;
 
 public static class RunCommand
 {

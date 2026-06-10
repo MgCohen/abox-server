@@ -1,4 +1,4 @@
-namespace RemoteAgents.Actors.Agents;
+namespace RemoteAgents.Domain.Agents;
 
 // PROVISIONAL fake drive for the walking skeleton — real providers (Codex/Claude)
 // replace it as agents adopt them.

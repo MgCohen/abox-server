@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 
-namespace RemoteAgents.Actors.Agents;
+namespace RemoteAgents.Domain.Agents;
 
 // The run-spanning registry of decisions waiting on a human. Register parks a
 // decision and hands back a task that completes when someone Resolves it, or null

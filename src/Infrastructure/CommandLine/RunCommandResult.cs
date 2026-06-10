@@ -1,4 +1,4 @@
-namespace RemoteAgents.Tools.CommandLine;
+namespace RemoteAgents.Infrastructure.CommandLine;
 
 public sealed record RunCommandResult(
     string Command,

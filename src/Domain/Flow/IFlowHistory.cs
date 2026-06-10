@@ -1,6 +1,6 @@
 using RemoteAgents.Contracts;
 
-namespace RemoteAgents.Engine.Flows;
+namespace RemoteAgents.Domain.Flow;
 
 public interface IFlowHistory
 {

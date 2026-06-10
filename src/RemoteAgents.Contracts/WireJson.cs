@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace RemoteAgents;
+namespace RemoteAgents.Contracts;
 
 public static class WireJson
 {

@@ -1,7 +1,7 @@
 using Porta.Pty;
-using RemoteAgents.Tools.CommandLine;
+using RemoteAgents.Infrastructure.CommandLine;
 
-namespace RemoteAgents.Actors.Agents.Claude;
+namespace RemoteAgents.Domain.Agents.Claude;
 
 public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolver, AutoPolicy autoPolicy) : IProvider
 {

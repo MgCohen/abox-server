@@ -1,5 +1,5 @@
-using RemoteAgents.Actors.Agents;
-using RemoteAgents.Actors.Agents.Claude;
+using RemoteAgents.Domain.Agents;
+using RemoteAgents.Domain.Agents.Claude;
 using Xunit.Abstractions;
 
 namespace RemoteAgents.Tests;

@@ -1,8 +1,8 @@
 using System.Collections.Concurrent;
 using RemoteAgents.Contracts;
-using RemoteAgents.Engine.Operations;
+using RemoteAgents.Domain.Flow.Operations;
 
-namespace RemoteAgents.Engine.Flows;
+namespace RemoteAgents.Domain.Flow;
 
 public abstract class Flow
 {

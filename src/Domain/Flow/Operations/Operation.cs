@@ -1,6 +1,6 @@
-using RemoteAgents.Engine.Flows;
+using RemoteAgents.Domain.Flow;
 
-namespace RemoteAgents.Engine.Operations;
+namespace RemoteAgents.Domain.Flow.Operations;
 
 public abstract class Operation<TArgs, TResult> : Flow.Operation<TArgs, TResult>
     where TArgs : OperationArgs

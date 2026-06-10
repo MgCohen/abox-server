@@ -1,11 +1,11 @@
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.DependencyInjection;
-using RemoteAgents.Engine.Flows;
-using RemoteAgents.Flows;
-using RemoteAgents.Actors.Agents;
-using RemoteAgents.Actors.Agents.Claude;
-using RemoteAgents.Tools.Paths;
-using RemoteAgents.Tools.Projects;
+using RemoteAgents.Domain.Flow;
+using RemoteAgents.Features.Flows.Definitions;
+using RemoteAgents.Domain.Agents;
+using RemoteAgents.Domain.Agents.Claude;
+using RemoteAgents.Infrastructure.Paths;
+using RemoteAgents.Infrastructure.Projects;
 
 namespace RemoteAgents.Host;
 

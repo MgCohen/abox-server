@@ -1,7 +1,7 @@
-using RemoteAgents.Actors.Agents.Claude;
-using RemoteAgents.Actors.Agents.Codex;
+using RemoteAgents.Domain.Agents.Claude;
+using RemoteAgents.Domain.Agents.Codex;
 
-namespace RemoteAgents.Actors.Agents;
+namespace RemoteAgents.Domain.Agents;
 
 public static class Agents
 {

@@ -1,7 +1,7 @@
 using RemoteAgents.Contracts;
-using RemoteAgents.Engine.Operations;
+using RemoteAgents.Domain.Flow.Operations;
 
-namespace RemoteAgents.Actors.Agents;
+namespace RemoteAgents.Domain.Agents;
 
 public sealed class Agent(IProvider provider, IDecisionResolver resolver, int? resolveCap, string projectDir)
     : Operation<AgentArgs, AgentOutcome>, IDecisionSource

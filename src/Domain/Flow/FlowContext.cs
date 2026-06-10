@@ -1,7 +1,7 @@
 using RemoteAgents.Contracts;
-using RemoteAgents.Engine.Operations;
+using RemoteAgents.Domain.Flow.Operations;
 
-namespace RemoteAgents.Engine.Flows;
+namespace RemoteAgents.Domain.Flow;
 
 public sealed class FlowContext(string flowName, string project, string projectDir, string request)
 {

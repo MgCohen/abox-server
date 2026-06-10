@@ -1,7 +1,7 @@
-using RemoteAgents.Engine.Operations;
-using RemoteAgents.Tools.CommandLine;
+using RemoteAgents.Domain.Flow.Operations;
+using RemoteAgents.Infrastructure.CommandLine;
 
-namespace RemoteAgents.Actors.Git;
+namespace RemoteAgents.Features.Git;
 
 public sealed class Git(string projectDir)
 {
