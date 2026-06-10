@@ -1,0 +1,6 @@
+.neu-inset {
+    background: var(--surface);
+    box-shadow:
+        inset calc(var(--lift) * 5px) calc(var(--lift) * 5px) calc(var(--lift) * 10px) var(--shadow-dark),
+        inset calc(var(--lift) * -5px) calc(var(--lift) * -5px) calc(var(--lift) * 10px) var(--shadow-light);
+}

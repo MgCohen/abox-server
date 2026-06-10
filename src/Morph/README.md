@@ -19,14 +19,17 @@ await host.RunAsync();
 Reference the bundled CSS from `index.html`:
 
 ```html
-<link rel="stylesheet" href="_content/Morph/neu.css" />
+<link rel="stylesheet" href="_content/Morph/theme.css" />
+<link rel="stylesheet" href="_content/Morph/raised.css" />
+<link rel="stylesheet" href="_content/Morph/inset.css" />
 <link rel="stylesheet" href="_content/Morph/morph.css" />
 ```
 
 `morph.css` is the engine (stage rules + reduced-motion + the `morph-melt`/
-`morph-strude` keyframes that drive the `--lift` variable); `neu.css` is one theme
-(tokens, the `@property --lift` registration, and the lift-driven `.neu-raised`/
-`.neu-inset` shadow recipes). Swap the theme without touching the engine.
+`morph-strude` keyframes that drive the `--lift` variable); `theme.css` is one
+theme (tokens + the `@property --lift` registration); each style ships its own
+lift-driven shadow recipe (`raised.css`, `inset.css`). Swap the theme without
+touching the engine.
 
 The built-in "morph" is a **melt & extrude**: a panel's fill matches the surface,
 so its shadow is the only thing that makes it visible. Melt animates `--lift` → 0

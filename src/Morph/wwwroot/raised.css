@@ -1,0 +1,6 @@
+.neu-raised {
+    background: var(--surface);
+    box-shadow:
+        calc(var(--lift) * 10px) calc(var(--lift) * 10px) calc(var(--lift) * 22px) var(--shadow-dark),
+        calc(var(--lift) * -9px) calc(var(--lift) * -9px) calc(var(--lift) * 20px) var(--shadow-light);
+}
