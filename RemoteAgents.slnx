@@ -12,5 +12,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/RemoteAgents.Tests/RemoteAgents.Tests.csproj" />
+    <Project Path="tests/Architecture/RemoteAgents.ArchitectureTests/RemoteAgents.ArchitectureTests.csproj" />
   </Folder>
 </Solution>
