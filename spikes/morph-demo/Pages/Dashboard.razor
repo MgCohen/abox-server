@@ -22,6 +22,23 @@
     <p class="muted">One MorphSurface, dispatched to @_style via a type-safe switch — no DynamicComponent.</p>
 </MorphSurface>
 
+<h2 class="section">Cut-out · open &amp; close</h2>
+<button class="swap" @onclick="ToggleCut">Reopen (panel @(_cut + 1))</button>
+<MorphStage Screen="_cut" Context="c">
+    <MorphCutout Class="cutout-panel">
+        <div class="cutout-body">
+            <div class="cutout-head">
+                <strong>Panel @(c + 1)</strong>
+                <span>opens from a point</span>
+            </div>
+            <div class="cutout-grid">
+                <div class="cutout-tile"><b>@(c == 0 ? "14" : "27")</b><span>runs</span></div>
+                <div class="cutout-tile"><b>86%</b><span>success</span></div>
+            </div>
+        </div>
+    </MorphCutout>
+</MorphStage>
+
 <h2 class="section">In-page swap · MorphStage</h2>
 <button class="swap" @onclick="Toggle">Swap layout (now @(_view == 0 ? "A" : "B"))</button>
 
@@ -76,9 +93,16 @@
     private int _loadKey;
     private bool _slowNext;
     private MorphStyle _style = MorphStyle.Raised;
+    private int _cut;
 
-    private void ToggleStyle() =>
-        _style = _style == MorphStyle.Raised ? MorphStyle.Inset : MorphStyle.Raised;
+    private void ToggleStyle() => _style = _style switch
+    {
+        MorphStyle.Raised => MorphStyle.Inset,
+        MorphStyle.Inset => MorphStyle.Cutout,
+        _ => MorphStyle.Raised,
+    };
+
+    private void ToggleCut() => _cut = _cut == 0 ? 1 : 0;
 
     private void Toggle() => _view = _view == 0 ? 1 : 0;
 

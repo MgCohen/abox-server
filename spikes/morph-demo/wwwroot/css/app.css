@@ -248,6 +248,55 @@ h2 {
     font-weight: 600;
 }
 
+/* cut-out demo content — sits on the floor's purple gradient, so light text */
+.cutout-panel {
+    max-width: 360px;
+}
+
+.cutout-body {
+    padding: 20px;
+}
+
+.cutout-head {
+    color: #fff;
+    margin-bottom: 14px;
+}
+
+.cutout-head strong {
+    display: block;
+    font-size: 16px;
+}
+
+.cutout-head span {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+.cutout-grid {
+    display: flex;
+    gap: 12px;
+}
+
+.cutout-tile {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+    border-radius: 14px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.cutout-tile b {
+    font-size: 22px;
+}
+
+.cutout-tile span {
+    font-size: 11px;
+    opacity: 0.85;
+}
+
 /* animated *content* (not a .morph-item) — exercises the D6.1 tally filter:
    it fires animationend during a transition but must not be counted. */
 .pulse {

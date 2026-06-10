@@ -1,0 +1,12 @@
+@namespace Morph
+
+<MorphShape Class="@($"neu-cutout {Class}")">
+    <div class="cutout-floor">@ChildContent</div>
+    <div class="cutout-ring"></div>
+</MorphShape>
+
+@code {
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

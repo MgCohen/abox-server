@@ -4,4 +4,5 @@ public enum MorphStyle
 {
     Raised,
     Inset,
+    Cutout,
 }

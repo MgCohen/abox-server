@@ -2,8 +2,9 @@
 
 @(Style switch
 {
-    MorphStyle.Inset => InsetFrag,
-    _                => RaisedFrag,
+    MorphStyle.Cutout => CutoutFrag,
+    MorphStyle.Inset  => InsetFrag,
+    _                 => RaisedFrag,
 })
 
 @code {
@@ -15,4 +16,5 @@
 
     private RenderFragment RaisedFrag => @<MorphRaised Class="@Class">@ChildContent</MorphRaised>;
     private RenderFragment InsetFrag => @<MorphInset Class="@Class">@ChildContent</MorphInset>;
+    private RenderFragment CutoutFrag => @<MorphCutout Class="@Class">@ChildContent</MorphCutout>;
 }

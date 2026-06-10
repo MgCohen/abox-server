@@ -8,6 +8,7 @@ public static class ServiceCollectionExtensions
         => services
             .AddRaised()
             .AddInset()
+            .AddCutout()
             .ConfigureMorph(configure);
 
     public static IServiceCollection AddTransition(this IServiceCollection services, TransitionDefinition transition)
