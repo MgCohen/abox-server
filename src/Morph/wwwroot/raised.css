@@ -21,7 +21,7 @@
 
 .morph-stage[data-phase="exit"] .neu-raised {
     animation: raise-out var(--exit-dur) var(--exit-ease) both;
-    animation-delay: var(--morph-delay);
+    animation-delay: calc(var(--morph-delay) + var(--shell-hold, 0ms));
 }
 
 .morph-stage[data-phase="enter"] .neu-raised {
@@ -29,12 +29,12 @@
     animation-delay: var(--morph-delay);
 }
 
-.morph-stage[data-phase="exit"] .neu-raised > *:not(.morph-item) {
+.morph-stage[data-phase="exit"] .neu-raised > *:not(.morph-item):not(.morph-custom) {
     animation: morph-content-out calc(var(--exit-dur) * var(--content-lead)) var(--exit-ease) both;
     animation-delay: var(--morph-delay);
 }
 
-.morph-stage[data-phase="enter"] .neu-raised > *:not(.morph-item) {
+.morph-stage[data-phase="enter"] .neu-raised > *:not(.morph-item):not(.morph-custom) {
     animation: morph-content-in calc(var(--enter-dur) * var(--content-trail)) var(--enter-ease) both;
     animation-delay: calc(var(--morph-delay) + var(--enter-dur) * (1 - var(--content-trail)));
 }
