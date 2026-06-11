@@ -2,6 +2,10 @@
 
 - **Status:** Proposed (2026-06-04). Design-on-paper; **no code yet.** Open forks (below)
   are deliberately undecided.
+- **Amended by:** [ADR 0008](0008-operations-through-runner.md) (2026-06-11) — supersedes §1's
+  interface form: the run contract is an abstract `Operation<TArgs,TResult>` gated by `RunnerBase`,
+  not `IOperation<TArgs,TResult>`. §6 (`Name` as a non-unique kind-label) stands — `OperationArgs(Name)`
+  is kept.
 - **Scope:** the rebuild (`/src`) run contract and the actor/operation model.
 - **Refines:** [ADR 0003](0003-actors-operations-run-contract.md) §1–§2 (actor mints
   operation; `IOperation<T>` as the sole run contract). The actor/operation **un-fusing**

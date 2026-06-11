@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-06-11
 amends: 0003 §1–§2, 0005 §1
 ---

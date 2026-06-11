@@ -7,6 +7,11 @@
   of an abstract `Agent` base into a composed `IProvider`; §1's "abstract base … for the
   provider drive lifecycle" and the typed-agent reading are retired there. The actor/operation
   model below otherwise stands.
+- **Amended by:** [ADR 0008](0008-operations-through-runner.md) — §1's "no runner middle layer"
+  and §2's "interface, not base class" are reversed: an operation now executes only through
+  `RunnerBase` (an abstract class), the enforcement seam hoisted onto the floor
+  (`Infrastructure.Operations`). The actor/operation un-fusing, the `OperationRecord` seam (§4),
+  and guards as operation policy (§5) stand.
 - **Supersedes:** the L3 framing in [ADR 0001](0001-flow-catalog-and-context.md) §Decision-2
   and the "Steps" Kind in [ADR 0002](0002-tools-steps-flows.md) §3 — "a work type implements
   `IStepHandler<T>` directly; the instance runs a step, it isn't one." That instinct was
