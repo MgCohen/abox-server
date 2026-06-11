@@ -33,4 +33,10 @@ public class RuleTests
                         .NotDependOnAny(Types().That().ResideInNamespaceMatching(FeatureNamespace(to)).As($"feature '{to}'"))
                         .Check(Architecture);
     }
+
+    [Rule("PtySession is internal to Domain.Agents")]
+    public void PtySessionIsInternalToItsAssembly() =>
+        Classes().That().HaveName("PtySession").Should()
+            .BeInternal()
+            .Check(Architecture);
 }

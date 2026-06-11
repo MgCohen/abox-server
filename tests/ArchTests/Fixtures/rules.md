@@ -7,9 +7,6 @@ under a rule carry its rationale and any scoped notes — add bullets as a rule 
 the header as a question. To add a rule: append a `###` block here and its tagged test. Categories
 are resolved to types by namespace convention in `ArchitectureModel`.
 
-> Not yet covered (deliberate, see README): `PtySession internal` (the spawn wall, once it's
-> internalized).
-
 ---
 
 ### Dependencies flow down the layer graph only
@@ -30,6 +27,14 @@ are resolved to types by namespace convention in `ArchitectureModel`.
   direct implementation reference. This is an *intra*-band decision (Feature A ↛ Feature B), so it
   stays its own named rule rather than folding into the down-only layer graph above.
 - **Note:** Depending on a peer's Contracts is the legal channel.
+
+### PtySession is internal to Domain.Agents
+- **Why:** `PtySession` is the PTY spawn door — the single tricky, billing-sensitive primitive that
+  drives the agent CLI over ConPTY. Keeping it `internal` makes the *compiler* (not convention) the wall:
+  nothing outside the agent runtime can `new` a raw spawn, so every spawn goes through the assembly's
+  public port. Its only caller is `ClaudeProvider`, in the same assembly.
+- **Note:** A named visibility rule, not a dependency edge — `BeInternal()` on the type. If the wall is
+  ever reopened (made public) or the primitive renamed, this fails.
 
 ### Every project lives under an agreed home folder
 - **Why:** The agreed home folders (Infrastructure, Domain, Features, Host) are the only legal places

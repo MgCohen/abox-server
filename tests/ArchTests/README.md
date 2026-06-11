@@ -63,8 +63,6 @@ the convention. This replaced both a custom filesystem rule and the former *name
 - **`Web → Contracts only`** — `RemoteAgents.Web` isn't loaded into the reference-graph model yet
   (Blazor WASM); folder rule #1 now governs its *placement*, but the dependency edge waits until the UI
   direction settles. It is the strictest, most drift-prone edge.
-- **`PtySession` internal to `Domain.Agents`** (the spawn wall) — now correctly homed in
-  `RemoteAgents.Domain.Agents`; add the visibility wall once it's internalized.
 - **Per-feature `Contracts/` nested in a feature** — a future graduation; the Contracts band already
   matches any `*.Contracts` leaf, so the down-only rule activates the moment one lands. At that point the
   cross-feature rule also graduates to exclude peer Contracts (the legal channel).

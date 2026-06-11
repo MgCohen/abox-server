@@ -309,6 +309,9 @@ The arch-test review (session `e184aca0`) raised four findings. For the record:
 
 - **`Web → Contracts only`** dependency edge (F4) — still needs Web *loaded* into
   ArchUnitNET (separate from folder placement, which rule #1 now does cover).
-- **`PtySession` internal to `Domain.Agents`** — the spawn wall.
+- ~~**`PtySession` internal to `Domain.Agents`** — the spawn wall.~~ ✅ **DONE** —
+  `PtySession` sealed `internal` (only caller `ClaudeProvider`, same assembly); the
+  rule *PtySession is internal to Domain.Agents* (`BeInternal()`) enforces it,
+  negative-tested. Closes the M1.2 done-when spawn-wall item.
 - **Assembly-name convention** (`RemoteAgents.*`, `.Features.` dropped) — not
   enforced; would be a third rule if the Morph-style mis-naming recurs.

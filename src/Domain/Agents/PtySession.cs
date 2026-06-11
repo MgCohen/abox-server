@@ -3,7 +3,7 @@ using Porta.Pty;
 
 namespace RemoteAgents.Domain.Agents;
 
-public sealed class PtySession : IAsyncDisposable
+internal sealed class PtySession : IAsyncDisposable
 {
     private readonly IPtyConnection _pty;
     private readonly StringBuilder _buffer = new();
