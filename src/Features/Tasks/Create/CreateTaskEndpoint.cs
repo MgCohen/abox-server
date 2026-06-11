@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using RemoteAgents.Features.Git.Contracts;
+using RemoteAgents.Features.Tasks.Contracts;
 
 namespace RemoteAgents.Features.Tasks.Create;
 

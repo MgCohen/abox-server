@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using RemoteAgents.Domain.Flow;
+using RemoteAgents.Features.Flows.Shared;
 
 namespace RemoteAgents.Features.Flows.Get;
 
@@ -18,6 +19,6 @@ public static class GetEndpoint
                 return Results.StatusCode(StatusCodes.Status304NotModified);
 
             http.Response.Headers.ETag = etag;
-            return Results.Ok(snap);
+            return Results.Ok(snap.ToView());
         });
 }

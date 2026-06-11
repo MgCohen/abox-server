@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using RemoteAgents.Domain.Flow;
+using RemoteAgents.Features.Flows.Shared;
 using RemoteAgents.Infrastructure.Json;
 
 namespace RemoteAgents.Features.Flows.Watch;
@@ -14,7 +15,7 @@ internal static class Sse
 
         await foreach (var snap in snapshots.WithCancellation(ct))
         {
-            var json = JsonSerializer.Serialize(snap, WireJson.Options);
+            var json = JsonSerializer.Serialize(snap.ToView(), WireJson.Options);
             await http.Response.WriteAsync($"data: {json}\n\n", ct);
             await http.Response.Body.FlushAsync(ct);
         }

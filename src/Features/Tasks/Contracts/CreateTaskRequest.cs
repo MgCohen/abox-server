@@ -1,3 +1,3 @@
-namespace RemoteAgents.Features.Tasks.Create;
+namespace RemoteAgents.Features.Tasks.Contracts;
 
 public sealed record CreateTaskRequest(string Title);
