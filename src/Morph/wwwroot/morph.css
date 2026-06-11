@@ -6,12 +6,23 @@
     display: block;
 }
 
-.morph-stage[data-phase="exit"] .morph-item {
+.morph-stage[data-phase="exit"] .morph-item,
+.morph-stage[data-phase="flatten"] .morph-item {
     --morph-delay: calc((var(--max-depth, 0) - var(--depth, 0)) * var(--depth-step, 0ms) + var(--rand, 0) * var(--scatter, 0ms));
 }
 
-.morph-stage[data-phase="enter"] .morph-item {
+.morph-stage[data-phase="enter"] .morph-item,
+.morph-stage[data-phase="rise"] .morph-item {
     --morph-delay: calc(var(--depth, 0) * var(--depth-step, 0ms) + var(--rand, 0) * var(--scatter, 0ms));
+}
+
+.morph-stage[data-phase="pre"] .morph-screen {
+    animation: morph-pre-pulse 1.15s ease-in-out infinite;
+}
+
+@keyframes morph-pre-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.62; }
 }
 
 @keyframes morph-content-out {

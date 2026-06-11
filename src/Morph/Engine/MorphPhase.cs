@@ -4,7 +4,8 @@ public enum MorphPhase
 {
     Idle,
     Exiting,
-    Loading,
+    Flattening,
+    Pre,
     Entering,
-    Error,
+    Rising,
 }

@@ -114,32 +114,34 @@
 </MorphStage>
 
 <MorphRaised Class="section-head">
-    <h2 class="section">Async load · Loading / Error</h2>
+    <h2 class="section">Loading dynamics · pre-state</h2>
     <div class="btn-row">
-        <button class="swap" @onclick="LoadFast">Load fast</button>
-        <button class="swap" @onclick="LoadSlow">Load slow (times out)</button>
+        <button class="swap" @onclick="Remount">Remount (initial)</button>
+        <button class="swap" @onclick="ReloadSlow">Reload (slow → pre)</button>
+        <button class="swap" @onclick="ReloadInstant">Reload (instant)</button>
     </div>
 </MorphRaised>
 
-<MorphStage Screen="_loadKey" Load="LoadAsync">
-    <ChildContent Context="k">
-        <MorphRaised Class="card">
-            <h2>Loaded item #@k</h2>
-            <p class="muted">Swapped in after the async gate resolved.</p>
-        </MorphRaised>
-    </ChildContent>
-    <LoadingContent>
-        <div class="status">loading…</div>
-    </LoadingContent>
-    <ErrorContent Context="ex">
-        <div class="status error">@ex.Message</div>
-    </ErrorContent>
-</MorphStage>
+@if (_mounted)
+{
+    <MorphStage Screen="_loadKey" Load="LoadAsync">
+        <ChildContent Context="k">
+            <MorphRaised Class="card">
+                <h2>Item #@k</h2>
+                <p class="muted">Loaded? extrude. Not loaded? lie flat, wait, rise.</p>
+            </MorphRaised>
+        </ChildContent>
+        <ErrorContent Context="ex">
+            <div class="status error">@ex.Message</div>
+        </ErrorContent>
+    </MorphStage>
+}
 
 @code {
     private int _view;
     private int _loadKey;
-    private bool _slowNext;
+    private bool _mounted = true;
+    private bool _instantNext;
     private MorphStyle _style = MorphStyle.Raised;
     private int _cut;
 
@@ -162,17 +164,32 @@
 
     private void Toggle() => _view = _view == 0 ? 1 : 0;
 
-    private void LoadFast()
+    private async Task Remount()
     {
-        _slowNext = false;
+        _mounted = false;
+        StateHasChanged();
+        await Task.Delay(60);
+        _instantNext = false;
+        _mounted = true;
+    }
+
+    private void ReloadSlow()
+    {
+        _instantNext = false;
         _loadKey++;
     }
 
-    private void LoadSlow()
+    private void ReloadInstant()
     {
-        _slowNext = true;
+        _instantNext = true;
         _loadKey++;
     }
 
-    private async Task LoadAsync(int key) => await Task.Delay(_slowNext ? 3000 : 200);
+    private async Task LoadAsync(int key)
+    {
+        if (_instantNext)
+            return;
+
+        await Task.Delay(1100);
+    }
 }

@@ -30,8 +30,11 @@ public abstract class MorphStageBase : ComponentBase
 
     protected string DataPhase => Phase switch
     {
-        MorphPhase.Exiting or MorphPhase.Loading or MorphPhase.Error => "exit",
+        MorphPhase.Exiting => "exit",
+        MorphPhase.Flattening => "flatten",
+        MorphPhase.Pre => "pre",
         MorphPhase.Entering => "enter",
+        MorphPhase.Rising => "rise",
         _ => string.Empty,
     };
 
@@ -68,40 +71,86 @@ public abstract class MorphStageBase : ComponentBase
         return true;
     }
 
-    protected async Task<MorphTransitionOutcome> TransitionAsync(Func<Task>? load, Action swap)
+    protected async Task InitialAsync(Func<Task>? load, Action setCurrent)
+    {
+        LoadError = null;
+        setCurrent();
+        var loading = load?.Invoke() ?? Task.CompletedTask;
+
+        if (loading.IsCompleted)
+        {
+            if (await RunPhaseAsync(MorphPhase.Entering))
+                Settle();
+            return;
+        }
+
+        Phase = MorphPhase.Pre;
+        StateHasChanged();
+        if (!await AwaitLoadAsync(loading))
+        {
+            await RecoverAsync();
+            return;
+        }
+
+        if (await RunPhaseAsync(MorphPhase.Rising))
+            Settle();
+    }
+
+    protected async Task<MorphTransitionOutcome> ReloadAsync(Func<Task>? load, Action swap)
     {
         LoadError = null;
         var loading = load?.Invoke() ?? Task.CompletedTask;
 
-        if (!await RunPhaseAsync(MorphPhase.Exiting))
+        if (loading.IsCompleted)
+        {
+            if (!await RunPhaseAsync(MorphPhase.Exiting))
+                return MorphTransitionOutcome.Superseded;
+            swap();
+            ResetDepth();
+            await HoldAtEmptyAsync();
+            if (await RunPhaseAsync(MorphPhase.Entering))
+                Settle();
+            return MorphTransitionOutcome.Completed;
+        }
+
+        if (!await RunPhaseAsync(MorphPhase.Flattening))
             return MorphTransitionOutcome.Superseded;
 
-        if (!loading.IsCompleted)
+        Phase = MorphPhase.Pre;
+        StateHasChanged();
+        if (!await AwaitLoadAsync(loading))
         {
-            Phase = MorphPhase.Loading;
-            StateHasChanged();
-            try
-            {
-                await loading.WaitAsync(TimeSpan.FromMilliseconds(Options.LoadTimeout));
-            }
-            catch (TimeoutException)
-            {
-                LoadError = new TimeoutException(
-                    $"Load did not finish within the {Options.LoadTimeout}ms LoadTimeout budget.");
-                Phase = MorphPhase.Error;
-                StateHasChanged();
-                if (await RunPhaseAsync(MorphPhase.Entering))
-                    Settle();
-                return MorphTransitionOutcome.LoadFailed;
-            }
+            await RecoverAsync();
+            return MorphTransitionOutcome.LoadFailed;
         }
 
         swap();
         ResetDepth();
         await HoldAtEmptyAsync();
-        if (await RunPhaseAsync(MorphPhase.Entering))
+        if (await RunPhaseAsync(MorphPhase.Rising))
             Settle();
         return MorphTransitionOutcome.Completed;
+    }
+
+    private async Task<bool> AwaitLoadAsync(Task loading)
+    {
+        try
+        {
+            await loading.WaitAsync(TimeSpan.FromMilliseconds(Options.LoadTimeout));
+            return true;
+        }
+        catch (TimeoutException)
+        {
+            LoadError = new TimeoutException(
+                $"Load did not finish within the {Options.LoadTimeout}ms LoadTimeout budget.");
+            return false;
+        }
+    }
+
+    private async Task RecoverAsync()
+    {
+        if (await RunPhaseAsync(MorphPhase.Rising))
+            Settle();
     }
 
     protected async Task HoldAtEmptyAsync()
