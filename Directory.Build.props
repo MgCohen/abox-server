@@ -11,8 +11,34 @@
     <LangVersion>latest</LangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 
-    <!-- Centralize bin/obj under /artifacts (gitignored). -->
+    <!-- Run the IDE/code-style analyzers (IDE0130 namespace-matches-folder) during `dotnet build`,
+         not just in the IDE, so the namespace convention fails the build like everything else. -->
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+
+    <!-- Centralize bin/obj under /artifacts (gitignored). ArtifactsPath is PINNED to this root props'
+         own directory: UseArtifactsOutput otherwise anchors to the NEAREST Directory.Build.props, so a
+         nested one (e.g. src/Features, which derives RootNamespace) would scatter output into src/. -->
     <UseArtifactsOutput>true</UseArtifactsOutput>
+    <ArtifactsPath>$(MSBuildThisFileDirectory)artifacts</ArtifactsPath>
+  </PropertyGroup>
+
+  <!-- IDE0130 reads RootNamespace + ProjectDir to compute the expected namespace; they are provided
+       automatically in Visual Studio but must be made compiler-visible for command-line builds. -->
+  <ItemGroup>
+    <CompilerVisibleProperty Include="RootNamespace" />
+    <CompilerVisibleProperty Include="ProjectDir" />
+  </ItemGroup>
+
+  <!-- Namespace law, in ONE place forever: a type's namespace mirrors its path under src/, repo-prefixed.
+       src/Features/Flows/Start -> RemoteAgents.Features.Flows.Start. Derived here for every project under
+       src/; IDE0130 then enforces each file against it. The ASSEMBLY name is separate and may drop a
+       segment (RemoteAgents.Flows.Start). Projects outside src/ (tests) keep their default. Foreign code
+       not on the convention (Morph, the leaving Web) pins its own RootNamespace to opt out. -->
+  <PropertyGroup>
+    <_SrcRoot>$(MSBuildThisFileDirectory)src\</_SrcRoot>
+  </PropertyGroup>
+  <PropertyGroup Condition="$(MSBuildProjectDirectory.StartsWith('$(_SrcRoot)'))">
+    <RootNamespace>RemoteAgents.$([MSBuild]::MakeRelative('$(_SrcRoot)', '$(MSBuildProjectDirectory)').Replace('\', '.').Replace('/', '.').TrimEnd('.'))</RootNamespace>
   </PropertyGroup>
 
 </Project>

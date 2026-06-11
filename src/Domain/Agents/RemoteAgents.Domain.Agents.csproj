@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Flow\RemoteAgents.Domain.Flow.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\RemoteAgents.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Porta.Pty" Version="1.0.7" />
+  </ItemGroup>
+
+</Project>

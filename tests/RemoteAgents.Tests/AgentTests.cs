@@ -1,6 +1,6 @@
-using RemoteAgents.Contracts;
-using RemoteAgents.Engine.Flows;
-using RemoteAgents.Actors.Agents;
+using RemoteAgents.Domain.Flow;
+using RemoteAgents.Domain.Flow.Operations;
+using RemoteAgents.Domain.Agents;
 
 namespace RemoteAgents.Tests;
 

@@ -3,6 +3,12 @@
     border-radius: 22px;
 }
 
+/* The frame is a pure bevel: a consumer class (e.g. .card) sizes it, but its
+   padding must land on the floor — padding here would inset the floor and gap. */
+.morph-item.neu-cutout {
+    padding: 0;
+}
+
 .cutout-floor {
     position: relative;
     border-radius: 22px;
@@ -12,6 +18,14 @@
             rgba(20, 10, 45, 0.29) 0%,
             rgba(20, 10, 45, 0) 42%),
         linear-gradient(150deg, rgb(102, 102, 225) 0%, rgb(166, 121, 251) 100%);
+}
+
+/* The floor is a dark surface, so its content reads light. Scope to the floor's
+   own content (not nested morph-items) so a Raised/Inset dropped on the floor
+   keeps the light-surface text tokens. */
+.cutout-floor > *:not(.morph-item) {
+    color: #fff;
+    --text-muted: rgba(255, 255, 255, 0.72);
 }
 
 .cutout-ring {

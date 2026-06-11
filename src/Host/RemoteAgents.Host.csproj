@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Features\Flows\Module\RemoteAgents.Flows.Module.csproj" />
+    <ProjectReference Include="..\Domain\Agents\RemoteAgents.Domain.Agents.csproj" />
+    <ProjectReference Include="..\Infrastructure\RemoteAgents.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="RemoteAgents.Tests" />
+  </ItemGroup>
+
+</Project>

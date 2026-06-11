@@ -1,5 +1,5 @@
-using RemoteAgents.Actors.Agents;
-using RemoteAgents.Actors.Agents.Codex;
+using RemoteAgents.Domain.Agents;
+using RemoteAgents.Domain.Agents.Codex;
 
 namespace RemoteAgents.Tests;
 

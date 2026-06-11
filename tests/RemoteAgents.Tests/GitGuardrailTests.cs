@@ -1,4 +1,4 @@
-using RemoteAgents.Actors.Git;
+using RemoteAgents.Features.Git;
 
 namespace RemoteAgents.Tests;
 

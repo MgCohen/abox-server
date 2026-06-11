@@ -1,5 +1,5 @@
-using RemoteAgents.Actors.Agents;
-using RemoteAgents.Engine.Flows;
+using RemoteAgents.Domain.Agents;
+using RemoteAgents.Domain.Flow;
 
 namespace RemoteAgents.Tests;
 

@@ -290,7 +290,6 @@ h2 {
 }
 
 .cutout-head {
-    color: #fff;
     margin-bottom: 14px;
 }
 
@@ -312,7 +311,6 @@ h2 {
 .cutout-tile {
     flex: 1;
     background: rgba(255, 255, 255, 0.16);
-    color: #fff;
     border-radius: 14px;
     padding: 14px;
     display: flex;
@@ -327,6 +325,34 @@ h2 {
 .cutout-tile span {
     font-size: 11px;
     opacity: 0.85;
+}
+
+.cutout-thin {
+    max-width: 360px;
+}
+
+.cutout-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 30px 18px;
+}
+
+.cutout-wide {
+    max-width: 720px;
+}
+
+.cutout-wide .cutout-bar {
+    padding: 6px 18px;
+}
+
+.cutout-bar strong {
+    font-size: 14px;
+}
+
+.cutout-bar span {
+    font-size: 12px;
+    opacity: 0.8;
 }
 
 /* custom content motion — .morph-custom opts out of the engine's default fade.
