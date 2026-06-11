@@ -41,11 +41,11 @@ are resolved to types by namespace convention in `ArchitectureModel`.
 ### Every project lives under an agreed home folder
 - **Why:** The agreed home folders (Infrastructure, Domain, Features, Host) are the only legal places
   production code may live. A folder under none of them escaped the structure — caught on disk, before
-  it ever compiles, so the Web/Morph load blind spot can't hide it.
-- **Note:** `Morph` and `RemoteAgents.Web` are an explicit, documented `PendingEvictionFolders` allow-
-  list (relocating to their own repos; no destination yet, Morph has a live dev watch). The guard still
-  rejects any *new* stray, and a staleness check fails if a listed folder is gone — so the list shrinks
-  as they leave instead of rotting into a silent hole.
+  it ever compiles, so the Web load blind spot can't hide it.
+- **Note:** `RemoteAgents.Web` is an explicit, documented `PendingEvictionFolders` allow-list entry
+  (relocating to its own repo; no destination yet). The guard still rejects any *new* stray, and a
+  staleness check fails if a listed folder is gone — so the list shrinks as they leave instead of
+  rotting into a silent hole. (Morph already left, for the web repo.)
 - **Companion (not a test here):** *namespace mirrors folder* is enforced at **compile time** by the
   SDK analyzer **IDE0130** (`/.editorconfig`, `dotnet_diagnostic.IDE0130.severity = error`, scoped to
   `src/`), with `RootNamespace` derived per slice in `src/Features/Directory.Build.props`. That keeps

@@ -54,10 +54,10 @@ internal static class ArchitectureModel
     public static readonly string[] AgreedHomeFolders = { "Infrastructure", "Domain", "Features", "Host" };
 
     // Folders deliberately tolerated under src/ until they relocate to their own repos — no destination
-    // yet, and Morph carries a live dev watch. Listed explicitly so the structure guard passes HONESTLY:
-    // it still rejects any *new* stray, and the staleness check forces this list to shrink as they leave.
+    // yet. Listed explicitly so the structure guard passes HONESTLY: it still rejects any *new* stray, and
+    // the staleness check forces this list to shrink as they leave (Morph left for the web repo).
     // See PLANS/structure-guards.md (Step 2 → Step 3 consequence).
-    public static readonly string[] PendingEvictionFolders = { "Morph", "RemoteAgents.Web" };
+    public static readonly string[] PendingEvictionFolders = { "RemoteAgents.Web" };
 
     public static bool IsHomeFolder(string topSegment) =>
         AgreedHomeFolders.Contains(topSegment, StringComparer.Ordinal);

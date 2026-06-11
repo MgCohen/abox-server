@@ -2,7 +2,7 @@ namespace RemoteAgents.Tests.ArchTests;
 
 // The physical project layout on disk — the placement guards' input, independent of what compiled.
 // ArchUnitNET only sees loaded assemblies; this sees every project folder under src/ the moment it
-// exists (Web/Morph/new folders included), so project placement can't be dodged by simply not building,
+// exists (Web/new folders included), so project placement can't be dodged by simply not building,
 // and stray build output (gitignored, invisible to the reference graph) is still caught on disk.
 // (Namespace-matches-folder is enforced separately by IDE0130 at compile time — see /.editorconfig.)
 // The locator throws on a missing root or src so a broken scan can't go vacuously green.

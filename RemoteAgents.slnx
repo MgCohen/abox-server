@@ -15,7 +15,6 @@
     <Project Path="src/Host/RemoteAgents.Host.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/Morph.Tests/Morph.Tests.csproj" />
     <Project Path="tests/RemoteAgents.Tests/RemoteAgents.Tests.csproj" />
     <Project Path="tests/ArchTests/RemoteAgents.Tests.ArchTests.csproj" />
   </Folder>

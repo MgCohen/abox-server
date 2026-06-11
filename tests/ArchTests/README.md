@@ -41,7 +41,7 @@ Files are grouped by role, not by C# kind:
 | Add a rule | append a `###` block to `Fixtures/rules.md`, add a `[Rule("<that name>")]` test in `RuleTests.cs` or `StructureTests.cs` |
 | Add a production assembly / feature / slice | **nothing** — the csproj globs `src\**\RemoteAgents.*.csproj` and `ArchitectureModel` loads them from the output dir, so a new project named `RemoteAgents.*` is discovered and governed automatically (Web is the one deliberate exclude) |
 | Add a layer band | add one `IObjectProvider<IType>` band + a `Layer` entry (with its `MayDependOn`) in `ArchitectureModel.cs`; the down-only rule covers it automatically |
-| Evict a pending folder (Morph, Web) | drop it from `PendingEvictionFolders`; the staleness check fails once the folder is gone, as the reminder to do so |
+| Evict a pending folder (e.g. Web) | drop it from `PendingEvictionFolders`; the staleness check fails once the folder is gone, as the reminder to do so |
 
 ## Structure guards (filesystem + analyzer)
 
@@ -49,7 +49,7 @@ Files are grouped by role, not by C# kind:
 
 - **Every project lives under an agreed home folder** — the top-level `src/` folder must be a home
   (`Infrastructure`, `Domain`, `Features`, `Host`) or an explicit `PendingEvictionFolders` entry
-  (`Morph`, `RemoteAgents.Web`, relocating to their own repos). Any *new* stray fails; a staleness check
+  (`RemoteAgents.Web`, relocating to its own repo). Any *new* stray fails; a staleness check
   fails when a listed folder is gone, so the allow-list shrinks as they leave instead of rotting.
 
 **Namespace matches folder** is *not* a test here — it's the SDK analyzer **IDE0130**, enforced at
