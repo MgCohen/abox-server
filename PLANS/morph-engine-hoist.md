@@ -112,3 +112,86 @@ Blazor's parameterless instantiation) and collapsed `StyleString` to one arm.
   out / trails in, nesting clean.
 - Watch the WASM hot-reload corruption note: CSS edits hot-reload fine; this fix
   touches no `.razor`, so no rude-edit restart needed.
+
+---
+
+## Follow-on — custom content motion + structural completion
+
+A separate thread (not one of the three fixes above): make per-element custom
+motion a first-class, low-ceremony capability, and simplify what "the transition
+is complete" means. Three seams, all additive — every existing screen is
+unchanged because each defaults to off.
+
+### 1. Structural completion — `morph.js`
+
+`waitForAnimations` decides which animations the swap waits for. It now keys on
+**structure, not naming**: an animation is awaited iff it is *one-shot* and its
+target sits inside a `.morph-item`.
+
+```js
+const anims = el.getAnimations({ subtree: true }).filter((a) =>
+    a.effect?.getComputedTiming().iterations !== Infinity &&   // loops never finish — exclude
+    a.effect?.target?.closest?.(".morph-item"));                // inside a shell ⇒ part of the transition
+```
+
+- **Auto-wait, no opt-in.** Any one-shot animation on a shell or its content is
+  awaited — consumers do not name keyframes `morph-*` to be counted. The demo's
+  spin keyframes are plain `spin-in` / `spin-out` and are still held for.
+- **Foreign isolation is structural.** A non-morph widget placed in a screen is
+  not wrapped in a `.morph-item`, so it is ignored and runs free — it cannot
+  stall the swap.
+- **Loops still excluded** regardless of location: an infinite animation's
+  `.finished` never resolves, so awaiting it would hang the transition.
+
+This replaced an earlier name-prefix proxy (`/^(raise|inset|cutout|morph)-/`):
+the structural rule draws the same line without the naming footgun (forget the
+prefix and your animation is silently clipped at swap).
+
+### 2. `.morph-custom` — opt out of the default content fade
+
+Engine content rules fade every non-shell child (`> *:not(.morph-item)`). A child
+tagged `.morph-custom` is excluded (`:not(.morph-item):not(.morph-custom)`) so a
+consumer can bring its own motion without the default opacity fade fighting it.
+Applied in `raised.css` / `inset.css` / `cutout.css`. Orthogonal to completion —
+purely about the fade CSS.
+
+### 3. `--shell-hold` — container waits for its content
+
+A custom content animation longer than its shell's exit fade gets its tail hidden:
+the shell animates `opacity: 0` over the content, and a parent's opacity caps the
+child's. To keep the container up until the content finishes, the exit-shell delay
+gains an opt-in term:
+
+```css
+.morph-stage[data-phase="exit"] .neu-raised {
+    animation-delay: calc(var(--morph-delay) + var(--shell-hold, 0ms));
+}
+```
+
+Default `0ms` ⇒ no change. A consumer sets `--shell-hold` to the content's
+duration on the card; during the hold, `animation-fill-mode: both` pins the shell
+at its visible start state, so the content plays over a fully-visible container,
+then the container fades. Exit-only (on enter the shell appears first, content
+animates over it). Scoped to raised + inset; cutout has its own bespoke
+aperture/content timing and is deliberately excluded.
+
+### The consumer's mental model — one knob
+
+- **Waiting is automatic** (structural). You do not think about it.
+- **`--shell-hold` is the only knob** — does the container wait for its content
+  before animating. One var drives both the content's duration and the hold.
+
+### Showcase + verification
+
+Gallery's first card (`spikes/morph-demo`): the heading does a full 360° Z-axis
+spin (`--shell-hold: 1.1s`, one var driving spin duration + hold) and carries
+`.morph-custom` to escape the default fade. Browser-verified (Playwright over
+system Chrome):
+
+- Exit holds the full ~1.9s for the spin even though its keyframe is plain
+  `spin-out` — structural wait, no `morph-` prefix.
+- Card opacity stays `1.0` through the entire spin, then fades — `--shell-hold`
+  working; the tail is no longer hidden behind a faded container.
+- Module filter test: a 200ms animation inside a `.morph-item` is awaited; a
+  4000ms animation outside one, and an infinite loop inside one, are both ignored
+  (resolved ~209ms).

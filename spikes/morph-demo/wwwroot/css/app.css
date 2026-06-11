@@ -355,6 +355,38 @@ h2 {
     opacity: 0.8;
 }
 
+/* custom content motion — .morph-custom opts out of the engine's default fade.
+   Naming is irrelevant: any one-shot animation inside a morph shell is awaited
+   automatically (structural completion check), so the stage holds until the spin
+   ends. --shell-hold (read by the engine on exit) keeps the card visible until the
+   spin is done, then the card fades — one var drives both the spin and the hold. */
+@keyframes spin-in {
+    from { opacity: 0; transform: rotateZ(-360deg); }
+    to { opacity: 1; transform: rotateZ(0); }
+}
+
+@keyframes spin-out {
+    from { opacity: 1; transform: rotateZ(0); }
+    to { opacity: 0; transform: rotateZ(360deg); }
+}
+
+.spin-card {
+    --shell-hold: 1.1s;
+}
+
+.title-spin {
+    display: inline-block;
+    transform-origin: center;
+}
+
+.morph-stage[data-phase="enter"] .title-spin {
+    animation: spin-in var(--shell-hold) var(--enter-ease) both;
+}
+
+.morph-stage[data-phase="exit"] .title-spin {
+    animation: spin-out var(--shell-hold) var(--exit-ease) both;
+}
+
 #blazor-error-ui {
     display: none;
 }
