@@ -19,6 +19,18 @@
     }
 }
 
+@keyframes raise-flatten {
+    to {
+        --lift: 0;
+    }
+}
+
+@keyframes raise-up {
+    from {
+        --lift: 0;
+    }
+}
+
 .morph-stage[data-phase="exit"] .neu-raised {
     animation: raise-out var(--exit-dur) var(--exit-ease) both;
     animation-delay: calc(var(--morph-delay) + var(--shell-hold, 0ms));
@@ -27,6 +39,20 @@
 .morph-stage[data-phase="enter"] .neu-raised {
     animation: raise-in var(--enter-dur) var(--enter-ease) both;
     animation-delay: var(--morph-delay);
+}
+
+.morph-stage[data-phase="flatten"] .neu-raised {
+    animation: raise-flatten var(--exit-dur) var(--exit-ease) both;
+    animation-delay: var(--morph-delay);
+}
+
+.morph-stage[data-phase="rise"] .neu-raised {
+    animation: raise-up var(--enter-dur) var(--enter-ease) both;
+    animation-delay: var(--morph-delay);
+}
+
+.morph-stage[data-phase="pre"] .neu-raised {
+    --lift: 0;
 }
 
 .morph-stage[data-phase="exit"] .neu-raised > *:not(.morph-item):not(.morph-custom) {

@@ -19,6 +19,18 @@
     }
 }
 
+@keyframes inset-flatten {
+    to {
+        --lift: 0;
+    }
+}
+
+@keyframes inset-up {
+    from {
+        --lift: 0;
+    }
+}
+
 .morph-stage[data-phase="exit"] .neu-inset {
     animation: inset-out var(--exit-dur) var(--exit-ease) both;
     animation-delay: calc(var(--morph-delay) + var(--shell-hold, 0ms));
@@ -27,6 +39,20 @@
 .morph-stage[data-phase="enter"] .neu-inset {
     animation: inset-in var(--enter-dur) var(--enter-ease) both;
     animation-delay: var(--morph-delay);
+}
+
+.morph-stage[data-phase="flatten"] .neu-inset {
+    animation: inset-flatten var(--exit-dur) var(--exit-ease) both;
+    animation-delay: var(--morph-delay);
+}
+
+.morph-stage[data-phase="rise"] .neu-inset {
+    animation: inset-up var(--enter-dur) var(--enter-ease) both;
+    animation-delay: var(--morph-delay);
+}
+
+.morph-stage[data-phase="pre"] .neu-inset {
+    --lift: 0;
 }
 
 .morph-stage[data-phase="exit"] .neu-inset > *:not(.morph-item):not(.morph-custom) {
