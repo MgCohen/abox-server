@@ -1,4 +1,6 @@
-namespace RemoteAgents.Infrastructure.CommandLine;
+using RemoteAgents.Infrastructure.CommandLine;
+
+namespace RemoteAgents.Domain.Agents;
 
 public static class SubscriptionGuard
 {

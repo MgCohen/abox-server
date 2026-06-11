@@ -42,19 +42,16 @@ moment they exist) and answers gap 2 (checks folders, not namespaces).
 
 | # | Rule | Mechanism | Status |
 |---|------|-----------|--------|
-| 1 | **Every project lives under an agreed home folder** | filesystem | **NEW** |
-| 2 | **A type's namespace mirrors its folder** | filesystem + parse | **NEW** |
-| 3 | Contracts must not depend on internal assemblies | ArchUnitNET | keep (**dormant** — empty since Step 0 dissolved flat Contracts; runs `WithoutRequiringPositiveResults`, band matches any `*.Contracts` leaf, auto-activates on the first per-feature leaf) |
-| 4 | Infrastructure must not depend on other internal assemblies | ArchUnitNET | keep |
-| 5 | Nothing may depend on Host | ArchUnitNET | keep |
-| 6 | Domain must not depend on Features | ArchUnitNET | keep |
-| 7 | Features must not depend on each other | ArchUnitNET | keep |
-| 8 | No code lives outside the agreed structure (namespace orphan guard) | ArchUnitNET | **RETIRE** once 1+2 green |
+| 1 | **Every project lives under an agreed home folder** | filesystem | ✅ **DONE** |
+| 2 | **A type's namespace mirrors its folder** | filesystem + parse | ✅ **DONE** (caught 4 drifts) |
+| 3–6 | Dependencies flow down the layer graph only (Contracts/Infra no-internal, Domain↛Features, nothing↛Host) | ArchUnitNET | ✅ **DONE** — the 4 blanket denylists collapsed into one derived allow-graph rule; empty Contracts band runs `WithoutRequiringPositiveResults` and auto-activates on the first `*.Contracts` leaf |
+| 7 | Features must not depend on each other | ArchUnitNET | keep (intra-band — stayed its own named rule) |
+| 8 | No code lives outside the agreed structure (namespace orphan guard) | ArchUnitNET | ✅ **RETIRED** — subsumed by 1+2 |
 | 9 | Rule-book parity (block ↔ test) | reflection | keep (auto-covers 1, 2) |
 
-Rules 3–7 keep their headers and behavior, but their *implementation* gets
-rewritten once — from five hand-listed denylists into one allow-graph (F1, below).
-The rule book stays the same; only the C# behind it collapses.
+Rules 3–6 kept their *constraint* but their five headers + denylists collapsed into
+**one** header (*Dependencies flow down the layer graph only*) + one derived rule;
+rule 7 (intra-band) stayed named. Parity confirmed the merge (4 headers ↔ 4 tests).
 
 **Why retire #8:** folder-home (1) + namespace-mirrors-folder (2) together imply
 namespace-under-a-home-namespace. #8 becomes redundant. Keep it until 1+2 are
@@ -241,13 +238,34 @@ architecture *is*. Notes:
    non-home folders, so the filesystem guard (rule #1) must carry an explicit,
    documented known-pending-eviction list for those two — or they relocate to
    their own repos before Step 3 — so the guard passes *honestly*, not vacuously.
-3. **Add** `SourceTree` + `StructureTests` + the 2 rule blocks → go green.
-   **In the same pass, collapse the layer denylists into the allow-graph (F1)** —
-   same two files, one coherent rule-model rewrite.
-4. **Retire** rule #8 (delete block + test) — now subsumed.
-5. **Commit** as one coherent green change (plus the README "Not yet enforced"
-   row for `Web → Contracts` can drop "Web isn't loaded" once folder rule #1
-   governs Web's placement; the *dependency* edge stays deferred).
+3. **Add** `SourceTree` + `StructureTests` + the 2 rule blocks → ✅ **DONE.**
+   `Support/SourceTree.cs` (locate root via `RemoteAgents.slnx` marker, enumerate
+   `src/**/*.csproj` + `*.cs` skipping bin/obj/artifacts, parse file-scoped
+   namespaces; throws on no-root/zero-projects). `Tests/StructureTests.cs` carries
+   rules #1 + #2, both skipping `PendingEvictionFolders` (Morph, Web) — an explicit,
+   documented allow-list, plus a **staleness check** that fails if a listed folder
+   is gone (so the list shrinks as they leave, never rots). **The allow-graph
+   collapse (F1) landed in the same pass:** `ArchitectureModel.Layers` (each band's
+   `MayDependOn`) + `ForbiddenEdges()`; `RuleTests` replaced its 4 hand-listed
+   denylists (Contracts, Infrastructure, Host-sink, Domain↛Features) with one derived
+   `DependenciesFlowDownOnly` (`WithoutRequiringPositiveResults` per edge → the empty
+   Contracts band passes honestly). Features↛each-other stayed its own named rule.
+   **Rule #2 immediately earned its keep:** it caught **4 real namespace/folder
+   drifts** the plan had assumed clean — `PtySession` + `SubscriptionGuard` declared
+   `RemoteAgents.Infrastructure.CommandLine` while living in `Domain/Agents` (the
+   spawn-wall code masquerading as the floor in the dependency graph), and the
+   provisional `DelayArgs`/`DelayOperation` declared `Domain.Flow.Operations` while
+   living in `Features/Flows/Definitions`. All four realigned namespace→folder
+   (behavior-preserving; graph stayed green). Both filesystem guards negative-tested
+   (rule #1 catches a non-excepted Morph; rule #2 catches a corrupted namespace).
+4. **Retire** rule #8 (namespace orphan guard) — ✅ **DONE.** Deleted its block +
+   `NoCodeOutsideTheAgreedStructure` test; removed now-dead `IsOutsideStructure`,
+   `OursPrefix`, and the namespace-form `AgreedHomes` (collapsed to a bare
+   `AgreedHomeFolders = {Infrastructure, Domain, Features, Host}` literal — the
+   filesystem guard is its only remaining consumer). README brought current
+   (two-mechanism framing, new files, allow-graph, retired orphan guard).
+5. **Commit** as one coherent green change. Build 0 warnings; ArchTests 5/5 (was
+   7/7 with more rules — fewer, stronger); full suite 163 passed / 12 skipped.
 
 ## Thermo-nuclear review findings — disposition
 

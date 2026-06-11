@@ -1,4 +1,6 @@
-namespace RemoteAgents.Domain.Flow.Operations;
+using RemoteAgents.Domain.Flow.Operations;
+
+namespace RemoteAgents.Features.Flows.Definitions;
 
 // PROVISIONAL stub operation — retired with StubFlow at L10.
 public sealed class DelayOperation : Operation<DelayArgs, string>

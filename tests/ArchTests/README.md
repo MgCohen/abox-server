@@ -1,52 +1,70 @@
 # Architecture tests
 
-Reference-graph enforcement (ArchUnitNET). Fails the build when the dependency rules of the
-structure migration are violated, so the clean DAG we reached can't silently regress.
+Structure enforcement on two surfaces, so drift can't slip through either:
+
+- **Reference graph** (who depends on whom) — ArchUnitNET over the *loaded* assemblies. Fails the build
+  when the dependency DAG of the structure migration is violated.
+- **Physical structure** (placement, naming) — a filesystem scan of `src/` (`SourceTree`). Sees every
+  folder and `.cs` on disk, compiled or not, so excluded/uncompiled code (Web, Morph) can't hide.
 
 ## Layout
 
 Files are grouped by role, not by C# kind:
 
 - **`Fixtures/`** (`rules.md`) — the spec: the architecture rules in natural language.
-- **`Support/`** (`ArchitectureModel.cs`, `RuleBook.cs`, `RuleAttribute.cs`) — the harness: the loaded
-  architecture + category bands, the rule-book reflection, and the `[Rule]` attribute. No tests here.
-- **`Tests/`** (`RuleTests.cs`, `RuleBookTests.cs`) — the `[Fact]`s: the architecture assertions and
-  the rule↔test drift guard.
+- **`Support/`** (`ArchitectureModel.cs`, `SourceTree.cs`, `RuleBook.cs`, `RuleAttribute.cs`) — the
+  harness: the loaded architecture + the layer allow-graph, the on-disk source tree, the rule-book
+  reflection, and the `[Rule]` attribute. No tests here.
+- **`Tests/`** (`RuleTests.cs`, `StructureTests.cs`, `RuleBookTests.cs`) — the `[Fact]`s: the
+  reference-graph assertions, the filesystem placement/naming assertions, and the rule↔test drift guard.
 
 ## How it fits together
 
 - **`Fixtures/rules.md`** is the **single source of truth** — each `###` header *is* a rule, stated as
   the constraint itself; the bullets under it carry the rationale. This is the rule book; read it first.
-- **`Tests/RuleTests.cs`** has one `[Rule("<header>")]` test per block — the executable assertion.
+- **`Tests/RuleTests.cs`** + **`Tests/StructureTests.cs`** each carry one `[Rule("<header>")]` test per
+  block — the executable assertion.
 - **`Tests/RuleBookTests.cs`** fails if a block has no test, a test cites a missing/renamed block, or a
   rule is tested twice. The block and its test can't drift apart.
-- **`Support/ArchitectureModel.cs`** loads the production assemblies once and defines the
-  **categories** (Contracts, Infrastructure, Domain, Features, Host) by namespace convention. Rules
-  target categories, so a new assembly that lands in an existing band is covered with no rule change.
+- **`Support/ArchitectureModel.cs`** loads the production assemblies once and defines the layer bands
+  (Contracts, Infrastructure, Domain, Features, Host) by namespace convention. The **layer allow-graph**
+  (`Layers`, each band's `MayDependOn`) is the source the blanket down-only rule is *derived* from — add
+  a band and every prior edge updates for free, with no hand-listed denylist to leave stale.
 
 ## How to extend
 
 | Want to… | Do this |
 |----------|---------|
-| Add a rule | append a `###` block to `Fixtures/rules.md`, add a `[Rule("<that name>")]` test in `Tests/RuleTests.cs` |
+| Add a rule | append a `###` block to `Fixtures/rules.md`, add a `[Rule("<that name>")]` test in `RuleTests.cs` or `StructureTests.cs` |
 | Add a production assembly / feature / slice | **nothing** — the csproj globs `src\**\RemoteAgents.*.csproj` and `ArchitectureModel` loads them from the output dir, so a new project named `RemoteAgents.*` is discovered and governed automatically (Web is the one deliberate exclude) |
-| Add a category / band | add one `IObjectProvider<IType>` in `Support/ArchitectureModel.cs`, plus the rule(s) that constrain it |
+| Add a layer band | add one `IObjectProvider<IType>` band + a `Layer` entry (with its `MayDependOn`) in `ArchitectureModel.cs`; the down-only rule covers it automatically |
+| Evict a pending folder (Morph, Web) | drop it from `PendingEvictionFolders`; the staleness check fails once the folder is gone, as the reminder to do so |
 
-The orphan-guard rule (*Every type must belong to a known category*) fires if a new assembly lands in
-a namespace outside the known bands — the tripwire that reminds you to extend the model rather than
-leave the new code ungoverned.
+## Structure guards (filesystem)
+
+`StructureTests` reads `src/` directly, so it governs placement before code ever compiles:
+
+- **Every project lives under an agreed home folder** — the top-level `src/` folder must be a home
+  (`Infrastructure`, `Domain`, `Features`, `Host`) or an explicit `PendingEvictionFolders` entry
+  (`Morph`, `RemoteAgents.Web`, relocating to their own repos). Any *new* stray fails.
+- **A type's namespace mirrors its folder** — `namespace == RemoteAgents + folder path`, so the
+  namespace bands the reference-graph rules trust can't drift from where the file actually lives.
+
+These two together subsumed the former *namespace orphan guard*, which was retired.
 
 ## Not yet enforced (deliberate)
 
-- **`Web → Contracts only`** — `RemoteAgents.Web` isn't loaded into the model yet (Blazor WASM).
-  It is the strictest edge and the most drift-prone; wire it in when the UI direction settles.
-- **`PtySession` internal to `Domain.Agents`** (the spawn wall) — add once it's internalized.
-- **Per-feature `Contracts/` nested in a feature** — a future graduation of *Contracts must not depend
-  on internal assemblies*;
-  at that point the cross-feature rule also graduates to exclude peer Contracts (the legal channel).
+- **`Web → Contracts only`** — `RemoteAgents.Web` isn't loaded into the reference-graph model yet
+  (Blazor WASM); folder rule #1 now governs its *placement*, but the dependency edge waits until the UI
+  direction settles. It is the strictest, most drift-prone edge.
+- **`PtySession` internal to `Domain.Agents`** (the spawn wall) — now correctly homed in
+  `RemoteAgents.Domain.Agents`; add the visibility wall once it's internalized.
+- **Per-feature `Contracts/` nested in a feature** — a future graduation; the Contracts band already
+  matches any `*.Contracts` leaf, so the down-only rule activates the moment one lands. At that point the
+  cross-feature rule also graduates to exclude peer Contracts (the legal channel).
 
 ## A note for future work
 
-The remaining gap is an **agent that audits and authors the actual test behaviour** from each
-block — today the `[Rule]` body is hand-written to match its block's prose. Parity keeps them
-linked; it does not prove the assertion faithfully encodes the sentence. That review is deferred.
+The remaining gap is an **agent that audits and authors the actual test behaviour** from each block —
+today the `[Rule]` body is hand-written to match its block's prose. Parity keeps them linked; it does not
+prove the assertion faithfully encodes the sentence. That review is deferred.

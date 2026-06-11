@@ -12,24 +12,39 @@ are resolved to types by namespace convention in `ArchitectureModel`.
 
 ---
 
-### Contracts must not depend on internal assemblies
-- **Why:** Contracts are the bind surface the UI and peers consume — they must carry zero internal dependencies (Infrastructure, Domain, Features, Host) so anyone can reference them without dragging the system in.
-- **Note:** Scoped to a Contracts leaf wherever it lands (flat or per-feature `Features/<F>/Contracts`). **Empty today** — flat `RemoteAgents.Contracts` was dissolved into the Domain read-model + feature wire types, and the per-feature leaves don't exist yet. The test runs `WithoutRequiringPositiveResults()` so the dormant period is an honest pass, not a vacuous-green hole; it auto-activates the moment the first leaf lands. (The one rule we deliberately allow to be empty — it is *known* to be repopulating, unlike the orphan guard which must always have subjects.)
-
-### Infrastructure must not depend on other internal assemblies
-- **Why:** Everything may depend on Infrastructure; it depends on nothing internal. Business-agnostic plumbing only — the floor of the graph.
-
-### Nothing may depend on Host
-- **Why:** Host wires everything and nothing wires it — the single sink that keeps the graph a DAG.
-
-### Domain must not depend on Features
-- **Why:** Domains are substrate that features orchestrate; reaching up to a feature inverts that.
-- **Note:** Domain → Domain is allowed; Domain → Host is covered by *Nothing may depend on Host*.
+### Dependencies flow down the layer graph only
+- **Why:** The layers form a DAG — Contracts and Infrastructure depend on nothing internal;
+  Domain depends down onto them; Features onto Domain; Host wires everything and nothing wires it.
+  A reference that climbs or skips against this graph inverts the architecture.
+- **How:** Not five hand-listed denylists — a single allow-graph (`ArchitectureModel.Layers`, each
+  band's `MayDependOn`) from which every forbidden edge is *derived*. Adding a band updates every
+  rule for free; a missed edit can't leave a silent hole. Covers the blanket floor/ceiling edges:
+  Contracts-/Infrastructure-no-internal-deps, Domain ↛ Features, and nothing ↛ Host.
+- **Note:** The **Contracts** band is empty today (flat `RemoteAgents.Contracts` was dissolved into
+  the Domain read-model + feature wire types; per-feature `Features/<F>/Contracts` leaves don't exist
+  yet). The derived rule runs `WithoutRequiringPositiveResults()` so that dormant period is an honest
+  pass, not a vacuous-green hole, and the Contracts edges auto-activate the moment the first leaf lands.
 
 ### Features must not depend on each other
-- **Why:** Slices change independently. Cross-feature coupling goes through Contracts/events, never a direct implementation reference.
+- **Why:** Slices change independently. Cross-feature coupling goes through Contracts/events, never a
+  direct implementation reference. This is an *intra*-band decision (Feature A ↛ Feature B), so it
+  stays its own named rule rather than folding into the down-only layer graph above.
 - **Note:** Depending on a peer's Contracts is the legal channel.
 
-### No code lives outside the agreed structure
-- **Why:** The agreed homes (Infrastructure, Domain, Features, Host) are the only legal places production code may live. A `RemoteAgents.*` namespace under none of them escaped the structure — this guard rejects it by default rather than waiting for someone to bless it with a new band.
-- **Note:** The homes are a positive allow-list in `ArchitectureModel.AgreedHomes`, matched as wildcards (a home or anything nested beneath it). A flat `RemoteAgents.Contracts` sits under no home, so it fails here until contracts move under `Features/<F>/Contracts`.
+### Every project lives under an agreed home folder
+- **Why:** The agreed home folders (Infrastructure, Domain, Features, Host) are the only legal places
+  production code may live. A folder under none of them escaped the structure — caught on disk, before
+  it ever compiles, so the Web/Morph load blind spot can't hide it.
+- **Note:** `Morph` and `RemoteAgents.Web` are an explicit, documented `PendingEvictionFolders` allow-
+  list (relocating to their own repos; no destination yet, Morph has a live dev watch). The guard still
+  rejects any *new* stray, and a staleness check fails if a listed folder is gone — so the list shrinks
+  as they leave instead of rotting into a silent hole.
+
+### A type's namespace mirrors its folder
+- **Why:** The dependency rules band types by namespace; if a namespace can drift from its folder,
+  those bands lie. Pinning namespace = RemoteAgents + folder path keeps placement and namespace in
+  sync, so folder enforcement and graph enforcement agree. (Assembly name is a separate convention and
+  is not folder-derived.) Files with no namespace (top-level `Program.cs`) are skipped.
+- **Note:** This + *Every project lives under an agreed home folder* together subsume the former
+  *namespace* orphan guard (folder-home + namespace-mirrors-folder imply namespace-under-a-home), which
+  was retired once these two went green.

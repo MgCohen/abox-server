@@ -37,7 +37,6 @@ internal static class ArchitectureModel
     // Categories, keyed by namespace convention — every assembly that lands in a band is covered.
     // Boundary anchor (\.|$) stops a prefix from leaking into a same-named sibling (e.g. a future
     // RemoteAgents.InfrastructureX namespace does not get mistaken for Infrastructure).
-    public const string OursPrefix = @"^RemoteAgents\.";
     // A Contracts leaf wherever it lives — flat RemoteAgents.Contracts or a nested per-feature
     // Features/<F>/Contracts. Empty today (the flat one was dissolved, the leaves don't exist yet);
     // the rule keyed to it runs WithoutRequiringPositiveResults so the dormant period passes
@@ -48,23 +47,23 @@ internal static class ArchitectureModel
     public const string FeaturesNs = @"^RemoteAgents\.Features\.";
     public const string HostNs = @"^RemoteAgents\.Host(\.|$)";
 
-    // The agreed homes for production code — the entire legal structure, in one readable list (not a
-    // regex). A type belongs if its namespace IS a home or nests beneath it (segment-aware, so
-    // 'Infrastructure' never swallows a stray 'InfrastructureX'). THIS LIST is the source of truth:
-    // a RemoteAgents.* namespace under no home escaped the structure — any stray top-level band.
-    // Add a home here only when the structure itself grows.
-    public static readonly string[] AgreedHomes =
-    {
-        "RemoteAgents.Infrastructure",
-        "RemoteAgents.Domain",
-        "RemoteAgents.Features",
-        "RemoteAgents.Host",
-    };
+    // The agreed home folders for production code — the only legal top-level places under src/. THIS
+    // LIST is the source of truth; a project or file under none of these escaped the structure. Add a
+    // home only when the structure itself grows. (Web's eventual bare 'Web' home lands here when it
+    // returns; today it sits in PendingEvictionFolders as the prefixed 'RemoteAgents.Web'.)
+    public static readonly string[] AgreedHomeFolders = { "Infrastructure", "Domain", "Features", "Host" };
 
-    public static bool IsOutsideStructure(string @namespace) =>
-        @namespace.StartsWith("RemoteAgents.", StringComparison.Ordinal)
-        && !AgreedHomes.Any(home =>
-            @namespace == home || @namespace.StartsWith(home + ".", StringComparison.Ordinal));
+    // Folders deliberately tolerated under src/ until they relocate to their own repos — no destination
+    // yet, and Morph carries a live dev watch. Listed explicitly so the structure guard passes HONESTLY:
+    // it still rejects any *new* stray, and the staleness check forces this list to shrink as they leave.
+    // See PLANS/structure-guards.md (Step 2 → Step 3 consequence).
+    public static readonly string[] PendingEvictionFolders = { "Morph", "RemoteAgents.Web" };
+
+    public static bool IsHomeFolder(string topSegment) =>
+        AgreedHomeFolders.Contains(topSegment, StringComparer.Ordinal);
+
+    public static bool IsPendingEviction(string topSegment) =>
+        PendingEvictionFolders.Contains(topSegment, StringComparer.Ordinal);
 
     // Suffixed *Band so the identifiers don't collide with the same-named namespaces (Contracts,
     // Domain, Host, ...) reachable from this test's RemoteAgents.* namespace under `using static`.
@@ -76,6 +75,31 @@ internal static class ArchitectureModel
 
     private static IObjectProvider<IType> Band(string name, string namespaceRegex) =>
         Types().That().ResideInNamespaceMatching(namespaceRegex).As(name);
+
+    // The layer allow-graph: each band lists the bands it MAY depend on. This IS the architecture —
+    // the down-only blanket rules (Contracts/Infrastructure depend on nothing internal; Domain over
+    // Infrastructure; Features over Domain; nothing over Host) are DERIVED from it (ForbiddenEdges),
+    // not hand-listed per rule. Add a band here and every prior rule updates for free — no silent hole.
+    // Genuinely directional decisions (e.g. Features must not depend on each other) stay their own
+    // named rule; this graph only carries the mechanical floor/ceiling edges.
+    public sealed record Layer(string Name, IObjectProvider<IType> Types, IReadOnlyList<Layer> MayDependOn);
+
+    public static readonly Layer ContractsLayer = new("Contracts", ContractsBand, []);
+    public static readonly Layer InfrastructureLayer = new("Infrastructure", InfrastructureBand, []);
+    public static readonly Layer DomainLayer = new("Domain", DomainBand, [InfrastructureLayer, ContractsLayer]);
+    public static readonly Layer FeaturesLayer = new("Features", FeaturesBand, [DomainLayer, InfrastructureLayer, ContractsLayer]);
+    public static readonly Layer HostLayer = new("Host", HostBand, [FeaturesLayer, DomainLayer, InfrastructureLayer, ContractsLayer]);
+
+    public static readonly IReadOnlyList<Layer> Layers =
+        [ContractsLayer, InfrastructureLayer, DomainLayer, FeaturesLayer, HostLayer];
+
+    // Every edge the allow-graph does not permit. Compared by Name so the self-referential record graph
+    // never triggers structural record-equality.
+    public static IEnumerable<(Layer From, Layer To)> ForbiddenEdges() =>
+        from f in Layers
+        from t in Layers
+        where t.Name != f.Name && f.MayDependOn.All(d => d.Name != t.Name)
+        select (f, t);
 
     // Features each own a sub-tree of use cases (RemoteAgents.Features.<Feature>.<UseCase>), so the
     // feature is the FIRST segment under Features — derived from the namespaces, never registered.
