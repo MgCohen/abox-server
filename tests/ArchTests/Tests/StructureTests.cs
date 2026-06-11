@@ -33,6 +33,19 @@ public class StructureTests
             """);
     }
 
+    [Rule("No build output lives under src or tests")]
+    public void NoBuildOutputUnderSource()
+    {
+        var strays = SourceTree.StrayBuildOutput();
+        Assert.True(strays.Count == 0,
+            $"""
+            Build output (bin/obj/artifacts) escaped into the source tree:
+            {Bullets(strays)}
+            The only legal artifacts home is the repo-root /artifacts (UseArtifactsOutput + a pinned
+            ArtifactsPath). A stray here means a project escaped the root Directory.Build.props.
+            """);
+    }
+
     private static string Bullets(IEnumerable<string> items) =>
         string.Join(Environment.NewLine, items.Select(i => $"  * {i}"));
 }

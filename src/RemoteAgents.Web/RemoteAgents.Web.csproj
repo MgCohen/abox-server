@@ -1,5 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
 
+  <!-- Leaving the repo (namespace 'RemoteAgents.Web.*'): opt out of the root src/ namespace law,
+       which would otherwise derive RemoteAgents.RemoteAgents.Web from the folder path. -->
+  <PropertyGroup>
+    <RootNamespace>RemoteAgents.Web</RootNamespace>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.7" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.7" PrivateAssets="all" />

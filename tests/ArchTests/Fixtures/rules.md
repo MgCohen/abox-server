@@ -51,3 +51,12 @@ are resolved to types by namespace convention in `ArchitectureModel`.
   `src/`), with `RootNamespace` derived per slice in `src/Features/Directory.Build.props`. That keeps
   the namespace bands these dependency rules trust honest, and replaced the former custom filesystem
   rule + the namespace orphan guard.
+
+### No build output lives under src or tests
+- **Why:** `UseArtifactsOutput` + a **pinned** `ArtifactsPath` centralize every project's bin/obj into the
+  repo-root `/artifacts`. A `bin`, `obj`, or `artifacts` folder under `src/` or `tests/` means a project
+  escaped the root `Directory.Build.props` — the exact bug that scattered Features output into
+  `src/Features/artifacts/` when the slice's nested props shadowed the root's artifacts anchor.
+- **How:** A filesystem scan (`SourceTree.StrayBuildOutput`) over `src/` and `tests/`, reporting the
+  top-most offending folder. The output is gitignored and so invisible to the reference graph — only a
+  disk scan can catch it, the same blind-spot-closing surface as the project-placement guard above.
