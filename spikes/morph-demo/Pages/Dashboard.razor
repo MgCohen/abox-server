@@ -72,6 +72,18 @@
 </MorphStage>
 
 <MorphRaised Class="section-head">
+    <h2 class="section">Cut-out · content colour &amp; nested surface</h2>
+</MorphRaised>
+<MorphCutout Class="card">
+    <h2>Readable on the floor</h2>
+    <p class="muted">Generic content inherits light text from the cut-out surface — no per-element override.</p>
+    <MorphInset Class="inner">
+        <strong>Nested inset</strong>
+        <p class="muted">Dark here: the light text stops at the nested surface, not leaking in.</p>
+    </MorphInset>
+</MorphCutout>
+
+<MorphRaised Class="section-head">
     <h2 class="section">In-page swap · MorphStage</h2>
     <button class="swap" @onclick="Toggle">Swap layout (now @(_view == 0 ? "A" : "B"))</button>
 </MorphRaised>
