@@ -1,5 +1,5 @@
 using System.Text.RegularExpressions;
-using RemoteAgents.Actors.Agents.Claude;
+using RemoteAgents.Domain.Agents.Claude;
 
 namespace RemoteAgents.Tests;
 

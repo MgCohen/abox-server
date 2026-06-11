@@ -47,10 +47,9 @@ tests/                  test SOURCE only — zero build output (→ /artifacts).
     Features/<F>.Tests/   Domain/<Aggregate>.Tests/   Infrastructure.Tests/
   Integration/          real I/O: ConPTY, subprocess, Claude/Codex CLI, JSONL.
     <Subsystem>.Tests/
-  Architecture/         reference-graph enforcement (ArchUnitNET), whole-solution.
-    Architecture.Tests/
-  Acceptance/           PRD AC1–AC6 / oracle Tier-A, end-to-end through the spine.
-    Spine.Tests/
+  ArchTests/            reference-graph enforcement (ArchUnitNET), whole-solution. SINGLETON —
+                          sits directly under tests/, no type-folder tier (it is one project, not a set).
+  Acceptance.Tests/     PRD AC1–AC6 / oracle Tier-A, end-to-end through the spine. SINGLETON.
   Support/              ONLY genuinely-shared harness/fixtures/builders (lib, not a test project).
 
 artifacts/              ALL build output. The ONLY place artifacts may exist.
@@ -154,7 +153,9 @@ valid. **Assembly?** = is a `.csproj` (vs. a plain container folder).
     Integration / Architecture / Acceptance decides the project, its dependencies,
     and its speed tier. One test project per feature / aggregate / infra-lib — **not
     per use case** (test projects are leaves, so compile walls don't apply; cohesion
-    and tooling weight decide).
+    and tooling weight decide). Types that fan out (Unit mirrors `src/`, Integration per
+    subsystem) get a folder tier; **singletons (Architecture, Acceptance) sit directly under
+    `tests/` as one project** — no folder-for-a-set-of-one.
 15. **Test doubles live with the test that uses them.** Fakes/stubs stay local to the
     consuming test; promote to `Support` only when genuinely reused as a harness.
 16. **Repositories inherit downward.** Generic `IRepository<T>` (+ impl) lives in

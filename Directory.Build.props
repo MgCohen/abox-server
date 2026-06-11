@@ -11,8 +11,19 @@
     <LangVersion>latest</LangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 
+    <!-- Run the IDE/code-style analyzers (IDE0130 namespace-matches-folder) during `dotnet build`,
+         not just in the IDE, so the namespace convention fails the build like everything else. -->
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+
     <!-- Centralize bin/obj under /artifacts (gitignored). -->
     <UseArtifactsOutput>true</UseArtifactsOutput>
   </PropertyGroup>
+
+  <!-- IDE0130 reads RootNamespace + ProjectDir to compute the expected namespace; they are provided
+       automatically in Visual Studio but must be made compiler-visible for command-line builds. -->
+  <ItemGroup>
+    <CompilerVisibleProperty Include="RootNamespace" />
+    <CompilerVisibleProperty Include="ProjectDir" />
+  </ItemGroup>
 
 </Project>

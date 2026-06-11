@@ -1,4 +1,4 @@
-using RemoteAgents.Tools.CommandLine;
+using RemoteAgents.Infrastructure.CommandLine;
 
 namespace RemoteAgents.Tests;
 

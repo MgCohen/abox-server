@@ -1,4 +1,4 @@
-using RemoteAgents.Actors.Agents;
+using RemoteAgents.Domain.Agents;
 
 namespace RemoteAgents.Tests;
 

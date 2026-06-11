@@ -1,0 +1,16 @@
+<Project>
+
+  <!-- A nested Directory.Build.props shadows the repo-root one (MSBuild nearest-wins), so re-import
+       the root conventions (TargetFramework, Nullable, EnforceCodeStyleInBuild, ...) explicitly. -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!-- Feature namespaces keep the .Features. segment (folder-derived: RemoteAgents.Features.Flows.Start)
+       while the assembly name deliberately drops it (RemoteAgents.Flows.Start). IDE0130 checks each
+       file's namespace against RootNamespace, so derive RootNamespace from the folder under Features/ —
+       one rule for every slice, so a new feature is correct by default and the namespace can't drift. -->
+  <PropertyGroup>
+    <FeatureFolder>$([MSBuild]::MakeRelative('$(MSBuildThisFileDirectory)', '$(MSBuildProjectDirectory)'))</FeatureFolder>
+    <RootNamespace>RemoteAgents.Features.$(FeatureFolder.Replace('\', '.').Replace('/', '.'))</RootNamespace>
+  </PropertyGroup>
+
+</Project>
