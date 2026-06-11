@@ -39,12 +39,8 @@ are resolved to types by namespace convention in `ArchitectureModel`.
   list (relocating to their own repos; no destination yet, Morph has a live dev watch). The guard still
   rejects any *new* stray, and a staleness check fails if a listed folder is gone — so the list shrinks
   as they leave instead of rotting into a silent hole.
-
-### A type's namespace mirrors its folder
-- **Why:** The dependency rules band types by namespace; if a namespace can drift from its folder,
-  those bands lie. Pinning namespace = RemoteAgents + folder path keeps placement and namespace in
-  sync, so folder enforcement and graph enforcement agree. (Assembly name is a separate convention and
-  is not folder-derived.) Files with no namespace (top-level `Program.cs`) are skipped.
-- **Note:** This + *Every project lives under an agreed home folder* together subsume the former
-  *namespace* orphan guard (folder-home + namespace-mirrors-folder imply namespace-under-a-home), which
-  was retired once these two went green.
+- **Companion (not a test here):** *namespace mirrors folder* is enforced at **compile time** by the
+  SDK analyzer **IDE0130** (`/.editorconfig`, `dotnet_diagnostic.IDE0130.severity = error`, scoped to
+  `src/`), with `RootNamespace` derived per slice in `src/Features/Directory.Build.props`. That keeps
+  the namespace bands these dependency rules trust honest, and replaced the former custom filesystem
+  rule + the namespace orphan guard.

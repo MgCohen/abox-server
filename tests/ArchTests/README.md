@@ -1,11 +1,14 @@
 # Architecture tests
 
-Structure enforcement on two surfaces, so drift can't slip through either:
+Structure enforcement on three surfaces, so drift can't slip through any:
 
 - **Reference graph** (who depends on whom) — ArchUnitNET over the *loaded* assemblies. Fails the build
   when the dependency DAG of the structure migration is violated.
-- **Physical structure** (placement, naming) — a filesystem scan of `src/` (`SourceTree`). Sees every
-  folder and `.cs` on disk, compiled or not, so excluded/uncompiled code (Web, Morph) can't hide.
+- **Namespace matches folder** — the SDK analyzer **IDE0130**, at compile time, scoped to `src/`
+  (`/.editorconfig`); `RootNamespace` is derived per slice in `src/Features/Directory.Build.props`.
+  Keeps the namespace bands the reference-graph rules trust from drifting off their folder.
+- **Project placement** — a filesystem scan of `src/` (`SourceTree`). Sees every project folder on disk,
+  compiled or not, so excluded/uncompiled code (Web, Morph) can't hide a stray.
 
 ## Layout
 
@@ -13,10 +16,10 @@ Files are grouped by role, not by C# kind:
 
 - **`Fixtures/`** (`rules.md`) — the spec: the architecture rules in natural language.
 - **`Support/`** (`ArchitectureModel.cs`, `SourceTree.cs`, `RuleBook.cs`, `RuleAttribute.cs`) — the
-  harness: the loaded architecture + the layer allow-graph, the on-disk source tree, the rule-book
+  harness: the loaded architecture + the layer allow-graph, the on-disk project tree, the rule-book
   reflection, and the `[Rule]` attribute. No tests here.
 - **`Tests/`** (`RuleTests.cs`, `StructureTests.cs`, `RuleBookTests.cs`) — the `[Fact]`s: the
-  reference-graph assertions, the filesystem placement/naming assertions, and the rule↔test drift guard.
+  reference-graph assertions, the filesystem project-placement assertion, and the rule↔test drift guard.
 
 ## How it fits together
 
@@ -40,17 +43,20 @@ Files are grouped by role, not by C# kind:
 | Add a layer band | add one `IObjectProvider<IType>` band + a `Layer` entry (with its `MayDependOn`) in `ArchitectureModel.cs`; the down-only rule covers it automatically |
 | Evict a pending folder (Morph, Web) | drop it from `PendingEvictionFolders`; the staleness check fails once the folder is gone, as the reminder to do so |
 
-## Structure guards (filesystem)
+## Structure guards (filesystem + analyzer)
 
-`StructureTests` reads `src/` directly, so it governs placement before code ever compiles:
+`StructureTests` reads `src/` directly, so it governs project placement before code ever compiles:
 
 - **Every project lives under an agreed home folder** — the top-level `src/` folder must be a home
   (`Infrastructure`, `Domain`, `Features`, `Host`) or an explicit `PendingEvictionFolders` entry
-  (`Morph`, `RemoteAgents.Web`, relocating to their own repos). Any *new* stray fails.
-- **A type's namespace mirrors its folder** — `namespace == RemoteAgents + folder path`, so the
-  namespace bands the reference-graph rules trust can't drift from where the file actually lives.
+  (`Morph`, `RemoteAgents.Web`, relocating to their own repos). Any *new* stray fails; a staleness check
+  fails when a listed folder is gone, so the allow-list shrinks as they leave instead of rotting.
 
-These two together subsumed the former *namespace orphan guard*, which was retired.
+**Namespace matches folder** is *not* a test here — it's the SDK analyzer **IDE0130**, enforced at
+compile time as a build error (`/.editorconfig`, scoped to `src/`; pending-eviction folders opt out via
+their own `.editorconfig`). Because our namespace keeps `.Features.` while the assembly name drops it,
+`RootNamespace` is derived per slice in `src/Features/Directory.Build.props` so the analyzer agrees with
+the convention. This replaced both a custom filesystem rule and the former *namespace orphan guard*.
 
 ## Not yet enforced (deliberate)
 

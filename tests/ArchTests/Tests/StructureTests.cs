@@ -2,8 +2,9 @@ using static RemoteAgents.Tests.ArchTests.ArchitectureModel;
 
 namespace RemoteAgents.Tests.ArchTests;
 
-// Physical-placement guards: they read folders/files on disk (SourceTree), not the loaded assembly
-// graph, so they catch drift the moment it lands — even uncompiled or arch-excluded code (Web, Morph).
+// Physical-placement guard: reads the project folders on disk (SourceTree), not the loaded assembly
+// graph, so it catches a stray project the moment it lands — even uncompiled or arch-excluded code
+// (Web, Morph). Namespace-matches-folder is enforced separately by IDE0130 at compile time.
 public class StructureTests
 {
     [Rule("Every project lives under an agreed home folder")]
@@ -29,24 +30,6 @@ public class StructureTests
             These folders are gone but still listed in PendingEvictionFolders:
             {Bullets(stale)}
             Drop them from ArchitectureModel.PendingEvictionFolders.
-            """);
-    }
-
-    [Rule("A type's namespace mirrors its folder")]
-    public void NamespaceMirrorsFolder()
-    {
-        var offenders = SourceTree.SourceFiles()
-            .Where(f => f.DeclaredNamespace is not null && !IsPendingEviction(f.TopSegment))
-            .Where(f => f.DeclaredNamespace != f.ExpectedNamespace)
-            .Select(f => $"{f.RelativePath}: declares '{f.DeclaredNamespace}', folder expects '{f.ExpectedNamespace}'")
-            .OrderBy(s => s, StringComparer.Ordinal)
-            .ToList();
-
-        Assert.True(offenders.Count == 0,
-            $"""
-            Files whose namespace does not mirror their folder:
-            {Bullets(offenders)}
-            Fix: set the namespace to RemoteAgents + the src-relative folder path (or move the file).
             """);
     }
 

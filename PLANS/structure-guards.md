@@ -43,7 +43,7 @@ moment they exist) and answers gap 2 (checks folders, not namespaces).
 | # | Rule | Mechanism | Status |
 |---|------|-----------|--------|
 | 1 | **Every project lives under an agreed home folder** | filesystem | ✅ **DONE** |
-| 2 | **A type's namespace mirrors its folder** | filesystem + parse | ✅ **DONE** (caught 4 drifts) |
+| 2 | **A type's namespace mirrors its folder** | ~~filesystem~~ → **IDE0130** | ✅ **DONE then SUPERSEDED** — the custom filesystem rule caught 4 drifts, then was retired in favour of the SDK analyzer **IDE0130** (compile-time, see "Namespace rule → IDE0130" below) |
 | 3–6 | Dependencies flow down the layer graph only (Contracts/Infra no-internal, Domain↛Features, nothing↛Host) | ArchUnitNET | ✅ **DONE** — the 4 blanket denylists collapsed into one derived allow-graph rule; empty Contracts band runs `WithoutRequiringPositiveResults` and auto-activates on the first `*.Contracts` leaf |
 | 7 | Features must not depend on each other | ArchUnitNET | keep (intra-band — stayed its own named rule) |
 | 8 | No code lives outside the agreed structure (namespace orphan guard) | ArchUnitNET | ✅ **RETIRED** — subsumed by 1+2 |
@@ -112,6 +112,32 @@ set independently of folder name) — they only realign disk with the agreed sha
 > **RESOLVED (owner):** **bare folders.** `src/RemoteAgents.Host` → `src/Host`,
 > `src/RemoteAgents.Web` → `src/Web`. Rule 2's mapping has no exceptions; assembly
 > and namespace are unchanged (folder rename only).
+
+## Namespace rule → IDE0130 (adopted the SDK analyzer)
+
+The custom filesystem namespace rule (#2) did its job — caught the 4 drifts — but the
+**industry standard for namespace-matches-folder is the built-in Roslyn analyzer IDE0130**, not a
+home-grown test. So #2 was retired and replaced by IDE0130, enforced as a **build error**:
+
+- **`Directory.Build.props`** (root): `<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>` (run
+  IDE analyzers in `dotnet build`) + `CompilerVisibleProperty` for `RootNamespace`/`ProjectDir` (so
+  IDE0130 can compute the expected namespace on command-line builds, not just in VS).
+- **`/.editorconfig`**: `dotnet_diagnostic.IDE0130.severity = error`, scoped to `[src/**.cs]` — the
+  namespace convention is a *production* invariant; test projects keep their deliberate flat namespace.
+- **`src/Features/Directory.Build.props`**: derives `<RootNamespace>` = `RemoteAgents.Features.` + the
+  folder under `Features/` (via `MakeRelative`), because our namespace keeps `.Features.` while the
+  assembly name drops it. One rule for every slice, so a new feature is correct by default and the
+  namespace can't drift — IDE0130 then agrees with the convention. Domain/Infra/Host need no override
+  (namespace already == project name).
+- **`src/Morph/.editorconfig`** + **`src/RemoteAgents.Web/.editorconfig`**: `IDE0130.severity = none`
+  (pending-eviction; protects Morph's live dev watch from this rule).
+
+Why this is better than the custom rule: it's the supported tool, it bites at **compile time** (IDE
+squiggle + build error, with an auto-fix) instead of only at test time, and it fixes the *root cause*
+— `RootNamespace` now makes "Add new file" default to the correct namespace, which is how the drifts
+happened. The custom rule only ever covered in-build code (it skipped Morph/Web), exactly IDE0130's
+domain, so nothing was lost. Filesystem rule **#1** (project-under-home) stays — IDE0130 does not do
+project placement, and #1 is the Web/Morph blind-spot closer.
 
 ## Test project organization — no new project
 
