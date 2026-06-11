@@ -10,7 +10,12 @@ internal static class LiveSmoke
     public static async Task<FlowSnapshot> RunAsync(string flowId, string prompt, string projectDir, TimeSpan timeout)
     {
         var builder = WebApplication.CreateBuilder();
-        Composition.AddServices(builder);
+        Composition.AddServices(builder, catalog =>
+        {
+            catalog.Register<StubFlow>(new FlowConfig("stub", "Walking-skeleton stub: placeholder steps, no real work."));
+            catalog.Register<CodexPingFlow>(new FlowConfig("codex-ping", "Drive the Codex reviewer with the run prompt."));
+            catalog.Register<ClaudePingFlow>(new FlowConfig("claude-ping", "Drive the Claude implementer with the run prompt."));
+        });
         await using var app = builder.Build();
 
         var launcher = app.Services.GetRequiredService<FlowLauncher>();

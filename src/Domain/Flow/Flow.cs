@@ -1,9 +1,10 @@
 using System.Collections.Concurrent;
 using RemoteAgents.Domain.Flow.Operations;
+using RemoteAgents.Infrastructure.Operations;
 
 namespace RemoteAgents.Domain.Flow;
 
-public abstract class Flow
+public abstract class Flow : RunnerBase
 {
     private readonly ConcurrentDictionary<object, byte> _inFlight = new();
 
@@ -30,19 +31,6 @@ public abstract class Flow
         }
     }
 
-    private interface IGate<TArgs, TResult> where TArgs : OperationArgs
-    {
-        Task<TResult> Execute(TArgs args, CancellationToken ct);
-    }
-
-    public abstract class Operation<TArgs, TResult> : IGate<TArgs, TResult>
-        where TArgs : OperationArgs
-    {
-        protected abstract Task<TResult> Invoke(TArgs args, CancellationToken ct);
-
-        Task<TResult> IGate<TArgs, TResult>.Execute(TArgs args, CancellationToken ct) => Invoke(args, ct);
-    }
-
     protected async Task<TResult> Run<TArgs, TResult>(
         FlowContext ctx, Operation<TArgs, TResult> op, TArgs args, CancellationToken ct)
         where TArgs : OperationArgs
@@ -56,8 +44,7 @@ public abstract class Flow
             Changed?.Invoke();
             try
             {
-                IGate<TArgs, TResult> gate = op;
-                var result = await gate.Execute(args, ct).ConfigureAwait(false);
+                var result = await Execute(op, args, ct).ConfigureAwait(false);
                 if (op is IDecisionSource src)
                     foreach (var decision in src.Decisions)
                         ctx.RecordDecision(decision);

@@ -38,13 +38,18 @@ internal static class ArchitectureModel
     // Boundary anchor (\.|$) stops a prefix from leaking into a same-named sibling (e.g. a future
     // RemoteAgents.InfrastructureX namespace does not get mistaken for Infrastructure).
     // A Contracts leaf wherever it lives — flat RemoteAgents.Contracts or a nested per-feature
-    // Features/<F>/Contracts. Empty today (the flat one was dissolved, the leaves don't exist yet);
-    // the rule keyed to it runs WithoutRequiringPositiveResults so the dormant period passes
-    // honestly and the guard auto-activates the moment the first leaf lands.
+    // Features/<F>/Contracts. Live now: Features/Git/Contracts is the first leaf. The FeaturesNs below
+    // EXCLUDES these leaves so a leaf belongs to the Contracts band alone (see its comment for why).
     public const string ContractsNs = @"^RemoteAgents\.(.+\.)?Contracts(\.|$)";
     public const string InfrastructureNs = @"^RemoteAgents\.Infrastructure(\.|$)";
     public const string DomainNs = @"^RemoteAgents\.Domain\.";
-    public const string FeaturesNs = @"^RemoteAgents\.Features\.";
+
+    // A per-feature Contracts leaf (RemoteAgents.Features.<F>.Contracts) is architecturally Contracts, not
+    // Features: it's the published, dependency-free channel a peer feature may legally bind (Mode 2). So
+    // the Features band EXCLUDES the Contracts leaf via negative lookahead — only the Contracts band claims
+    // it. This is what makes "depend on a peer's Contracts" legal while "depend on its impl" stays forbidden,
+    // and it stops the leaf being double-counted (a Contracts type depending on a Features type — itself).
+    public const string FeaturesNs = @"^RemoteAgents\.Features\.(?!.*\.Contracts(\.|$)).+";
     public const string HostNs = @"^RemoteAgents\.Host(\.|$)";
 
     // The agreed home folders for production code — the only legal top-level places under src/. THIS
@@ -113,8 +118,11 @@ internal static class ArchitectureModel
             .Distinct()
             .ToList();
 
+    // A peer's Contracts leaf is the legal cross-feature channel, so it is NOT part of the feature's own
+    // namespace for the "features must not depend on each other" rule — depending on it is allowed, while
+    // depending on the feature's implementation is not.
     public static string FeatureNamespace(string feature) =>
-        $@"^RemoteAgents\.Features\.{Regex.Escape(feature)}(\.|$)";
+        $@"^RemoteAgents\.Features\.{Regex.Escape(feature)}(?!\.Contracts(\.|$))(\.|$)";
 
     private static readonly Regex FeatureSegment = new(@"^RemoteAgents\.Features\.([^.]+)");
 }

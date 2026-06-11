@@ -1,4 +1,6 @@
 using RemoteAgents.Features.Flows.Module;
+using RemoteAgents.Features.Git.Module;
+using RemoteAgents.Features.Tasks.Module;
 using RemoteAgents.Host;
 using RemoteAgents.Infrastructure.Projects;
 
@@ -13,5 +15,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapGet("/projects", (IProjectRegistry projects) => projects.List());
 
 app.MapFlows();
+app.MapGit();
+app.MapTasks();
 
 app.Run();

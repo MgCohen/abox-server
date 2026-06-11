@@ -4,7 +4,6 @@ using Microsoft.Extensions.DependencyInjection;
 using RemoteAgents.Domain.Flow;
 using RemoteAgents.Features.Flows.Cancel;
 using RemoteAgents.Features.Flows.Catalog;
-using RemoteAgents.Features.Flows.Definitions;
 using RemoteAgents.Features.Flows.Get;
 using RemoteAgents.Features.Flows.List;
 using RemoteAgents.Features.Flows.Start;
@@ -14,18 +13,18 @@ namespace RemoteAgents.Features.Flows.Module;
 
 public static class FlowsModule
 {
-    public static IServiceCollection AddFlows(this IServiceCollection services)
+    public static IServiceCollection AddFlows(this IServiceCollection services, Action<FlowCatalog>? register = null)
     {
         services.AddSingleton<IFlowHistory, FileFlowHistory>();
         services.AddSingleton<FlowRegistry>();
         services.AddSingleton<FlowLauncher>();
         services.AddSingleton<IFlowFactory, FlowFactory>();
 
-        // Eager build → fail-fast on a bad entry. Flows are stateless (config is a run arg), so transient. See ADR 0001.
+        // Flows are content, not engine: the composition root supplies the catalog (empty in production
+        // today). Eager build → fail-fast on a bad entry. Flows are stateless (config is a run arg), so
+        // transient. See ADR 0001.
         var catalog = new FlowCatalog();
-        catalog.Register<StubFlow>(new FlowConfig("stub", "Walking-skeleton stub: placeholder steps, no real work."));
-        catalog.Register<CodexPingFlow>(new FlowConfig("codex-ping", "Drive the Codex reviewer with the run prompt."));
-        catalog.Register<ClaudePingFlow>(new FlowConfig("claude-ping", "Drive the Claude implementer with the run prompt."));
+        register?.Invoke(catalog);
         foreach (var def in catalog.All())
             services.AddTransient(def.FlowType);
         services.AddSingleton(catalog);

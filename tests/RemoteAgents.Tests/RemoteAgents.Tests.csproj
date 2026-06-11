@@ -21,8 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Domain\Flow\RemoteAgents.Domain.Flow.csproj" />
-    <ProjectReference Include="..\..\src\Features\Flows\Definitions\RemoteAgents.Flows.Definitions.csproj" />
-    <ProjectReference Include="..\..\src\Features\Git\RemoteAgents.Git.csproj" />
+    <ProjectReference Include="..\..\src\Domain\Git\RemoteAgents.Domain.Git.csproj" />
     <ProjectReference Include="..\..\src\Domain\Agents\RemoteAgents.Domain.Agents.csproj" />
     <ProjectReference Include="..\..\src\Infrastructure\RemoteAgents.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Host\RemoteAgents.Host.csproj" />

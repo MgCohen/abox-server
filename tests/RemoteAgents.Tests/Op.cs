@@ -1,12 +1,12 @@
 using RemoteAgents.Domain.Flow;
-using RemoteAgents.Domain.Flow.Operations;
+using RemoteAgents.Infrastructure.Operations;
 
 namespace RemoteAgents.Tests;
 
 internal static class Op
 {
     public static async Task<TResult> Exec<TArgs, TResult>(
-        Flow.Operation<TArgs, TResult> op, TArgs args, string dir = ".", CancellationToken ct = default)
+        Operation<TArgs, TResult> op, TArgs args, string dir = ".", CancellationToken ct = default)
         where TArgs : OperationArgs
     {
         var flow = new OpFlow<TArgs, TResult>(op, args);

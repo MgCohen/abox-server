@@ -1,9 +1,9 @@
 using RemoteAgents.Domain.Flow;
-using RemoteAgents.Domain.Flow.Operations;
+using RemoteAgents.Infrastructure.Operations;
 
 namespace RemoteAgents.Tests;
 
-internal sealed class OpFlow<TArgs, TResult>(Flow.Operation<TArgs, TResult> op, TArgs args) : Flow
+internal sealed class OpFlow<TArgs, TResult>(Operation<TArgs, TResult> op, TArgs args) : Flow
     where TArgs : OperationArgs
 {
     public TResult Result { get; private set; } = default!;

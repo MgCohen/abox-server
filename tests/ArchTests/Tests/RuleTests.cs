@@ -34,6 +34,13 @@ public class RuleTests
                         .Check(Architecture);
     }
 
+    [Rule("Git operations depend on the floor, not on the flow engine")]
+    public void GitDependsOnFloorNotFlowEngine() =>
+        Types().That().ResideInNamespaceMatching(@"^RemoteAgents\.Domain\.Git(\.|$)").Should()
+            .NotDependOnAny(Types().That()
+                .ResideInNamespaceMatching(@"^RemoteAgents\.Domain\.Flow(\.|$)").As("the flow engine"))
+            .Check(Architecture);
+
     [Rule("The agent spawn and billing primitives are internal to Domain.Agents")]
     public void AgentRuntimePrimitivesAreInternal() =>
         Classes().That().HaveName("PtySession").Or().HaveName("SubscriptionGuard").Should()

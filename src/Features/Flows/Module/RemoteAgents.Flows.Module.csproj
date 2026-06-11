@@ -11,7 +11,6 @@
     <ProjectReference Include="..\Cancel\RemoteAgents.Flows.Cancel.csproj" />
     <ProjectReference Include="..\Watch\RemoteAgents.Flows.Watch.csproj" />
     <ProjectReference Include="..\Catalog\RemoteAgents.Flows.Catalog.csproj" />
-    <ProjectReference Include="..\Definitions\RemoteAgents.Flows.Definitions.csproj" />
     <ProjectReference Include="..\..\..\Domain\Flow\RemoteAgents.Domain.Flow.csproj" />
   </ItemGroup>
 
