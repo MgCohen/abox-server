@@ -20,6 +20,14 @@
         linear-gradient(150deg, rgb(102, 102, 225) 0%, rgb(166, 121, 251) 100%);
 }
 
+/* The floor is a dark surface, so its content reads light. Scope to the floor's
+   own content (not nested morph-items) so a Raised/Inset dropped on the floor
+   keeps the light-surface text tokens. */
+.cutout-floor > *:not(.morph-item) {
+    color: #fff;
+    --text-muted: rgba(255, 255, 255, 0.72);
+}
+
 .cutout-ring {
     position: absolute;
     top: 50%;

@@ -290,7 +290,6 @@ h2 {
 }
 
 .cutout-head {
-    color: #fff;
     margin-bottom: 14px;
 }
 
@@ -312,7 +311,6 @@ h2 {
 .cutout-tile {
     flex: 1;
     background: rgba(255, 255, 255, 0.16);
-    color: #fff;
     border-radius: 14px;
     padding: 14px;
     display: flex;
@@ -338,7 +336,6 @@ h2 {
     align-items: center;
     justify-content: space-between;
     padding: 30px 18px;
-    color: #fff;
 }
 
 .cutout-wide {
