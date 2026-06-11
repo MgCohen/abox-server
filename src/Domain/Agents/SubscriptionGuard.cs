@@ -2,7 +2,7 @@ using RemoteAgents.Infrastructure.CommandLine;
 
 namespace RemoteAgents.Domain.Agents;
 
-public static class SubscriptionGuard
+internal static class SubscriptionGuard
 {
     public static async Task CheckAsync(IReadOnlyList<string> forbiddenKeys, string binary, CancellationToken ct = default)
     {

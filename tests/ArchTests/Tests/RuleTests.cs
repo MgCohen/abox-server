@@ -34,9 +34,9 @@ public class RuleTests
                         .Check(Architecture);
     }
 
-    [Rule("PtySession is internal to Domain.Agents")]
-    public void PtySessionIsInternalToItsAssembly() =>
-        Classes().That().HaveName("PtySession").Should()
+    [Rule("The agent spawn and billing primitives are internal to Domain.Agents")]
+    public void AgentRuntimePrimitivesAreInternal() =>
+        Classes().That().HaveName("PtySession").Or().HaveName("SubscriptionGuard").Should()
             .BeInternal()
             .Check(Architecture);
 }

@@ -28,13 +28,15 @@ are resolved to types by namespace convention in `ArchitectureModel`.
   stays its own named rule rather than folding into the down-only layer graph above.
 - **Note:** Depending on a peer's Contracts is the legal channel.
 
-### PtySession is internal to Domain.Agents
-- **Why:** `PtySession` is the PTY spawn door — the single tricky, billing-sensitive primitive that
-  drives the agent CLI over ConPTY. Keeping it `internal` makes the *compiler* (not convention) the wall:
-  nothing outside the agent runtime can `new` a raw spawn, so every spawn goes through the assembly's
-  public port. Its only caller is `ClaudeProvider`, in the same assembly.
-- **Note:** A named visibility rule, not a dependency edge — `BeInternal()` on the type. If the wall is
-  ever reopened (made public) or the primitive renamed, this fails.
+### The agent spawn and billing primitives are internal to Domain.Agents
+- **Why:** `PtySession` (the ConPTY spawn door) and `SubscriptionGuard` (the subscription billing
+  key-scrub) are the hard-won, dangerous primitives of the agent runtime — oracle Tier-A bits. Keeping
+  them `internal` makes the *compiler* (not convention) the wall: nothing outside the agent runtime can
+  `new` a raw spawn or skip the billing check, so both are reached only through Domain.Agents' public
+  port. Their callers are all in this assembly.
+- **Note:** A named visibility rule, not a dependency edge — `BeInternal()` on each named primitive. If a
+  wall is ever reopened (made public) or a primitive renamed, this fails. Add a primitive to the rule's
+  name list as the agent runtime grows.
 
 ### Every project lives under an agreed home folder
 - **Why:** The agreed home folders (Infrastructure, Domain, Features, Host) are the only legal places
