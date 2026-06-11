@@ -8,7 +8,7 @@ Structure enforcement on three surfaces, so drift can't slip through any:
   (`/.editorconfig`); `RootNamespace` is derived per slice in `src/Features/Directory.Build.props`.
   Keeps the namespace bands the reference-graph rules trust from drifting off their folder.
 - **Project placement** — a filesystem scan of `src/` (`SourceTree`). Sees every project folder on disk,
-  compiled or not, so excluded/uncompiled code (Web, Morph) can't hide a stray.
+  compiled or not, so excluded or uncompiled code can't hide a stray.
 
 ## Layout
 
@@ -41,7 +41,7 @@ Files are grouped by role, not by C# kind:
 | Add a rule | append a `###` block to `Fixtures/rules.md`, add a `[Rule("<that name>")]` test in `RuleTests.cs` or `StructureTests.cs` |
 | Add a production assembly / feature / slice | **nothing** — the csproj globs `src\**\RemoteAgents.*.csproj` and `ArchitectureModel` loads them from the output dir, so a new project named `RemoteAgents.*` is discovered and governed automatically (Web is the one deliberate exclude) |
 | Add a layer band | add one `IObjectProvider<IType>` band + a `Layer` entry (with its `MayDependOn`) in `ArchitectureModel.cs`; the down-only rule covers it automatically |
-| Evict a pending folder (e.g. Web) | drop it from `PendingEvictionFolders`; the staleness check fails once the folder is gone, as the reminder to do so |
+| Evict a pending folder | drop it from `PendingEvictionFolders`; the staleness check fails once the folder is gone, as the reminder to do so |
 
 ## Structure guards (filesystem + analyzer)
 
@@ -49,20 +49,17 @@ Files are grouped by role, not by C# kind:
 
 - **Every project lives under an agreed home folder** — the top-level `src/` folder must be a home
   (`Infrastructure`, `Domain`, `Features`, `Host`) or an explicit `PendingEvictionFolders` entry
-  (`RemoteAgents.Web`, relocating to its own repo). Any *new* stray fails; a staleness check
-  fails when a listed folder is gone, so the allow-list shrinks as they leave instead of rotting.
+  (currently empty — Morph and Web both evicted to the web repo). Any *new* stray fails; a staleness
+  check fails when a listed folder is gone, so the allow-list shrinks as they leave instead of rotting.
 
 **Namespace matches folder** is *not* a test here — it's the SDK analyzer **IDE0130**, enforced at
-compile time as a build error (`/.editorconfig`, scoped to `src/`; pending-eviction folders opt out via
-their own `.editorconfig`). Because our namespace keeps `.Features.` while the assembly name drops it,
+compile time as a build error (`/.editorconfig`, scoped to `src/`; a pending-eviction folder would opt
+out via its own `.editorconfig`). Because our namespace keeps `.Features.` while the assembly name drops it,
 `RootNamespace` is derived per slice in `src/Features/Directory.Build.props` so the analyzer agrees with
 the convention. This replaced both a custom filesystem rule and the former *namespace orphan guard*.
 
 ## Not yet enforced (deliberate)
 
-- **`Web → Contracts only`** — `RemoteAgents.Web` isn't loaded into the reference-graph model yet
-  (Blazor WASM); folder rule #1 now governs its *placement*, but the dependency edge waits until the UI
-  direction settles. It is the strictest, most drift-prone edge.
 - **Per-feature `Contracts/` nested in a feature** — a future graduation; the Contracts band already
   matches any `*.Contracts` leaf, so the down-only rule activates the moment one lands. At that point the
   cross-feature rule also graduates to exclude peer Contracts (the legal channel).

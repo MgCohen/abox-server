@@ -1,4 +1,0 @@
-[*.cs]
-# Web is pending relocation to its own repo and is excluded from the solution build. Opt it out of the
-# namespace-matches-folder build error until it returns under a bare Web/ home.
-dotnet_diagnostic.IDE0130.severity = none
