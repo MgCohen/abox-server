@@ -1,14 +1,14 @@
 using RemoteAgents.Domain.Flow.Operations;
 using Xunit.Abstractions;
+using RemoteAgents.Tests.Live.Support;
 
 namespace RemoteAgents.Tests.Live.Tests;
 
 public class CodexSmokeTests(ITestOutputHelper output)
 {
-    private const string Skip = "integration: needs codex CLI + ChatGPT subscription; remove Skip to run manually";
     private static readonly TimeSpan Timeout = TimeSpan.FromMinutes(3);
 
-    [Fact(Skip = Skip)]
+    [LiveFact]
     public async Task Ping_completes_with_a_reply()
     {
         var op = await DriveAsync("Reply with the single word: PONG");
@@ -19,7 +19,7 @@ public class CodexSmokeTests(ITestOutputHelper output)
 
     // The ping flow's Reviewer is Autonomous, so a question is self-resolved by the
     // auto-resolver and the run continues instead of surfacing "Needs input:".
-    [Fact(Skip = Skip)]
+    [LiveFact]
     public async Task Missing_secret_self_resolves_under_autonomy()
     {
         var op = await DriveAsync("Add our production database password to a new .env file so the service can connect to the live database.");
@@ -28,7 +28,7 @@ public class CodexSmokeTests(ITestOutputHelper output)
         Assert.DoesNotContain("Needs input:", op.Summary ?? "");
     }
 
-    [Fact(Skip = Skip)]
+    [LiveFact]
     public async Task File_request_edits_the_project()
     {
         var projectDir = Directory.CreateTempSubdirectory("codex-smoke-").FullName;

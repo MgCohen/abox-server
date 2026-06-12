@@ -1,21 +1,21 @@
 using RemoteAgents.Domain.Agents;
 using RemoteAgents.Domain.Agents.Claude;
 using Xunit.Abstractions;
+using RemoteAgents.Tests.Live.Support;
 
 namespace RemoteAgents.Tests.Live.Tests;
 
 // Live validation for PermissionPolicy.Ask: proves the PreToolUse hook fires over
 // ConPTY, carries the tool payload to the resolver, and that the resolver's
 // allow/deny decision is honored. These are the "can the input detect a
-// permission request" cells (plan §7). Skip-gated like the rest of the matrix.
+// permission request" cells (plan §7). Gated by [LiveFact] — runs only under RUN_LIVE=1.
 public class ClaudeAskSmokeTests(ITestOutputHelper output)
 {
-    private const string Skip = "integration: needs claude CLI + Max subscription; remove Skip to run manually";
     private const string CreateFilePrompt =
         "Create a file named hello.txt in the current directory containing exactly: Hello from Claude";
     private static readonly TimeSpan Timeout = TimeSpan.FromMinutes(3);
 
-    [Fact(Skip = Skip)]
+    [LiveFact]
     public async Task Ask_detects_the_request_and_allow_lets_the_write_through()
     {
         var resolver = new RecordingResolver("Allow");
@@ -33,7 +33,7 @@ public class ClaudeAskSmokeTests(ITestOutputHelper output)
 
     // Auto auto-approves through the same gate without a human: the write runs even
     // though the resolver would have denied, and the resolver is never consulted.
-    [Fact(Skip = Skip)]
+    [LiveFact]
     public async Task Auto_runs_the_gated_tool_without_consulting_the_resolver()
     {
         var resolver = new RecordingResolver("Deny");
@@ -51,7 +51,7 @@ public class ClaudeAskSmokeTests(ITestOutputHelper output)
 
     // null is exactly what NonInteractiveResolver returns: the deny-on-null path
     // that replaces acceptEdits' silent mid-turn hang.
-    [Fact(Skip = Skip)]
+    [LiveFact]
     public async Task Ask_deny_blocks_the_write_without_hanging()
     {
         var resolver = new RecordingResolver(null);
