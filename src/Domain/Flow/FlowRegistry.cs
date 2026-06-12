@@ -16,9 +16,13 @@ public sealed class FlowRegistry(IFlowHistory history)
 
     public async Task Complete(FlowContext ctx)
     {
-        if (_live.TryRemove(ctx.Id, out var run))
+        if (_live.TryGetValue(ctx.Id, out var run))
         {
+            // Save to history BEFORE dropping from _live: history.Save does disk IO, so removing first
+            // opens a window where a concurrent Get/Changes/List sees the just-finished run in neither
+            // place. Persist (now visible via history), then unlist — the run is always reachable somewhere.
             await history.Save(run.Stream.Latest);
+            _live.TryRemove(ctx.Id, out _);
             run.Cts.Dispose();
         }
     }

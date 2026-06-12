@@ -19,3 +19,6 @@ app.MapGit();
 app.MapTasks();
 
 app.Run();
+
+// Exposed so the Wire test type can boot the real Host over WebApplicationFactory<Program>.
+public partial class Program;
