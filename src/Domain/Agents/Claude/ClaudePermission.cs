@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-namespace RemoteAgents.Domain.Agents.Claude;
+namespace ABox.Domain.Agents.Claude;
 
 public static class ClaudePermission
 {

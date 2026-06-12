@@ -5,7 +5,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Contracts\RemoteAgents.Git.Contracts.csproj" />
+    <ProjectReference Include="..\Contracts\ABox.Git.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

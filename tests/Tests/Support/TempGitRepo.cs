@@ -1,6 +1,6 @@
-using RemoteAgents.Infrastructure.CommandLine;
+using ABox.Infrastructure.CommandLine;
 
-namespace RemoteAgents.Tests.Support;
+namespace ABox.Tests.Support;
 
 internal sealed class TempGitRepo : IDisposable
 {

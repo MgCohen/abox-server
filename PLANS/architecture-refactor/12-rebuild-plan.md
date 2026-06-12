@@ -40,11 +40,11 @@ software work on Unity projects through "flows" (recipes like claude-only,
 full-review, unity-review). It has **two layers and only two**:
 
 1. **The orchestrator** — flows, agents, the agent base, primitives (git/gh/shell),
-   sessions. Today this is the `RemoteAgents` library (`remote-agents-dotnet/`)
+   sessions. Today this is the `ABox` library (`remote-agents-dotnet/`)
    plus the CLI entrypoint (`cli/agents-dotnet.cs`).
 2. **The UI / visuals** — everything a human looks at. Today this is
-   `ui/RemoteAgents.Host` (an ASP.NET service) plus the Blazor/MAUI clients
-   (`ui/RemoteAgents.UI.*`). **The Host is part of the UI layer**, not a third
+   `ui/ABox.Host` (an ASP.NET service) plus the Blazor/MAUI clients
+   (`ui/ABox.UI.*`). **The Host is part of the UI layer**, not a third
    tier — that framing is load-bearing for Workstream 2.
 
 **The target consumer.** A **mobile app** that talks to the PC running the
@@ -158,10 +158,10 @@ collapses to one snapshot bump on completion — do not race `Step(...)` calls.
 **Goal.** Replace the anemic `Run` (poked from outside) with a rich `Flow`
 aggregate whose `Step`s own and transition their own normalized state.
 
-**Current state.** `ui/RemoteAgents.Host/Runs/Run.cs` is a bag of `{get;set;}`
+**Current state.** `ui/ABox.Host/Runs/Run.cs` is a bag of `{get;set;}`
 fields mutated imperatively by `SubprocessFlowExecutor` and partly by
 `RunStateSink` (which folds exactly one event field). `RunStatus` lives in
-`RemoteAgents.Contracts`.
+`ABox.Contracts`.
 
 **Target shape.**
 
@@ -339,12 +339,12 @@ doesn't already contain). No SSE `Last-Event-ID` replay in v1 (see non-goals); a
 reconnecting client receives the current snapshot on connect and proceeds.
 
 **Delete.**
-- `ui/RemoteAgents.Host/Sinks/Broadcaster.cs`
-- `ui/RemoteAgents.Host/Sinks/ChannelSink.cs`
-- `ui/RemoteAgents.Host/Hubs/RunsHub.cs` (SignalR)
+- `ui/ABox.Host/Sinks/Broadcaster.cs`
+- `ui/ABox.Host/Sinks/ChannelSink.cs`
+- `ui/ABox.Host/Hubs/RunsHub.cs` (SignalR)
 - the transcript-tail + session-regex + `AgentEvent` re-hydrate path in
-  `ui/RemoteAgents.Host/Runs/SubprocessFlowExecutor.cs` (the F20 hot path)
-- `ui/RemoteAgents.UI.Components/Api/RunStreamClient.cs` → replace with an
+  `ui/ABox.Host/Runs/SubprocessFlowExecutor.cs` (the F20 hot path)
+- `ui/ABox.UI.Components/Api/RunStreamClient.cs` → replace with an
   SSE/poll client that consumes `FlowSnapshot`.
 
 **Keep / change.**
@@ -384,7 +384,7 @@ re-injects events. That is orchestration logic living in the UI layer.
   the single in-process path. Delete the subprocess executor.
 
 **Acceptance.**
-- [ ] `grep -r "Process.Start\|transcript.jsonl\|SessionIdLine" ui/RemoteAgents.Host`
+- [ ] `grep -r "Process.Start\|transcript.jsonl\|SessionIdLine" ui/ABox.Host`
       returns nothing.
 - [ ] The Host project references the orchestrator only through the registry +
       DTOs; no provider/PTY/transcript types leak into Host code.
@@ -442,7 +442,7 @@ public sealed class ClaudeStep : Step
   moves into a Codex-internal helper. `Core` references neither.
 
 **Acceptance.**
-- [ ] `grep -r "Porta.Pty\|PtyOptions\|Pty" remote-agents-dotnet/src/RemoteAgents/Core`
+- [ ] `grep -r "Porta.Pty\|PtyOptions\|Pty" remote-agents-dotnet/src/ABox/Core`
       returns nothing.
 - [ ] The orchestrator core compiles without any reference to a terminal type.
 - [ ] Swapping `ITerminalProvider` for a fake drives a `ClaudeStep` end-to-end in
@@ -521,15 +521,15 @@ Each step must build and pass tests before the next. Do not batch.
 
 | Current file | Fate |
 |---|---|
-| `ui/RemoteAgents.Host/Sinks/Broadcaster.cs` | delete (B) |
-| `ui/RemoteAgents.Host/Sinks/ChannelSink.cs` | delete (B) |
-| `ui/RemoteAgents.Host/Sinks/RunStateSink.cs` | delete (A) |
-| `ui/RemoteAgents.Host/Hubs/RunsHub.cs` | delete (B) |
-| `ui/RemoteAgents.Host/Runs/SubprocessFlowExecutor.cs` | delete (C) |
-| `ui/RemoteAgents.Host/Runs/InProcessFlowExecutor.cs`, `FlowRunner.cs` | collapse into registry path (C) |
-| `ui/RemoteAgents.Host/Runs/Run.cs` | → `Flow`/`StepEntry` aggregate (A) |
-| `ui/RemoteAgents.Host/Runs/RunStore.cs` | → `IHistoryStore` (snapshots) (B) |
-| `ui/RemoteAgents.UI.Components/Api/RunStreamClient.cs` | → SSE/poll client over `FlowSnapshot` (B) |
+| `ui/ABox.Host/Sinks/Broadcaster.cs` | delete (B) |
+| `ui/ABox.Host/Sinks/ChannelSink.cs` | delete (B) |
+| `ui/ABox.Host/Sinks/RunStateSink.cs` | delete (A) |
+| `ui/ABox.Host/Hubs/RunsHub.cs` | delete (B) |
+| `ui/ABox.Host/Runs/SubprocessFlowExecutor.cs` | delete (C) |
+| `ui/ABox.Host/Runs/InProcessFlowExecutor.cs`, `FlowRunner.cs` | collapse into registry path (C) |
+| `ui/ABox.Host/Runs/Run.cs` | → `Flow`/`StepEntry` aggregate (A) |
+| `ui/ABox.Host/Runs/RunStore.cs` | → `IHistoryStore` (snapshots) (B) |
+| `ui/ABox.UI.Components/Api/RunStreamClient.cs` | → SSE/poll client over `FlowSnapshot` (B) |
 | `Core/Agents/IAgent.cs` | **new** — interface locked in step 1.5; `RunAsync`/`ReviewAsync` signatures only (A/D shared contract) |
 | `Core/Agents/Agent.cs` | base trimmed; lifecycle merges into `Step` (A/D) |
 | `Providers/Claude/ClaudeAgent.cs` | split: thin adapter + `Providers/Claude/Terminal/*` (D) |

@@ -154,7 +154,7 @@ fires for every internal nav — exactly what Morph wants.
 
 ---
 
-## Findings against the current code (`src/RemoteAgents.Web`)
+## Findings against the current code (`src/ABox.Web`)
 
 Mostly already idiomatic — the gaps are small and additive:
 

@@ -1,4 +1,4 @@
-namespace RemoteAgents.Tests.Arch.Tests;
+namespace ABox.Tests.Arch.Tests;
 
 // Guards the link between the Arch Rulebook and the enforcing tests, via the shared ParityGuard engine.
 // Strict 1:1 — an architecture invariant is one Rule, one sweeping assertion; a Rule with no test passes

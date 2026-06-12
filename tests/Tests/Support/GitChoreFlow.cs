@@ -1,7 +1,7 @@
-using RemoteAgents.Domain.Flow;
-using RemoteAgents.Domain.Git;
+using ABox.Domain.Flow;
+using ABox.Domain.Git;
 
-namespace RemoteAgents.Tests.Support;
+namespace ABox.Tests.Support;
 
 // Mode 3 (driven capability): a flow binds the Domain.Git plumbing capability and runs its operations
 // through the engine — commit the working changes, rebase onto the remote, push. Real flow bodies are

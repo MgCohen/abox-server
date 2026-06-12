@@ -26,8 +26,8 @@ public static class OrchestratorPathsFinder
 ```
 
 `overrideRoot` covers the config path the Host already supports
-(`RemoteAgents:OrchestratorRoot`). With no override, walks for
-`RemoteAgents.slnx`. The CLI dispatcher, the Host, and `Session.Start`
+(`ABox:OrchestratorRoot`). With no override, walks for
+`ABox.slnx`. The CLI dispatcher, the Host, and `Session.Start`
 all call `OrchestratorPathsFinder.Find` exactly once and cache.
 
 **One owner of the session-dir layout:** `Session`. It already owns
@@ -71,24 +71,24 @@ stay; the file's location now matches its actual ownership.
 
 - **Three `ResolveOrchestratorRoot` routines:**
   - [`cli/agents-dotnet.cs:19-28`](../../remote-agents-dotnet/cli/agents-dotnet.cs)
-  - [`Host/Runs/FlowRunner.cs:275-289`](../../remote-agents-dotnet/ui/RemoteAgents.Host/Runs/FlowRunner.cs)
-  - [`Sessions/Session.cs:98-107`](../../remote-agents-dotnet/src/RemoteAgents/Core/Sessions/Session.cs)
+  - [`Host/Runs/FlowRunner.cs:275-289`](../../remote-agents-dotnet/ui/ABox.Host/Runs/FlowRunner.cs)
+  - [`Sessions/Session.cs:98-107`](../../remote-agents-dotnet/src/ABox/Core/Sessions/Session.cs)
     (different signature, slightly different walk)
 - **File basenames hardcoded in many places:**
   - `"claude-text.txt"` — written by [claude-only.cs:33](../../remote-agents-dotnet/cli/flows/claude-only.cs),
     [claude-validate.cs:65](../../remote-agents-dotnet/cli/flows/claude-validate.cs);
-    read by [Program.cs:137](../../remote-agents-dotnet/ui/RemoteAgents.Host/Program.cs).
+    read by [Program.cs:137](../../remote-agents-dotnet/ui/ABox.Host/Program.cs).
   - `"codex-review.txt"` — written by
     [full-review.cs:116](../../remote-agents-dotnet/cli/flows/full-review.cs),
     [unity-review.cs:129](../../remote-agents-dotnet/cli/flows/unity-review.cs);
-    read by [Program.cs:138](../../remote-agents-dotnet/ui/RemoteAgents.Host/Program.cs).
+    read by [Program.cs:138](../../remote-agents-dotnet/ui/ABox.Host/Program.cs).
   - `"claude-raw.txt"` — written by four flows; not read anywhere
     yet (forensic dump).
   - `"codex-review.jsonl"` — written by
-    [Reviews.cs:117](../../remote-agents-dotnet/src/RemoteAgents/Flows/Reviews.cs).
+    [Reviews.cs:117](../../remote-agents-dotnet/src/ABox/Flows/Reviews.cs).
   - `"transcript.jsonl"`, `"prompt.txt"`, `"meta.json"` — owned by
     `Session`, but `transcript.jsonl` is also referenced by
-    [`Host/Runs/FlowRunner.cs:222`](../../remote-agents-dotnet/ui/RemoteAgents.Host/Runs/FlowRunner.cs)
+    [`Host/Runs/FlowRunner.cs:222`](../../remote-agents-dotnet/ui/ABox.Host/Runs/FlowRunner.cs)
     by string.
 - **`Session.DefaultSessionsRoot`** walks the FS at every
   `Session.Start` call.
@@ -97,7 +97,7 @@ stay; the file's location now matches its actual ownership.
 ## Gap
 
 1. **Three FS walks for the same root**, each subtly different
-   (one looks for `RemoteAgents.slnx`, one looks for
+   (one looks for `ABox.slnx`, one looks for
    `remote-agents-dotnet/`, one tries both with different fallbacks).
 2. **Seven file basenames as string literals** spread across flows,
    helpers, and the Host. Adding a new artifact means updating the
@@ -106,7 +106,7 @@ stay; the file's location now matches its actual ownership.
    are written directly by flows. Inconsistent ownership: the type
    that should own session layout owns less than half of it.
 4. **The Host's `/runs/{id}/output` endpoint hardcodes the candidate
-   file list** ([`Program.cs:135-139`](../../remote-agents-dotnet/ui/RemoteAgents.Host/Program.cs))
+   file list** ([`Program.cs:135-139`](../../remote-agents-dotnet/ui/ABox.Host/Program.cs))
    — flow-specific filenames baked into a transport endpoint, with
    `Path.Combine` reconstruction.
 5. **`PtySession` accumulates Claude-specific knobs** while named as
@@ -116,7 +116,7 @@ stay; the file's location now matches its actual ownership.
 
 1. **Introduce `OrchestratorPaths` record** + `OrchestratorPathsFinder.Find()`
    in `Primitives/`. Find logic absorbs the union of the three
-   existing routines (prefer `RemoteAgents.slnx`, fall back to
+   existing routines (prefer `ABox.slnx`, fall back to
    walking for `remote-agents-dotnet/`, honor the config-override
    path).
 2. **Delete `ResolveOrchestratorRoot` from `cli/agents-dotnet.cs` and

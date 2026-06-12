@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace RemoteAgents.Domain.Agents;
+namespace ABox.Domain.Agents;
 
 public static class QuestionParser
 {

@@ -1,4 +1,4 @@
-namespace RemoteAgents.Domain.Git;
+namespace ABox.Domain.Git;
 
 public sealed record GitPullResult(string Remote, string Branch, bool Updated)
 {

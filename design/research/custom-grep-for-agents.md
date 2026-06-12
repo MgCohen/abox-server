@@ -15,7 +15,7 @@ recommendation so we can decide before building.
 
 - **Claude** has a discrete, named `Grep` tool. It is gateable and replaceable.
 - **Codex** has *no* `Grep` tool at all. Its search *is* the `shell` tool running
-  `rg`/`grep`. See `src/RemoteAgents/Actors/Agents/Codex/CodexProtocol.cs:94`
+  `rg`/`grep`. See `src/ABox/Actors/Agents/Codex/CodexProtocol.cs:94`
   (`command_execution` → `{"name":"shell", ...}`). There is nothing named "Grep"
   to disable — search is just another shell command.
 
@@ -32,9 +32,9 @@ over ConPTY and only *influence* their tools.
 
 - **Claude.** `ClaudeHooks.Create` generates a `settings.json` with hooks and
   passes it via `--settings`
-  (`src/RemoteAgents/Actors/Agents/Claude/ClaudeProtocol.cs:48`). A `PreToolUse`
+  (`src/ABox/Actors/Agents/Claude/ClaudeProtocol.cs:48`). A `PreToolUse`
   matcher gates a hardcoded set of tools
-  (`src/RemoteAgents/Actors/Agents/Claude/ClaudeHooks.cs:17`,
+  (`src/ABox/Actors/Agents/Claude/ClaudeHooks.cs:17`,
   `GatedTools = ["Bash", "Write", "Edit", "MultiEdit"]`). The matcher string is
   `string.Join('|', GatedTools)` (`ClaudeHooks.cs:132`). A gated call is piped to
   a PowerShell shim → dropped as a `req-*.json` → drained by the provider
@@ -62,7 +62,7 @@ today the code only ever allows/denies).
 - ⚠️ Cannot cleanly **redact results** — `PreToolUse` decides *whether* the real
   Grep runs; it does not rewrite the output the real Grep produces.
 - Claude-only. Would extend `ClaudePermission.Detail`
-  (`src/RemoteAgents/Actors/Agents/Claude/ClaudePermission.cs`) to pull
+  (`src/ABox/Actors/Agents/Claude/ClaudePermission.cs`) to pull
   `pattern`/`path`/`glob`, and add Grep rules to `AutoPolicy`'s denylist.
 
 ### 2. Custom MCP search tool + disable native `Grep` — the real "replacement"
@@ -124,13 +124,13 @@ blocking. Match the requirement in front of us.
 
 ## Key references
 
-- `src/RemoteAgents/Actors/Agents/Claude/ClaudeHooks.cs:17,132` — gated-tools set
+- `src/ABox/Actors/Agents/Claude/ClaudeHooks.cs:17,132` — gated-tools set
   + matcher.
-- `src/RemoteAgents/Actors/Agents/Claude/ClaudeProtocol.cs:40-50` — Claude
+- `src/ABox/Actors/Agents/Claude/ClaudeProtocol.cs:40-50` — Claude
   `BuildArgs` (`--settings`, `--permission-mode`, `--model`).
-- `src/RemoteAgents/Actors/Agents/Claude/ClaudePermission.cs` — tool-payload
+- `src/ABox/Actors/Agents/Claude/ClaudePermission.cs` — tool-payload
   field extraction for display/guardrails.
-- `src/RemoteAgents/Actors/Agents/Claude/AutoPolicy.cs` — denylist guardrail.
-- `src/RemoteAgents/Actors/Agents/Codex/CodexProtocol.cs:8-41,94` — Codex
+- `src/ABox/Actors/Agents/Claude/AutoPolicy.cs` — denylist guardrail.
+- `src/ABox/Actors/Agents/Codex/CodexProtocol.cs:8-41,94` — Codex
   `BuildArgs` + the `shell`-only tool model.
 - `design/adr/0007-permission-policy-pretooluse.md` — permission-gating design.

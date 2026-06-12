@@ -1,6 +1,6 @@
-using RemoteAgents.Infrastructure.Operations;
+using ABox.Infrastructure.Operations;
 
-namespace RemoteAgents.Tests.Support;
+namespace ABox.Tests.Support;
 
 // PROVISIONAL stub operation — a placeholder step, kept as a test fixture for the skeleton flows.
 public sealed class DelayOperation : Operation<DelayArgs, string>

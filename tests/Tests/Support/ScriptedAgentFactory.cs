@@ -1,6 +1,6 @@
-using RemoteAgents.Domain.Agents;
+using ABox.Domain.Agents;
 
-namespace RemoteAgents.Tests.Support;
+namespace ABox.Tests.Support;
 
 // Test IAgentFactory that wraps an injected provider in a real Agent, reusing the real resolver wiring
 // (ResolverSelector). Lets FlowHarness run a flow end to end with a scripted mouth instead of a live CLI.

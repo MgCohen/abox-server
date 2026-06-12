@@ -1,7 +1,7 @@
-using RemoteAgents.Domain.Agents;
-using RemoteAgents.Domain.Agents.Claude;
+using ABox.Domain.Agents;
+using ABox.Domain.Agents.Claude;
 
-namespace RemoteAgents.Tests.Unit.Tests;
+namespace ABox.Tests.Unit.Tests;
 
 public class InteractivityTests
 {

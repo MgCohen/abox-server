@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Start\ABox.Flows.Start.csproj" />
+    <ProjectReference Include="..\List\ABox.Flows.List.csproj" />
+    <ProjectReference Include="..\Get\ABox.Flows.Get.csproj" />
+    <ProjectReference Include="..\Cancel\ABox.Flows.Cancel.csproj" />
+    <ProjectReference Include="..\Watch\ABox.Flows.Watch.csproj" />
+    <ProjectReference Include="..\Catalog\ABox.Flows.Catalog.csproj" />
+    <ProjectReference Include="..\..\..\Domain\Flow\ABox.Domain.Flow.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,6 +1,6 @@
-using RemoteAgents.Domain.Agents;
+using ABox.Domain.Agents;
 
-namespace RemoteAgents.Tests.Support;
+namespace ABox.Tests.Support;
 
 // Returns each scripted reply in turn, so a test can drive an agent through an
 // ask-then-answer sequence without a live CLI.

@@ -1,8 +1,8 @@
-using RemoteAgents.Domain.Flow;
-using RemoteAgents.Domain.Git;
-using RemoteAgents.Infrastructure.CommandLine;
+using ABox.Domain.Flow;
+using ABox.Domain.Git;
+using ABox.Infrastructure.CommandLine;
 
-namespace RemoteAgents.Tests.E2E.Tests;
+namespace ABox.Tests.E2E.Tests;
 
 public class GitChoreFlowTests
 {

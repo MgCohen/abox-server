@@ -1,3 +1,3 @@
-namespace RemoteAgents.Infrastructure.Operations;
+namespace ABox.Infrastructure.Operations;
 
 public abstract record OperationArgs(string Name);

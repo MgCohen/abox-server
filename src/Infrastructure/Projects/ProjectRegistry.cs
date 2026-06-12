@@ -1,8 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using RemoteAgents.Infrastructure.Paths;
+using ABox.Infrastructure.Paths;
 
-namespace RemoteAgents.Infrastructure.Projects;
+namespace ABox.Infrastructure.Projects;
 
 public sealed class ProjectRegistry : IProjectRegistry
 {

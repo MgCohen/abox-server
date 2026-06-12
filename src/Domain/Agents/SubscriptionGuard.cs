@@ -1,6 +1,6 @@
-using RemoteAgents.Infrastructure.CommandLine;
+using ABox.Infrastructure.CommandLine;
 
-namespace RemoteAgents.Domain.Agents;
+namespace ABox.Domain.Agents;
 
 internal static class SubscriptionGuard
 {

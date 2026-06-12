@@ -1,4 +1,4 @@
-namespace RemoteAgents.Domain.Agents;
+namespace ABox.Domain.Agents;
 
 public abstract record AgentConfig(
     string Name,

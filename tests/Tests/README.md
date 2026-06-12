@@ -26,6 +26,6 @@ enforced at compile time (`/.editorconfig`, scoped to `src/` and `tests/`).
 | Add an Arch rule | append a `###` block to `Arch/Rulebook/rules.md` + a `[Rule("<header>")]` test in `Arch/Tests/RuleTests.cs` |
 | Add a Structure rule | append a `###` block to `Structure/Rulebook/rules.md` + a `[Rule("<header>")]` test in `Structure/Tests/StructureTests.cs` |
 | Add a behavioral rule (Unit/E2E/Wire/Live) | append a `###` block to that type's `Rulebook/rules.md` + a `[Rule("<header>")]` test under its `Tests/` (1:N — several cases per Rule allowed) |
-| Add a production assembly / feature / slice | **nothing** — the csproj globs `src\**\RemoteAgents.*.csproj`, so a new `RemoteAgents.*` project is referenced and governed automatically |
+| Add a production assembly / feature / slice | **nothing** — the csproj globs `src\**\ABox.*.csproj`, so a new `ABox.*` project is referenced and governed automatically |
 | Add a layer band | add one `IObjectProvider<IType>` band + a `Layer` entry (with its `MayDependOn`) in `Arch/Support/ArchitectureModel`; the down-only rule covers it automatically |
 | Evict a pending folder | drop it from `HomeFolders.PendingEviction`; the staleness check fails once the folder is gone, as the reminder to do so |

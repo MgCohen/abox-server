@@ -1,7 +1,7 @@
-using RemoteAgents.Domain.Flow;
-using RemoteAgents.Features.Flows.Contracts;
+using ABox.Domain.Flow;
+using ABox.Features.Flows.Contracts;
 
-namespace RemoteAgents.Features.Flows.Shared;
+namespace ABox.Features.Flows.Shared;
 
 public static class FlowMapping
 {

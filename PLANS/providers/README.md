@@ -22,16 +22,16 @@ Target machine for the local plans (from the requester): **Windows, 32 GB RAM, N
 A provider is a **pure add** — no change to `Agent`, flows, or consumers. You touch:
 
 1. **A config record** — subtype of `AgentConfig(Name, Description, Model, SystemPrompt)`
-   ([`AgentConfig.cs`](../../src/RemoteAgents/Actors/Agents/AgentConfig.cs)) with provider-specific
+   ([`AgentConfig.cs`](../../src/ABox/Actors/Agents/AgentConfig.cs)) with provider-specific
    fields. The config holds settings; `AgentRunRequest` carries only per-call
    `Prompt`/`ProjectDir`/`SessionId`.
 2. **An `IProvider`** — `Task<DriveResult> DriveAsync(AgentRunRequest, CancellationToken)`
-   ([`IProvider.cs`](../../src/RemoteAgents/Actors/Agents/IProvider.cs)). Builds inputs, drives a
+   ([`IProvider.cs`](../../src/ABox/Actors/Agents/IProvider.cs)). Builds inputs, drives a
    substrate, **normalizes** to `DriveResult(Text, SessionId, ExitCode, RawOutput, Transcript)`.
 3. **A parser** — a pure normalizer, fixture-tested, emitting `AgentTurn(AgentTurnKind, Body)` with
    kinds `Text | Thinking | ToolUse | ToolResult`.
-4. **One factory arm** in [`AgentFactory.cs`](../../src/RemoteAgents/Actors/Agents/AgentFactory.cs).
-5. **A catalog entry** (optional) in [`Agents.cs`](../../src/RemoteAgents/Actors/Agents/Agents.cs).
+4. **One factory arm** in [`AgentFactory.cs`](../../src/ABox/Actors/Agents/AgentFactory.cs).
+5. **A catalog entry** (optional) in [`Agents.cs`](../../src/ABox/Actors/Agents/Agents.cs).
 
 The **subscription/env policy is per-provider** — `SubscriptionGuard.CheckAsync(forbiddenKeys,
 binary, ct)` takes the key list as a parameter, and the live `ClaudeProvider` already calls it

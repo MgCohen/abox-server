@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
-using RemoteAgents.Infrastructure.CommandLine;
+using ABox.Infrastructure.CommandLine;
 
-namespace RemoteAgents.Domain.Agents.Claude;
+namespace ABox.Domain.Agents.Claude;
 
 public static class ClaudeProtocol
 {

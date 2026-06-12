@@ -1,10 +1,10 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
-using RemoteAgents.Domain.Flow;
-using RemoteAgents.Features.Flows.Shared;
-using RemoteAgents.Infrastructure.Json;
+using ABox.Domain.Flow;
+using ABox.Features.Flows.Shared;
+using ABox.Infrastructure.Json;
 
-namespace RemoteAgents.Features.Flows.Watch;
+namespace ABox.Features.Flows.Watch;
 
 internal static class Sse
 {

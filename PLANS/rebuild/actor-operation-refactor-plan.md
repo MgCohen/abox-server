@@ -273,7 +273,7 @@ No explicit type args anywhere — `args` pins `TArgs`, `git.Commit` is a unique
 - `Actors/Git/Git.cs` — holder + per-verb op classes + dir ctor.
 - `Flows/DelayOperation.cs` — `: Operation<DelayArgs,string>` (provisional, unchanged role).
 - `Flows/{StubFlow,ClaudePingFlow,CodexPingFlow}.cs` — new call sites; construct actors with `ctx.ProjectDir`.
-- `RemoteAgents.Web/Pages/RunView.razor` — render the per-op `Events` timeline.
+- `ABox.Web/Pages/RunView.razor` — render the per-op `Events` timeline.
 - `tests/…` — `AgentTests`, `GitTests`, `GitGuardrailTests`, `FlowTests` to the new API.
 
 **Deleted**

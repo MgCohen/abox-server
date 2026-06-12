@@ -1,11 +1,11 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
-using RemoteAgents.Features.Git.Contracts;
-using RemoteAgents.Features.Git.PrList;
-using RemoteAgents.Features.Git.PrOps;
+using ABox.Features.Git.Contracts;
+using ABox.Features.Git.PrList;
+using ABox.Features.Git.PrOps;
 
-namespace RemoteAgents.Features.Git.Module;
+namespace ABox.Features.Git.Module;
 
 public static class GitModule
 {

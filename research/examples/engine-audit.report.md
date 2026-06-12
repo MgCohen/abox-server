@@ -9,7 +9,7 @@ The skeptics are in. Let me tally the survivors and write the final report.
 
 ### Executive Summary
 
-The audit of 7 files in `src/RemoteAgents/Engine/` surfaced 7 confirmed findings (3 critical, 2 major, 2 minor) from 19 raw candidates — 12 were refuted after scrutinizing actual call sites and construction paths. The two most dangerous issues are structural bugs in `Flow.cs` that can permanently poison operation state and silently corrupt the `FlowContext` operation log. A third critical issue is that `FlowDefinition` holds an untyped `System.Type`, making illegal states representable at construction time even though the intended construction path (`FlowCatalog.Register<TFlow>`) is constrained.
+The audit of 7 files in `src/ABox/Engine/` surfaced 7 confirmed findings (3 critical, 2 major, 2 minor) from 19 raw candidates — 12 were refuted after scrutinizing actual call sites and construction paths. The two most dangerous issues are structural bugs in `Flow.cs` that can permanently poison operation state and silently corrupt the `FlowContext` operation log. A third critical issue is that `FlowDefinition` holds an untyped `System.Type`, making illegal states representable at construction time even though the intended construction path (`FlowCatalog.Register<TFlow>`) is constrained.
 
 ---
 

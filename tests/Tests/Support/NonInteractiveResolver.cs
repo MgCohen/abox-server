@@ -1,6 +1,6 @@
-using RemoteAgents.Domain.Agents;
+using ABox.Domain.Agents;
 
-namespace RemoteAgents.Tests.Support;
+namespace ABox.Tests.Support;
 
 // Test double for the abstain path: always returns null, so a detected question is
 // terminal (the flow surfaces NeedsInput and stops). No production resolver abstains

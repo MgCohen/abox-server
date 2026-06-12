@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
-using RemoteAgents.Domain.Flow;
-using RemoteAgents.Features.Flows.Contracts;
+using ABox.Domain.Flow;
+using ABox.Features.Flows.Contracts;
 
-namespace RemoteAgents.Features.Flows.Catalog;
+namespace ABox.Features.Flows.Catalog;
 
 public static class CatalogEndpoint
 {

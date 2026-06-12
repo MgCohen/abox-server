@@ -1,7 +1,7 @@
 using System.Diagnostics;
-using RemoteAgents.Infrastructure.CommandLine;
+using ABox.Infrastructure.CommandLine;
 
-namespace RemoteAgents.Domain.Agents.Codex;
+namespace ABox.Domain.Agents.Codex;
 
 public sealed class CodexProvider(CodexConfig config) : IProvider
 {

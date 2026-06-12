@@ -246,7 +246,7 @@ Across all four (and the other 487), the recurring DNA:
 
 We stopped quoting strangers and generated one ourselves. From inside the
 container (`claude` 2.1.168, `claude -p "ultracode: <read-only audit of
-src/RemoteAgents/Engine/>"` — the headless/SDK path), the runtime wrote and
+src/ABox/Engine/>"` — the headless/SDK path), the runtime wrote and
 executed a workflow. Captured verbatim:
 [`research/examples/engine-audit.generated-workflow.js`](examples/engine-audit.generated-workflow.js)
 (the script) + [`engine-audit.report.md`](examples/engine-audit.report.md) (the
@@ -404,7 +404,7 @@ own session). Out of scope for sequential v1.
 
 ## 9. Parallelism in our engine — what's actually safe (audit, 2026-06-07)
 
-Code audit of `src/RemoteAgents`, by the three scenarios the question framed. The
+Code audit of `src/ABox`, by the three scenarios the question framed. The
 headline: **our engine is far more parallel-ready than the sequential recipes
 suggest.** Verdicts with evidence:
 
@@ -500,5 +500,5 @@ outlives a layer, so it earns an **ADR** when built.
 - [HN discussion](https://news.ycombinator.com/item?id=48311705) and [follow-up](https://news.ycombinator.com/item?id=48350661)
 - [Claude Code Adds Dynamic Workflows — InfoQ](https://www.infoq.com/news/2026/06/dynamic-workflows-claude-code/)
 - Structured output (§10): [Agent SDK structured outputs (validate + re-prompt + retry)](https://code.claude.com/docs/en/agent-sdk/structured-outputs) · [API structured outputs (constrained decoding)](https://platform.claude.com/docs/en/build-with-claude/structured-outputs) · [Claude Code headless / `--json-schema`](https://code.claude.com/docs/en/headless) · [issue #9058 — constrained decoding still unbuilt](https://github.com/anthropics/claude-code/issues/9058) · [issue #43333 — `claude -p`+OAuth bills as API, not Max](https://github.com/anthropics/claude-code/issues/43333) · [`StructuredOutput` synthetic tool / injected prompts (Piebald extraction)](https://github.com/Piebald-AI/claude-code-system-prompts)
-- Internal (§9/§10): `src/RemoteAgents/Engine/Flow.cs`, `Runtime/*`, `Actors/Agents/Claude/ClaudeProvider.cs` + `ClaudeJsonl.cs`, `Actors/Agents/QuestionParser.cs`, `Actors/Git/Git.cs`, `RemoteAgents.Host/Composition.cs`; `PLANS/structured-questions-spike.md`, `spikes/structured-questions/FINDINGS.md`
+- Internal (§9/§10): `src/ABox/Engine/Flow.cs`, `Runtime/*`, `Actors/Agents/Claude/ClaudeProvider.cs` + `ClaudeJsonl.cs`, `Actors/Agents/QuestionParser.cs`, `Actors/Git/Git.cs`, `ABox.Host/Composition.cs`; `PLANS/structured-questions-spike.md`, `spikes/structured-questions/FINDINGS.md`
 </content>

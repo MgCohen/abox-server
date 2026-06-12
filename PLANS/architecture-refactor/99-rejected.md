@@ -48,7 +48,7 @@ registered. The composition root naming providers explicitly is
 clearer.
 
 **How to apply**: providers are registered by name in
-`services.AddRemoteAgents(...)`. Adding a new provider is an
+`services.AddABox(...)`. Adding a new provider is an
 explicit two-line code change.
 
 ---
@@ -261,9 +261,9 @@ identity surfaces in code, exactly once per provider.
 ## R13 — `IConfiguration` / `appsettings.json` binding for agent options
 
 **Considered**: bind `ClaudeAgentOptions` / `CodexAgentOptions` from
-`IConfiguration` via `services.Configure<T>(config.GetSection("RemoteAgents:Claude"))`.
+`IConfiguration` via `services.Configure<T>(config.GetSection("ABox:Claude"))`.
 Lets per-environment overrides land in `appsettings.Production.json`
-or env vars like `RemoteAgents__Claude__LaunchSettleMinWaitMs`.
+or env vars like `ABox__Claude__LaunchSettleMinWaitMs`.
 
 **Decided**: NO. Options are records with defaults; overrides are
 lambdas at registration.
@@ -276,7 +276,7 @@ string per knob, a binder package dependency, and an indirection from
 and the binder." It buys flexibility we will not use.
 
 **How to apply**:
-- `RemoteAgents.Hosting.csproj` does not reference
+- `ABox.Hosting.csproj` does not reference
   `Microsoft.Extensions.Configuration.*`.
 - `UseClaude(Action<ClaudeAgentOptions>? configure = null)` takes an
   optional lambda; defaults stay on the record.

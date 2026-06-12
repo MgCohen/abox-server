@@ -96,11 +96,11 @@ strings or agent construction:
   each a separate `dotnet run` entry point with the same scaffolding.
 - **Flow discovery is duplicated** in
   [`cli/agents-dotnet.cs:73-81`](../../remote-agents-dotnet/cli/agents-dotnet.cs)
-  and [`Program.cs:63-91`](../../remote-agents-dotnet/ui/RemoteAgents.Host/Program.cs)
+  and [`Program.cs:63-91`](../../remote-agents-dotnet/ui/ABox.Host/Program.cs)
   — both glob `cli/flows/*.cs`, both filter `!StartsWith("smoke-")`,
   both sort, both extract a description from the first comment block.
 - **`FlowBootstrap.StartAsync` returns `null` on bad args**
-  ([`FlowBootstrap.cs:48`](../../remote-agents-dotnet/src/RemoteAgents/Flows/FlowBootstrap.cs))
+  ([`FlowBootstrap.cs:48`](../../remote-agents-dotnet/src/ABox/Flows/FlowBootstrap.cs))
   with side-effect `Environment.ExitCode = 2`. Every flow then opens
   with `if (ctx is null) return`.
 - **`Environment.ExitCode` is set in many places per flow**, with
@@ -113,14 +113,14 @@ strings or agent construction:
   - `=0` for success
 - **`Loops.ValidateAndFixAsync`** takes `progressNote` and
   `fixDescriptor` display-string parameters
-  ([`Loops.cs:21-30`](../../remote-agents-dotnet/src/RemoteAgents/Flows/Loops.cs)).
+  ([`Loops.cs:21-30`](../../remote-agents-dotnet/src/ABox/Flows/Loops.cs)).
   Caller's flow knows the callee's UI strings.
 - **`Reviews.AskCodexForVerdictAsync` constructs a CodexAgent**
-  ([`Reviews.cs:54-59`](../../remote-agents-dotnet/src/RemoteAgents/Flows/Reviews.cs))
+  ([`Reviews.cs:54-59`](../../remote-agents-dotnet/src/ABox/Flows/Reviews.cs))
   with hardcoded options. The review prompt and the verdict syntax
   are baked in.
 - **`FlowContext.EnsureCleanTreeAsync`** lives on `FlowContext` but
-  is a pre-flight check ([`FlowBootstrap.cs:25-32`](../../remote-agents-dotnet/src/RemoteAgents/Flows/FlowBootstrap.cs))
+  is a pre-flight check ([`FlowBootstrap.cs:25-32`](../../remote-agents-dotnet/src/ABox/Flows/FlowBootstrap.cs))
   — really a decorator candidate.
 
 ## Gap

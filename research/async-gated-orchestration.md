@@ -263,7 +263,7 @@ either a pre-transition guard (redirect before melting) or the error path.
 ## Minimal experiment to prove it
 
 Smallest thing that proves the gate + barrier + floor work, before touching the
-real `RemoteAgents.Web`:
+real `ABox.Web`:
 
 1. In the `spikes/ui-shell` `Home.razor`, replace the swap-and-`Task.Delay` with
    `SwitchToAsync` above, and make `GoToRun`'s `load` an **artificial async with
@@ -284,6 +284,6 @@ holds the resting state and never extrudes into emptiness; error case extrudes a
 real error view; no skipped/clipped melt or extrude across ~10 runs (the
 render-barrier proof).
 
-If that holds, lifting it into `RemoteAgents.Web` is mechanical: swap the
+If that holds, lifting it into `ABox.Web` is mechanical: swap the
 artificial `load` delegate for the `Api.GetFlowAsync` + start-SSE-in-`commit`
 shape shown above.

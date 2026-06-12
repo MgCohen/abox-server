@@ -1,4 +1,4 @@
-namespace RemoteAgents.Tests.E2E.Tests;
+namespace ABox.Tests.E2E.Tests;
 
 // Guards the link between the E2E Rulebook and its [Rule] tests, via the shared ParityGuard engine.
 // Cardinality 1:N (not strict). The Rulebook accrues going-forward.

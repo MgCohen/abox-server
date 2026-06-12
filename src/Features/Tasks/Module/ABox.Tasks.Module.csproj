@@ -5,7 +5,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Create\RemoteAgents.Tasks.Create.csproj" />
+    <ProjectReference Include="..\Create\ABox.Tasks.Create.csproj" />
   </ItemGroup>
 
 </Project>

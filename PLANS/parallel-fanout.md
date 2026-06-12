@@ -23,7 +23,7 @@ own bookkeeping**, which is the one thing written single-writer.
 
 ## The core problem: the ledger is single-writer
 
-Today (`src/RemoteAgents/Engine/`):
+Today (`src/ABox/Engine/`):
 
 - `FlowContext.CompleteOperation` closes **`_operations[^1]`** (`FlowContext.cs:31`)
   — "the op just started." With two ops in flight, the last-added record is the

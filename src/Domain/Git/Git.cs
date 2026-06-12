@@ -1,7 +1,7 @@
-using RemoteAgents.Infrastructure.CommandLine;
-using RemoteAgents.Infrastructure.Operations;
+using ABox.Infrastructure.CommandLine;
+using ABox.Infrastructure.Operations;
 
-namespace RemoteAgents.Domain.Git;
+namespace ABox.Domain.Git;
 
 public sealed class Git(string projectDir)
 {

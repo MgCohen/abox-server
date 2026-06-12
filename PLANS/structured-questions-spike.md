@@ -135,7 +135,7 @@ public abstract record AgentQuestion(string Prompt, string RawTail)
 tail on a parse failure) for diagnostics and graceful degradation.
 
 The agent run result gains a status + optional question (mirrors the rebuild's
-current `AgentResult` in `src/RemoteAgents/Actors/Agents/AgentResult.cs`, which
+current `AgentResult` in `src/ABox/Actors/Agents/AgentResult.cs`, which
 today is just `Text/SessionId/ExitCode/RawOutput/Transcript`):
 
 ```csharp
@@ -546,5 +546,5 @@ Hang/freeform rate:        __% / __%
   the question model: keep its `<<NEEDS_INPUT>>` directive idea, replace
   freeform-prose questions with the JSON envelope, drop the hook machinery
   (§5) and the `TuiPrompt` case (sidestepped by config).
-- `src/RemoteAgents/Actors/Agents/AgentResult.cs` — current result shape the
+- `src/ABox/Actors/Agents/AgentResult.cs` — current result shape the
   hardening pass extends.

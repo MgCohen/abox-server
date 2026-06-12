@@ -1,4 +1,4 @@
-namespace RemoteAgents.Tests.Unit.Tests;
+namespace ABox.Tests.Unit.Tests;
 
 // Guards the link between the Unit Rulebook and its [Rule] tests, via the shared ParityGuard engine.
 // Cardinality 1:N (not strict) — a behavioral guarantee may be realized by several case tests. The

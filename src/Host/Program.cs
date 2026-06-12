@@ -1,8 +1,8 @@
-using RemoteAgents.Features.Flows.Module;
-using RemoteAgents.Features.Git.Module;
-using RemoteAgents.Features.Tasks.Module;
-using RemoteAgents.Host;
-using RemoteAgents.Infrastructure.Projects;
+using ABox.Features.Flows.Module;
+using ABox.Features.Git.Module;
+using ABox.Features.Tasks.Module;
+using ABox.Host;
+using ABox.Infrastructure.Projects;
 
 var builder = WebApplication.CreateBuilder(args);
 Composition.AddServices(builder);

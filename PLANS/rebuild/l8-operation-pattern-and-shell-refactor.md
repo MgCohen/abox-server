@@ -79,7 +79,7 @@ unchanged (ops are nested in the actor; the drive/exec seam stays private).
 
 ## Target shapes (reference for implementation)
 
-### Shell (`src/RemoteAgents/Tools/CommandLine/`)
+### Shell (`src/ABox/Tools/CommandLine/`)
 
 ```csharp
 // Shell.cs — gains RunAsync alongside CmdExePath/QuoteArg
@@ -110,7 +110,7 @@ public sealed record ShellOptions(
     int TimeoutMs = 5 * 60_000, string? Input = null);
 ```
 
-### Git (`src/RemoteAgents/Actors/Git/Git.cs`)
+### Git (`src/ABox/Actors/Git/Git.cs`)
 
 ```csharp
 public sealed class Git

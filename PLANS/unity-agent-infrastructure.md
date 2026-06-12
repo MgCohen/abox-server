@@ -436,8 +436,8 @@ The `Unity_v6000.3.11f1.alf` file at `C:\Unity\unity-license\` is useless (manua
 - [ ] **B2 validation (OAuth-on-cloud-VM billing)**: after one or two `claude` invocations on the VM, check the Anthropic dashboard (claude.ai/settings) and confirm usage drew from Max quota, not API credits. Research (§11) suggests this should work, but empirical confirmation closes the loop.
 
 #### A4.4 — Chat-layer smoke test (¼ hour)
-- [ ] Clone repo to `~/work/remote-unity-agents/main` (just for a real project context to point `claude` at).
-- [ ] Start a tmux session manually: `tmux new -s main -c ~/work/remote-unity-agents/main`. Inside, run `claude`. Confirm TUI starts.
+- [ ] Clone repo to `~/work/abox.server/main` (just for a real project context to point `claude` at).
+- [ ] Start a tmux session manually: `tmux new -s main -c ~/work/abox.server/main`. Inside, run `claude`. Confirm TUI starts.
 - [ ] Detach (Ctrl-b d). Re-attach (`tmux attach -t main`). Confirm session intact.
 
 #### A4.5 — ttyd in front of tmux (¼ hour)
@@ -537,7 +537,7 @@ This wrapper script is called from A6, B1, and B2 — extract it once.
 
 - [ ] `git worktree add ~/work/CardFramework/slot1 <branch>` and `slot2`. Confirm independent Library/ per worktree (per A1's findings).
 - [ ] Provisioning script `infra/worktree-add.sh`: creates worktree, ensures `Assets/` exists (per A1 gotcha #1 — empty Unity dirs don't survive git), seeds an empty Library/ directory, fixes mode bits if needed. Test it on a fresh worktree before relying on it.
-- [ ] From phone-driven `claude` session (the persistent tmux-main session from A4.6, opened at `~/work/remote-unity-agents/main` — claude can shell out to any path): ask it to run `bash infra/unity-batchmode.sh ~/work/CardFramework/slot1` (factored in A5.7). Watch output stream back to the phone.
+- [ ] From phone-driven `claude` session (the persistent tmux-main session from A4.6, opened at `~/work/abox.server/main` — claude can shell out to any path): ask it to run `bash infra/unity-batchmode.sh ~/work/CardFramework/slot1` (factored in A5.7). Watch output stream back to the phone.
 - [ ] **Gate**: phone → claude → unity-batchmode.sh → Unity Editor → exit 0. **This is the end-state Track A working.** Desktop can be off, work from anywhere, agent can drive Unity.
 
 ### Phase A7 — Harden as permanent service (½ day)

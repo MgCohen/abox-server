@@ -78,12 +78,12 @@ Order matches the audit doc.
 
 - **F3 — Hooks one concern, no single owner.** ✅ **Closed.**
   - Phase1-C collapsed the 3 base-facing virtuals into one `HookIntegration` record returned by `Agent.Hooks`.
-  - Phase2-D moved the 7 core hook files into `Core/Agents/Hooks/` + namespace `RemoteAgents.Agents.Hooks`.
+  - Phase2-D moved the 7 core hook files into `Core/Agents/Hooks/` + namespace `ABox.Agents.Hooks`.
   - The audit's `IInteractionProbe` sketch was over-engineered for where the code landed after phase1-C; the simpler shape achieves the same goal.
 
 - **F4 — Folder boundaries not in compiler (piece 1: namespace alignment).** ✅ **Closed for Providers; Core stays flat.**
-  - Providers/Claude/, Providers/Codex/ aligned to `RemoteAgents.Providers.<Name>` (were `RemoteAgents.Agents`).
-  - The audit's stricter `RemoteAgents.Core.*` prefix was tried first; it created a namespace clash with the Contracts assembly's flat `RemoteAgents.{Agents,Events,Runs,Sessions}` wire-type namespaces. Without an arch test, the Core prefix bought nothing, so it was reverted.
+  - Providers/Claude/, Providers/Codex/ aligned to `ABox.Providers.<Name>` (were `ABox.Agents`).
+  - The audit's stricter `ABox.Core.*` prefix was tried first; it created a namespace clash with the Contracts assembly's flat `ABox.{Agents,Events,Runs,Sessions}` wire-type namespaces. Without an arch test, the Core prefix bought nothing, so it was reverted.
 
 - **F4 piece 2 — Arch test (NetArchTest).** ⏸️ **Deferred.** Decided not to add the test dependency now. Without it, the namespace alignment in piece 1 is documentation, not enforcement. Revisit if drift becomes a real problem.
 
@@ -101,7 +101,7 @@ Order matches the audit doc.
 
 - **F10 / F16 — Shell-quoting in 5 implementations + rule divergence.** ✅ **Closed.** All four copies deleted; everyone uses `Shell.QuoteArg`. Kept the denylist rule (4 of 5 already used it; allowlist was just GitOps and never bit in practice).
 
-- **F11 — Validator namespaces inconsistent.** ✅ **Closed.** Phase2-F pulled `IValidator` out of `Core/Validation/` into a top-level `Validation/` tree; all three concrete validators (Unity, Orchestrator, Dotnet) moved into `Validation/<Kind>/` with namespace `RemoteAgents.Validation.<Kind>`. The empty `Core/Validation/` and `Providers/{Unity,Orchestrator,Dotnet}/` folders were removed.
+- **F11 — Validator namespaces inconsistent.** ✅ **Closed.** Phase2-F pulled `IValidator` out of `Core/Validation/` into a top-level `Validation/` tree; all three concrete validators (Unity, Orchestrator, Dotnet) moved into `Validation/<Kind>/` with namespace `ABox.Validation.<Kind>`. The empty `Core/Validation/` and `Providers/{Unity,Orchestrator,Dotnet}/` folders were removed.
 
 - **F12 — UnityChecks 370-line god-class.** ⏸️ **Deferred.** Only worth it if you want validators testable without real Unity. Working code today; revisit when test pain materializes.
 
@@ -120,7 +120,7 @@ Order matches the audit doc.
 
 - **F18 — SessionArtifact enum bakes provider names.** ⏸️ **Deferred (YAGNI).** Pays off only when a 3rd provider lands. Revisit then.
 
-- **F19 — ProviderJsonlIngestSink misfiled.** 🟡 **Partially closed.** Phase2-G moved the file from `Providers/Claude/` to `Core/Events/` and restored its `RemoteAgents.Events` namespace. The audit's stronger version — split per-provider "locate session JSONL" helpers so the sink doesn't carry both providers' path knowledge — was not done.
+- **F19 — ProviderJsonlIngestSink misfiled.** 🟡 **Partially closed.** Phase2-G moved the file from `Providers/Claude/` to `Core/Events/` and restored its `ABox.Events` namespace. The audit's stronger version — split per-provider "locate session JSONL" helpers so the sink doesn't carry both providers' path knowledge — was not done.
 
 - **F20 — Host reintroduces reflection JSON.** ✅ **Closed.** `EventJsonContext` promoted to public in Contracts; new `RunStoreJsonContext` for `RunsFile`. Both `SubprocessFlowExecutor.TailTranscriptAsync` (per-event hot path) and `RunStore.Load/Save` (persistence) now use source-gen.
 
@@ -134,7 +134,7 @@ Order matches the audit doc.
 
 These choices are baked in and worth flagging:
 
-- **Core stayed at flat namespaces** (`RemoteAgents.Agents`, `RemoteAgents.Events`, etc.) instead of `RemoteAgents.Core.*`. The arch-test piece of F4 (intentionally deferred) is what would have justified the prefix; without it, the prefix only created a clash with the Contracts assembly's matching flat namespaces and forced two `using` statements per consumer for no behavior benefit.
+- **Core stayed at flat namespaces** (`ABox.Agents`, `ABox.Events`, etc.) instead of `ABox.Core.*`. The arch-test piece of F4 (intentionally deferred) is what would have justified the prefix; without it, the prefix only created a clash with the Contracts assembly's matching flat namespaces and forced two `using` statements per consumer for no behavior benefit.
 
 - **`SubprocessSession` is +27 lines net.** F2/F22 added a ~150-line shared primitive and shed ~125 lines from CodexAgent + RunCommand. Each consumer reads shorter and the transport plumbing has one owner. Flagged explicitly during the refactor as the tradeoff: real readability win, marginal raw-line-count cost.
 

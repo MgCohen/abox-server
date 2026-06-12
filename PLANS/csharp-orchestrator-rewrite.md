@@ -16,7 +16,7 @@
 
 ### 1.1 The current JS orchestrator
 
-Lives at `C:\Unity\remote-unity-agents\remote-agents\orchestrator\`. Branch:
+Lives at `C:\Unity\abox.server\remote-agents\orchestrator\`. Branch:
 `phase-a/local-validation`. Working. Pushed.
 
 **What it is**: a Node 20+ library + CLI that drives `claude` and `codex` CLIs
@@ -86,7 +86,7 @@ Both should be ported / replaced for the C# rewrite.
 - `research/` — empirical investigation logs.
 - The orchestrator drives Unity and non-Unity projects. Unity projects sit at
   `C:\Unity\<ProjectName>` (Card Framework, Scaffold, Gear-Engine, plus the
-  meta-project `remote-unity-agents` itself).
+  meta-project `abox.server` itself).
 
 ---
 
@@ -473,9 +473,9 @@ What C# *does* cost:
 
 ```
 remote-agents-dotnet/
-├── RemoteAgents.sln
-├── RemoteAgents/                       # the library
-│   ├── RemoteAgents.csproj             # net10.0
+├── ABox.sln
+├── ABox/                       # the library
+│   ├── ABox.csproj             # net10.0
 │   ├── Agents/
 │   │   ├── Agent.cs                    # abstract base, sealed RunAsync
 │   │   ├── ClaudeAgent.cs              # sealed, owns Porta.Pty driving
@@ -504,7 +504,7 @@ remote-agents-dotnet/
 │   └── Pty/
 │       └── PtyExtensions.cs            # ExitCodeOrNull, etc.
 ├── flows/                              # .NET 10 file-based programs
-│   ├── claude-only.cs                  # #:project ../RemoteAgents/RemoteAgents.csproj
+│   ├── claude-only.cs                  # #:project ../ABox/ABox.csproj
 │   ├── claude-validate.cs
 │   └── full-review.cs
 ├── agents/                             # named agent registrations
@@ -687,13 +687,13 @@ public static class Planner
 
 ```csharp
 // flows/full-review.cs
-#:project ../RemoteAgents/RemoteAgents.csproj
+#:project ../ABox/ABox.csproj
 
-using RemoteAgents.Agents;
-using RemoteAgents.Events;
-using RemoteAgents.Sessions;
-using RemoteAgents.Git;
-using RemoteAgents.Subscription;
+using ABox.Agents;
+using ABox.Events;
+using ABox.Sessions;
+using ABox.Git;
+using ABox.Subscription;
 
 SubscriptionGuard.ThrowIfApiKeysSet();
 
@@ -769,7 +769,7 @@ A receiving planner should produce a detailed version of this. Outline:
 
 1. **Scaffold `remote-agents-dotnet/`** alongside `remote-agents/`. Both
    coexist; nothing breaks.
-2. **Port `Porta.Pty` smoke test in** as `RemoteAgents.Pty/SmokeProgram.cs`
+2. **Port `Porta.Pty` smoke test in** as `ABox.Pty/SmokeProgram.cs`
    (or keep at `C:\Unity\dotnet-pty-smoke\` as a reference artifact and
    delete later).
 3. **Build out core types** (`Agent`, `AgentEvent`, `IEventSink`,
@@ -831,7 +831,7 @@ The conversation that produced the smoke test continued into UI architecture.
 
 - **MAUI Blazor Hybrid** (preferred): one codebase, three deliverables
   (Windows app, Android app, web). Direct `ProjectReference` from the UI
-  project to `RemoteAgents.csproj`. Pass `AgentEvent` instances directly to
+  project to `ABox.csproj`. Pass `AgentEvent` instances directly to
   the UI layer — no IPC, no OpenAPI codegen, no serialization boundary.
 - **Tauri 2 + React** (runner-up): web-first UI, smaller bundle, but
   requires the orchestrator to expose an HTTP/JSON-RPC surface with
@@ -850,7 +850,7 @@ The receiving planner should either:
   public types.
 
 Recommendation: **(a)**. Build the orchestrator with no UI assumptions.
-Library is `RemoteAgents.csproj`; consumer is `flows/*.cs` initially; UI
+Library is `ABox.csproj`; consumer is `flows/*.cs` initially; UI
 attaches later via `ProjectReference` (MAUI) or HTTP wrapper (Tauri).
 
 ---
@@ -913,7 +913,7 @@ attaches later via `ProjectReference` (MAUI) or HTTP wrapper (Tauri).
 
 | Topic                              | Location                                                              |
 |------------------------------------|-----------------------------------------------------------------------|
-| Current JS orchestrator            | `C:\Unity\remote-unity-agents\remote-agents\orchestrator\`            |
+| Current JS orchestrator            | `C:\Unity\abox.server\remote-agents\orchestrator\`            |
 | JS architecture doc                | `remote-agents/orchestrator/docs/architecture.md`                      |
 | JS usage doc                       | `remote-agents/orchestrator/docs/usage.md`                             |
 | JS claude provider                 | `remote-agents/orchestrator/src/providers/claudeProvider.js`           |

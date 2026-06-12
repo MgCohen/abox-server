@@ -1,7 +1,7 @@
 using System.Text.Json;
-using RemoteAgents.Infrastructure.Json;
+using ABox.Infrastructure.Json;
 
-namespace RemoteAgents.Domain.Agents.Codex;
+namespace ABox.Domain.Agents.Codex;
 
 public static class CodexProtocol
 {

@@ -13,7 +13,7 @@ time because it was small):
 
 1. **Load blind spot.** ArchUnitNET only sees *compiled + loaded* assemblies.
    Three ways to be invisible to it: on the csproj `Exclude` list (`Web`),
-   named something other than `RemoteAgents.*` (`Morph`), or outside `src/`.
+   named something other than `ABox.*` (`Morph`), or outside `src/`.
    So "every type is in a home" really means "every *loaded* type is in a home."
 2. **Namespace is a proxy for placement.** We check `t.Namespace.FullName`, but
    a file can sit in the wrong folder with a hand-edited namespace and the guard
@@ -63,13 +63,13 @@ green — it only checks the correspondence, not a count).
 For every `.cs` file under `src/` that **declares** a namespace:
 
 ```
-declaredNamespace  ==  "RemoteAgents." + folderPath(file, relative to src).replace('/', '.')
+declaredNamespace  ==  "ABox." + folderPath(file, relative to src).replace('/', '.')
 ```
 
 Examples (all current, all pass):
-- `Features/Flows/Start/StartEndpoint.cs` → `RemoteAgents.Features.Flows.Start`
-- `Domain/Flow/Operations/Operation.cs` → `RemoteAgents.Domain.Flow.Operations`
-- `Infrastructure/Json/JsonLine.cs` → `RemoteAgents.Infrastructure.Json`
+- `Features/Flows/Start/StartEndpoint.cs` → `ABox.Features.Flows.Start`
+- `Domain/Flow/Operations/Operation.cs` → `ABox.Domain.Flow.Operations`
+- `Infrastructure/Json/JsonLine.cs` → `ABox.Infrastructure.Json`
 
 Notes:
 - Reads the **declared** namespace from source (file-scoped — already a project
@@ -78,7 +78,7 @@ Notes:
   `GlobalUsings.cs`. They declare nothing to check.
 - **Assembly name is NOT folder-derived and is deliberately not checked.** The
   convention drops `.Features.`: folder `Features/Flows/Start` → assembly
-  `RemoteAgents.Flows.Start`, namespace `RemoteAgents.Features.Flows.Start`. Only
+  `ABox.Flows.Start`, namespace `ABox.Features.Flows.Start`. Only
   the namespace mirrors the folder; the assembly name is its own convention.
 
 ## Prerequisite decision — canonical home folder names
@@ -88,19 +88,19 @@ Notes:
 | On disk | `structure.md` | Status |
 |---------|----------------|--------|
 | `src/Domain`, `src/Features`, `src/Infrastructure` | same | ✓ |
-| `src/Host` | `src/Host` | ✅ renamed bare (was `RemoteAgents.Host`) |
-| `src/RemoteAgents.Web` | `src/Web` | ✗ prefixed — out of slnx, deferred (own repo) |
-| `src/RemoteAgents.Contracts` | `Features/<F>/Contracts` | ✅ dissolved (Step 0) |
+| `src/Host` | `src/Host` | ✅ renamed bare (was `ABox.Host`) |
+| `src/ABox.Web` | `src/Web` | ✗ prefixed — out of slnx, deferred (own repo) |
+| `src/ABox.Contracts` | `Features/<F>/Contracts` | ✅ dissolved (Step 0) |
 | `src/Morph` | — | ✗ stray — out of slnx, deferred (own repo); live dev watch |
-| `src/RemoteAgents.Core` | — | ✅ deleted (empty untracked relic) |
+| `src/ABox.Core` | — | ✅ deleted (empty untracked relic) |
 
-The namespace↔folder rule (2) **requires bare folders** — folder `RemoteAgents.Host`
-would map to expected namespace `RemoteAgents.RemoteAgents.Host`. So the
+The namespace↔folder rule (2) **requires bare folders** — folder `ABox.Host`
+would map to expected namespace `ABox.ABox.Host`. So the
 recommendation is **bare** (matches `structure.md` and makes the mapping clean):
 
-- `src/RemoteAgents.Host` → `src/Host`  (assembly + namespace stay `RemoteAgents.Host`)
-- `src/RemoteAgents.Web` → `src/Web`  (then leaves for its own repo, per owner)
-- `src/RemoteAgents.Contracts` → decomposed into `Features/Flows/Contracts` (gone)
+- `src/ABox.Host` → `src/Host`  (assembly + namespace stay `ABox.Host`)
+- `src/ABox.Web` → `src/Web`  (then leaves for its own repo, per owner)
+- `src/ABox.Contracts` → decomposed into `Features/Flows/Contracts` (gone)
 - `src/Morph` → out of this repo
 
 Folder renames are cosmetic to the build (assembly `AssemblyName` / namespace are
@@ -109,8 +109,8 @@ set independently of folder name) — they only realign disk with the agreed sha
 **Agreed home folders (the allow-list, folder form):** `Host`, `Web`, `Features`,
 `Domain`, `Infrastructure`.
 
-> **RESOLVED (owner):** **bare folders.** `src/RemoteAgents.Host` → `src/Host`,
-> `src/RemoteAgents.Web` → `src/Web`. Rule 2's mapping has no exceptions; assembly
+> **RESOLVED (owner):** **bare folders.** `src/ABox.Host` → `src/Host`,
+> `src/ABox.Web` → `src/Web`. Rule 2's mapping has no exceptions; assembly
 > and namespace are unchanged (folder rename only).
 
 ## Namespace rule → IDE0130 (adopted the SDK analyzer)
@@ -124,12 +124,12 @@ home-grown test. So #2 was retired and replaced by IDE0130, enforced as a **buil
   IDE0130 can compute the expected namespace on command-line builds, not just in VS).
 - **`/.editorconfig`**: `dotnet_diagnostic.IDE0130.severity = error`, scoped to `[src/**.cs]` — the
   namespace convention is a *production* invariant; test projects keep their deliberate flat namespace.
-- **`src/Features/Directory.Build.props`**: derives `<RootNamespace>` = `RemoteAgents.Features.` + the
+- **`src/Features/Directory.Build.props`**: derives `<RootNamespace>` = `ABox.Features.` + the
   folder under `Features/` (via `MakeRelative`), because our namespace keeps `.Features.` while the
   assembly name drops it. One rule for every slice, so a new feature is correct by default and the
   namespace can't drift — IDE0130 then agrees with the convention. Domain/Infra/Host need no override
   (namespace already == project name).
-- **`src/Morph/.editorconfig`** + **`src/RemoteAgents.Web/.editorconfig`**: `IDE0130.severity = none`
+- **`src/Morph/.editorconfig`** + **`src/ABox.Web/.editorconfig`**: `IDE0130.severity = none`
   (pending-eviction; protects Morph's live dev watch from this rule).
 
 Why this is better than the custom rule: it's the supported tool, it bites at **compile time** (IDE
@@ -160,7 +160,7 @@ tests/ArchTests/
 
 `SourceTree` responsibilities:
 - Locate the repo root by walking up from `AppContext.BaseDirectory` to a marker
-  (`RemoteAgents.slnx`); resolve `src/`.
+  (`ABox.slnx`); resolve `src/`.
 - Enumerate `src/**/*.csproj` (project dirs) and `src/**/*.cs` (skip
   `artifacts/`, `bin/`, `obj/`).
 - Parse the file-scoped `namespace X;` declaration per file.
@@ -178,7 +178,7 @@ tests/ArchTests/
 
 ### A type's namespace mirrors its folder
 - **Why:** The dependency rules band types by namespace; if a namespace can drift
-  from its folder, those bands lie. Pinning namespace = RemoteAgents + folder path
+  from its folder, those bands lie. Pinning namespace = ABox + folder path
   keeps placement and namespace in sync, so folder enforcement and graph enforcement
   agree. (Assembly name is a separate convention and is not folder-derived.)
 ```
@@ -238,8 +238,8 @@ architecture *is*. Notes:
    types went feature-local (`StartRunRequest`/`Response` → Start, `FlowInfo` →
    Catalog); `ProjectInfo` was **deleted** (it duplicated `Infrastructure.Projects.
    ProjectEntry` — Host now returns that directly); `WireJson` → `Infrastructure/
-   Json`. Flat `RemoteAgents.Contracts` deleted; structure guard (#8) **green**.
-   **Web (Blazor WASM) dropped from `RemoteAgents.slnx`** — it can't safely
+   Json`. Flat `ABox.Contracts` deleted; structure guard (#8) **green**.
+   **Web (Blazor WASM) dropped from `ABox.slnx`** — it can't safely
    reference the server feature assemblies under warnings-as-errors; UI/Domain
    separation deferred (Web is leaving the repo). **Consequence not foreseen:**
    rule #3 (*Contracts must not depend on internal assemblies*) now governs an
@@ -249,23 +249,23 @@ architecture *is*. Notes:
    auto-activates when the first per-feature leaf lands. Net −48 lines; build 0
    warnings; arch 7/7; FlowTests 8/8.
 1. **Decide** canonical home-folder names — ✅ **DONE** (owner: bare folders).
-2. **Rename** home folders to bare — ✅ **DONE.** `src/RemoteAgents.Host` →
+2. **Rename** home folders to bare — ✅ **DONE.** `src/ABox.Host` →
    `src/Host` (folder-only `git mv`, history preserved; assembly + namespace stay
-   `RemoteAgents.Host`; slnx + the one `RemoteAgents.Tests` ProjectReference
-   repointed). Empty untracked `src/RemoteAgents.Core` (Paths/, Projects/ — relics
+   `ABox.Host`; slnx + the one `ABox.Tests` ProjectReference
+   repointed). Empty untracked `src/ABox.Core` (Paths/, Projects/ — relics
    of the dissolved monolith, no csproj, referenced nowhere) **deleted**. `Morph`
    and `Web` were **not** physically evicted (no destination repo yet, and `Morph`
    has the live port-5210 dev watch): per owner, **`Morph` dropped from
-   `RemoteAgents.slnx`** (matching how `Web` was handled at Step 0) so both are
+   `ABox.slnx`** (matching how `Web` was handled at Step 0) so both are
    build-inert, folders left on disk. The morph dev server is unaffected — `dotnet
    watch` targets `src/Morph/Morph.csproj` directly, not the solution. Build 0
    warnings; arch 7/7; FlowTests 8/8.
-   **→ Step 3 consequence:** `src/Morph` + `src/RemoteAgents.Web` still sit under
+   **→ Step 3 consequence:** `src/Morph` + `src/ABox.Web` still sit under
    non-home folders, so the filesystem guard (rule #1) must carry an explicit,
    documented known-pending-eviction list for those two — or they relocate to
    their own repos before Step 3 — so the guard passes *honestly*, not vacuously.
 3. **Add** `SourceTree` + `StructureTests` + the 2 rule blocks → ✅ **DONE.**
-   `Support/SourceTree.cs` (locate root via `RemoteAgents.slnx` marker, enumerate
+   `Support/SourceTree.cs` (locate root via `ABox.slnx` marker, enumerate
    `src/**/*.csproj` + `*.cs` skipping bin/obj/artifacts, parse file-scoped
    namespaces; throws on no-root/zero-projects). `Tests/StructureTests.cs` carries
    rules #1 + #2, both skipping `PendingEvictionFolders` (Morph, Web) — an explicit,
@@ -278,7 +278,7 @@ architecture *is*. Notes:
    Contracts band passes honestly). Features↛each-other stayed its own named rule.
    **Rule #2 immediately earned its keep:** it caught **4 real namespace/folder
    drifts** the plan had assumed clean — `PtySession` + `SubscriptionGuard` declared
-   `RemoteAgents.Infrastructure.CommandLine` while living in `Domain/Agents` (the
+   `ABox.Infrastructure.CommandLine` while living in `Domain/Agents` (the
    spawn-wall code masquerading as the floor in the dependency graph), and the
    provisional `DelayArgs`/`DelayOperation` declared `Domain.Flow.Operations` while
    living in `Features/Flows/Definitions`. All four realigned namespace→folder
@@ -313,5 +313,5 @@ The arch-test review (session `e184aca0`) raised four findings. For the record:
   `PtySession` sealed `internal` (only caller `ClaudeProvider`, same assembly); the
   rule *PtySession is internal to Domain.Agents* (`BeInternal()`) enforces it,
   negative-tested. Closes the M1.2 done-when spawn-wall item.
-- **Assembly-name convention** (`RemoteAgents.*`, `.Features.` dropped) — not
+- **Assembly-name convention** (`ABox.*`, `.Features.` dropped) — not
   enforced; would be a third rule if the Morph-style mis-naming recurs.

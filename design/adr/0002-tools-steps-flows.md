@@ -35,7 +35,7 @@ This extends ADR 0001 §1 (Kinds → Definitions → Instances) to the whole eng
 
 ### 1. Three layers, one engine
 
-The engine (`RemoteAgents`) is organized as three buckets plus the `Contracts` leaf:
+The engine (`ABox`) is organized as three buckets plus the `Contracts` leaf:
 
 - **Tools** — intent-free capabilities.
 - **Steps** — units of work *with* intent; implement `IStepHandler<T>`.

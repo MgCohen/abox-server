@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace RemoteAgents.Infrastructure.CommandLine;
+namespace ABox.Infrastructure.CommandLine;
 
 public static class Shell
 {

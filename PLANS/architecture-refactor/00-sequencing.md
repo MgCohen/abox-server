@@ -44,7 +44,7 @@ init-only records. The composition root now takes `Func<TOpts, TOpts>?`
 and callers use `with` expressions:
 
 ```csharp
-services.AddRemoteAgents(o => o.UseClaude(c => c with { Model = "opus" }));
+services.AddABox(o => o.UseClaude(c => c with { Model = "opus" }));
 ```
 
 This already matches the **08-composition revision** (R13 in `99-rejected.md`)
@@ -108,7 +108,7 @@ branch; `MEMORY.md` indexed.
 
 ## Phase 1 — Contracts assembly ([Layer 1](01-contracts.md))
 
-Create `RemoteAgents.Contracts.csproj`. Move pure-data records into
+Create `ABox.Contracts.csproj`. Move pure-data records into
 it. No behavior changes. Every consumer's reference list grows by one
 entry; nothing else moves.
 
@@ -129,8 +129,8 @@ and smoke tests pass; behavior unchanged.
 
 ## Phase 2 — Composition root ([Layer 8](08-composition.md))
 
-Add `services.AddRemoteAgents(opts => ...)` to a new
-`RemoteAgents.Hosting.csproj` (or extension class on `RemoteAgents`).
+Add `services.AddABox(opts => ...)` to a new
+`ABox.Hosting.csproj` (or extension class on `ABox`).
 Bind `ClaudeAgentOptions` / `CodexAgentOptions` via `IOptions<>` from
 `appsettings.json`. No behavior changes — every default stays the same;
 the new path *can* override but the old constructors still work.
@@ -138,7 +138,7 @@ the new path *can* override but the old constructors still work.
 This unblocks Layers 2/4/6 because the new shapes can be wired through
 DI without breaking the old static-construction sites yet.
 
-**Exit criterion:** Host `Program.cs` calls `AddRemoteAgents(...)`.
+**Exit criterion:** Host `Program.cs` calls `AddABox(...)`.
 Agent options can be bound from config. All existing tests pass without
 changing their construction.
 
@@ -166,7 +166,7 @@ as registry entries.
 
 Introduce `IFlow` with `Name`, `Summary`, `RunAsync(FlowContext, FlowArgs, ct)
 → Task<FlowResult>`. Move each existing flow's body into an `IFlow`
-implementation under `RemoteAgents.Flows`. The `cli/flows/*.cs` files
+implementation under `ABox.Flows`. The `cli/flows/*.cs` files
 become two-line shims that call the registered flow.
 
 `Environment.ExitCode` leaves flow bodies. `FlowResult` carries an

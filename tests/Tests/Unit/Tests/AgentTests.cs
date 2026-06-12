@@ -1,8 +1,8 @@
-using RemoteAgents.Domain.Flow;
-using RemoteAgents.Domain.Flow.Operations;
-using RemoteAgents.Domain.Agents;
+using ABox.Domain.Flow;
+using ABox.Domain.Flow.Operations;
+using ABox.Domain.Agents;
 
-namespace RemoteAgents.Tests.Unit.Tests;
+namespace ABox.Tests.Unit.Tests;
 
 public class AgentTests
 {

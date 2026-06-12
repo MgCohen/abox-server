@@ -1,4 +1,4 @@
-namespace RemoteAgents.Domain.Agents;
+namespace ABox.Domain.Agents;
 
 // The single "agent is blocked, needs an outside decision" seam — shared by permission
 // Ask (a Choice) and agent questions; DecisionKind tells them apart. Source labels who

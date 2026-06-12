@@ -46,7 +46,7 @@ emitting structured events into the same sink as everything else.
 **Sinks are composed by registration:**
 
 ```csharp
-services.AddRemoteAgents(opts => {
+services.AddABox(opts => {
     opts.AddSink<ConsoleSink>();
     opts.AddSink<JsonlSink>();
     opts.AddSink<ProviderJsonlArchiver>(); // renamed
@@ -66,28 +66,28 @@ and copies a file. The new name reflects that. Its class moves out of
 
 ## Current structure
 
-- [`AgentEvent.cs`](../../remote-agents-dotnet/src/RemoteAgents/Core/Events/AgentEvent.cs)
+- [`AgentEvent.cs`](../../remote-agents-dotnet/src/ABox/Core/Events/AgentEvent.cs)
   — single hierarchy. `Phase` is mixed in. `Phase.AgentName` is
   doc-commented as "reusing the slot for the entity producing the
   update."
-- [`ChatEvent.cs` (Host)](../../remote-agents-dotnet/ui/RemoteAgents.Host/Hubs/ChatEvent.cs)
+- [`ChatEvent.cs` (Host)](../../remote-agents-dotnet/ui/ABox.Host/Hubs/ChatEvent.cs)
   — separate hierarchy with `AssistantText`, `UserText`, `Thinking`,
   `ToolUse`, `ToolResult`, `Meta`. Parsed by
-  [`ClaudeJsonlTailer.cs`](../../remote-agents-dotnet/ui/RemoteAgents.Host/Runs/ClaudeJsonlTailer.cs)
+  [`ClaudeJsonlTailer.cs`](../../remote-agents-dotnet/ui/ABox.Host/Runs/ClaudeJsonlTailer.cs)
   (268 lines, Host-side).
-- [`EventSinkExtensions.cs`](../../remote-agents-dotnet/src/RemoteAgents/Core/Events/EventSinkExtensions.cs)
+- [`EventSinkExtensions.cs`](../../remote-agents-dotnet/src/ABox/Core/Events/EventSinkExtensions.cs)
   — `PhaseStart/Ok/Fail/Info` extensions on `IEventSink`.
-- [`FlowBootstrap.cs:79-83`](../../remote-agents-dotnet/src/RemoteAgents/Flows/FlowBootstrap.cs)
+- [`FlowBootstrap.cs:79-83`](../../remote-agents-dotnet/src/ABox/Flows/FlowBootstrap.cs)
   — hardcoded triple: `new CompositeSink(new ConsoleSink(), jsonl,
   new ProviderJsonlIngestSink(...))`.
-- [`ProviderJsonlIngestSink.cs`](../../remote-agents-dotnet/src/RemoteAgents/Providers/Claude/ProviderJsonlIngestSink.cs)
+- [`ProviderJsonlIngestSink.cs`](../../remote-agents-dotnet/src/ABox/Providers/Claude/ProviderJsonlIngestSink.cs)
   — lives under `Providers/Claude/` but knows both Claude and Codex
   paths. Implements `IEventSink.EmitAsync` but only reacts to
   `Completed`; on every other event it returns `Task.CompletedTask`.
-- [`ChannelSink.cs` (Host)](../../remote-agents-dotnet/ui/RemoteAgents.Host/Sinks/ChannelSink.cs)
+- [`ChannelSink.cs` (Host)](../../remote-agents-dotnet/ui/ABox.Host/Sinks/ChannelSink.cs)
   — `IEventSink` over a bounded `Channel<AgentEvent>`. Not registered
   through any builder — `FlowRunner` newing one per run.
-- [`ChatChannel.cs`](../../remote-agents-dotnet/ui/RemoteAgents.Host/Sinks/ChatChannel.cs)
+- [`ChatChannel.cs`](../../remote-agents-dotnet/ui/ABox.Host/Sinks/ChatChannel.cs)
   — second channel for `ChatEvent`, written by `ClaudeJsonlTailer`.
 
 ## Gap
@@ -107,7 +107,7 @@ and copies a file. The new name reflects that. Its class moves out of
    it's a file copier. It lives under Claude's provider folder while
    knowing about both providers.
 5. **`PhaseStart/Ok/Fail/Info` extensions live on `IEventSink`**
-   ([`EventSinkExtensions.cs`](../../remote-agents-dotnet/src/RemoteAgents/Core/Events/EventSinkExtensions.cs))
+   ([`EventSinkExtensions.cs`](../../remote-agents-dotnet/src/ABox/Core/Events/EventSinkExtensions.cs))
    — flow-orchestration helpers attached to the base agent sink
    interface. Wrong owner.
 6. **Two separate hub streams** (`/Stream` and `/StreamChat`) with

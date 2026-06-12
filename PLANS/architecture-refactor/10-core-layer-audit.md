@@ -6,7 +6,7 @@ date: 2026-05-30
 branch: claude/orchestrator-refactor-audit-gLDB9
 ---
 
-# Core-layer audit — post-implementation review of `remote-agents-dotnet/src/RemoteAgents`
+# Core-layer audit — post-implementation review of `remote-agents-dotnet/src/ABox`
 
 > **What this is.** A read of the *shipped* core library against the
 > targets in [`02-agents.md`](02-agents.md) and the principles in the
@@ -23,10 +23,10 @@ branch: claude/orchestrator-refactor-audit-gLDB9
 — a local, single-host C# library + CLI that drives the `claude` and `codex`
 agent CLIs against a project repo on **subscription** billing (no API keys),
 running them through *flows* (claude-only, full-review, unity-review). The
-core library is one assembly, `src/RemoteAgents/`, organized into `Core/`
+core library is one assembly, `src/ABox/`, organized into `Core/`
 (Agents, Pty, Events, Sessions, Primitives, Validation), `Providers/`
 (Claude, Codex, Unity, Dotnet, Orchestrator), and `Flows/`. A second
-assembly, `src/RemoteAgents.Contracts/`, holds the records that cross the
+assembly, `src/ABox.Contracts/`, holds the records that cross the
 wire to the UI. All `file:line` references below are against branch
 `claude/orchestrator-refactor-audit-gLDB9`. "Layer 2" = the agent
 base + providers (see [`02-agents.md`](02-agents.md)); the layer numbering
@@ -37,7 +37,7 @@ This doc has three passes:
 - **Part 2 (Findings 7–14)** — duplication / data-class / reflection / SRP /
   cross-layer-consistency, in the agent layer.
 - **Part 3 (Findings 15–22)** — the same sweep across Flows, Sessions,
-  Primitives, Events, and the Host (`ui/RemoteAgents.Host`).
+  Primitives, Events, and the Host (`ui/ABox.Host`).
 
 ---
 
@@ -97,7 +97,7 @@ reflection path in `RunStore`.
   as a high-level script because of it. This is the model the rest of the
   audit asks to extend, not replace.
 - **Contracts assembly** is a real, browser-targetable boundary
-  (`RemoteAgents.Contracts.csproj`).
+  (`ABox.Contracts.csproj`).
 
 ---
 
@@ -201,7 +201,7 @@ Providers/*/   ClaudeHookInstaller, ClaudeHookConfig, ClaudeHookParser
 off `ClaudeAgentOptions.Hooks`/`CodexAgentOptions.Hooks`, and the
 `REMOTEAGENTS_HOOKS_JSONL` env var hand-wired into each provider's spawn
 code (`ClaudeAgent.cs:188`, `CodexAgent.cs:92`). There is no `Hooks`
-folder or namespace; everything lands in the flat `RemoteAgents.Agents`
+folder or namespace; everything lands in the flat `ABox.Agents`
 namespace (26 files — see Finding 4). The base wires three separate seams
 together (`HookConfig`, `HookParser`, `InstallHookScopeAsync`) plus a
 post-hoc `DetectedQuestion` merge to make it work.
@@ -212,7 +212,7 @@ must assemble 11 files across two folders. The hook-outcome *policy* (the
 into the base at `Agent.cs:72-81` instead of living with the hook code.
 
 **Target (optional, beyond Layer 2 — keep R12).** Give hooks a cohesive
-sub-domain — `Core/Agents/Hooks/` + namespace `RemoteAgents.Agents.Hooks`
+sub-domain — `Core/Agents/Hooks/` + namespace `ABox.Agents.Hooks`
 — and collapse the three base-facing seams into one `IInteractionProbe`
 that owns install → collect → parse → resolve and exposes
 `Begin(ctx) → IProbeScope` / `scope.Resolve(driveResult) → Outcome`. The
@@ -232,14 +232,14 @@ one owner and one base-facing seam instead of four.
 
 - Folders imply a Core↔Providers split; the type system has none.
   `ClaudeAgent.cs:7`, `CodexAgent.cs:9`, and `ClaudeHookConfig.cs:4` all
-  declare `namespace RemoteAgents.Agents`. **26 files** collapse into that
+  declare `namespace ABox.Agents`. **26 files** collapse into that
   one namespace — the `Agent` base sits beside both providers' installers,
   configs, and parsers. The `Providers/` directory split is cosmetic at
   the type level.
-- Folder `Core/Agents` → namespace `RemoteAgents.Agents` (the "Core"
-  segment is dropped everywhere: `Core/Pty` → `RemoteAgents.Pty`,
-  `Core/Primitives` → `RemoteAgents.Primitives`).
-- **One assembly** (`RemoteAgents.csproj`) holds Core, Agents, Providers,
+- Folder `Core/Agents` → namespace `ABox.Agents` (the "Core"
+  segment is dropped everywhere: `Core/Pty` → `ABox.Pty`,
+  `Core/Primitives` → `ABox.Primitives`).
+- **One assembly** (`ABox.csproj`) holds Core, Agents, Providers,
   Flows, Pty, Validation, Sessions, Primitives. Nothing stops Core from
   referencing a provider or a primitive from reaching into Flows.
   Principle 2 ("layers don't reach across each other") is held up by
@@ -250,7 +250,7 @@ exist on disk but not in the compiler. Drift is invisible until someone
 greps.
 
 **Target (low-risk first).** Align namespaces to folders
-(`RemoteAgents.Core.*`, `RemoteAgents.Providers.Claude`, …) and add one
+(`ABox.Core.*`, `ABox.Providers.Claude`, …) and add one
 architecture test (e.g. NetArchTest) asserting the dependency direction:
 `Core` must not reference `Providers.*`; `Providers.*` must not reference
 each other; `Flows` may reference both. This catches drift at build time
@@ -364,15 +364,15 @@ Three validators, three namespace conventions:
 
 | Validator | Namespace |
 |---|---|
-| `UnityFullValidator`, `UnityCompileValidator` | `RemoteAgents.Validation.Unity` |
-| `OrchestratorValidator` | `RemoteAgents.Validation.Orchestrator` |
-| **`DotnetValidator`** | **`RemoteAgents.Providers.Dotnet`** ← odd one out |
+| `UnityFullValidator`, `UnityCompileValidator` | `ABox.Validation.Unity` |
+| `OrchestratorValidator` | `ABox.Validation.Orchestrator` |
+| **`DotnetValidator`** | **`ABox.Providers.Dotnet`** ← odd one out |
 
 Same kind of type (`IValidator`), filed under two different top-level
 namespaces. This is the cross-layer-consistency smell directly: a reader
 greps `Validation.*` and silently misses the dotnet one.
 
-**Target.** Pick one convention — `RemoteAgents.Validation.<Kind>` reads
+**Target.** Pick one convention — `ABox.Validation.<Kind>` reads
 best given two of three already use it — and align the third (and its
 folder). Ties into Finding 4 (namespace↔folder alignment + arch test).
 
@@ -434,7 +434,7 @@ the Claude ones, so `CodexAgent` only drives. Pairs naturally with the
 ## Non-finding worth recording — reflection is clean (in the core library)
 
 Checked explicitly because it's an easy thing to fear on a hot path:
-in `src/RemoteAgents` **there is none.** All serialization goes through
+in `src/ABox` **there is none.** All serialization goes through
 source-generated `JsonSerializerContext`s (`SessionJsonContext`,
 `EventJsonContext`, `GhJsonContext`, `ProjectsJsonContext`,
 `FlowsJsonContext`); JSON reading is hand-rolled over `JsonElement`. No
@@ -517,7 +517,7 @@ provider-named.
 ## Finding 19 — `ProviderJsonlIngestSink` is misfiled and concentrates both providers' path knowledge
 
 The sink lives under `Providers/Claude/` but declares `namespace
-RemoteAgents.Events` and handles **both** providers: `TryFindClaudeJsonl`
+ABox.Events` and handles **both** providers: `TryFindClaudeJsonl`
 (`.claude/projects/<encoded-cwd>/<id>.jsonl`) and `TryFindCodexJsonl`
 (`.codex/sessions/**/rollout-*-<id>.jsonl`) (`:57-75`), tagged with
 stringly-typed `"claude"`/`"codex"` `kind` literals (`:38,41`). "Where
@@ -615,7 +615,7 @@ New gaps this audit adds (Part 2):
 - [ ] `JsonHookParser` base for the two parsers + one shared `JsonEl` accessor
       set + one cached empty object.
 - [ ] Delete the 4 shell-quote copies; everyone calls `Shell.QuoteArg`.
-- [ ] Align validator namespaces to one `RemoteAgents.Validation.*` convention.
+- [ ] Align validator namespaces to one `ABox.Validation.*` convention.
 - [ ] Split `UnityChecks` into runner / NUnit-parser / diagnostics-extractor.
 - [ ] Move `CodexAgent.ScanForSessionId` into a `CodexSessionId` parser.
 - [ ] Delete `CodexHookParser.Sentinel` + `.LooksLikeQuestion`; fix fixtures.

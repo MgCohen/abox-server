@@ -38,13 +38,13 @@ to see which findings are closed.
 
 ### Current-state snapshot (post-Phase 6 scaffold)
 
-- **Contracts assembly exists** at `src/RemoteAgents.Contracts/` and
+- **Contracts assembly exists** at `src/ABox.Contracts/` and
   is referenced from library, hosting, host UI, and CLI flows.
   All wire-crossing records (AgentEvent, ChatEvent, RunRecord, the
   three lifted enums PhaseStatus/Verdict/SessionResult, FlowArgs/
   FlowResult, the four Wire DTOs) live there and have **no duplicates**.
-- **Hosting assembly exists** at `src/RemoteAgents.Hosting/`. The
-  `services.AddRemoteAgents(o => { o.UseClaude(...); o.UseCodex(...);
+- **Hosting assembly exists** at `src/ABox.Hosting/`. The
+  `services.AddABox(o => { o.UseClaude(...); o.UseCodex(...);
   o.AddFlow<T>(); })` shape is real and used by `cli/flows/claude-only.cs`.
 - **Agent base class** owns the install/try/finally/scrub envelope.
   Providers' `ExecuteAsync` is now just the drive loop body — no
@@ -61,7 +61,7 @@ to see which findings are closed.
 - **`OrchestratorPaths`** collapses the three duplicate resolvers;
   `Session.GetArtifactPath`/`WriteArtifactAsync`/`ReadArtifactAsync`
   take the `SessionArtifact` enum.
-- **`IFlowExecutor`** interface scaffolded under `ui/RemoteAgents.Host/Runs/`;
+- **`IFlowExecutor`** interface scaffolded under `ui/ABox.Host/Runs/`;
   no implementation yet (deep work deferred — see Phase 6 below).
 
 ---
@@ -104,7 +104,7 @@ to see which findings are closed.
 | 5 | Sessions & orchestrator paths | [`05-sessions.md`](05-sessions.md) | `Session` owns the on-disk layout; one `OrchestratorPaths` resolver replaces three. |
 | 6 | Host: transport & lifecycle | [`06-host.md`](06-host.md) | `IFlowExecutor` (in-process default). Delete `ClaudeJsonlTailer`, the second hub stream, the regex IPC. |
 | 7 | UI client | [`07-ui-client.md`](07-ui-client.md) | Razor lib references the contracts assembly. `RunView.Sanitize` deleted. Structured ChatEvent rendering. |
-| 8 | Composition root | [`08-composition.md`](08-composition.md) | `services.AddRemoteAgents(...)` is the only way to wire the library. `IOptions<>`-bound agent config. |
+| 8 | Composition root | [`08-composition.md`](08-composition.md) | `services.AddABox(...)` is the only way to wire the library. `IOptions<>`-bound agent config. |
 
 Cross-cutting:
 

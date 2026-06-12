@@ -1,7 +1,7 @@
-using RemoteAgents.Infrastructure.Paths;
-using RemoteAgents.Infrastructure.Projects;
+using ABox.Infrastructure.Paths;
+using ABox.Infrastructure.Projects;
 
-namespace RemoteAgents.Tests.Unit.Tests;
+namespace ABox.Tests.Unit.Tests;
 
 public class ProjectRegistryTests
 {

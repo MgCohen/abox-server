@@ -1,6 +1,6 @@
-using RemoteAgents.Domain.Agents;
+using ABox.Domain.Agents;
 
-namespace RemoteAgents.Tests.Unit.Tests;
+namespace ABox.Tests.Unit.Tests;
 
 // The factory's real decision: map a config's Resolution to the resolver that answers its questions
 // plus the loop cap. Auto runs capped (it always answers, could loop); Deny/Human self-terminate uncapped.
