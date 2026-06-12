@@ -11,9 +11,9 @@ Template:
 - Why: <the user-visible behavior this proves>
 ```
 
-> **Adoption is going-forward.** Starts with whatever flow Rules have been authored; existing `[Fact]`
-> flow tests are backfilled opportunistically. The in-process `ScriptedProvider` backbone (Phase 3) is the
-> default driver here — deterministic and CI-safe, never a real agent CLI (that is the Live type).
+The in-process `ScriptedProvider` backbone is the default driver here — deterministic and CI-safe, never a
+real agent CLI (that is the Live type). Every test in `E2E/Tests/` carries a `[Rule]`; the guard rejects a
+bare flow test.
 
 ---
 
@@ -21,3 +21,7 @@ Template:
 - Why: proves the API-down backbone — real composition, real Flow engine, real snapshot stream, real
   resolver wiring — carries an agent flow to a Completed terminal with only the provider's mouth scripted.
   This is the deterministic counterpart to the live `claude-ping` smoke.
+
+### chore commits the working tree and pushes it to the remote
+- Why: the non-agent flow path end to end — `GitChoreFlow` stages the dirty tree, commits with the given
+  subject, and pushes to the remote, leaving the working copy clean and the remote head at that commit.

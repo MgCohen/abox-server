@@ -10,6 +10,7 @@ namespace RemoteAgents.Tests.Wire.Tests;
 public class WireTests(WireApp app) : IClassFixture<WireApp>
 {
     [Rule("health returns ok")]
+    [Fact]
     public async Task Health_returns_ok()
     {
         using var res = await app.CreateClient().GetAsync("/health");
@@ -19,6 +20,7 @@ public class WireTests(WireApp app) : IClassFixture<WireApp>
     }
 
     [Rule("projects lists the registered projects")]
+    [Fact]
     public async Task Projects_lists_the_registered_projects()
     {
         using var res = await app.CreateClient().GetAsync("/projects");
@@ -28,6 +30,7 @@ public class WireTests(WireApp app) : IClassFixture<WireApp>
     }
 
     [Rule("a started flow streams snapshots over SSE to completion")]
+    [Fact]
     public async Task Started_flow_streams_snapshots_over_sse_to_completion()
     {
         var client = app.CreateClient();

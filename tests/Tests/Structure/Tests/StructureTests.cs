@@ -9,6 +9,7 @@ namespace RemoteAgents.Tests.Structure.Tests;
 public class StructureTests
 {
     [Rule("Every project lives under an agreed home folder")]
+    [Fact]
     public void EveryProjectUnderAHomeFolder()
     {
         var strays = SourceTree.ProjectTopSegments()
@@ -35,6 +36,7 @@ public class StructureTests
     }
 
     [Rule("No build output lives under src or tests")]
+    [Fact]
     public void NoBuildOutputUnderSource()
     {
         var strays = SourceTree.StrayBuildOutput();

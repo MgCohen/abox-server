@@ -1,11 +1,11 @@
 namespace RemoteAgents.Tests.Harness;
 
-// A test that carries the Rulebook header it enforces. It IS the fact, so an enforcing test cannot exist
-// without naming a Rule, and ParityGuard asserts the set of these names matches the '### ' headers in the
-// type's Rulebook. A [Rule] is a single Fact; a behavioral guarantee realized by several cases is several
-// [Rule("<same header>")] methods (the 1:N cardinality ParityGuard allows when not strict).
-[AttributeUsage(AttributeTargets.Method)]
-public sealed class Rule(string name) : FactAttribute
+// A method-level citation naming the Rulebook header a test enforces. Composed ALONGSIDE the xUnit test
+// attribute ([Fact]/[Theory]/[LiveFact]) rather than derived from it, so "which guarantee" and "how it runs"
+// stay independent. ParityGuard pairs these names with the '### ' headers in the type's Rulebook, requires
+// every test to carry one, and requires every citation to sit on a real test.
+[AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
+public sealed class Rule(string name) : Attribute
 {
     public string Name { get; } = name;
 }

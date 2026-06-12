@@ -5,7 +5,7 @@ namespace RemoteAgents.Tests.Unit.Tests;
 // Rulebook accrues going-forward, so it (and this guard) starts with whatever Rules have been authored.
 public class ParityTests
 {
-    [Fact]
+    [ParityFact]
     public void Rulebook_and_tests_are_in_sync() =>
         ParityGuard.For(typeof(ParityTests)).Assert("Unit/Rulebook/rules.md");
 }

@@ -5,7 +5,7 @@ namespace RemoteAgents.Tests.Arch.Tests;
 // vacuously, a test citing a missing block drifts from the spec.
 public class ParityTests
 {
-    [Fact]
+    [ParityFact]
     public void Rulebook_and_tests_are_in_sync() =>
-        ParityGuard.For(typeof(ParityTests), strict: true).Assert("Arch/Rulebook/rules.md");
+        ParityGuard.For(typeof(ParityTests), strict: true).Assert("Arch/Rulebook/rules.md", requireAllCited: true);
 }

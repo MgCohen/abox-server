@@ -3,9 +3,10 @@ using System.Reflection;
 namespace RemoteAgents.Tests.Harness;
 
 // The parity engine shared by every test type. A Rulebook (Rulebook/rules.md) lists a type's guarantees as
-// '### ' headers — the DECLARED rules; the [Rule("<header>")] tests that enforce them are the ENFORCED
+// '### ' headers — the DECLARED rules; the [Rule("<header>")] citations sitting on its tests are the ENFORCED
 // rules. For(anchor) scopes discovery to the anchor type's namespace, so multiple Rulebooks can live in one
-// assembly without bleeding into each other's parity. Assert fails the build on any mismatch.
+// assembly without bleeding into each other's parity. Assert fails the build on any mismatch — including a
+// test with no [Rule] (requireAllCited) and a [Rule] that sits on no runnable test.
 public sealed class ParityGuard
 {
     private const string Heading = "### ";
@@ -21,42 +22,65 @@ public sealed class ParityGuard
 
     // strict = 1:1 (every Rule has exactly one test) for invariant types (Arch, Structure). The default 1:N
     // (every Rule has >=1 test, every test cites a real Rule) fits behavioral types, where one guarantee may
-    // be realized by several case tests.
+    // be realized by several case tests. requireAllCited turns on the completeness guard: no bare test.
     public static ParityGuard For(Type anchor, bool strict = false) => new(anchor, strict);
 
-    public void Assert(string rulebookPath)
+    public void Assert(string rulebookPath, bool requireAllCited = false)
     {
         var declared = DeclaredRules(rulebookPath);
-        var enforced = EnforcedRules();
+        var methods = ScopedMethods();
+
+        var enforced = methods
+            .Select(m => m.GetCustomAttribute<Rule>())
+            .Where(a => a is not null)
+            .Select(a => a!.Name)
+            .ToList();
 
         var unenforced = declared.Except(enforced).ToList();
         var undocumented = enforced.Except(declared).ToList();
         var duplicated = strict
             ? enforced.GroupBy(name => name).Where(g => g.Count() > 1).Select(g => g.Key).ToList()
             : [];
+        var orphaned = methods
+            .Where(m => m.GetCustomAttribute<Rule>() is not null && !IsTest(m))
+            .Select(m => m.Name)
+            .ToList();
+        var uncited = requireAllCited
+            ? methods.Where(IsValidation).Where(m => m.GetCustomAttribute<Rule>() is null).Select(m => m.Name).ToList()
+            : [];
 
         Xunit.Assert.True(
-            unenforced.Count == 0 && undocumented.Count == 0 && duplicated.Count == 0,
+            unenforced.Count == 0 && undocumented.Count == 0 && duplicated.Count == 0
+                && orphaned.Count == 0 && uncited.Count == 0,
             $"""
-            Rulebook ({rulebookPath}) and its [Rule] tests are out of sync:
-              Rules with no test:          {Fmt(unenforced)}
-              tests citing a missing Rule: {Fmt(undocumented)}
-              Rules tested more than once: {Fmt(duplicated)}
-            Fix: align each '### <name>' header with a [Rule("<name>")] test so the names match exactly.
+            Rulebook ({rulebookPath}) and its [Rule] tests are out of sync — fix each non-empty list:
+              Add a [Rule]-cited test for the header:          {Fmt(unenforced)}
+              Add a '### ' header (or correct the citation) for: {Fmt(undocumented)}
+              Remove the duplicate citation of the Rule:       {Fmt(duplicated)}
+              Add a test attribute ([Fact]/[Theory]) to the [Rule] method: {Fmt(orphaned)}
+              Add a [Rule("<header>")] to the bare test:        {Fmt(uncited)}
+            Each '### <name>' header pairs 1:{(strict ? "1" : "N")} with a [Rule("<name>")] on a runnable test.
             """);
     }
 
-    private IReadOnlyList<string> EnforcedRules()
+    private IReadOnlyList<MethodInfo> ScopedMethods()
     {
         var scope = anchor.Namespace ?? "";
         return anchor.Assembly.GetTypes()
             .Where(t => InScope(t.Namespace, scope))
             .SelectMany(t => t.GetMethods())
-            .Select(m => m.GetCustomAttribute<Rule>())
-            .Where(a => a is not null)
-            .Select(a => a!.Name)
             .ToList();
     }
+
+    // A validation = a runnable xUnit fact (incl. [Theory] and [LiveFact], which derive from FactAttribute),
+    // but NOT the infrastructure [ParityFact]. These are what must each carry a [Rule].
+    private static bool IsValidation(MethodInfo m) =>
+        m.GetCustomAttributes(inherit: true).Any(a => a is FactAttribute and not ParityFact);
+
+    // A runnable test of any kind (the ParityFact included) — used to catch a [Rule] sitting on no test, which
+    // would register as enforcing a Rule yet never execute.
+    private static bool IsTest(MethodInfo m) =>
+        m.GetCustomAttributes(inherit: true).Any(a => a is FactAttribute);
 
     private static bool InScope(string? ns, string scope) =>
         ns is not null && (ns == scope || ns.StartsWith(scope + ".", StringComparison.Ordinal));
