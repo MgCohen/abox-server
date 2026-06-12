@@ -44,6 +44,16 @@ description** — active voice, name the file/type/symbol, say what to do. No es
 `ParityGuard`'s own message is the model: *"Fix: align each '### <name>' header with a [Rule("<name>")]
 test so the names match exactly."* Prefer that shape over "the rulebook and tests do not match".
 
+## Derive expectations; don't hardcode what drifts
+
+Assert against a value pulled from the source of truth, not a literal copied into the test. Hardcoding
+"returns 7" or a fixed list pins an accident — it goes red the moment the code legitimately changes, testing
+churn instead of a guarantee. Reserve literal expectations for **stable, structural** facts (a path contains
+the repo name; a home folder is one of the agreed set), and even then **extract from the project** where you
+can — read the csproj/registry/constant rather than restating its string. Rule of thumb: if editing unrelated
+code can turn the test red, you hardcoded something you should have derived. (The Arch rules model this — the
+down-only rule is *derived* from one allow-graph, and the csproj *globs* assemblies instead of listing them.)
+
 ## Stability contract — a Rulebook is a ratchet
 
 Treat Rules as a one-way ratchet, and treat *this convention itself* as load-bearing. The two are

@@ -73,7 +73,16 @@ copy a sibling's preamble + template, add the `Parity` fact with the right stric
 - **Unit / E2E / Wire / Live → 1:N.** One guarantee may have several case tests; every
   Rule still needs ≥1 test and every `[Rule]` must cite a real header.
 
-## 4. Things that bite
+## 4. Derive, don't hardcode
+
+Assert against values pulled from the source of truth, not literals copied into the
+test. Hardcoding "returns 7" or a fixed list goes red when code legitimately changes —
+that's churn, not a guarantee. Literal expectations are only for **stable, structural**
+facts (a path contains the repo name; a home folder is one of the agreed set), and even
+then extract from the project (csproj/registry/constant) where you can. If editing
+unrelated code can turn the test red, you hardcoded something you should have derived.
+
+## 5. Things that bite
 
 - **No new test csproj.** `tests/Tests/RemoteAgents.Tests.csproj` globs
   `src\**\RemoteAgents.*.csproj` and `**\Rulebook\*.md` — a new feature/slice or
@@ -86,7 +95,7 @@ copy a sibling's preamble + template, add the `Parity` fact with the right stric
   `*.Tests.*`. To add a layer band, add an `IObjectProvider<IType>` + `Layer` entry (with
   its `MayDependOn`) in `Arch/Support/ArchitectureModel` — the down-only rule covers it.
 
-## 5. Verify
+## 6. Verify
 
 ```
 dotnet build RemoteAgents.slnx   # warning-free; IDE0130 + parity compile-time checks
