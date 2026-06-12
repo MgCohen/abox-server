@@ -2,7 +2,15 @@ root = true
 
 [src/**.cs]
 # Namespace must match folder structure (RootNamespace + folder path). Enforced as a build error on
-# production code so the convention the architecture tests rely on can't drift. Test projects keep their
-# deliberate flat namespace; a pending-eviction folder would opt out via its own .editorconfig.
+# production code so the convention the architecture tests rely on can't drift. Under src/, RootNamespace
+# is derived per slice in src/Features/Directory.Build.props; a pending-eviction folder would opt out via
+# its own .editorconfig.
+dotnet_style_namespace_match_folder = true
+dotnet_diagnostic.IDE0130.severity = error
+
+[tests/**.cs]
+# Same law for tests/: a test file's namespace mirrors its type folder (Arch/, Structure/, Unit/, E2E/,
+# Live/, Support/, Harness), so the Rulebook-per-type taxonomy can't silently drift. RootNamespace is the
+# shared tests root (or the project's own name for Harness); IDE0130 enforces each file against it.
 dotnet_style_namespace_match_folder = true
 dotnet_diagnostic.IDE0130.severity = error

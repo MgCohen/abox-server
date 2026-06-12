@@ -2,6 +2,10 @@
 
   <PropertyGroup>
     <IsPackable>false</IsPackable>
+    <!-- A library, not a suite: it carries the [Rule] attribute + ParityGuard for the test projects to
+         reference. The xunit package would otherwise flag it as a test project and the runner would try
+         (and fail) to discover tests in it. -->
+    <IsTestProject>false</IsTestProject>
   </PropertyGroup>
 
   <ItemGroup>
