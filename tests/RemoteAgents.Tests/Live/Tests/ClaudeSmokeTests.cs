@@ -53,7 +53,7 @@ public class ClaudeSmokeTests(ITestOutputHelper output)
 
     private async Task<OperationDto> DriveInAsync(string projectDir, string prompt)
     {
-        var last = await LiveSmoke.RunAsync("claude-ping", prompt, projectDir, Timeout);
+        var last = await FlowHarness.RunAsync("claude-ping", prompt, projectDir, Timeout);
         var op = last.Operations.Single();
         output.WriteLine($"Phase={last.Phase} Op={op.Name} Status={op.Status}");
         output.WriteLine($"Summary={op.Summary}");

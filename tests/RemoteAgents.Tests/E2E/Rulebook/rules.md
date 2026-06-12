@@ -16,3 +16,8 @@ Template:
 > default driver here — deterministic and CI-safe, never a real agent CLI (that is the Live type).
 
 ---
+
+### claude-ping drives the implementer to completion with the scripted reply
+- Why: proves the API-down backbone — real composition, real Flow engine, real snapshot stream, real
+  resolver wiring — carries an agent flow to a Completed terminal with only the provider's mouth scripted.
+  This is the deterministic counterpart to the live `claude-ping` smoke.
