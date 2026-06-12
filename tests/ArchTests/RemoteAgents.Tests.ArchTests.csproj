@@ -16,6 +16,11 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <Using Include="RemoteAgents.Tests.Harness" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Harness\RemoteAgents.Tests.Harness.csproj" />
   </ItemGroup>
 
   <ItemGroup>
