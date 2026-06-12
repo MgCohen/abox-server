@@ -70,7 +70,10 @@ the no-comments rule at L3, so existing files already conform.
 - **YAGNI / least mechanism.** Build for the requirement in front of you — no
   speculative abstraction, config, or extensibility "for later." Add the
   abstraction on the *second* real use, not the first. (The assembly-wall
-  collapse is the worked example.)
+  collapse is the worked example.) **Exception: basic infrastructure that defines
+  the repo's architecture** — the structural guardrails that keep drift out (arch
+  rulebook, placement guards, the test taxonomy) earn their place on the *first*
+  use, because their whole job is to exist before the second use slips through.
 - **DI services over statics.** Construct collaborators from the container; no
   hidden static singletons.
 - **Results own their display** via `ToString()` — no per-call `summarize` lambda.
