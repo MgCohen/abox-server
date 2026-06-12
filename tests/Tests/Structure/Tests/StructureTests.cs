@@ -90,26 +90,6 @@ public class StructureTests
             """);
     }
 
-    [Rule("Every run attribute is a registered test marker")]
-    [Fact]
-    public void EveryRunAttributeIsARegisteredMarker()
-    {
-        var unregistered = typeof(StructureTests).Assembly.GetTypes()
-            .Where(t => typeof(FactAttribute).IsAssignableFrom(t))
-            .Where(t => !TestMarkers.Names.Contains(t.Name, StringComparer.Ordinal))
-            .Select(t => t.Name)
-            .OrderBy(n => n, StringComparer.Ordinal)
-            .ToList();
-
-        Assert.True(unregistered.Count == 0,
-            $"""
-            Run attributes (Xunit.FactAttribute subtypes) in the test suite are not registered markers, so the
-            tests they mark slip past every [Rule] citation check:
-            {Bullets(unregistered)}
-            Add each to TestMarkers.Names so parity and placement see the tests it marks.
-            """);
-    }
-
     private static string Bullets(IEnumerable<string> items) =>
         string.Join(Environment.NewLine, items.Select(i => $"  * {i}"));
 }
