@@ -21,6 +21,15 @@ Engine: `tests/Harness/` (`Rule.cs`, `ParityGuard.cs`). Detail docs:
 [`PLANS/test-structure.md`](../../../PLANS/test-structure.md). Read those before
 inventing structure; this skill is the *procedure*.
 
+> **Rules are a ratchet — add liberally, change rarely.** *Adding* a Rule is the everyday, safe
+> move; it only tightens guarantees. *Editing, re-wording, or removing* an existing Rule is a
+> **design decision** — each encodes a hard-won invariant, and parity keeps the header/test in
+> lockstep but can't tell you the guarantee got weaker. *Reshaping the template/format/shape* (the
+> `### ` scan, fenced-block skip, layout, cardinality, csproj copy) is the most dangerous: it can make
+> Rules silently stop being enforced across **every** type at once, with a green build. When a change
+> isn't a plain add, stop and confirm — don't quietly edit. Full contract: `tests/Harness/README.md`
+> § *Stability contract*.
+
 ## 1. Pick the type (where does it go?)
 
 | The thing you're proving | Type | Drives |
@@ -35,6 +44,12 @@ inventing structure; this skill is the *procedure*.
 Rule of thumb: no real network/CLI/browser → Unit unless it spans a flow (E2E) or the
 HTTP surface (Wire). Real CLI → Live (and it **must** be `[LiveFact]`, never `[Fact]`,
 so CI skips it).
+
+**Need a whole new *type* (not just a Rule)?** Rare — only when no existing type can host
+the guarantee (don't fork Unit into near-twins). Follow the step-by-step in
+`tests/Harness/README.md` § *Standing up a new test type*: create `<Type>/{Rulebook,Tests,Support}/`,
+copy a sibling's preamble + template, add the `Parity` fact with the right strictness, and write
+≥1 Rule. No csproj edit needed. Don't invent a new Rulebook *shape* — reuse the uniform one.
 
 ## 2. Add the test
 
