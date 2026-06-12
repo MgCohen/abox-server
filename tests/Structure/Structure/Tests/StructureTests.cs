@@ -1,6 +1,7 @@
-using static RemoteAgents.Tests.ArchTests.ArchitectureModel;
+using RemoteAgents.Tests.Structure.Support;
+using static RemoteAgents.Tests.Structure.Support.HomeFolders;
 
-namespace RemoteAgents.Tests.ArchTests;
+namespace RemoteAgents.Tests.Structure.Tests;
 
 // Physical-placement guard: reads the project folders on disk (SourceTree), not the loaded assembly
 // graph, so it catches a stray project the moment it lands — even uncompiled or arch-excluded code.
@@ -11,7 +12,7 @@ public class StructureTests
     public void EveryProjectUnderAHomeFolder()
     {
         var strays = SourceTree.ProjectTopSegments()
-            .Where(seg => !IsHomeFolder(seg) && !IsPendingEviction(seg))
+            .Where(seg => !IsHome(seg) && !IsPendingEviction(seg))
             .OrderBy(s => s, StringComparer.Ordinal)
             .ToList();
 
@@ -20,16 +21,16 @@ public class StructureTests
             Projects live under folders that are not an agreed home:
             {Bullets(strays)}
             Agreed home folders:
-            {Bullets(AgreedHomeFolders)}
+            {Bullets(Agreed)}
             """);
 
         // The eviction list must not outlive its folders — a stale entry is a silent allow-hole.
-        var stale = PendingEvictionFolders.Where(f => !SourceTree.HasTopSegment(f)).ToList();
+        var stale = PendingEviction.Where(f => !SourceTree.HasTopSegment(f)).ToList();
         Assert.True(stale.Count == 0,
             $"""
-            These folders are gone but still listed in PendingEvictionFolders:
+            These folders are gone but still listed in PendingEviction:
             {Bullets(stale)}
-            Drop them from ArchitectureModel.PendingEvictionFolders.
+            Drop them from HomeFolders.PendingEviction.
             """);
     }
 

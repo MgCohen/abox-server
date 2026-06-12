@@ -1,11 +1,11 @@
 using ArchUnitNET.xUnit;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
-using static RemoteAgents.Tests.ArchTests.ArchitectureModel;
+using static RemoteAgents.Tests.Arch.Support.ArchitectureModel;
 
-namespace RemoteAgents.Tests.ArchTests;
+namespace RemoteAgents.Tests.Arch.Tests;
 
-// One enforcing test per block in Fixtures/rules.md, linked by the [Rule] id. The header carries the
-// rule itself + its rationale; this carries the executable assertion. RuleBookTests keeps them in sync.
+// One enforcing test per block in the Arch Rulebook, linked by the [Rule] id. The header carries the
+// rule itself + its rationale; this carries the executable assertion. ParityTests keeps them in sync.
 public class RuleTests
 {
     // The blanket floor/ceiling edges, derived from the allow-graph instead of hand-listed per band:

@@ -4,7 +4,7 @@ using ArchUnitNET.Loader;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
 using Assembly = System.Reflection.Assembly;
 
-namespace RemoteAgents.Tests.ArchTests;
+namespace RemoteAgents.Tests.Arch.Support;
 
 // Single source of truth for the architecture under test. Nothing is registered by hand:
 //   * Production assemblies are DISCOVERED from the output dir (every RemoteAgents.* the csproj
@@ -51,23 +51,6 @@ internal static class ArchitectureModel
     // and it stops the leaf being double-counted (a Contracts type depending on a Features type — itself).
     public const string FeaturesNs = @"^RemoteAgents\.Features\.(?!.*\.Contracts(\.|$)).+";
     public const string HostNs = @"^RemoteAgents\.Host(\.|$)";
-
-    // The agreed home folders for production code — the only legal top-level places under src/. THIS
-    // LIST is the source of truth; a project or file under none of these escaped the structure. Add a
-    // home only when the structure itself grows.
-    public static readonly string[] AgreedHomeFolders = { "Infrastructure", "Domain", "Features", "Host" };
-
-    // Folders deliberately tolerated under src/ until they relocate to their own repos. Listed explicitly
-    // so the structure guard passes HONESTLY: it still rejects any *new* stray, and the staleness check
-    // forces this list to shrink as they leave. Now empty — Morph and Web both evicted to the web repo
-    // (PLANS/structure-guards.md Step 3 reached); the guard stays for the next folder that needs it.
-    public static readonly string[] PendingEvictionFolders = { };
-
-    public static bool IsHomeFolder(string topSegment) =>
-        AgreedHomeFolders.Contains(topSegment, StringComparer.Ordinal);
-
-    public static bool IsPendingEviction(string topSegment) =>
-        PendingEvictionFolders.Contains(topSegment, StringComparer.Ordinal);
 
     // Suffixed *Band so the identifiers don't collide with the same-named namespaces (Contracts,
     // Domain, Host, ...) reachable from this test's RemoteAgents.* namespace under `using static`.

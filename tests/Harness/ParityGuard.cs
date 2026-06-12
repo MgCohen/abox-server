@@ -69,10 +69,19 @@ public sealed class ParityGuard
                 $"Rulebook not found at '{path}'. The csproj must copy it to the output directory " +
                 "(a None item with CopyToOutputDirectory).");
 
-        return File.ReadAllLines(path)
-            .Where(l => l.StartsWith(Heading, StringComparison.Ordinal))
-            .Select(l => l[Heading.Length..].Trim())
-            .ToList();
+        // Skip fenced ``` blocks so a Rulebook's self-teaching template can show a real '### ' example
+        // without it being counted as a declared Rule.
+        var rules = new List<string>();
+        var inFence = false;
+        foreach (var line in File.ReadAllLines(path))
+        {
+            if (line.StartsWith("```", StringComparison.Ordinal))
+                inFence = !inFence;
+            else if (!inFence && line.StartsWith(Heading, StringComparison.Ordinal))
+                rules.Add(line[Heading.Length..].Trim());
+        }
+
+        return rules;
     }
 
     private static string Fmt(IReadOnlyList<string> names) =>
