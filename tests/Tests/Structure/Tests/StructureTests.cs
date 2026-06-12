@@ -1,7 +1,7 @@
-using RemoteAgents.Tests.Structure.Support;
-using static RemoteAgents.Tests.Structure.Support.HomeFolders;
+using ABox.Tests.Structure.Support;
+using static ABox.Tests.Structure.Support.HomeFolders;
 
-namespace RemoteAgents.Tests.Structure.Tests;
+namespace ABox.Tests.Structure.Tests;
 
 // Physical-placement guard: reads the project folders on disk (SourceTree), not the loaded assembly
 // graph, so it catches a stray project the moment it lands — even uncompiled or arch-excluded code.

@@ -1,4 +1,4 @@
-namespace RemoteAgents.Domain.Flow;
+namespace ABox.Domain.Flow;
 
 public interface IFlowFactory
 {

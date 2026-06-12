@@ -16,7 +16,7 @@ tags: [#ui, #blazor, #wasm, #animation, #foundation, #morph]
 > **What this is.** A phased plan for a **reusable foundation library** ("Morph")
 > providing the animation engine, the screen-transition/routing integration, and
 > the base **shape** component every screen is built from. **Domain-agnostic** —
-> no DTOs, no flow/run specifics. `RemoteAgents.Web` is the *first consumer* and
+> no DTOs, no flow/run specifics. `ABox.Web` is the *first consumer* and
 > must drop onto it cleanly; nothing here is specific to it.
 >
 > **Grounding.** Every mechanism was de-risked on 2026-06-09 — see
@@ -67,7 +67,7 @@ and is introduced only on the second driver — until then the motion step is
 ## 3. Project layout
 
 A **Razor Class Library** `src/Morph/` (ships components *and* bundled CSS),
-referenced by `RemoteAgents.Web`. An assembly boundary is justified — it *earns
+referenced by `ABox.Web`. An assembly boundary is justified — it *earns
 reuse* (the repo's assembly rule). Consumers load its CSS from
 `_content/Morph/morph.css` + `_content/Morph/neu.css`.
 
@@ -357,13 +357,13 @@ back-channel, which is the better deal (see §9 D-E).
 
 | Phase | Deliverable | Done-when |
 |-------|-------------|-----------|
-| **0 — Skeleton** | RCL `src/Morph/` + `AddMorph(...)` DI + `neu.css`/`morph.css`; `RemoteAgents.Web` references it and loads `_content/Morph/*.css`. | Web app renders a `.neu-raised` element. Warning-free. |
+| **0 — Skeleton** | RCL `src/Morph/` + `AddMorph(...)` DI + `neu.css`/`morph.css`; `ABox.Web` references it and loads `_content/Morph/*.css`. | Web app renders a `.neu-raised` element. Warning-free. |
 | **1 — Shape + depth** | `MorphShape` with the cascading `--depth` int. No motion yet. | Nested `MorphShape`s emit correct inline `--depth` (verified in DOM). |
 | **2 — Phase engine + in-page stage** | `MorphStageBase` (animationend), `MorphStage<TKey>` with `@key`, the built-in `morph` transition. | In-page swap melts/extrudes by depth; **Playwright contact-sheet shows no flash**; same-type swap (changed `@key`) replays enter. |
 | **3 — Router trigger** | `MorphRouteStage` across ≥2 real routes; re-entrancy + same-URL guards; reduced-motion zeroes the await. | Link / programmatic / back / forward all animate (re-confirm the probe in the lib). |
 | **4 — Transition registry** | Prove consumer extensibility: register `slide` via `AddMorph` + a keyframe pair; per-shape override; disjoint-property contract. | Toggling type swaps the animation with **no library edit and no new branch**. |
 | **5 — Async gate** | The `Loading` overlay: load concurrent with exit, held-melted rest, timeout/error path, `LoadingContent`. | Fast load looks unchanged; slow load rests melted then enters; failed load enters an error state. |
-| **6 — Adoption seam** | One real `RemoteAgents.Web` page renders through Morph against the live Host. **No DTO work.** | e.g. `/runs` renders its content inside `MorphShape`s end-to-end. |
+| **6 — Adoption seam** | One real `ABox.Web` page renders through Morph against the live Host. **No DTO work.** | e.g. `/runs` renders its content inside `MorphShape`s end-to-end. |
 
 Verification uses the Playwright capture/record harness (the in-tool preview is
 blind to these animations — hidden document). Each phase: warning-free build,

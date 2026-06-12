@@ -1,4 +1,4 @@
-namespace RemoteAgents.Domain.Flow.Operations;
+namespace ABox.Domain.Flow.Operations;
 
 // An operation that resolved decisions during its run exposes them here; Flow.Run
 // drains them onto the run ledger after the operation completes.

@@ -1,4 +1,4 @@
-namespace RemoteAgents.Domain.Flow;
+namespace ABox.Domain.Flow;
 
 public sealed class FlowLauncher(FlowCatalog catalog, IFlowFactory factory, FlowRegistry registry)
 {

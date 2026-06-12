@@ -1,4 +1,4 @@
-namespace RemoteAgents.Domain.Agents;
+namespace ABox.Domain.Agents;
 
 // A permission Choice self-answer is never "Allow", so Auto + Ask degrades to a
 // safe deny — autonomous agents gate via Auto/Bypass policy, not Ask (permission-interaction-model §2).

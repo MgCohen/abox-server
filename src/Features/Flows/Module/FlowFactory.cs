@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
-using RemoteAgents.Domain.Flow;
+using ABox.Domain.Flow;
 
-namespace RemoteAgents.Features.Flows.Module;
+namespace ABox.Features.Flows.Module;
 
 public sealed class FlowFactory(IServiceProvider services) : IFlowFactory
 {

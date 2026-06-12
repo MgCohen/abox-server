@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
-using RemoteAgents.Domain.Agents.Claude;
+using ABox.Domain.Agents.Claude;
 
-namespace RemoteAgents.Tests.Unit.Tests;
+namespace ABox.Tests.Unit.Tests;
 
 public class AutoPolicyTests
 {

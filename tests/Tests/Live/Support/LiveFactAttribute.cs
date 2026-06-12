@@ -1,4 +1,4 @@
-namespace RemoteAgents.Tests.Live.Support;
+namespace ABox.Tests.Live.Support;
 
 // The live-CLI gate: a Fact that runs only when RUN_LIVE=1. Default `dotnet test` (and CI) skips it with a
 // clear reason; set the env var to run the real claude/codex suites. Replaces the hand-typed Skip const, so

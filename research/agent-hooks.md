@@ -4,7 +4,7 @@
 > agent CLI is waiting for the user (tool-use approval modal, or free-form
 > reply to a question), instead of pattern-matching the ANSI TUI buffer.
 >
-> **Audience**: anyone designing the RemoteAgents abstraction for
+> **Audience**: anyone designing the ABox abstraction for
 > question-handling (see [`PLANS/interaction-modes.md`](../PLANS/interaction-modes.md)).
 >
 > **Status**: research complete 2026-05-28. Both providers expose the

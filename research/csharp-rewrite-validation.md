@@ -68,7 +68,7 @@ C:\Unity\dotnet-pty-smoke\
 - `--session-id <uuid>` passthrough works — claude wrote `~/.claude/projects/.../{our-uuid}.jsonl`
 - Resume hint appears in stream on clean exit: `Resume this session with: claude --resume <uuid>`
 - Subscription billing path unaffected — `auth status` post-test still shows `authMethod:claude.ai`
-- Existing JS orchestrator at `C:\Unity\remote-unity-agents\` was not touched
+- Existing JS orchestrator at `C:\Unity\abox.server\` was not touched
 
 ---
 
@@ -156,7 +156,7 @@ Strongest fit given user's stated priorities (types, classes, discipline, app-li
 
 ## State at handover
 
-- `remote-unity-agents` repo: **unchanged** (clean working tree on `phase-a/local-validation`, all earlier work pushed)
+- `abox.server` repo: **unchanged** (clean working tree on `phase-a/local-validation`, all earlier work pushed)
 - New folder `C:\Unity\dotnet-pty-smoke\` exists outside the repo — can be deleted any time without consequence
 - `pty-stage2.log` is the most useful artifact — it shows exactly what Claude's TUI byte stream looks like when driven via ConPTY (alt-screen entry, cursor positioning, color codes, trust dialog, status indicators, response stream, exit sequence)
 

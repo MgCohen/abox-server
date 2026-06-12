@@ -1,4 +1,4 @@
-namespace RemoteAgents.Domain.Agents.Claude;
+namespace ABox.Domain.Agents.Claude;
 
 public enum StartupDialog
 {

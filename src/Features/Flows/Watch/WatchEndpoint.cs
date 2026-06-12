@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
-using RemoteAgents.Domain.Flow;
+using ABox.Domain.Flow;
 
-namespace RemoteAgents.Features.Flows.Watch;
+namespace ABox.Features.Flows.Watch;
 
 public static class WatchEndpoint
 {

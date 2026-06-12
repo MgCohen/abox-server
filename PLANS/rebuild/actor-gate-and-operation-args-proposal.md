@@ -233,8 +233,8 @@ or base-class alternative below; the actor/args/`Run` model stays the same.
   (`OperationRecord` / `OperationDto`).
 - **Assembly layout is constrained.** `Flow`, `IActor`, `OperationArgs`, the actors, and
   the flows must live in one assembly, or be linked by `[InternalsVisibleTo]`. This likely
-  keeps `Flow`/`IActor`/`OperationArgs` in `RemoteAgents` (or in `Core` with IVT to
-  `RemoteAgents`) rather than a freely-referenced public contract.
+  keeps `Flow`/`IActor`/`OperationArgs` in `ABox` (or in `Core` with IVT to
+  `ABox`) rather than a freely-referenced public contract.
 - **Reusable actors are held as flow fields**; agents carry a mutable session, so an actor
   **must not run two operations concurrently** — a stated invariant, fine for the
   work→fix→review→revise model.

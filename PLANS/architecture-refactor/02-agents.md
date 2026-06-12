@@ -96,15 +96,15 @@ disposes the scope; the concrete `ClaudeHookInstaller` writes
 
 ## Current structure
 
-- [`Agent.cs`](../../remote-agents-dotnet/src/RemoteAgents/Core/Agents/Agent.cs)
+- [`Agent.cs`](../../remote-agents-dotnet/src/ABox/Core/Agents/Agent.cs)
   — 50 lines, emits Started/Completed/Failed around `ExecuteAsync`.
-- [`ClaudeAgent.cs`](../../remote-agents-dotnet/src/RemoteAgents/Providers/Claude/ClaudeAgent.cs)
+- [`ClaudeAgent.cs`](../../remote-agents-dotnet/src/ABox/Providers/Claude/ClaudeAgent.cs)
   — 227 lines. `ExecuteAsync` wraps `RunInternalAsync` in
   install/uninstall (lines 68-82). `RunInternalAsync` calls
   `UnattendedDirective.Compose` (line 89), `HookResolution.FromHooksJsonl`
   (line 151), emits `NonInteractiveViolation` (lines 154-159), scrubs
   env (lines 181-182). Provider-specific code: ~110 lines (PTY drive).
-- [`CodexAgent.cs`](../../remote-agents-dotnet/src/RemoteAgents/Providers/Codex/CodexAgent.cs)
+- [`CodexAgent.cs`](../../remote-agents-dotnet/src/ABox/Providers/Codex/CodexAgent.cs)
   — 249 lines. Same shape: install/uninstall (lines 53-68), compose
   (line 136), hook resolution (line 168), violation emit (lines
   187-192), env scrub (line 92). Provider-specific code: ~130 lines
@@ -114,9 +114,9 @@ disposes the scope; the concrete `ClaudeHookInstaller` writes
   [`Researcher.cs`](../../remote-agents-dotnet/src/NamedAgents/Researcher.cs)
   — static `Create(IEventSink?)` factories returning concrete
   `ClaudeAgent` / `CodexAgent`. Namespace `Flows.Agents`.
-- [`ClaudeHookConfig.cs`](../../remote-agents-dotnet/src/RemoteAgents/Providers/Claude/ClaudeHookConfig.cs)
+- [`ClaudeHookConfig.cs`](../../remote-agents-dotnet/src/ABox/Providers/Claude/ClaudeHookConfig.cs)
   — static `Install(projectDir, shim)` / `Uninstall(projectDir)`.
-- [`CodexHookConfig.cs`](../../remote-agents-dotnet/src/RemoteAgents/Providers/Codex/CodexHookConfig.cs)
+- [`CodexHookConfig.cs`](../../remote-agents-dotnet/src/ABox/Providers/Codex/CodexHookConfig.cs)
   — static `Install(configDir, shim)` / `Uninstall(configDir)` with
   `DefaultConfigDir() = ~/.codex`.
 
@@ -138,10 +138,10 @@ disposes the scope; the concrete `ClaudeHookInstaller` writes
 7. **`NamedAgents` are static factories returning concrete types.**
    Three concerns mashed into one method: identity (the name),
    provider choice, preset (model + system prompt). The namespace
-   `Flows.Agents` doesn't match the library's `RemoteAgents.Agents`.
+   `Flows.Agents` doesn't match the library's `ABox.Agents`.
    They're presets pretending to be classes.
 8. **`Reviews.AskCodexForVerdictAsync` is a fourth construction site**
-   ([`Reviews.cs:54-59`](../../remote-agents-dotnet/src/RemoteAgents/Flows/Reviews.cs))
+   ([`Reviews.cs:54-59`](../../remote-agents-dotnet/src/ABox/Flows/Reviews.cs))
    — picks the agent's name (`"codex"`), default sandbox, timeout,
    sink. Nothing about constructing an agent is centralized.
 9. **`ClaudeHookConfig.Install` and `CodexHookConfig.Install` take
@@ -244,7 +244,7 @@ Layer 2 is done when:
 - `NamedAgents/` is empty or deleted.
 - `Reviews.AskCodexForVerdictAsync` does not contain `new CodexAgent(...)`.
 - `Agent` has no `Provider` property; no `[Provider]` attribute exists.
-- The string literal `"claude"` appears in `src/RemoteAgents/` only
+- The string literal `"claude"` appears in `src/ABox/` only
   in (a) `Providers/Claude/` namespace declarations and (b) wire-side
   `JsonPolymorphic` discriminator attributes. Same for `"codex"`.
 - `IHookInstaller<TAgent>` is the only hook-installer interface;

@@ -1,4 +1,4 @@
-namespace RemoteAgents.Features.Git.Contracts;
+namespace ABox.Features.Git.Contracts;
 
 public interface IPullRequests
 {

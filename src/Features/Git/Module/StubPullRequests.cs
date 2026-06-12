@@ -1,6 +1,6 @@
-using RemoteAgents.Features.Git.Contracts;
+using ABox.Features.Git.Contracts;
 
-namespace RemoteAgents.Features.Git.Module;
+namespace ABox.Features.Git.Module;
 
 // Provisional adapter: a fixed PR list standing in for a real GitHub/forge reader until that lands.
 internal sealed class StubPullRequests : IPullRequests

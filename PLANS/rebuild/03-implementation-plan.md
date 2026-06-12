@@ -96,13 +96,13 @@ deliberately small — a boundary exists only where it earns **enforcement** or
 **reuse**:
 
 ```
-RemoteAgents.Web         Blazor WASM UI                              → Contracts
-RemoteAgents.Contracts   wire DTOs (the UI-decoupling seam)          — leaf
-RemoteAgents             the engine: Paths/ Projects/ Agents/ Steps/ → Contracts
+ABox.Web         Blazor WASM UI                              → Contracts
+ABox.Contracts   wire DTOs (the UI-decoupling seam)          — leaf
+ABox             the engine: Paths/ Projects/ Agents/ Steps/ → Contracts
                          Flows/ + flow runtime (registry/catalog/
                          history). NO ASP.NET, NO DI package — pure.
-RemoteAgents.Host        ASP.NET adapter: endpoints + SSE + CORS +   → RemoteAgents,
-                         composition root (AddRemoteAgents/AddFlow)     Contracts
+ABox.Host        ASP.NET adapter: endpoints + SSE + CORS +   → ABox,
+                         composition root (AddABox/AddFlow)     Contracts
 ```
 
 Why these four and not more:
@@ -116,7 +116,7 @@ Why these four and not more:
   and **no** DI-container dependency — only `Contracts` — so it could be driven
   from a CLI or worker unchanged.
 - **Host** is the web adapter and the composition root: the only ASP.NET-coupled
-  code — endpoint mapping, the SSE writer, CORS, `AddRemoteAgents`/`AddFlow`, and
+  code — endpoint mapping, the SSE writer, CORS, `AddABox`/`AddFlow`, and
   `Program`. Thin, but a real layer, not a stub.
 
 The engine's layers (Agents/Steps/Flows) live as **folders/namespaces in one
@@ -165,7 +165,7 @@ code · **NEW** = didn't exist. Oracle refs point at
 **Goal.** An app that boots and serves, with the project layout (§ Assembly
 layout) and DI.
 
-**Build.** The project layout (`Core`, `RemoteAgents` orchestrator, `Contracts`,
+**Build.** The project layout (`Core`, `ABox` orchestrator, `Contracts`,
 `Hosting`, `Host`); DI composition root; host bootstrap + CORS; generic
 domain-agnostic infra only — `ProjectRegistry`, paths. No DTOs, no
 `SubscriptionGuard`, no agent/flow types.
@@ -330,7 +330,7 @@ executor yields `Faulted` (not a question); `NonInteractive` resolver makes
 `NeedsInput` terminal; build green.
 
 **Landed 2026-06-06 (first pass).** All five decisions shipped in
-`src/RemoteAgents/Actors/Agents/`: `QuestionParser` + `AgentQuestion` (lifted),
+`src/ABox/Actors/Agents/`: `QuestionParser` + `AgentQuestion` (lifted),
 `AgentOutcome`/`AgentError`, `Agent` returns the outcome with Faulted-beats-Question
 precedence, OS-aware codex sandbox + corrected resume args (`CodexProtocol`),
 `AgentDirective` appended for both providers, `IQuestionResolver` +
@@ -375,7 +375,7 @@ parse, git guardrails, validator pass/fail); build green.
 
 **Build — DONE (landed early).** `PtySession` (ConPTY via Porta.Pty) +
 `SubprocessSession` + `AnsiHelpers` already live in
-`src/RemoteAgents/Tools/CommandLine/`, with `ClaudeProvider`/`CodexProvider`
+`src/ABox/Tools/CommandLine/`, with `ClaudeProvider`/`CodexProvider`
 driving them through the `IProvider` seam (`FakeProvider` remains for tests). The
 choreography (Tier B1 timings, B2 shutdown ordering) was ported with the providers;
 Tier A2/A4/A5/A7/A10 honored in `ClaudeProvider`.

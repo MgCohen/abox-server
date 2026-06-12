@@ -23,7 +23,7 @@ or git pathspec globs (`*Claude*`, `**/Git*.cs`):
 
 ```json
 {
-  "C1-claude-agent": { "paths": ["src/RemoteAgents/Agents/*Claude*"] }
+  "C1-claude-agent": { "paths": ["src/ABox/Agents/*Claude*"] }
 }
 ```
 

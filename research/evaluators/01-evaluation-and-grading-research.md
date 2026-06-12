@@ -6,7 +6,7 @@
 > online-guardrail split — grounded in respected sources and shipped open-source
 > prompts.
 >
-> **Audience**: anyone designing the RemoteAgents eval/guardrail layer (the
+> **Audience**: anyone designing the ABox eval/guardrail layer (the
 > natural layer after the flow lands). Pairs with the worked snippets under
 > [`examples/`](examples/) and the actor/operation model in
 > [`design/adr/0003-actors-operations-run-contract.md`](../../design/adr/0003-actors-operations-run-contract.md).

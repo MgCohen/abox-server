@@ -537,15 +537,15 @@ JsonSerializer.Deserialize<RunsFile>(json, JsonOpts);             // reflection
 **After** — one context in the contracts assembly; both library and Host use it.
 
 ```csharp
-// RemoteAgents.Contracts
+// ABox.Contracts
 [JsonSerializable(typeof(AgentEvent))]
 [JsonSerializable(typeof(RunsFile))]
 [JsonSerializable(typeof(RunRecord))]
-public partial class RemoteAgentsJsonContext : JsonSerializerContext { }
+public partial class ABoxJsonContext : JsonSerializerContext { }
 
 // Host — no reflection, no per-event allocation of a reflection plan
-evt  = JsonSerializer.Deserialize(line, RemoteAgentsJsonContext.Default.AgentEvent);
-file = JsonSerializer.Deserialize(json, RemoteAgentsJsonContext.Default.RunsFile);
+evt  = JsonSerializer.Deserialize(line, ABoxJsonContext.Default.AgentEvent);
+file = JsonSerializer.Deserialize(json, ABoxJsonContext.Default.RunsFile);
 ```
 
 ---

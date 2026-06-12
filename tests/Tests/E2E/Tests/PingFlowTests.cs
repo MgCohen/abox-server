@@ -1,6 +1,6 @@
-using RemoteAgents.Domain.Flow;
+using ABox.Domain.Flow;
 
-namespace RemoteAgents.Tests.E2E.Tests;
+namespace ABox.Tests.E2E.Tests;
 
 // In-process E2E: drives the claude-ping flow through the real composition with a scripted provider, so the
 // whole spine below the HTTP layer runs deterministically without a live CLI. The Live type covers the same

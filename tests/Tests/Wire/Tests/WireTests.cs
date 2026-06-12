@@ -1,9 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
-using RemoteAgents.Features.Flows.Contracts;
-using RemoteAgents.Tests.Wire.Support;
+using ABox.Features.Flows.Contracts;
+using ABox.Tests.Wire.Support;
 
-namespace RemoteAgents.Tests.Wire.Tests;
+namespace ABox.Tests.Wire.Tests;
 
 // Wire smoke: a real HttpClient against the Host over WebApplicationFactory. Thin by design — it proves
 // routing + serialization + the SSE streaming contract, with a CLI-free StubFlow behind the flow endpoints.

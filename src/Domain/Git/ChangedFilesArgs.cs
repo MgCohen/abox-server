@@ -1,5 +1,5 @@
-using RemoteAgents.Infrastructure.Operations;
+using ABox.Infrastructure.Operations;
 
-namespace RemoteAgents.Domain.Git;
+namespace ABox.Domain.Git;
 
 public sealed record ChangedFilesArgs() : OperationArgs("git-changed-files");

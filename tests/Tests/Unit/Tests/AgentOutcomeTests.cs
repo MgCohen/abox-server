@@ -1,6 +1,6 @@
-using RemoteAgents.Domain.Agents;
+using ABox.Domain.Agents;
 
-namespace RemoteAgents.Tests.Unit.Tests;
+namespace ABox.Tests.Unit.Tests;
 
 public class AgentOutcomeTests
 {

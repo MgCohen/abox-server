@@ -12,7 +12,7 @@ tags: [#ui, #host, #maui, #blazor, #mobile, #tailscale]
 > output, and respond to any agent question that surfaces. Always-on against
 > my Windows laptop, reachable over Tailscale.
 >
-> **Ordering.** Strictly additive — zero edits to existing `RemoteAgents`
+> **Ordering.** Strictly additive — zero edits to existing `ABox`
 > library, `flows/`, `agents/`, or `validation/` projects. Parallel branch
 > (`phase-ui/host-mobile`) so flow/infra work on `phase-a/local-validation`
 > keeps moving independently.
@@ -31,7 +31,7 @@ on the owner's machine (in priority order):
    stream end-to-end. Costs subscription cycles, leaves a session dir.
 2. **MAUI Android target** — install JDK 17+ and Android SDK (Android
    Studio is the easiest path); see
-   [`../remote-agents-dotnet/ui/RemoteAgents.UI.Maui.README.md`](../remote-agents-dotnet/ui/RemoteAgents.UI.Maui.README.md).
+   [`../remote-agents-dotnet/ui/ABox.UI.Maui.README.md`](../remote-agents-dotnet/ui/ABox.UI.Maui.README.md).
 3. **Always-on service** — run `ui/scripts/configure-power.ps1` and
    `ui/scripts/install-host-service.ps1` from an Admin PowerShell.
 4. **Update tailnet ACL** — snippet in `ui/README.md`.
@@ -41,7 +41,7 @@ C2 is partial-by-design pending library v2 on the answer-back contract.
 What's already running on this branch:
 - Host: REST (`/projects`, `/flows`, `/runs`, `/runs/{id}`, `/runs/{id}/cancel`, `/runs/{id}/respond`) + SignalR (`/hub/runs`).
 - FlowRunner: spawns flows via `cli/agents-dotnet.cs`, sniffs `[session-id]` from stdout, tails `sessions/<id>/transcript.jsonl`, re-emits as `AgentEvent` into a `ChannelSink` consumed by SignalR.
-- Persistence: `~/.remote-agents/runs.json` (schema-versioned, atomic write, 90-day retention). On boot, in-flight-at-shutdown runs flip to `Interrupted`.
+- Persistence: `~/.abox/runs.json` (schema-versioned, atomic write, 90-day retention). On boot, in-flight-at-shutdown runs flip to `Interrupted`.
 - Razor lib (`UI.Components`): `Home` / `RunHistory` / `RunView` pages, `HostApiClient` + `RunStreamClient`, minimal `pages.css`.
 - Blazor WASM (`UI.Web`): hosts the components, runs against `HostBaseAddress` config.
 - Always-on scripts: `ui/scripts/install-host-service.ps1` + `configure-power.ps1`.
@@ -60,7 +60,7 @@ existing library / flow / agent / validator / CLI file was modified.
 | Phase | Status | Touches existing code? |
 |---|---|---|
 | C0 — Decision capture + plan doc | ✅ | No |
-| C1 — `RemoteAgents.Host` (ASP.NET + ChannelSink + FlowRunner + REST/SignalR) | ✅ C1.1–C1.4 | No |
+| C1 — `ABox.Host` (ASP.NET + ChannelSink + FlowRunner + REST/SignalR) | ✅ C1.1–C1.4 | No |
 | C2 — Interactive-prompt seam (partial — surface + record; answer-back routing blocked on library v2) | 🟡 partial | No |
 | C3 — Tailscale binding + nssm always-on | ✅ scripts written; owner runs | No (config only) |
 | C4 — `UI.Components` Razor lib + `UI.Web` Blazor WASM | ✅ | No |
@@ -74,8 +74,8 @@ existing library / flow / agent / validator / CLI file was modified.
   `remote-agents-dotnet/flows/`, `remote-agents-dotnet/agents/`, or
   `remote-agents-dotnet/cli/`. New work lives entirely under
   `remote-agents-dotnet/ui/`.
-- **Two solution files.** `RemoteAgents.slnx` stays untouched. New
-  `RemoteAgents.UI.slnx` includes the existing projects via path + the new
+- **Two solution files.** `ABox.slnx` stays untouched. New
+  `ABox.UI.slnx` includes the existing projects via path + the new
   `ui/` projects.
 - **Subscription billing preserved.** Host never calls Anthropic directly.
   It runs flows (or instantiates `ClaudeAgent` / `CodexAgent` from the
@@ -112,16 +112,16 @@ A four-project addition to `remote-agents-dotnet/`:
 
 ```
 remote-agents-dotnet/
-├── src/RemoteAgents/                  UNTOUCHED
+├── src/ABox/                  UNTOUCHED
 ├── flows/, agents/, validation/, cli/  UNTOUCHED
-├── RemoteAgents.slnx                  UNTOUCHED
+├── ABox.slnx                  UNTOUCHED
 └── ui/                                 NEW
-    ├── RemoteAgents.Host/             ASP.NET — REST + SignalR
-    ├── RemoteAgents.UI.Components/    Razor class lib (shared)
-    ├── RemoteAgents.UI.Web/           Blazor WASM, served by Host
-    └── RemoteAgents.UI.Maui/          MAUI Blazor Hybrid
+    ├── ABox.Host/             ASP.NET — REST + SignalR
+    ├── ABox.UI.Components/    Razor class lib (shared)
+    ├── ABox.UI.Web/           Blazor WASM, served by Host
+    └── ABox.UI.Maui/          MAUI Blazor Hybrid
 
-remote-agents-dotnet/RemoteAgents.UI.slnx  NEW — second solution
+remote-agents-dotnet/ABox.UI.slnx  NEW — second solution
 ```
 
 End-state UX from the phone:
@@ -147,9 +147,9 @@ Confirmed 2026-05-28 in the source conversation. Load-bearing.
 | 2 | UI stack | **MAUI Blazor Hybrid + shared Razor class library + Blazor WASM web.** One Razor codebase, three shells (Android/Windows/iOS + web). |
 | 3 | Host transport | **ASP.NET (Kestrel) — REST for control, SignalR for live events.** Sits in front of an in-process `ChannelSink` consuming the existing `IEventSink` interface. |
 | 4 | Flow execution model in v1 | **Child process per run.** Host spawns `dotnet run flows/<flow>.cs -- <args>` exactly like the CLI shim does today; tails the per-run `transcript.jsonl` and re-emits each line as a SignalR event. Avoids needing in-process flow loading in v1; lets the library keep its file-based-program convention. (Future v2 may move to in-process `Agent` instantiation for finer control — `Agent.Sink` is `init`, so it slots in without library change.) |
-| 5 | Type sharing across HTTP | **Direct DTO sharing.** `RemoteAgents.UI.Components` takes a `ProjectReference` on `RemoteAgents` and reuses `AgentEvent`, `AgentQuestion`, `AgentResult` records as-is. They're already `[JsonPolymorphic]`-annotated. No OpenAPI codegen step. |
+| 5 | Type sharing across HTTP | **Direct DTO sharing.** `ABox.UI.Components` takes a `ProjectReference` on `ABox` and reuses `AgentEvent`, `AgentQuestion`, `AgentResult` records as-is. They're already `[JsonPolymorphic]`-annotated. No OpenAPI codegen step. |
 | 6 | Authentication v1 | **Tailnet membership.** Host binds to the Tailscale interface only. Tailscale ACL (already in infra plan A4.2) restricts phone → port 5050 only. No user/password layer in v1. |
-| 7 | Persistence v1 | **JSON file in `~/.remote-agents/runs.json`** for run metadata (id, project, flow, startedAt, status, sessionDir). Streaming content stays on disk in `sessions/<ts>-<slug>/transcript.jsonl` + provider JSONLs (no re-storage). SQLite upgrade if list grows past ~5K runs. |
+| 7 | Persistence v1 | **JSON file in `~/.abox/runs.json`** for run metadata (id, project, flow, startedAt, status, sessionDir). Streaming content stays on disk in `sessions/<ts>-<slug>/transcript.jsonl` + provider JSONLs (no re-storage). SQLite upgrade if list grows past ~5K runs. |
 | 8 | Always-on shape | **nssm Windows service.** Auto-start on boot. Windows power settings prevent sleep on AC. |
 | 9 | Interactive-prompt model | **Consume the existing library seams.** `InteractionMode.Interactive` + `AgentQuestion` + `AgentResult.NeedsInput` already exist in the library (untracked-but-in-progress on the flow track). The Host doesn't need new agent code; it surfaces these events to SignalR clients and accepts responses via `POST /runs/{id}/respond`. |
 
@@ -167,7 +167,7 @@ Confirmed 2026-05-28 in the source conversation. Load-bearing.
                │
                ▼
 ┌────────────────────────────────────────────────────────────────┐
-│  RemoteAgents.Host  (ASP.NET Kestrel, nssm-managed)            │
+│  ABox.Host  (ASP.NET Kestrel, nssm-managed)            │
 │                                                                │
 │  REST:                                                          │
 │    GET  /projects     → ProjectRegistry                         │
@@ -196,9 +196,9 @@ Confirmed 2026-05-28 in the source conversation. Load-bearing.
 
 The Host **does not import or modify any library agent code**. It:
 
-- Imports `RemoteAgents` for the `AgentEvent` / `AgentQuestion` /
+- Imports `ABox` for the `AgentEvent` / `AgentQuestion` /
   `AgentResult` record types (DTOs over the wire).
-- Imports `RemoteAgents` for `ProjectRegistry` to list projects.
+- Imports `ABox` for `ProjectRegistry` to list projects.
 - Spawns flows as child processes (same way `cli/bin/agents-dotnet.cs` does
   today).
 - Reads `sessions/<ts>-<slug>/transcript.jsonl` to surface live events.
@@ -222,22 +222,22 @@ directly. That path is open; v1 doesn't take it.
 #### C1.1 — `ui/` skeleton (¼ hour)
 - [ ] Create `remote-agents-dotnet/ui/` directory.
 - [ ] Four empty project skeletons via `dotnet new`:
-  - `RemoteAgents.Host` (`webapi`, net10.0)
-  - `RemoteAgents.UI.Components` (`razorclasslib`, net10.0)
-  - `RemoteAgents.UI.Web` (`blazorwasm` standalone, net10.0)
-  - `RemoteAgents.UI.Maui` (`maui-blazor`, net10.0 multi-target)
-- [ ] Create `remote-agents-dotnet/RemoteAgents.UI.slnx` referencing all
-      four new projects + existing `src/RemoteAgents`,
+  - `ABox.Host` (`webapi`, net10.0)
+  - `ABox.UI.Components` (`razorclasslib`, net10.0)
+  - `ABox.UI.Web` (`blazorwasm` standalone, net10.0)
+  - `ABox.UI.Maui` (`maui-blazor`, net10.0 multi-target)
+- [ ] Create `remote-agents-dotnet/ABox.UI.slnx` referencing all
+      four new projects + existing `src/ABox`,
       `agents/NamedAgents`, `validation/Validators`,
-      `tests/RemoteAgents.Tests`.
-- [ ] Confirm `dotnet build RemoteAgents.UI.slnx` exits 0 with the empty
+      `tests/ABox.Tests`.
+- [ ] Confirm `dotnet build ABox.UI.slnx` exits 0 with the empty
       skeletons.
 
 #### C1.2 — ChannelSink + FlowRunner (¼ day)
-- [ ] `RemoteAgents.Host/Sinks/ChannelSink.cs` — implements `IEventSink`,
+- [ ] `ABox.Host/Sinks/ChannelSink.cs` — implements `IEventSink`,
       wraps `Channel<AgentEvent>`, writer-side `EmitAsync`, reader-side
       `ReadAllAsync(CancellationToken)`.
-- [ ] `RemoteAgents.Host/Runs/FlowRunner.cs` — owns the registry of active
+- [ ] `ABox.Host/Runs/FlowRunner.cs` — owns the registry of active
       runs:
   - `StartAsync(project, flow, prompt, args, ct)` → spawns
     `dotnet run flows/<flow>.cs -- <args> "<prompt>"`, returns `runId`.
@@ -246,7 +246,7 @@ directly. That path is open; v1 doesn't take it.
     to the per-run `ChannelSink`.
   - Tracks status, exit code, session dir; persists summary to `runs.json`
     on Completed/Failed.
-- [ ] `RemoteAgents.Host/Runs/RunRegistry.cs` — JSON-backed list, keyed by
+- [ ] `ABox.Host/Runs/RunRegistry.cs` — JSON-backed list, keyed by
       `runId` (GUID); also exposes "current sink for run X" to SignalR.
 
 #### C1.3 — Minimal REST endpoints (¼ day)
@@ -261,7 +261,7 @@ directly. That path is open; v1 doesn't take it.
 - [ ] `GET /health` — for nssm liveness.
 
 #### C1.4 — SignalR event hub (¼ day)
-- [ ] `RemoteAgents.Host/Hubs/RunsHub.cs` — `Subscribe(runId)` server
+- [ ] `ABox.Host/Hubs/RunsHub.cs` — `Subscribe(runId)` server
       method; pushes events from the run's `ChannelSink` to clients via
       `Clients.Caller.SendAsync("event", AgentEvent)`.
 - [ ] Polymorphic JSON setup — register `EventJsonContext` (already in
@@ -297,7 +297,7 @@ The library work is already in flight on `phase-a/local-validation` (untracked
 ### Phase C3 — Tailscale binding + nssm always-on (½ day)
 - [ ] Configure Host Kestrel to bind to the Tailscale interface IP only
       (read at startup from `tailscale ip -4`).
-- [ ] Install Host as a Windows service via `nssm install RemoteAgentsHost`.
+- [ ] Install Host as a Windows service via `nssm install ABoxHost`.
       Service runs as the current user (needs `~/.claude` + `~/.codex`
       auth).
 - [ ] Power profile: `powercfg /change standby-timeout-ac 0`,
@@ -342,7 +342,7 @@ launch a flow, see live log, respond to a prompt.
 fires on `question` event.
 
 ### Phase C6 — Run persistence + retention (½ day)
-- [ ] `~/.remote-agents/runs.json` schema versioned (`schemaVersion: 1`).
+- [ ] `~/.abox/runs.json` schema versioned (`schemaVersion: 1`).
 - [ ] On Host restart: orphan in-flight runs flagged `interrupted`. Phone UI
       shows them as such with a link to the session dir.
 - [ ] Retention: prune `runs.json` entries older than 90 days (session dirs

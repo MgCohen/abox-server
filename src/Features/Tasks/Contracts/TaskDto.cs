@@ -1,3 +1,3 @@
-namespace RemoteAgents.Features.Tasks.Contracts;
+namespace ABox.Features.Tasks.Contracts;
 
 public sealed record TaskDto(int Id, string Title, IReadOnlyList<int> LinkedPullRequests);

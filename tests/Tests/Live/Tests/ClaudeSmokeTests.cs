@@ -1,8 +1,8 @@
-using RemoteAgents.Domain.Flow.Operations;
+using ABox.Domain.Flow.Operations;
 using Xunit.Abstractions;
-using RemoteAgents.Tests.Live.Support;
+using ABox.Tests.Live.Support;
 
-namespace RemoteAgents.Tests.Live.Tests;
+namespace ABox.Tests.Live.Tests;
 
 public class ClaudeSmokeTests(ITestOutputHelper output)
 {

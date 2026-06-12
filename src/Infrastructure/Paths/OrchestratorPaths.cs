@@ -1,4 +1,4 @@
-namespace RemoteAgents.Infrastructure.Paths;
+namespace ABox.Infrastructure.Paths;
 
 public interface IOrchestratorPaths
 {
@@ -13,9 +13,9 @@ public sealed class OrchestratorPaths : IOrchestratorPaths
 
     public OrchestratorPaths()
     {
-        Root = RepoRoot.Find("RemoteAgents.slnx", "projects.json")
+        Root = RepoRoot.Find("ABox.slnx", "projects.json")
             ?? throw new InvalidOperationException(
-                "Could not locate the orchestrator root. Expected to find RemoteAgents.slnx or " +
+                "Could not locate the orchestrator root. Expected to find ABox.slnx or " +
                 "projects.json by walking up from the current directory or the app base directory.");
         ProjectsFile = Path.Combine(Root, "projects.json");
     }

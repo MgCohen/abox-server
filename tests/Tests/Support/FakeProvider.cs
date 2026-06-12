@@ -1,6 +1,6 @@
-using RemoteAgents.Domain.Agents;
+using ABox.Domain.Agents;
 
-namespace RemoteAgents.Tests.Support;
+namespace ABox.Tests.Support;
 
 // No-CLI provider for tests: returns the config's scripted Reply, or echoes the prompt. Drives an
 // agent through a flow without a live Claude/Codex process.

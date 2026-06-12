@@ -1,4 +1,4 @@
-namespace RemoteAgents.Infrastructure.Operations;
+namespace ABox.Infrastructure.Operations;
 
 public abstract class RunnerBase
 {

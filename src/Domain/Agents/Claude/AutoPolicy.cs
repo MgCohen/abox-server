@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace RemoteAgents.Domain.Agents.Claude;
+namespace ABox.Domain.Agents.Claude;
 
 public sealed class AutoPolicy
 {

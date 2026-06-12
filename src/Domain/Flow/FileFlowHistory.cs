@@ -1,7 +1,7 @@
 using System.Text.Json;
-using RemoteAgents.Infrastructure.Json;
+using ABox.Infrastructure.Json;
 
-namespace RemoteAgents.Domain.Flow;
+namespace ABox.Domain.Flow;
 
 public sealed class FileFlowHistory : IFlowHistory
 {
@@ -16,7 +16,7 @@ public sealed class FileFlowHistory : IFlowHistory
     {
         // rebuild/ isolates from the quarantined prototype's sibling flows.json; reverts at L12.
         var root = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".remote-agents", "rebuild");
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".abox", "rebuild");
         Directory.CreateDirectory(root);
         _path = Path.Combine(root, "flows.json");
         Load();

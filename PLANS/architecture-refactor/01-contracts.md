@@ -8,7 +8,7 @@ tags: [#architecture, #refactor, #layer-1, #contracts]
 
 ## Target structure
 
-One assembly, `RemoteAgents.Contracts`, holds every record that
+One assembly, `ABox.Contracts`, holds every record that
 crosses an assembly, process, or wire boundary. The assembly has
 **only** `System.*` dependencies (no ASP.NET, no SignalR, no
 provider SDKs). Both the Razor lib and the Host reference it. Both
@@ -31,22 +31,22 @@ fixed and known.
 
 ## Current structure
 
-- `RemoteAgents.csproj` (the library) owns:
-  - [`AgentRunRequest.cs`](../../remote-agents-dotnet/src/RemoteAgents/Core/Agents/AgentRunRequest.cs)
-  - [`AgentResult.cs`](../../remote-agents-dotnet/src/RemoteAgents/Core/Agents/AgentResult.cs)
-  - [`AgentQuestion.cs`](../../remote-agents-dotnet/src/RemoteAgents/Core/Agents/AgentQuestion.cs)
-  - [`AgentStatus.cs`](../../remote-agents-dotnet/src/RemoteAgents/Core/Agents/AgentStatus.cs)
-  - [`InteractionMode.cs`](../../remote-agents-dotnet/src/RemoteAgents/Core/Agents/InteractionMode.cs)
-  - [`AgentEvent.cs`](../../remote-agents-dotnet/src/RemoteAgents/Core/Events/AgentEvent.cs)
-- `RemoteAgents.Host` owns:
-  - [`Dtos.cs`](../../remote-agents-dotnet/ui/RemoteAgents.Host/Dtos.cs)
+- `ABox.csproj` (the library) owns:
+  - [`AgentRunRequest.cs`](../../remote-agents-dotnet/src/ABox/Core/Agents/AgentRunRequest.cs)
+  - [`AgentResult.cs`](../../remote-agents-dotnet/src/ABox/Core/Agents/AgentResult.cs)
+  - [`AgentQuestion.cs`](../../remote-agents-dotnet/src/ABox/Core/Agents/AgentQuestion.cs)
+  - [`AgentStatus.cs`](../../remote-agents-dotnet/src/ABox/Core/Agents/AgentStatus.cs)
+  - [`InteractionMode.cs`](../../remote-agents-dotnet/src/ABox/Core/Agents/InteractionMode.cs)
+  - [`AgentEvent.cs`](../../remote-agents-dotnet/src/ABox/Core/Events/AgentEvent.cs)
+- `ABox.Host` owns:
+  - [`Dtos.cs`](../../remote-agents-dotnet/ui/ABox.Host/Dtos.cs)
     (`ProjectInfo`, `FlowInfo`, `StartRunRequest`, `RespondRequest`, `RunSummary`)
-  - [`Hubs/ChatEvent.cs`](../../remote-agents-dotnet/ui/RemoteAgents.Host/Hubs/ChatEvent.cs)
-  - [`Runs/Run.cs`](../../remote-agents-dotnet/ui/RemoteAgents.Host/Runs/Run.cs) — mixes runtime state and persistable state
-  - [`Runs/PersistedRun.cs`](../../remote-agents-dotnet/ui/RemoteAgents.Host/Runs/PersistedRun.cs) — the persistable projection
-- `RemoteAgents.UI.Components` owns:
-  - [`Models/WireShapes.cs`](../../remote-agents-dotnet/ui/RemoteAgents.UI.Components/Models/WireShapes.cs) — byte-identical mirror of `Dtos.cs`
-  - [`Models/ChatEvent.cs`](../../remote-agents-dotnet/ui/RemoteAgents.UI.Components/Models/ChatEvent.cs) — byte-identical mirror of `Hubs/ChatEvent.cs`
+  - [`Hubs/ChatEvent.cs`](../../remote-agents-dotnet/ui/ABox.Host/Hubs/ChatEvent.cs)
+  - [`Runs/Run.cs`](../../remote-agents-dotnet/ui/ABox.Host/Runs/Run.cs) — mixes runtime state and persistable state
+  - [`Runs/PersistedRun.cs`](../../remote-agents-dotnet/ui/ABox.Host/Runs/PersistedRun.cs) — the persistable projection
+- `ABox.UI.Components` owns:
+  - [`Models/WireShapes.cs`](../../remote-agents-dotnet/ui/ABox.UI.Components/Models/WireShapes.cs) — byte-identical mirror of `Dtos.cs`
+  - [`Models/ChatEvent.cs`](../../remote-agents-dotnet/ui/ABox.UI.Components/Models/ChatEvent.cs) — byte-identical mirror of `Hubs/ChatEvent.cs`
 
 ## Gap
 
@@ -63,36 +63,36 @@ fixed and known.
    `Project`, `Flow`, `Prompt`, `Args` are durable. The result is
    *three projections of the same data* — `Run`, `PersistedRun`,
    `RunSummary` — converted by three sibling functions in
-   [`Program.cs:170-183`](../../remote-agents-dotnet/ui/RemoteAgents.Host/Program.cs).
-4. **`Run.ClaudeSessionId`** ([`Run.cs:46`](../../remote-agents-dotnet/ui/RemoteAgents.Host/Runs/Run.cs))
+   [`Program.cs:170-183`](../../remote-agents-dotnet/ui/ABox.Host/Program.cs).
+4. **`Run.ClaudeSessionId`** ([`Run.cs:46`](../../remote-agents-dotnet/ui/ABox.Host/Runs/Run.cs))
    is provider-specific on a provider-agnostic type. The moment Codex
    needs the same it grows `CodexSessionId`. Either an open
    `ProviderMetadata` dict or a typed `ProviderSessionRef` carries it.
 5. **`AgentEvent.Phase.Status` is a `string`** with constants on the
-   record ([`AgentEvent.cs:46-53`](../../remote-agents-dotnet/src/RemoteAgents/Core/Events/AgentEvent.cs)).
+   record ([`AgentEvent.cs:46-53`](../../remote-agents-dotnet/src/ABox/Core/Events/AgentEvent.cs)).
    The constants exist next to the field — the data shape is asking
    for an enum.
-6. **`Session.End(string result, ...)`** ([`Session.cs:71`](../../remote-agents-dotnet/src/RemoteAgents/Core/Sessions/Session.cs))
+6. **`Session.End(string result, ...)`** ([`Session.cs:71`](../../remote-agents-dotnet/src/ABox/Core/Sessions/Session.cs))
    takes a free-form string. Values like `"shipped"`,
    `"validation-failed"`, `"verdict-unclear"`, `"revision-broke-validation"`,
    `"no-changes"`, `"aborted-dirty-tree"`, `"failed"` are scattered
    across flow files. No central enumeration. The Host doesn't read
    the value.
-7. **`Reviews.CodexVerdict.Verdict`** ([`Reviews.cs:16`](../../remote-agents-dotnet/src/RemoteAgents/Flows/Reviews.cs))
+7. **`Reviews.CodexVerdict.Verdict`** ([`Reviews.cs:16`](../../remote-agents-dotnet/src/ABox/Flows/Reviews.cs))
    is a stringly-typed enum (`"approve"` / `"revise"` / `"unclear"`)
    with derived `IsApprove` / `IsRevise` / `IsUnclear` properties.
    Should be an enum.
 
 ## Migration steps
 
-1. **Create `RemoteAgents.Contracts.csproj`.** TargetFramework matches
+1. **Create `ABox.Contracts.csproj`.** TargetFramework matches
    the lowest common denominator (whatever the Razor WASM shell can
    reference). Zero deps. Add the new project to the solution.
 2. **Move records with no internal deps first:**
    `AgentStatus`, `InteractionMode`, `AgentQuestion`, `AgentRunRequest`,
-   `AgentResult`. `RemoteAgents.csproj` references contracts. Build.
+   `AgentResult`. `ABox.csproj` references contracts. Build.
 3. **Move `AgentEvent` hierarchy.** All variants. Update every
-   `using RemoteAgents.Events;` to also/instead pull the contracts
+   `using ABox.Events;` to also/instead pull the contracts
    namespace. Build, run smokes.
 4. **Move `ChatEvent` hierarchy to contracts.** Delete
    `Models/ChatEvent.cs` from UI.Components; point UI at contracts.
@@ -127,7 +127,7 @@ fixed and known.
 Layer 1 is done when:
 
 - `grep -r "WireShapes" remote-agents-dotnet/` returns nothing.
-- Both `ChatEvent` files are gone; one definition lives in `RemoteAgents.Contracts`.
+- Both `ChatEvent` files are gone; one definition lives in `ABox.Contracts`.
 - `Run.ClaudeSessionId` does not exist.
 - `RunSummary` does not exist as a separate type from `RunRecord`.
 - No `Phase.Status` constants — the field is an enum.

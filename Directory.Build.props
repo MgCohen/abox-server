@@ -30,15 +30,15 @@
   </ItemGroup>
 
   <!-- Namespace law, in ONE place forever: a type's namespace mirrors its path under src/, repo-prefixed.
-       src/Features/Flows/Start -> RemoteAgents.Features.Flows.Start. Derived here for every project under
+       src/Features/Flows/Start -> ABox.Features.Flows.Start. Derived here for every project under
        src/; IDE0130 then enforces each file against it. The ASSEMBLY name is separate and may drop a
-       segment (RemoteAgents.Flows.Start). Projects outside src/ (tests) keep their default. Foreign code
+       segment (ABox.Flows.Start). Projects outside src/ (tests) keep their default. Foreign code
        not on the convention would pin its own RootNamespace to opt out. -->
   <PropertyGroup>
     <_SrcRoot>$(MSBuildThisFileDirectory)src\</_SrcRoot>
   </PropertyGroup>
   <PropertyGroup Condition="$(MSBuildProjectDirectory.StartsWith('$(_SrcRoot)'))">
-    <RootNamespace>RemoteAgents.$([MSBuild]::MakeRelative('$(_SrcRoot)', '$(MSBuildProjectDirectory)').Replace('\', '.').Replace('/', '.').TrimEnd('.'))</RootNamespace>
+    <RootNamespace>ABox.$([MSBuild]::MakeRelative('$(_SrcRoot)', '$(MSBuildProjectDirectory)').Replace('\', '.').Replace('/', '.').TrimEnd('.'))</RootNamespace>
   </PropertyGroup>
 
 </Project>

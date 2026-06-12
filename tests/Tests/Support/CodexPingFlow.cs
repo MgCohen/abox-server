@@ -1,7 +1,7 @@
-using RemoteAgents.Domain.Agents;
-using RemoteAgents.Domain.Flow;
+using ABox.Domain.Agents;
+using ABox.Domain.Flow;
 
-namespace RemoteAgents.Tests.Support;
+namespace ABox.Tests.Support;
 
 // Connectivity flow — drives the real Codex reviewer with the run prompt, one operation. Test fixture
 // for the live smoke (needs a real CLI), kept out of the production catalog.
