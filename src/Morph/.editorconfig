@@ -1,5 +1,0 @@
-[*.cs]
-# Morph is out-of-scope demo code pending relocation to its own repo (it does not follow the
-# RemoteAgents.* namespace convention). Opt it out of the namespace-matches-folder build error so its
-# live dev watch is never broken by this rule.
-dotnet_diagnostic.IDE0130.severity = none

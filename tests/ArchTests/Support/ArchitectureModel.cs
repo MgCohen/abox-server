@@ -54,15 +54,14 @@ internal static class ArchitectureModel
 
     // The agreed home folders for production code — the only legal top-level places under src/. THIS
     // LIST is the source of truth; a project or file under none of these escaped the structure. Add a
-    // home only when the structure itself grows. (Web's eventual bare 'Web' home lands here when it
-    // returns; today it sits in PendingEvictionFolders as the prefixed 'RemoteAgents.Web'.)
+    // home only when the structure itself grows.
     public static readonly string[] AgreedHomeFolders = { "Infrastructure", "Domain", "Features", "Host" };
 
-    // Folders deliberately tolerated under src/ until they relocate to their own repos — no destination
-    // yet, and Morph carries a live dev watch. Listed explicitly so the structure guard passes HONESTLY:
-    // it still rejects any *new* stray, and the staleness check forces this list to shrink as they leave.
-    // See PLANS/structure-guards.md (Step 2 → Step 3 consequence).
-    public static readonly string[] PendingEvictionFolders = { "Morph", "RemoteAgents.Web" };
+    // Folders deliberately tolerated under src/ until they relocate to their own repos. Listed explicitly
+    // so the structure guard passes HONESTLY: it still rejects any *new* stray, and the staleness check
+    // forces this list to shrink as they leave. Now empty — Morph and Web both evicted to the web repo
+    // (PLANS/structure-guards.md Step 3 reached); the guard stays for the next folder that needs it.
+    public static readonly string[] PendingEvictionFolders = { };
 
     public static bool IsHomeFolder(string topSegment) =>
         AgreedHomeFolders.Contains(topSegment, StringComparer.Ordinal);

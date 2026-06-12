@@ -2,7 +2,7 @@ root = true
 
 [src/**.cs]
 # Namespace must match folder structure (RootNamespace + folder path). Enforced as a build error on
-# production code so the convention the architecture tests rely on can't drift. Pending-eviction folders
-# (Morph, Web) opt out via their own .editorconfig; test projects keep their deliberate flat namespace.
+# production code so the convention the architecture tests rely on can't drift. Test projects keep their
+# deliberate flat namespace; a pending-eviction folder would opt out via its own .editorconfig.
 dotnet_style_namespace_match_folder = true
 dotnet_diagnostic.IDE0130.severity = error

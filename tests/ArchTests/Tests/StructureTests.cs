@@ -3,8 +3,8 @@ using static RemoteAgents.Tests.ArchTests.ArchitectureModel;
 namespace RemoteAgents.Tests.ArchTests;
 
 // Physical-placement guard: reads the project folders on disk (SourceTree), not the loaded assembly
-// graph, so it catches a stray project the moment it lands — even uncompiled or arch-excluded code
-// (Web, Morph). Namespace-matches-folder is enforced separately by IDE0130 at compile time.
+// graph, so it catches a stray project the moment it lands — even uncompiled or arch-excluded code.
+// Namespace-matches-folder is enforced separately by IDE0130 at compile time.
 public class StructureTests
 {
     [Rule("Every project lives under an agreed home folder")]
