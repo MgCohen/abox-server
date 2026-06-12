@@ -24,7 +24,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Harness/RemoteAgents.Tests.Harness.csproj" />
-    <Project Path="tests/RemoteAgents.Tests/RemoteAgents.Tests.csproj" />
-    <Project Path="tests/Structure/RemoteAgents.Tests.Structure.csproj" />
+    <Project Path="tests/Tests/RemoteAgents.Tests.csproj" />
   </Folder>
 </Solution>

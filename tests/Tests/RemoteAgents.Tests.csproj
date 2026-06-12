@@ -10,6 +10,8 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <PackageReference Include="TngTech.ArchUnitNET" Version="0.13.1" />
+    <PackageReference Include="TngTech.ArchUnitNET.xUnit" Version="0.13.1" />
   </ItemGroup>
 
   <ItemGroup>
@@ -28,13 +30,13 @@
     <None Include="**\Rulebook\*.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- Every production assembly by glob: the Arch model loads them all from the output dir, and the
+       runtime types (Unit/E2E/Wire/Live) exercise whichever they need. A new feature/slice is referenced
+       the moment its csproj exists — no edit here. The merged test assembly is named RemoteAgents.Tests
+       (contains ".Tests."), so ArchitectureModel's name filter still excludes it from the graph. -->
   <ItemGroup>
     <ProjectReference Include="..\Harness\RemoteAgents.Tests.Harness.csproj" />
-    <ProjectReference Include="..\..\src\Domain\Flow\RemoteAgents.Domain.Flow.csproj" />
-    <ProjectReference Include="..\..\src\Domain\Git\RemoteAgents.Domain.Git.csproj" />
-    <ProjectReference Include="..\..\src\Domain\Agents\RemoteAgents.Domain.Agents.csproj" />
-    <ProjectReference Include="..\..\src\Infrastructure\RemoteAgents.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\src\Host\RemoteAgents.Host.csproj" />
+    <ProjectReference Include="..\..\src\**\RemoteAgents.*.csproj" />
   </ItemGroup>
 
 </Project>
