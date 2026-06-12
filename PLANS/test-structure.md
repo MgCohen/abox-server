@@ -1,6 +1,13 @@
 # Test structure (server-only)
 
-**Status:** 📋 planned — review before greenlight (no build without explicit go).
+**Status:** ✅ built 2026-06-12 — Phases 1–5 shipped on branch `claude/happy-keller-31aed9` (6 commits,
+`9d5ee6b`→`2e91235`). Full suite green & deterministic (Structure 8, behavioral 172 pass / 12 Live skip),
+warning-free. Two deviations from the sketch below, both principled: (1) **`FlowHarness` lives in the
+shared `Support/`, not `E2E/Support/`** — it backs both the scripted E2E test and the live smoke suites, so a
+shared home is the promote-on-2nd-use call. (2) The deterministic E2E test surfaced a **real production race
+in `FlowRegistry.Complete`** (it dropped a run from `_live` before `await history.Save`'s disk IO, leaving a
+window where a concurrent `Get`/`Changes`/`List` saw a just-finished run nowhere) — fixed by persisting
+before unlisting. Exactly the value of the API-down backbone.
 
 **Scope:** the test layout + workflow of this repo *after* the UI leaves and it becomes a
 server-only orchestrator (Host + library driving `claude`/`codex` over ConPTY, API/SignalR out
