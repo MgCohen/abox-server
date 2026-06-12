@@ -61,6 +61,8 @@ copy a sibling's preamble + template, add the `Parity` fact with the right stric
    from `FactAttribute`, so it *is* the `[Fact]`). Live tests use `[LiveFact("<header>")]`.
 3. **Keep the namespace = folder** (`RemoteAgents.Tests.<Type>...`). IDE0130 is
    `severity = error` — a mismatch fails the build.
+   - **Failure messages are fix instructions.** Active voice, name the file/type, say what to do
+     ("Move X to Y", "Add a [Rule] citing Z") — not "X is wrong". One direct line, no essays.
 4. Put any test-only double/harness in `<Type>/Support/`; promote to the shared
    `tests/Tests/Support/` only on a genuine **second** consumer.
 

@@ -37,6 +37,13 @@ from any Rulebook's own header; write the next Rule from its template.
   not bleed). `Assert(path)` loads the `### ` headers from the copied Rulebook and compares them to the
   `[Rule]`s in scope, failing the build on any mismatch.
 
+## Failure output: active voice, say how to fix
+
+A Rule's assertion message is read the moment something breaks. Write it as a **fix instruction, not a
+description** — active voice, name the file/type/symbol, say what to do. No essays; one direct line.
+`ParityGuard`'s own message is the model: *"Fix: align each '### <name>' header with a [Rule("<name>")]
+test so the names match exactly."* Prefer that shape over "the rulebook and tests do not match".
+
 ## Stability contract — a Rulebook is a ratchet
 
 Treat Rules as a one-way ratchet, and treat *this convention itself* as load-bearing. The two are
