@@ -42,11 +42,11 @@ public sealed class ParityGuard
             ? enforced.GroupBy(name => name).Where(g => g.Count() > 1).Select(g => g.Key).ToList()
             : [];
         var orphaned = methods
-            .Where(m => m.GetCustomAttribute<Rule>() is not null && !IsTest(m))
+            .Where(m => m.GetCustomAttribute<Rule>() is not null && !TestKinds.IsTest(m))
             .Select(m => m.Name)
             .ToList();
         var uncited = requireAllCited
-            ? methods.Where(IsValidation).Where(m => m.GetCustomAttribute<Rule>() is null).Select(m => m.Name).ToList()
+            ? methods.Where(TestKinds.IsValidation).Where(m => m.GetCustomAttribute<Rule>() is null).Select(m => m.Name).ToList()
             : [];
 
         Xunit.Assert.True(
@@ -71,16 +71,6 @@ public sealed class ParityGuard
             .SelectMany(t => t.GetMethods())
             .ToList();
     }
-
-    // A validation = a runnable xUnit fact (incl. [Theory] and [LiveFact], which derive from FactAttribute),
-    // but NOT the infrastructure [ParityFact]. These are what must each carry a [Rule].
-    private static bool IsValidation(MethodInfo m) =>
-        m.GetCustomAttributes(inherit: true).Any(a => a is FactAttribute and not ParityFact);
-
-    // A runnable test of any kind (the ParityFact included) — used to catch a [Rule] sitting on no test, which
-    // would register as enforcing a Rule yet never execute.
-    private static bool IsTest(MethodInfo m) =>
-        m.GetCustomAttributes(inherit: true).Any(a => a is FactAttribute);
 
     private static bool InScope(string? ns, string scope) =>
         ns is not null && (ns == scope || ns.StartsWith(scope + ".", StringComparison.Ordinal));
