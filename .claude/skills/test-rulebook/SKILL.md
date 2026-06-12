@@ -57,8 +57,9 @@ copy a sibling's preamble + template, add the `Parity` fact with the right stric
    guarantee itself (Arch/Structure: an invariant — *"Dependencies flow down the layer
    graph only"*; behavioral: a result — *"claude-ping completes with PONG"*). Match the
    preamble's template; reuse an existing header if your case proves an existing Rule.
-2. **Write the fact** in `<Type>/Tests/` tagged `[Rule("<exact header>")]` (it derives
-   from `FactAttribute`, so it *is* the `[Fact]`). Live tests use `[LiveFact("<header>")]`.
+2. **Write the fact** in `<Type>/Tests/` carrying both the xUnit run attribute and a
+   `[Rule("<exact header>")]` citation — they compose (`[Fact]` + `[Rule]`), the Rule is
+   not derived from `FactAttribute`. Live tests use `[LiveFact]` + `[Rule("<header>")]`.
 3. **Keep the namespace = folder** (`RemoteAgents.Tests.<Type>...`). IDE0130 is
    `severity = error` — a mismatch fails the build.
    - **Failure messages are fix instructions.** Active voice, name the file/type, say what to do

@@ -42,11 +42,11 @@ public sealed class ParityGuard
             ? enforced.GroupBy(name => name).Where(g => g.Count() > 1).Select(g => g.Key).ToList()
             : [];
         var orphaned = methods
-            .Where(m => m.GetCustomAttribute<Rule>() is not null && !TestKinds.IsTest(m))
+            .Where(m => m.GetCustomAttribute<Rule>() is not null && !TestMarkers.Marks(m))
             .Select(m => m.Name)
             .ToList();
         var uncited = requireAllCited
-            ? methods.Where(TestKinds.IsValidation).Where(m => m.GetCustomAttribute<Rule>() is null).Select(m => m.Name).ToList()
+            ? methods.Where(TestMarkers.Marks).Where(m => m.GetCustomAttribute<Rule>() is null).Select(m => m.Name).ToList()
             : [];
 
         Xunit.Assert.True(
