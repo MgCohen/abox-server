@@ -50,6 +50,13 @@ dotnet build RemoteAgents.slnx
 dotnet test  RemoteAgents.slnx
 ```
 
+**Tests are Rulebooks.** `tests/` is organized into six types (Arch, Structure,
+Unit, E2E, Wire, Live), each a *Rulebook* whose `### ` headers are guarantees
+enforced 1:1/1:N by `[Rule]` facts and a `ParityGuard` — a test never lands without
+the Rule it proves. Adding or moving a test? Use the **`test-rulebook`** skill; the
+front door is [`tests/README.md`](tests/README.md), the plan is
+[`PLANS/test-structure.md`](PLANS/test-structure.md).
+
 ## Code standards
 
 Judgment-call rules we operate by. Mechanical style (formatting, naming) moves
