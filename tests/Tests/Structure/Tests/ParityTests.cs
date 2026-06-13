@@ -4,7 +4,7 @@ namespace ABox.Tests.Structure.Tests;
 // engine. Strict 1:1 — a placement invariant is one Rule, one sweeping assertion.
 public class ParityTests
 {
-    [Fact]
+    [ParityFact]
     public void Rulebook_and_tests_are_in_sync() =>
-        ParityGuard.For(typeof(ParityTests), strict: true).Assert("Structure/Rulebook/rules.md");
+        ParityGuard.For(typeof(ParityTests), strict: true).Assert("Structure/Rulebook/rules.md", requireAllCited: true);
 }

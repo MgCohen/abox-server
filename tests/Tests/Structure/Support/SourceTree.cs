@@ -28,6 +28,22 @@ internal static class SourceTree
     public static bool HasTopSegment(string segment) =>
         Projects().Any(p => string.Equals(TopSegment(p), segment, StringComparison.Ordinal));
 
+    public static IReadOnlyList<string> TestTypeFolders()
+    {
+        var testsRoot = Path.Combine(Root, "tests", "Tests");
+        if (!Directory.Exists(testsRoot))
+            throw new DirectoryNotFoundException(
+                $"No 'tests/Tests/' under '{Root}'. The test-taxonomy guard would be vacuously green — " +
+                "fix the locator or the layout.");
+
+        return Directory.EnumerateDirectories(testsRoot)
+            .Select(Path.GetFileName)
+            .Where(name => name is not null && !Ignored.Contains(name, StringComparer.OrdinalIgnoreCase))
+            .Select(name => name!)
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToList();
+    }
+
     // The top-most bin/obj/artifacts folders found under src/ or tests/ — Rule 13. The only legal
     // artifacts home is the repo-root /artifacts; any here means a project escaped the root props.
     public static IReadOnlyList<string> StrayBuildOutput() =>

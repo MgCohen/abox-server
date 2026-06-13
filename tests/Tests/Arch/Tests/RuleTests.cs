@@ -12,6 +12,7 @@ public class RuleTests
     // every band forbids every other band it does not list in MayDependOn. WithoutRequiringPositiveResults
     // lets a dormant-but-valid band (Contracts is empty today) pass without a vacuous-green hole.
     [Rule("Dependencies flow down the layer graph only")]
+    [Fact]
     public void DependenciesFlowDownOnly()
     {
         foreach (var (from, to) in ForbiddenEdges())
@@ -22,6 +23,7 @@ public class RuleTests
     }
 
     [Rule("Features must not depend on each other")]
+    [Fact]
     public void FeaturesDoNotDependOnEachOther()
     {
         var features = FeatureNames();
@@ -35,6 +37,7 @@ public class RuleTests
     }
 
     [Rule("Git operations depend on the floor, not on the flow engine")]
+    [Fact]
     public void GitDependsOnFloorNotFlowEngine() =>
         Types().That().ResideInNamespaceMatching(@"^ABox\.Domain\.Git(\.|$)").Should()
             .NotDependOnAny(Types().That()
@@ -42,6 +45,7 @@ public class RuleTests
             .Check(Architecture);
 
     [Rule("The agent spawn and billing primitives are internal to Domain.Agents")]
+    [Fact]
     public void AgentRuntimePrimitivesAreInternal() =>
         Classes().That().HaveName("PtySession").Or().HaveName("SubscriptionGuard").Should()
             .BeInternal()

@@ -4,7 +4,7 @@ namespace ABox.Tests.Live.Tests;
 // Cardinality 1:N (not strict). The Rulebook accrues going-forward.
 public class ParityTests
 {
-    [Fact]
+    [ParityFact]
     public void Rulebook_and_tests_are_in_sync() =>
         ParityGuard.For(typeof(ParityTests)).Assert("Live/Rulebook/rules.md");
 }

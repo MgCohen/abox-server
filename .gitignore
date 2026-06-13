@@ -11,8 +11,10 @@ artifacts/
 bin/
 obj/
 
-# Claude Code project state (per-user: launch.json, settings.local.json, skills)
-.claude/
+# Claude Code project state (per-user: launch.json, settings.local.json).
+# Shared project skills under .claude/skills/ are checked in.
+.claude/*
+!.claude/skills/
 
 # Visual Studio per-user IDE state
 .vs/
