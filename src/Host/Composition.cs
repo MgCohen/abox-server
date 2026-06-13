@@ -5,6 +5,7 @@ using ABox.Domain.Agents.Claude;
 using ABox.Domain.Flow;
 using ABox.Features.Flows.Module;
 using ABox.Features.Git.Module;
+using ABox.Features.Projects.Module;
 using ABox.Infrastructure.Paths;
 using ABox.Infrastructure.Projects;
 
@@ -34,6 +35,7 @@ internal static class Composition
         services.AddSingleton<ResolverSelector>();
         services.AddSingleton<IAgentFactory, AgentFactory>();
 
+        services.AddProjects();
         services.AddFlows(flows);
         services.AddGit();
     }

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using ABox.Features.Flows.Contracts;
+using ABox.Features.Projects.Contracts;
 using ABox.Tests.Wire.Support;
 
 namespace ABox.Tests.Wire.Tests;
@@ -18,13 +19,16 @@ public class WireTests(WireApp app) : IClassFixture<WireApp>
         Assert.Contains("ok", await res.Content.ReadAsStringAsync());
     }
 
-    [Rule("projects lists the registered projects")]
-    public async Task Projects_lists_the_registered_projects()
+    [Rule("projects lists the stub projects as wire DTOs")]
+    public async Task Projects_lists_the_stub_projects()
     {
         using var res = await app.CreateClient().GetAsync("/projects");
 
         Assert.Equal(HttpStatusCode.OK, res.StatusCode);
-        Assert.Contains("demo", await res.Content.ReadAsStringAsync());
+        var projects = await res.Content.ReadFromJsonAsync<ProjectDto[]>();
+        Assert.NotNull(projects);
+        Assert.Contains(projects!, p => p.Name == "Card Framework");
+        Assert.Contains(projects!, p => p.Name == "Scaffold");
     }
 
     [Rule("a started flow streams snapshots over SSE to completion")]
