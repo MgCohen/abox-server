@@ -11,18 +11,20 @@ public sealed class ParityGuard
 
     private readonly Assembly assembly;
     private readonly string scope;
+    private readonly string rulebookPath;
 
-    private ParityGuard(Assembly assembly, string scope)
+    private ParityGuard(Assembly assembly, string scope, string rulebookPath)
     {
         this.assembly = assembly;
         this.scope = scope;
+        this.rulebookPath = rulebookPath;
     }
 
-    public static ParityGuard For(Assembly assembly, string testTypeNamespace) => new(assembly, testTypeNamespace);
+    public static ParityGuard For(Assembly assembly, string type) =>
+        new(assembly, TestTypes.Namespace(type), TestTypes.RulebookPath(type));
 
     public void Assert(bool requireAllCited = false)
     {
-        var rulebookPath = DeriveRulebookPath(scope);
         var declared = DeclaredRules(rulebookPath);
         var methods = ScopedMethods();
 
@@ -52,18 +54,6 @@ public sealed class ParityGuard
               Add a [Rule("<header>")] to the bare test:        {Fmt(uncited)}
             Each '### <name>' header pairs 1:N with a [Rule("<name>")] on a runnable test.
             """);
-    }
-
-    // ABox.Tests.<Type>.Tests -> <Type>/Rulebook/rules.md. The path drifts with the folder; IDE0130 keeps the
-    // namespace mirroring the folder, so deriving it here means no literal to hand-sync.
-    private static string DeriveRulebookPath(string scope)
-    {
-        var parts = scope.Split('.');
-        if (parts.Length < 4 || parts[0] != "ABox" || parts[1] != "Tests" || parts[^1] != "Tests")
-            throw new ArgumentException(
-                $"Cannot derive a Rulebook path from namespace '{scope}'. A test type's namespace must be " +
-                "'ABox.Tests.<Type>.Tests' so the path resolves to '<Type>/Rulebook/rules.md'.", nameof(scope));
-        return $"{parts[2]}/Rulebook/rules.md";
     }
 
     private IReadOnlyList<MethodInfo> ScopedMethods() =>

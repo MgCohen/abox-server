@@ -41,13 +41,13 @@ Parity is driven **once**, from the Meta type, over every registered type — th
   ```csharp
   // Meta/Tests/ParityTests.cs
   foreach (var type in TestTypes.Registered)
-      ParityGuard.For(typeof(ParityTests).Assembly, $"ABox.Tests.{type}.Tests")
+      ParityGuard.For(typeof(ParityTests).Assembly, type)
           .Assert(requireAllCited: TestTypes.RequiresAllCited(type));
   ```
 
-`Assert()` derives each Rulebook path from the namespace (`ABox.Tests.<Type>.Tests` →
-`<Type>/Rulebook/rules.md`), loads its `### ` headers, and compares them to the `[Rule]`s in that namespace —
-failing the build on any mismatch.
+`ParityGuard.For` maps the type to its namespace and Rulebook path through `TestTypes`
+(`<Type>` → `ABox.Tests.<Type>.Tests` + `<Type>/Rulebook/rules.md`), loads the Rulebook's `### ` headers, and
+compares them to the `[Rule]`s in that namespace — failing the build on any mismatch.
 
 ## Failure output: active voice, say how to fix
 

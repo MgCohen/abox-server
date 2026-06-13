@@ -1,3 +1,5 @@
+using static ABox.Tests.Harness.Report;
+
 namespace ABox.Tests.Meta.Tests;
 
 // The test taxonomy holds together: every folder under tests/Tests/ is a registered type, and every test lives
@@ -45,7 +47,4 @@ public class TaxonomyTests
             Move each into a registered type's Tests/ folder.
             """);
     }
-
-    private static string Bullets(IEnumerable<string> items) =>
-        string.Join(Environment.NewLine, items.Select(i => $"  * {i}"));
 }

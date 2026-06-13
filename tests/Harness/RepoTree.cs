@@ -7,7 +7,11 @@ namespace ABox.Tests.Harness;
 public static class RepoTree
 {
     private const string Marker = "ABox.slnx";
-    private static readonly string[] Ignored = { "bin", "obj", "artifacts" };
+
+    // The build-output directory names, owned once: the only legal artifacts home is the repo-root /artifacts,
+    // so any folder by these names under src/ or tests/ is stray output. Both trees (here + Structure's
+    // SourceTree) read this one fact.
+    public static readonly string[] BuildOutputDirs = { "bin", "obj", "artifacts" };
 
     public static readonly string Root = LocateRoot();
     public static readonly string TestsRoot = RequireTestsRoot();
@@ -15,7 +19,7 @@ public static class RepoTree
     public static IReadOnlyList<string> TestTypeFolders() =>
         Directory.EnumerateDirectories(TestsRoot)
             .Select(Path.GetFileName)
-            .Where(name => name is not null && !Ignored.Contains(name, StringComparer.OrdinalIgnoreCase))
+            .Where(name => name is not null && !BuildOutputDirs.Contains(name, StringComparer.OrdinalIgnoreCase))
             .Select(name => name!)
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToList();

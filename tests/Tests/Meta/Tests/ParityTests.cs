@@ -10,7 +10,7 @@ public class ParityTests
     public void EveryTypeKeepsItsRulebookAndTestsInSync()
     {
         foreach (var type in TestTypes.Registered)
-            ParityGuard.For(typeof(ParityTests).Assembly, $"ABox.Tests.{type}.Tests")
+            ParityGuard.For(typeof(ParityTests).Assembly, type)
                 .Assert(requireAllCited: TestTypes.RequiresAllCited(type));
     }
 }
