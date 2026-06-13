@@ -6,11 +6,8 @@ using Assembly = System.Reflection.Assembly;
 
 namespace ABox.Tests.Arch.Support;
 
-// Single source of truth for the architecture under test. Nothing is registered by hand:
-//   * Production assemblies are DISCOVERED from the output dir (every ABox.* the csproj
-//     glob copied in, minus test assemblies) — a new feature is covered with zero edits here.
-//   * New category (band) -> add one IObjectProvider keyed by namespace convention; the rules are
-//     written against these categories, so any assembly that lands in an existing band is covered.
+// Single source of truth for the architecture under test: production assemblies are discovered from the output
+// dir (not hand-listed), and a band is one IObjectProvider keyed by namespace, so a new feature needs no edit here.
 internal static class ArchitectureModel
 {
     public static readonly Architecture Architecture =
@@ -34,21 +31,14 @@ internal static class ArchitectureModel
         return assemblies;
     }
 
-    // Categories, keyed by namespace convention — every assembly that lands in a band is covered.
-    // Boundary anchor (\.|$) stops a prefix from leaking into a same-named sibling (e.g. a future
-    // ABox.InfrastructureX namespace does not get mistaken for Infrastructure).
-    // A Contracts leaf wherever it lives — flat ABox.Contracts or a nested per-feature
-    // Features/<F>/Contracts. Live now: Features/Git/Contracts is the first leaf. The FeaturesNs below
-    // EXCLUDES these leaves so a leaf belongs to the Contracts band alone (see its comment for why).
+    // Bands keyed by namespace; the boundary anchor (\.|$) stops a prefix leaking into a same-named sibling
+    // (ABox.InfrastructureX ↛ Infrastructure). ContractsNs matches a leaf wherever it lives — flat or per-feature.
     public const string ContractsNs = @"^ABox\.(.+\.)?Contracts(\.|$)";
     public const string InfrastructureNs = @"^ABox\.Infrastructure(\.|$)";
     public const string DomainNs = @"^ABox\.Domain\.";
 
-    // A per-feature Contracts leaf (ABox.Features.<F>.Contracts) is architecturally Contracts, not
-    // Features: it's the published, dependency-free channel a peer feature may legally bind (Mode 2). So
-    // the Features band EXCLUDES the Contracts leaf via negative lookahead — only the Contracts band claims
-    // it. This is what makes "depend on a peer's Contracts" legal while "depend on its impl" stays forbidden,
-    // and it stops the leaf being double-counted (a Contracts type depending on a Features type — itself).
+    // The Features band excludes the per-feature Contracts leaf (negative lookahead): the leaf is the published
+    // channel a peer may bind (Mode 2), so it belongs to the Contracts band alone — never double-counted as Features.
     public const string FeaturesNs = @"^ABox\.Features\.(?!.*\.Contracts(\.|$)).+";
     public const string HostNs = @"^ABox\.Host(\.|$)";
 
@@ -63,12 +53,8 @@ internal static class ArchitectureModel
     private static IObjectProvider<IType> Band(string name, string namespaceRegex) =>
         Types().That().ResideInNamespaceMatching(namespaceRegex).As(name);
 
-    // The layer allow-graph: each band lists the bands it MAY depend on. This IS the architecture —
-    // the down-only blanket rules (Contracts/Infrastructure depend on nothing internal; Domain over
-    // Infrastructure; Features over Domain; nothing over Host) are DERIVED from it (ForbiddenEdges),
-    // not hand-listed per rule. Add a band here and every prior rule updates for free — no silent hole.
-    // Genuinely directional decisions (e.g. Features must not depend on each other) stay their own
-    // named rule; this graph only carries the mechanical floor/ceiling edges.
+    // The layer allow-graph: each band lists the bands it MAY depend on, and the down-only forbidden edges are
+    // DERIVED from it (ForbiddenEdges), so adding a band updates every rule for free with no silent hole.
     public sealed record Layer(string Name, IObjectProvider<IType> Types, IReadOnlyList<Layer> MayDependOn);
 
     public static readonly Layer ContractsLayer = new("Contracts", ContractsBand, []);
