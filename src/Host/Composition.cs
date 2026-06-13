@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using FastEndpoints;
 using Microsoft.Extensions.DependencyInjection;
 using ABox.Domain.Agents;
 using ABox.Domain.Agents.Claude;
@@ -23,6 +24,8 @@ internal static class Composition
         services.AddCors(o => o.AddPolicy(CorsPolicy, p => p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
 
         services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
+        services.AddFastEndpoints(o => o.Assemblies = [ProjectsModule.EndpointsAssembly]);
 
         services.AddSingleton<IOrchestratorPaths, OrchestratorPaths>();
         services.AddSingleton<IProjectRegistry, ProjectRegistry>();
