@@ -1,4 +1,4 @@
-namespace RemoteAgents.Tests.Wire.Tests;
+namespace ABox.Tests.Wire.Tests;
 
 // Guards the link between the Wire Rulebook and its [Rule] tests, via the shared ParityGuard engine.
 // Cardinality 1:N (not strict); requireAllCited — every test here carries a Rule.

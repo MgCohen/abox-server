@@ -1,4 +1,4 @@
-namespace RemoteAgents.Tests.Structure.Support;
+namespace ABox.Tests.Structure.Support;
 
 // The placement model: which top-level src/ folders production code may legally live under. A placement
 // concern (not a reference-graph one), so it lives on the Structure side beside SourceTree rather than in

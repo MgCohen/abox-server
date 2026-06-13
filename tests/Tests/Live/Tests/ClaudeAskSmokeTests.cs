@@ -1,9 +1,9 @@
-using RemoteAgents.Domain.Agents;
-using RemoteAgents.Domain.Agents.Claude;
+using ABox.Domain.Agents;
+using ABox.Domain.Agents.Claude;
 using Xunit.Abstractions;
-using RemoteAgents.Tests.Live.Support;
+using ABox.Tests.Live.Support;
 
-namespace RemoteAgents.Tests.Live.Tests;
+namespace ABox.Tests.Live.Tests;
 
 // Live validation for PermissionPolicy.Ask: proves the PreToolUse hook fires over
 // ConPTY, carries the tool payload to the resolver, and that the resolver's

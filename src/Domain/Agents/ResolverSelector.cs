@@ -1,4 +1,4 @@
-namespace RemoteAgents.Domain.Agents;
+namespace ABox.Domain.Agents;
 
 // Turns a config's Resolution into the resolver that answers its questions plus the loop cap.
 // Auto always produces an answer and could loop forever, so it runs capped; Deny and Human

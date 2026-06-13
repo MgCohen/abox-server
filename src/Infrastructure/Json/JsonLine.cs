@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace RemoteAgents.Infrastructure.Json;
+namespace ABox.Infrastructure.Json;
 
 public static class JsonLine
 {

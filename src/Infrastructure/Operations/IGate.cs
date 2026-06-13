@@ -1,4 +1,4 @@
-namespace RemoteAgents.Infrastructure.Operations;
+namespace ABox.Infrastructure.Operations;
 
 internal interface IGate<TArgs, TResult> where TArgs : OperationArgs
 {

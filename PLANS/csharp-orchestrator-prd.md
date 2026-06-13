@@ -77,7 +77,7 @@ For any compliance test, the **subscription path is "intact" if**:
   ChatGPT plan, not API.
 
 The library doesn't enforce these checks at runtime, but the test suite
-in `RemoteAgents.Tests/` includes one integration test that verifies them
+in `ABox.Tests/` includes one integration test that verifies them
 against a real run.
 
 ### 2.3 Session continuity
@@ -319,7 +319,7 @@ public interface IEventSink
 }
 ```
 
-Built-in sinks (all live in `RemoteAgents/Events/`):
+Built-in sinks (all live in `ABox/Events/`):
 
 | Sink | Purpose |
 |---|---|
@@ -383,7 +383,7 @@ no library schema — they're free-form, `kind`-prefixed.
 
 ### 6.6 Primitives
 
-**`GitOps`** (static class, `RemoteAgents/Primitives/GitOps.cs`):
+**`GitOps`** (static class, `ABox/Primitives/GitOps.cs`):
 
 ```csharp
 public static class GitOps
@@ -458,7 +458,7 @@ public static class ProjectRegistry
   "card-framework": "C:\\Unity\\Card-Framework",
   "scaffold": "C:\\Unity\\Scaffold",
   "gear-engine": "C:\\Unity\\Gear-Engine",
-  "remote-unity-agents": "C:\\Unity\\remote-unity-agents"
+  "abox.server": "C:\\Unity\\abox.server"
 }
 ```
 
@@ -497,7 +497,7 @@ own (`CardFrameworkValidator` runs Unity batch-mode compile, etc.).
 ### 6.8 Flows and CLI
 
 - Flows are `.NET 10` file-based programs (`.cs` files with `#:project
-  ../RemoteAgents/RemoteAgents.csproj` directive). Run via `dotnet run
+  ../ABox/ABox.csproj` directive). Run via `dotnet run
   flows/<name>.cs -- ...args`.
 - `agents-dotnet` is itself a file-based program at
   `bin/agents-dotnet.cs`. Subcommands: `list` (lists `flows/*.cs`), `run
@@ -597,9 +597,9 @@ Opus 4.7), `Documenter` (Claude Haiku 4.5), `Researcher` (Codex 5.3).
 
 | # | Requirement | Target | Verified by |
 |---|---|---|---|
-| NFR1 | `ClaudeAgent.RunAsync` median end-to-end latency for a short task | ≤ 25s on dev laptop (`Reply with PONG` style); the JS baseline at commit `14b5cc8` ran ~18–22s — we accept a small overhead during the rewrite | Manual timed run, recorded in `RemoteAgents.Tests` |
+| NFR1 | `ClaudeAgent.RunAsync` median end-to-end latency for a short task | ≤ 25s on dev laptop (`Reply with PONG` style); the JS baseline at commit `14b5cc8` ran ~18–22s — we accept a small overhead during the rewrite | Manual timed run, recorded in `ABox.Tests` |
 | NFR2 | Flow startup overhead (`dotnet run flows/foo.cs` → first agent call) | < 3s once SDK is warm | Manual timing |
-| NFR3 | Subscription path verified per run | Section 2.2 checks pass | Integration test in `RemoteAgents.Tests` |
+| NFR3 | Subscription path verified per run | Section 2.2 checks pass | Integration test in `ABox.Tests` |
 | NFR4 | Memory footprint of library + running flow | < 200 MB resident (excluding child CLIs) | `dotnet-counters` snapshot during a flow |
 | NFR5 | Test coverage | Every primitive + the `Agent` lifecycle has a focused xUnit test asserting the contract | `dotnet test` green |
 | NFR6 | Build cleanliness | `dotnet build` warning-free; `<Nullable>enable</Nullable>` on every project | CI / local build |

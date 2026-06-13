@@ -57,7 +57,7 @@ REST endpoints live in `RunsEndpoints.Map(app)` as their own module
 
 ## Current structure
 
-- [`FlowRunner.cs`](../../remote-agents-dotnet/ui/RemoteAgents.Host/Runs/FlowRunner.cs)
+- [`FlowRunner.cs`](../../remote-agents-dotnet/ui/ABox.Host/Runs/FlowRunner.cs)
   — 290 lines:
   - Spawns `dotnet run cli/agents-dotnet.cs run <flow> <project> <prompt>`.
   - Reads child stdout line by line.
@@ -71,25 +71,25 @@ REST endpoints live in `RunsEndpoints.Map(app)` as their own module
   - Parses each line as `AgentEvent` and re-emits into the run's
     `ChannelSink`.
   - Also starts `ChatTailerTask` → `ClaudeJsonlTailer.RunAsync(...)`.
-- [`ClaudeJsonlTailer.cs`](../../remote-agents-dotnet/ui/RemoteAgents.Host/Runs/ClaudeJsonlTailer.cs)
+- [`ClaudeJsonlTailer.cs`](../../remote-agents-dotnet/ui/ABox.Host/Runs/ClaudeJsonlTailer.cs)
   — 268 lines:
   - Polls `~/.claude/projects/<encoded-cwd>/` for new `*.jsonl` files.
   - Reads + reparses Claude's JSONL format: `type=summary`,
     `type=user`, `type=assistant`, `content` blocks (`text`,
     `thinking`, `tool_use`, `tool_result`).
   - Emits structured `ChatEvent`s into a separate `ChatChannel`.
-- [`Run.cs`](../../remote-agents-dotnet/ui/RemoteAgents.Host/Runs/Run.cs)
+- [`Run.cs`](../../remote-agents-dotnet/ui/ABox.Host/Runs/Run.cs)
   — mixes live state and persistent state. Carries
   `ClaudeSessionId` (provider-specific).
-- [`PersistedRun.cs`](../../remote-agents-dotnet/ui/RemoteAgents.Host/Runs/PersistedRun.cs)
+- [`PersistedRun.cs`](../../remote-agents-dotnet/ui/ABox.Host/Runs/PersistedRun.cs)
   — separate type with the persistent shape.
-- [`Program.cs:170-183`](../../remote-agents-dotnet/ui/RemoteAgents.Host/Program.cs)
+- [`Program.cs:170-183`](../../remote-agents-dotnet/ui/ABox.Host/Program.cs)
   — three converter functions (`SummaryFromRun`, `SummaryFromCombined`,
   `SummaryFromPersisted`) for the same `RunSummary` shape.
-- [`Program.cs:43-167`](../../remote-agents-dotnet/ui/RemoteAgents.Host/Program.cs)
+- [`Program.cs:43-167`](../../remote-agents-dotnet/ui/ABox.Host/Program.cs)
   — all REST endpoints as inline lambdas with embedded business
   logic (the `/runs/{id}/output` candidate-list).
-- [`RunsHub.cs`](../../remote-agents-dotnet/ui/RemoteAgents.Host/Hubs/RunsHub.cs)
+- [`RunsHub.cs`](../../remote-agents-dotnet/ui/ABox.Host/Hubs/RunsHub.cs)
   — two stream methods (`Stream` for `AgentEvent`, `StreamChat`
   for `ChatEvent`).
 

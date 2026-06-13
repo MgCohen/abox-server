@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
-using RemoteAgents.Features.Git.Contracts;
+using ABox.Features.Git.Contracts;
 
-namespace RemoteAgents.Features.Git.PrList;
+namespace ABox.Features.Git.PrList;
 
 public static class PrListEndpoint
 {

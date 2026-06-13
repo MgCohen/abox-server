@@ -8,13 +8,13 @@ tags: [#architecture, #refactor, #layer-8, #composition, #di, #config]
 
 ## Target structure
 
-**One place wires the library: `services.AddRemoteAgents(opts => ...)`.**
-Lives in `RemoteAgents.Hosting.csproj` (new, depends on
+**One place wires the library: `services.AddABox(opts => ...)`.**
+Lives in `ABox.Hosting.csproj` (new, depends on
 `Microsoft.Extensions.DependencyInjection.Abstractions`, contracts,
 and the library). **No `IConfiguration` dependency.**
 
 ```csharp
-services.AddRemoteAgents(opts =>
+services.AddABox(opts =>
 {
     // Provider registration — defaults baked into the options record;
     // override with a lambda when a knob actually needs to differ.
@@ -40,10 +40,10 @@ services.AddRemoteAgentSink<ChannelSink>();
 Three callers wire through this entry point:
 
 1. **CLI dispatcher** (`cli/agents-dotnet.cs`) — creates a minimal
-   `IServiceCollection`, calls `AddRemoteAgents`, resolves
+   `IServiceCollection`, calls `AddABox`, resolves
    `IFlowRunner`, runs the requested flow.
-2. **Host** (`ui/RemoteAgents.Host/Program.cs`) — already has DI.
-   Calls `AddRemoteAgents` plus its `AddRemoteAgentSink<ChannelSink>()`,
+2. **Host** (`ui/ABox.Host/Program.cs`) — already has DI.
+   Calls `AddABox` plus its `AddRemoteAgentSink<ChannelSink>()`,
    plus the Host-specific services (`LiveRunRegistry`, `RunStore`,
    `InProcessFlowExecutor`).
 3. **Tests** — register a capture sink, fake hook installer, etc.
@@ -118,7 +118,7 @@ when something asks for it.
 
 ## Current structure
 
-- **No `AddRemoteAgents` extension.** The library has no DI surface.
+- **No `AddABox` extension.** The library has no DI surface.
 - **No `IOptions<>` binding** for agent options. Defaults are
   positional record arguments; overrides are `new ClaudeAgentOptions(...)`
   at each construction site.
@@ -134,7 +134,7 @@ when something asks for it.
 - **Hardcoded sink composition** in `FlowBootstrap.cs:79-83`.
 - **No agent registry / preset registry.** `NamedAgents/Planner.cs`
   etc. are static factory methods, not data.
-- **`appsettings.json` carries only `RemoteAgents:OrchestratorRoot`.**
+- **`appsettings.json` carries only `ABox:OrchestratorRoot`.**
 
 ## Gap
 
@@ -155,20 +155,20 @@ when something asks for it.
 
 ## Migration steps
 
-1. **Create `RemoteAgents.Hosting.csproj`.** TargetFramework matches
+1. **Create `ABox.Hosting.csproj`.** TargetFramework matches
    the library. Depends on
    `Microsoft.Extensions.DependencyInjection.Abstractions` + contracts
    + library. **No `Microsoft.Extensions.Configuration.*` references**
    — options are records with defaults; overrides are lambdas. (We
    may consolidate into the library later; separate for now so the
    library stays DI-agnostic if a no-DI caller emerges.)
-2. **Define `RemoteAgentsOptions`** — the builder type passed to
-   `AddRemoteAgents`. Methods: `UseClaude`, `UseCodex`, `AddSink`,
+2. **Define `ABoxOptions`** — the builder type passed to
+   `AddABox`. Methods: `UseClaude`, `UseCodex`, `AddSink`,
    `AddFlow`. (No `AddAgentPreset`, no `AddHookInstaller` — the
    `UseClaude`/`UseCodex` bundle registers the agent type plus its
    `IHookInstaller<TAgent>`; presets are static values, not
    registered DI entries.)
-3. **`services.AddRemoteAgents(Action<RemoteAgentsOptions>)`**
+3. **`services.AddABox(Action<ABoxOptions>)`**
    extension method registers everything internally: `IFlowRegistry`,
    `IFlowRunner`, `IEventSinkBuilder`, `OrchestratorPaths`, the
    provider agent types + their hook installers (via `UseClaude` /
@@ -193,13 +193,13 @@ when something asks for it.
    ```csharp
    var host = Host.CreateDefaultBuilder(args)
        .ConfigureServices((_, services) =>
-           services.AddRemoteAgents(o => RegisterEverything(o)))
+           services.AddABox(o => RegisterEverything(o)))
        .Build();
    var runner = host.Services.GetRequiredService<IFlowRunner>();
    var result = await runner.RunAsync(flowName, flowArgs);
    Environment.ExitCode = MapResult(result);
    ```
-10. **Host migration.** `Program.cs` adds `services.AddRemoteAgents(...)`
+10. **Host migration.** `Program.cs` adds `services.AddABox(...)`
     and `services.AddRemoteAgentSink<ChannelSink>()`. Deletes the
     direct registrations that overlap.
 11. **Test migration.** Existing smokes that hand-roll an agent
@@ -209,12 +209,12 @@ when something asks for it.
 
 Layer 8 is done when:
 
-- `services.AddRemoteAgents(...)` is the only entry point used by
+- `services.AddABox(...)` is the only entry point used by
   the CLI dispatcher, the Host, and the test harness.
 - `new ClaudeAgent` and `new CodexAgent` do not appear outside the
   preset `Build` methods and `ActivatorUtilities.CreateInstance` /
   its tests.
-- `RemoteAgents.Hosting.csproj` does not reference any
+- `ABox.Hosting.csproj` does not reference any
   `Microsoft.Extensions.Configuration.*` package.
 - No source file calls `IConfiguration.GetSection(...)` to populate
   `ClaudeAgentOptions` or `CodexAgentOptions`.

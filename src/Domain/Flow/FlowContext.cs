@@ -1,6 +1,6 @@
-using RemoteAgents.Domain.Flow.Operations;
+using ABox.Domain.Flow.Operations;
 
-namespace RemoteAgents.Domain.Flow;
+namespace ABox.Domain.Flow;
 
 public sealed class FlowContext(string flowName, string project, string projectDir, string request)
 {

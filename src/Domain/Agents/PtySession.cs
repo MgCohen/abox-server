@@ -1,7 +1,7 @@
 using System.Text;
 using Porta.Pty;
 
-namespace RemoteAgents.Domain.Agents;
+namespace ABox.Domain.Agents;
 
 internal sealed class PtySession : IAsyncDisposable
 {

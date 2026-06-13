@@ -1,9 +1,9 @@
-using RemoteAgents.Domain.Agents;
-using RemoteAgents.Domain.Agents.Claude;
+using ABox.Domain.Agents;
+using ABox.Domain.Agents.Claude;
 using Xunit.Abstractions;
-using RemoteAgents.Tests.Live.Support;
+using ABox.Tests.Live.Support;
 
-namespace RemoteAgents.Tests.Live.Tests;
+namespace ABox.Tests.Live.Tests;
 
 // Live validation of the Agent-owned resume loop (permission-interaction-model §2): an
 // Auto agent self-resolves its own question and completes; a Human agent resumes from a

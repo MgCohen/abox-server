@@ -1,4 +1,4 @@
-namespace RemoteAgents.Tests.Structure.Support;
+namespace ABox.Tests.Structure.Support;
 
 // The registered test TYPES — the six kinds of guarantee, each a Rulebook folder under tests/Tests/. THIS
 // LIST is the source of truth; a folder under tests/Tests/ that is none of these (and not shared Support)
@@ -16,7 +16,7 @@ internal static class TestTypes
     public static bool IsNonType(string folder) =>
         NonType.Contains(folder, StringComparer.Ordinal);
 
-    // A method physically lives inside a registered type when its namespace is RemoteAgents.Tests.<Type>.Tests
+    // A method physically lives inside a registered type when its namespace is ABox.Tests.<Type>.Tests
     // (or a sub-namespace of it). Anything else — shared Support, a type's Support, the root — is outside the
     // formal structure and would slip past the per-type ParityGuard, which scopes to a single .Tests namespace.
     public static bool ContainsTest(string? ns)
@@ -25,7 +25,7 @@ internal static class TestTypes
             return false;
         var parts = ns.Split('.');
         return parts.Length >= 4
-            && parts[0] == "RemoteAgents" && parts[1] == "Tests"
+            && parts[0] == "ABox" && parts[1] == "Tests"
             && IsRegistered(parts[2]) && parts[3] == "Tests";
     }
 }

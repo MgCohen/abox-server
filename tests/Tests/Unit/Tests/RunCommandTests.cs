@@ -1,6 +1,6 @@
-using RemoteAgents.Infrastructure.CommandLine;
+using ABox.Infrastructure.CommandLine;
 
-namespace RemoteAgents.Tests.Unit.Tests;
+namespace ABox.Tests.Unit.Tests;
 
 public class RunCommandTests
 {

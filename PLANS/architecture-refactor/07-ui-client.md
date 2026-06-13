@@ -55,11 +55,11 @@ to render. Either way, the distinction between "not yet" / "not
 found" / "network blip" is preserved at the boundary.
 
 The UI's mirror records (`Models/ChatEvent.cs`, `Models/WireShapes.cs`)
-delete. The UI references `RemoteAgents.Contracts` directly.
+delete. The UI references `ABox.Contracts` directly.
 
 ## Current structure
 
-- [`RunView.razor`](../../remote-agents-dotnet/ui/RemoteAgents.UI.Components/Pages/RunView.razor)
+- [`RunView.razor`](../../remote-agents-dotnet/ui/ABox.UI.Components/Pages/RunView.razor)
   — 278 lines. Contains:
   - Page layout (~60 lines).
   - SignalR connect/consume lifecycle (~30 lines).
@@ -72,13 +72,13 @@ delete. The UI references `RemoteAgents.Contracts` directly.
   - Empty `catch { }` around `Api.GetOutputAsync`.
   - The Sanitize blob runs against the raw stream — making the
     "raw" debug view not raw.
-- [`Models/ChatEvent.cs`](../../remote-agents-dotnet/ui/RemoteAgents.UI.Components/Models/ChatEvent.cs)
+- [`Models/ChatEvent.cs`](../../remote-agents-dotnet/ui/ABox.UI.Components/Models/ChatEvent.cs)
   — byte-identical mirror of the Host's `ChatEvent`.
-- [`Models/WireShapes.cs`](../../remote-agents-dotnet/ui/RemoteAgents.UI.Components/Models/WireShapes.cs)
+- [`Models/WireShapes.cs`](../../remote-agents-dotnet/ui/ABox.UI.Components/Models/WireShapes.cs)
   — byte-identical mirror of Host `Dtos`.
-- [`Api/HostApiClient.cs`](../../remote-agents-dotnet/ui/RemoteAgents.UI.Components/Api/HostApiClient.cs)
+- [`Api/HostApiClient.cs`](../../remote-agents-dotnet/ui/ABox.UI.Components/Api/HostApiClient.cs)
   — all methods return `T?` or silently map errors to null.
-- [`Api/RunStreamClient.cs`](../../remote-agents-dotnet/ui/RemoteAgents.UI.Components/Api/RunStreamClient.cs)
+- [`Api/RunStreamClient.cs`](../../remote-agents-dotnet/ui/ABox.UI.Components/Api/RunStreamClient.cs)
   — SignalR client. Only subscribes to one stream today (the chat
   stream isn't wired in yet, but the Host already has it).
 
@@ -94,7 +94,7 @@ delete. The UI references `RemoteAgents.Contracts` directly.
    distinguish "not ready yet" from "404" from "500" from "network
    down."
 4. **Empty `catch { }` around output fetch** at
-   [`RunView.razor:149`](../../remote-agents-dotnet/ui/RemoteAgents.UI.Components/Pages/RunView.razor)
+   [`RunView.razor:149`](../../remote-agents-dotnet/ui/ABox.UI.Components/Pages/RunView.razor)
    — masks bugs.
 5. **No structured rendering** for events. Every event becomes a
    line in a flat `<div class="log">` list. The "conversation"
@@ -111,7 +111,7 @@ This layer is mostly mechanical once Layers 1, 3, 6 land.
 
 1. **(Depends on Layer 1.)** Delete `Models/ChatEvent.cs` and
    `Models/WireShapes.cs`. Point the Razor lib at
-   `RemoteAgents.Contracts`.
+   `ABox.Contracts`.
 2. **Delete `RunView.Sanitize`** and `_recentLines` and the
    `_streamLen` alias. Replace stream-chunk handling with:
    ```csharp
@@ -133,7 +133,7 @@ This layer is mostly mechanical once Layers 1, 3, 6 land.
    `GetOutputAsync` distinguishes 204-NoContent from 404 from
    network failure.
 4. **Replace the empty catch** at
-   [`RunView.razor:149`](../../remote-agents-dotnet/ui/RemoteAgents.UI.Components/Pages/RunView.razor)
+   [`RunView.razor:149`](../../remote-agents-dotnet/ui/ABox.UI.Components/Pages/RunView.razor)
    with explicit handling of the new error variants.
 5. **(Depends on Layer 6.)** Once `AgentEvent` carries structured
    chat content (assistant text, thinking, tool use, tool result),
@@ -157,5 +157,5 @@ Layer 7 is done when:
   further filtering.
 - The "Conversation" panel renders structured events as
   semantic components (one component per event variant).
-- The UI assembly references `RemoteAgents.Contracts` and not
-  `RemoteAgents.Host`.
+- The UI assembly references `ABox.Contracts` and not
+  `ABox.Host`.

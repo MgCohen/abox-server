@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
-using RemoteAgents.Features.Tasks.Create;
+using ABox.Features.Tasks.Create;
 
-namespace RemoteAgents.Features.Tasks.Module;
+namespace ABox.Features.Tasks.Module;
 
 public static class TasksModule
 {

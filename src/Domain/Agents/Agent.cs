@@ -1,7 +1,7 @@
-using RemoteAgents.Domain.Flow.Operations;
-using RemoteAgents.Infrastructure.Operations;
+using ABox.Domain.Flow.Operations;
+using ABox.Infrastructure.Operations;
 
-namespace RemoteAgents.Domain.Agents;
+namespace ABox.Domain.Agents;
 
 public sealed class Agent(IProvider provider, IDecisionResolver resolver, int? resolveCap, string projectDir)
     : Operation<AgentArgs, AgentOutcome>, IDecisionSource

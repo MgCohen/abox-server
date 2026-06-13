@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace RemoteAgents.Infrastructure.CommandLine;
+namespace ABox.Infrastructure.CommandLine;
 
 public static class AnsiHelpers
 {

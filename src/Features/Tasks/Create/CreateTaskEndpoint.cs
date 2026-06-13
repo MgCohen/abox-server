@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
-using RemoteAgents.Features.Git.Contracts;
-using RemoteAgents.Features.Tasks.Contracts;
+using ABox.Features.Git.Contracts;
+using ABox.Features.Tasks.Contracts;
 
-namespace RemoteAgents.Features.Tasks.Create;
+namespace ABox.Features.Tasks.Create;
 
 // Mode 2 (cross-feature, decoupled): a Task links the open PRs it finds, reading them ONLY through Git's
 // published IPullRequests contract — never Git's implementation. The impl is supplied at runtime by DI.

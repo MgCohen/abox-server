@@ -1,4 +1,4 @@
-namespace RemoteAgents.Domain.Flow.Operations;
+namespace ABox.Domain.Flow.Operations;
 
 internal class OperationRecord(string name)
 {

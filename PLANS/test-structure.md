@@ -66,7 +66,7 @@ the natural-language statement of what that type guarantees.
 
 **Arch** and **Structure** are today fused inside one `ArchTests` project (reference-graph rules over
 loaded assemblies *and* a filesystem placement scan). Splitting them is part of this plan — two distinct
-surfaces, two Rulebooks. **Unit/E2E/Wire/Live** today live flat in one `RemoteAgents.Tests` project,
+surfaces, two Rulebooks. **Unit/E2E/Wire/Live** today live flat in one `ABox.Tests` project,
 separated only by filename.
 
 **Priority order** = the order above is roughly fastest-and-most-fundamental first. A change ships when
@@ -178,7 +178,7 @@ genuinely needs it (the repo's "promote on the second use" rule).
 
 ```
 tests/
-  Harness/                  → RemoteAgents.Tests.Harness   (thin: shared engine + the convention docs)
+  Harness/                  → ABox.Tests.Harness   (thin: shared engine + the convention docs)
     Rule.cs                   the [Rule("…")] attribute
     ParityGuard.cs            For(type).Assert(rulebookPath) — load + reflect + parity, namespace-scoped
     README.md                 how a Rulebook-governed type works (the test-wide convention)
@@ -221,7 +221,7 @@ match its type folder is a build error — the type-folder taxonomy can't silent
 
 ```csharp
 // File: tests/Unit/Tests/QuestionParserTests.cs
-namespace RemoteAgents.Tests.E2E;   // ← IDE0130 build error: namespace ≠ folder
+namespace ABox.Tests.E2E;   // ← IDE0130 build error: namespace ≠ folder
 ```
 
 The one-time namespace sweep to align existing files folds into the Phase 2 move.
@@ -231,11 +231,11 @@ The one-time namespace sweep to align existing files folds into the Phase 2 move
 Per the repo's R-ARCH rule — *an assembly boundary exists only where it earns enforcement or reuse* —
 group by **reference profile**, not one-project-per-type:
 
-- **`RemoteAgents.Tests.Harness`** — the shared engine + docs. Referenced by all.
-- **`RemoteAgents.Tests.Structure`** — Arch + Structure types. Profile: load-assemblies-from-disk +
+- **`ABox.Tests.Harness`** — the shared engine + docs. Referenced by all.
+- **`ABox.Tests.Structure`** — Arch + Structure types. Profile: load-assemblies-from-disk +
   filesystem scan (ArchUnitNET), *no* production project reference. Two type-folders, two Rulebooks,
   namespace-scoped parity keeps them separate.
-- **`RemoteAgents.Tests`** — Unit + E2E + Wire + Live. Profile: the spine + `Microsoft.AspNetCore.App`.
+- **`ABox.Tests`** — Unit + E2E + Wire + Live. Profile: the spine + `Microsoft.AspNetCore.App`.
   Four type-folders, filtered by `[Trait("type", …)]`. They share references, so a wall between them earns
   nothing.
 
@@ -303,23 +303,23 @@ them. Replace it with a `[LiveFact]` attribute that auto-skips unless `RUN_LIVE=
 The deletions this phase describes **already exist as commits, unmerged, on two sibling branches** — so the
 real task is consolidation, not re-deleting:
 
-- `claude/jovial-sammet-30a622` — extracts `src/Morph` (`be7c614`) + `src/RemoteAgents.Web` (`bf705fb`).
+- `claude/jovial-sammet-30a622` — extracts `src/Morph` (`be7c614`) + `src/ABox.Web` (`bf705fb`).
 - `claude/strange-jang-eaa3ec` — removes `tools/frontend-verify` (`8c9fa32`).
 - Neither is on `main`; `main` still carries the full UI. **Build on post-extraction `main`, not on the
   stale `a93a6b3` worktree** (which predates all of it).
 
 Then, on that consolidated base:
 - Confirm `tools/frontend-verify/` (harness + probes) and `tests/Morph.Tests/` are gone; drop `Morph.Tests`
-  from `RemoteAgents.slnx`.
+  from `ABox.slnx`.
 - Remove the **"Verifying the frontend"** section from `CLAUDE.md`.
 - Update memory: retire the `playwright-verification` pointer + the morph-spike pointers that name
   `frontend-verify`.
 - *Done when:* no `playwright`/`frontend-verify` reference remains in `CLAUDE.md` or `tests/`; `dotnet build
-  RemoteAgents.slnx` green; the `PendingEvictionFolders` staleness check drives the `src/Morph` +
-  `src/RemoteAgents.Web` drop (tracked by `structure-guards`).
+  ABox.slnx` green; the `PendingEvictionFolders` staleness check drives the `src/Morph` +
+  `src/ABox.Web` drop (tracked by `structure-guards`).
 
 **Phase 1 — Extract the Harness + rename** *(architecture-defining infrastructure; earns its place now)*
-- Create `RemoteAgents.Tests.Harness`: move the `[Rule]` attribute + the parity engine out of `ArchTests`.
+- Create `ABox.Tests.Harness`: move the `[Rule]` attribute + the parity engine out of `ArchTests`.
 - Rename `RuleBook.cs` → `ParityGuard.cs`; parameterize it by **(Rulebook path, owning assembly,
   type namespace)** so it works from a referenced library and scopes `[Rule]`s per type.
 - Move `ArchTests/README.md` → `Harness/README.md` as the test-wide convention doc.
@@ -329,7 +329,7 @@ Then, on that consolidated base:
 - Split `ArchTests` into the `Structure` project's two type-folders: `Arch/` (reference graph,
   `Support/ArchitectureModel`) and `Structure/` (filesystem, `Support/SourceTree` + repo-root locator), each
   with its own `Rulebook/rules.md` and strict 1:1 parity.
-- Reshape `RemoteAgents.Tests` into `Unit/ E2E/ Wire/ Live/`, each with `Tests/` + optional `Support/`, and
+- Reshape `ABox.Tests` into `Unit/ E2E/ Wire/ Live/`, each with `Tests/` + optional `Support/`, and
   a `Rulebook/` that starts small (behavioral Rules accrue going-forward, not backfilled). Doubles move into
   the consuming type's `Support/`.
 - Extend IDE0130 to `tests/`; one-time namespace sweep so every test file's namespace mirrors its type folder.
@@ -372,6 +372,6 @@ Then, on that consolidated base:
 - **Split Arch from Structure** — reference graph vs filesystem placement, two Rulebooks.
 - **API-down e2e backbone** — in-process default + thin wire smoke; no fake UI; `LiveSmoke→FlowHarness`.
 - **Live env-gated** via `[LiveFact]` / `RUN_LIVE=1`.
-- **≈3 projects** — Harness, Structure (Arch+Structure), RemoteAgents.Tests (Unit+E2E+Wire+Live).
+- **≈3 projects** — Harness, Structure (Arch+Structure), ABox.Tests (Unit+E2E+Wire+Live).
 - **Base on post-extraction `main`** — Phase 0's deletions live on `jovial-sammet` + `strange-jang`;
   consolidate them first rather than re-deleting, and don't build on the stale `a93a6b3` worktree.

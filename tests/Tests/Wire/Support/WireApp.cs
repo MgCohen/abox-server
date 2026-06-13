@@ -2,10 +2,10 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
-using RemoteAgents.Domain.Flow;
-using RemoteAgents.Infrastructure.Projects;
+using ABox.Domain.Flow;
+using ABox.Infrastructure.Projects;
 
-namespace RemoteAgents.Tests.Wire.Support;
+namespace ABox.Tests.Wire.Support;
 
 // Boots the real Host (Program) over an in-memory TestServer, then swaps two seams so the wire is driven
 // deterministically without a live CLI or a projects.json: a fake project registry (resolves to a temp dir,

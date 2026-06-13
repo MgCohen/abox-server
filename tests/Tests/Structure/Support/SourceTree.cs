@@ -1,4 +1,4 @@
-namespace RemoteAgents.Tests.Structure.Support;
+namespace ABox.Tests.Structure.Support;
 
 // The physical project layout on disk — the placement guards' input, independent of what compiled.
 // ArchUnitNET only sees loaded assemblies; this sees every project folder under src/ the moment it
@@ -8,7 +8,7 @@ namespace RemoteAgents.Tests.Structure.Support;
 // The locator throws on a missing root or src so a broken scan can't go vacuously green.
 internal static class SourceTree
 {
-    private const string Marker = "RemoteAgents.slnx";
+    private const string Marker = "ABox.slnx";
     private static readonly string[] Ignored = { "bin", "obj", "artifacts" };
     private static readonly char[] Separators = { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar };
 

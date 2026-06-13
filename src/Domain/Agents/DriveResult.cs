@@ -1,4 +1,4 @@
-namespace RemoteAgents.Domain.Agents;
+namespace ABox.Domain.Agents;
 
 public sealed record DriveResult(
     string Text,

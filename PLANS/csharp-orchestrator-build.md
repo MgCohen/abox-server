@@ -29,7 +29,7 @@ them down. **These are load-bearing for the plan below.**
 | 10 | Error propagation | `RunAsync` emits `Failed` then re-throws. Flow authors `try/catch` or let it crash. |
 | 11 | Timing constants | Typed `ClaudeAgentOptions` record holds `InitialDwellMs`, `IdleThresholdMs`, `ExitDwellMs`. Per-agent override, library provides defaults. |
 | 12 | Platform target | Windows-only v1. Hetzner-time Linux port is a known follow-up tax. |
-| 13 | Test framework | `RemoteAgents.Tests/` sibling project in the same solution, xUnit. |
+| 13 | Test framework | `ABox.Tests/` sibling project in the same solution, xUnit. |
 | 14 | `projects.json` location | Promoted to `<repo>/projects.json`. Owned by the repo, consumed by both orchestrators during coexistence and by C# alone after retirement. |
 | 15 | `sessions/` folder | Each orchestrator keeps its own (`remote-agents-dotnet/sessions/`). JS folder is throwaway after retirement. |
 | 16 | `meta.json` schema | C# breaks clean. JS sessions stay legacy; no compat shim. |
@@ -64,7 +64,7 @@ Four layers, bottom-up:
 4. **Per-project tooling** — convention, not framework. `agents/<Name>.cs`
    static factories, `validation/<Project>Validator.cs` implementing
    `IValidator`, `flows/<name>.cs` file-based programs. Project-specific
-   primitives live next to their consumers, not under `RemoteAgents/`.
+   primitives live next to their consumers, not under `ABox/`.
 
 **Runtime contract:**
 - `RunAsync` returns `Task<AgentResult>` and throws on failure (emitting
@@ -84,9 +84,9 @@ Four layers, bottom-up:
 ├── projects.json                      # ← promoted from orchestrator-local (Q14)
 ├── remote-agents/                     # JS orchestrator (untouched, retires later)
 └── remote-agents-dotnet/              # ← new
-    ├── RemoteAgents.sln               # includes both projects below
-    ├── RemoteAgents/                  # the library (net10.0)
-    │   ├── RemoteAgents.csproj
+    ├── ABox.sln               # includes both projects below
+    ├── ABox/                  # the library (net10.0)
+    │   ├── ABox.csproj
     │   ├── Agents/
     │   │   ├── Agent.cs               # abstract base, sealed RunAsync
     │   │   ├── ClaudeAgent.cs         # non-sealed, 2 virtual hooks
@@ -116,8 +116,8 @@ Four layers, bottom-up:
     │   │   └── ValidationResult.cs
     │   └── Pty/
     │       └── PtyExtensions.cs       # ExitCodeOrNull, etc.
-    ├── RemoteAgents.Tests/            # xUnit (Q13)
-    │   ├── RemoteAgents.Tests.csproj
+    ├── ABox.Tests/            # xUnit (Q13)
+    │   ├── ABox.Tests.csproj
     │   ├── Agents/
     │   │   └── AgentLifecycleTests.cs # FakeAgent verifies Started/Failed/Completed
     │   ├── Primitives/
@@ -155,14 +155,14 @@ Each step is a self-contained landing. Estimates assume familiarity with
 
 | # | Step | Effort | Done when |
 |---|---|---:|---|
-| 1 | Scaffold `remote-agents-dotnet/` — `RemoteAgents.sln`, `RemoteAgents.csproj` and `RemoteAgents.Tests.csproj` targeting `net10.0`, nuget refs (`Porta.Pty 1.0.7`, `Microsoft.Windows.Console.ConPTY 1.24`, `xunit`, `xunit.runner.visualstudio`), `.gitignore` for `bin/obj/sessions/`. Move `projects.json` from `remote-agents/orchestrator/` to `<repo>/projects.json`; update the JS reader to read from the new path so coexistence keeps working. | 0.5d | `dotnet build` clean; `dotnet test` runs zero tests successfully; JS orchestrator still resolves projects |
+| 1 | Scaffold `remote-agents-dotnet/` — `ABox.sln`, `ABox.csproj` and `ABox.Tests.csproj` targeting `net10.0`, nuget refs (`Porta.Pty 1.0.7`, `Microsoft.Windows.Console.ConPTY 1.24`, `xunit`, `xunit.runner.visualstudio`), `.gitignore` for `bin/obj/sessions/`. Move `projects.json` from `remote-agents/orchestrator/` to `<repo>/projects.json`; update the JS reader to read from the new path so coexistence keeps working. | 0.5d | `dotnet build` clean; `dotnet test` runs zero tests successfully; JS orchestrator still resolves projects |
 | 2 | **Primitives layer** — port `GitOps`, `RunCommand`, `FsDiff`, `ProjectRegistry`, `SubscriptionGuard`, `PtyExtensions`. Every public async method takes `CancellationToken`. `SubscriptionGuard` checks `ANTHROPIC_API_KEY`, `CLAUDE_API_KEY`, `OPENAI_API_KEY` env vars AND runs `claude --version` / `codex --version` to fail fast on missing binaries. Carry forward `git add -A` refusal and `push --force` to `main` refusal. xUnit tests for each. | 1d | xUnit suite green; `projects.json` resolves; guard throws on each of the three env vars; guard throws with a clear message when `claude` is renamed off PATH |
 | 3 | **Sessions + events** — `Session` (writes new C# schema, no JS compat), `AgentEvent` (5 sealed cases: `Started`/`StreamChunk`/`DialogDismissed`/`Completed`/`Failed`), `IEventSink`, `JsonlSink`, `ConsoleSink`, `CompositeSink`. Every emission path takes `CancellationToken`. | 0.5d | a hand-written test flow writes a `sessions/<id>/` folder with new-schema `meta.json` + `transcript.jsonl`; ordering of events is deterministic |
 | 4 | **Agent base + records** — `Agent` abstract class with `sealed RunAsync` lifecycle (Started → ExecuteAsync → Completed on success, Failed + rethrow on exception), `AgentRunRequest`/`AgentResult` records, `ClaudeAgentOptions`/`CodexAgentOptions` records, `IValidator`/`ValidationResult`. xUnit `FakeAgent` test verifies all five event types fire under the right conditions and that exceptions re-throw cleanly. | 0.5d | unit tests for lifecycle invariants pass |
 | 5 | **`ClaudeAgent`** — port `claudeProvider.js` (~150 LoC) as a **non-sealed** class. Build `claude` argv (`--session-id`/`--resume`, `--permission-mode`, `--append-system-prompt`, `--model`), spawn via Porta.Pty (`cmd.exe /c claude` — Windows-only, Q12), use the two `virtual` hooks: `DetectStartupDialog(string buf)` (use JS substrings: `'trust this folder'`, `'Is this a project you'`), `IsResponseComplete(string buf, DateTimeOffset lastChunkAt)` (default: 6s idle threshold from `ClaudeAgentOptions.IdleThresholdMs`). Wrap `ExitCode` accesses in `ExitCodeOrNull`. Unset Anthropic env vars in spawned child env. | 1.5d | reproduces dotnet-pty-smoke result: `--session-id` honored, PONG round-trips, exit 0, subscription billing intact; xUnit test for arg-builder ensures `--append-system-prompt` is set iff `SystemPrompt != null` |
 | 6 | **`CodexAgent`** — port `codexProvider.js` (~150 LoC) as a **non-sealed** class. System prompt prepended to user prompt (no native flag). `codex exec [resume <id>] --cd <dir> -o <tmpfile> --sandbox <opt> --dangerously-bypass-approvals-and-sandbox --json --model <m> -`. Pipe prompt via stdin. Parse JSONL stdout for `thread_id`/`session_id`/`sessionId`. Read final message from tmpfile. Same Windows-only `cmd.exe /c codex` assumption. Unset `OPENAI_API_KEY` in spawned child env. | 1d | session id round-trips; review prompt against a fixed diff returns a parseable verdict |
 | 7 | **`ProviderJsonlIngestSink`** (T0 from logging plan) — after each agent run, copy `~/.claude/projects/<encoded-cwd>/<id>.jsonl` and `~/.codex/sessions/YYYY/MM/DD/rollout-*-<id>.jsonl` into the session dir as `claude-turn-N.jsonl` / `codex-turn-N.jsonl`. Encoded cwd = path with `\`, `/`, `:` → `-`. | 0.5d | a session dir contains the full tool-call timeline for each agent invocation |
-| 8 | **First flow: `flows/claude-only.cs`** — `.NET 10` file-based program with `#:project ../RemoteAgents/RemoteAgents.csproj`. Parity with [claude-only.mjs](remote-agents/orchestrator/flows/claude-only.mjs). | 0.5d | `dotnet run flows/claude-only.cs <project> "<prompt>"` produces the same logical session-dir shape as the JS version (schemas differ per Q16, file set matches) |
+| 8 | **First flow: `flows/claude-only.cs`** — `.NET 10` file-based program with `#:project ../ABox/ABox.csproj`. Parity with [claude-only.mjs](remote-agents/orchestrator/flows/claude-only.mjs). | 0.5d | `dotnet run flows/claude-only.cs <project> "<prompt>"` produces the same logical session-dir shape as the JS version (schemas differ per Q16, file set matches) |
 | 9 | **`OrchestratorValidator`** — implements `IValidator`. Walks `remote-agents-dotnet/**/*.cs`, runs a Roslyn syntax-only parse (`CSharpSyntaxTree.ParseText` + check diagnostics), returns `ValidationResult { Ok, Summary, Errors }`. Equivalent to the `node --check` walker in [orchestrator.mjs](remote-agents/orchestrator/validation/orchestrator.mjs). | 0.5d | catches a deliberately broken `.cs` file; passes against the current tree |
 | 10 | **Second flow: `flows/claude-validate.cs`** — Claude run → validate → fix-loop (max 3 attempts) → done. Parity with [claude-validate.mjs](remote-agents/orchestrator/flows/claude-validate.mjs). | 0.5d | introduces a syntax error on purpose, flow recovers within 3 attempts |
 | 11 | **Third flow: `flows/full-review.cs`** — Claude → validate → Codex review → commit → optional push. Parity with [full-review.mjs](remote-agents/orchestrator/flows/full-review.mjs). | 1d | **Acceptance gate (Q17)**: session dir contains `claude-turn-N.jsonl` + `codex-review.jsonl` + populated `transcript.jsonl` with the expected event sequence (Started/Completed at minimum, no Failed), AND a commit lands on a throwaway branch, AND the Codex verdict from `codex-review.jsonl`'s final `agent_message` parses as `approve` |
@@ -213,9 +213,9 @@ The plan is UI-agnostic by decision, but the seam is explicit:
   Stop button is one `CancellationTokenSource.Cancel()` away — no
   retrofit.
 - For **MAUI Blazor Hybrid**: UI project takes `ProjectReference` on
-  `RemoteAgents.csproj`. Pass `AgentEvent` instances directly to Blazor
+  `ABox.csproj`. Pass `AgentEvent` instances directly to Blazor
   components. No IPC, no JSON boundary, types shared by construction.
-- For **Tauri 2 + React**: add a thin `RemoteAgents.Host` ASP.NET project
+- For **Tauri 2 + React**: add a thin `ABox.Host` ASP.NET project
   that wraps a flow runner in HTTP/JSON-RPC + WebSocket for live events.
   OpenAPI codegen at the Tauri side.
 - Either path: **don't change the library's public types** to accommodate
@@ -236,7 +236,7 @@ In rough order of "how often you'll touch them":
    Add sidecar prompt to `agents/prompts/<name>.md`.
 4. **Customize an existing provider per-call** — pass typed options in the
    `Agent` ctor (e.g. `new ClaudeAgent { Timing = new() { IdleThresholdMs = 30_000 } }`).
-5. **Add a primitive** — add to `RemoteAgents/Primitives/`. Only if more
+5. **Add a primitive** — add to `ABox/Primitives/`. Only if more
    than one flow would want it. Static, no state, no inheritance. Async
    methods must take `CancellationToken`.
 6. **Subclass `ClaudeAgent` or `CodexAgent`** — when a project needs to

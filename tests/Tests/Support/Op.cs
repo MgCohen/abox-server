@@ -1,7 +1,7 @@
-using RemoteAgents.Domain.Flow;
-using RemoteAgents.Infrastructure.Operations;
+using ABox.Domain.Flow;
+using ABox.Infrastructure.Operations;
 
-namespace RemoteAgents.Tests.Support;
+namespace ABox.Tests.Support;
 
 internal static class Op
 {

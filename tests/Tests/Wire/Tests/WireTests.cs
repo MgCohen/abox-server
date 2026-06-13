@@ -1,9 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
-using RemoteAgents.Features.Flows.Contracts;
-using RemoteAgents.Tests.Wire.Support;
+using ABox.Features.Flows.Contracts;
+using ABox.Features.Projects.Contracts;
+using ABox.Tests.Wire.Support;
 
-namespace RemoteAgents.Tests.Wire.Tests;
+namespace ABox.Tests.Wire.Tests;
 
 // Wire smoke: a real HttpClient against the Host over WebApplicationFactory. Thin by design — it proves
 // routing + serialization + the SSE streaming contract, with a CLI-free StubFlow behind the flow endpoints.
@@ -19,14 +20,17 @@ public class WireTests(WireApp app) : IClassFixture<WireApp>
         Assert.Contains("ok", await res.Content.ReadAsStringAsync());
     }
 
-    [Rule("projects lists the registered projects")]
+    [Rule("projects lists the stub projects as wire DTOs")]
     [Fact]
-    public async Task Projects_lists_the_registered_projects()
+    public async Task Projects_lists_the_stub_projects()
     {
         using var res = await app.CreateClient().GetAsync("/projects");
 
         Assert.Equal(HttpStatusCode.OK, res.StatusCode);
-        Assert.Contains("demo", await res.Content.ReadAsStringAsync());
+        var projects = await res.Content.ReadFromJsonAsync<ProjectDto[]>();
+        Assert.NotNull(projects);
+        Assert.Contains(projects!, p => p.Name == "Card Framework");
+        Assert.Contains(projects!, p => p.Name == "Scaffold");
     }
 
     [Rule("a started flow streams snapshots over SSE to completion")]

@@ -1,4 +1,4 @@
-namespace RemoteAgents.Domain.Agents;
+namespace ABox.Domain.Agents;
 
 // Refuses every decision. A permission Ask returns an explicit deny — the reject
 // option, by convention the last one (e.g. ["Allow", "Deny"]) — so it's recorded

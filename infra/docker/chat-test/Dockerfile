@@ -9,7 +9,7 @@
 # The VM will use Unity Hub native install, not this image.
 #
 # Build:
-#   docker build -t chat-test C:/Unity/remote-unity-agents/infra/docker/chat-test
+#   docker build -t chat-test C:/Unity/abox.server/infra/docker/chat-test
 #
 # Run (Windows PowerShell):
 #   docker run -d --name chat-test `

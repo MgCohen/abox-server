@@ -70,17 +70,17 @@ Current layout → target. Bold = a wall that earns its assembly in this pass.
 
 | Today (`src/`) | Moves to | Assembly? |
 |---|---|---|
-| `RemoteAgents/Actors/Agents/**` (Agent, providers, resolvers, intercom) | **`Domain/Agents/`** | **Y — walled** |
+| `ABox/Actors/Agents/**` (Agent, providers, resolvers, intercom) | **`Domain/Agents/`** | **Y — walled** |
 | `Actors/Agents/Claude/**`, `Actors/Agents/Codex/**` | `Domain/Agents/` (internal) | (same) |
 | `Tools/CommandLine/PtySession.cs` | `Domain/Agents/` (**`internal`**) | (same) — the spawn wall |
 | `Tools/CommandLine/SubscriptionGuard.cs` (billing safety) | `Domain/Agents/` | (same) |
 | `Tools/CommandLine/{SubprocessSession,RunCommand,Shell,AnsiHelpers,RunCommand*}.cs` | `Infrastructure/` | Y (floor) |
 | `Tools/Json/JsonLine.cs`, `Tools/Paths/**` | `Infrastructure/` | (floor) |
-| `RemoteAgents/Engine/Flows/**` + `Engine/Operations/**` | `Features/Flows/Shared/` (feature engine) | Y |
+| `ABox/Engine/Flows/**` + `Engine/Operations/**` | `Features/Flows/Shared/` (feature engine) | Y |
 | `Engine/Flows/{IFlowHistory,FileFlowHistory}.cs` | `Features/Flows/Shared/` (concrete store — **stays concrete**) | (same) |
 | `Host/Endpoints.cs` handlers (start/list/get/cancel/watch) | `Features/Flows/{Start,List,Get,Cancel,Watch}/` — **one assembly each** | Y |
 | `Host/Sse.cs`, `Web/Api/FlowStreamClient.cs` | **deleted** → SignalR (Movement 2B) | — |
-| `RemoteAgents.Contracts/**` (flow DTOs) | `Features/Flows/Contracts/` | Y (leaf) |
+| `ABox.Contracts/**` (flow DTOs) | `Features/Flows/Contracts/` | Y (leaf) |
 | `Actors/Git/**` | independent `Features/Git/` slice in M1; → `Infrastructure` later when shared (**OQ-6**) | Y |
 | `Tools/Projects/**` (`/projects`) | placed in M1; substrate vs `Features/Projects` (**OQ-6b**) | Y |
 | `Host/Composition.cs` | `Host/` + each feature's `Module/` (`AddFlows()`, `AddAgents()`) | Y |
@@ -235,16 +235,16 @@ phase renders or depends on a screen.
   stood up red-by-design at M1.6 as the violation detector / Movement-2 worklist,
   then flipped to enforced at the end of 2A. (Broader Unit/Integration/Acceptance
   reorg stays its own later task.)
-- **OQ-9 — Assembly naming → `RemoteAgents.` prefix, simple, no `.Features.`
-  segment.** `RemoteAgents.Flows.Start`, `RemoteAgents.Flows.Shared`,
-  `RemoteAgents.Flows.Contracts`, `RemoteAgents.Flows.Module`,
-  `RemoteAgents.Domain.Agents`, `RemoteAgents.Infrastructure`. The folder path
+- **OQ-9 — Assembly naming → `ABox.` prefix, simple, no `.Features.`
+  segment.** `ABox.Flows.Start`, `ABox.Flows.Shared`,
+  `ABox.Flows.Contracts`, `ABox.Flows.Module`,
+  `ABox.Domain.Agents`, `ABox.Infrastructure`. The folder path
   carries the `Features/` grouping; the assembly name stays short.
-- **OQ-10 — The monolithic `RemoteAgents` project dissolves.** `RemoteAgents` is
+- **OQ-10 — The monolithic `ABox` project dissolves.** `ABox` is
   the **repository/concept name, not a csproj** — the one big class library
   fragments into `Domain.Agents` + `Infrastructure` + the Flows assemblies and
-  ceases to exist; `RemoteAgents` survives only as a namespace prefix. For M1 a
-  single `RemoteAgents.Tests` is re-pointed at the new assemblies (per-assembly
+  ceases to exist; `ABox` survives only as a namespace prefix. For M1 a
+  single `ABox.Tests` is re-pointed at the new assemblies (per-assembly
   test split deferred to OQ-8's later task).
 - **OQ-11 — Slice endpoint shape → each use case ships its own `MapXxx`; the
   `Module` is the single composition seam.** Every use-case assembly exposes a

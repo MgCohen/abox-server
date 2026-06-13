@@ -1,6 +1,6 @@
 using System.Reflection;
 
-namespace RemoteAgents.Tests.Harness;
+namespace ABox.Tests.Harness;
 
 // The parity engine shared by every test type. A Rulebook (Rulebook/rules.md) lists a type's guarantees as
 // '### ' headers — the DECLARED rules; the [Rule("<header>")] citations sitting on its tests are the ENFORCED

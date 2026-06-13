@@ -1,7 +1,7 @@
-using RemoteAgents.Domain.Agents;
-using RemoteAgents.Domain.Agents.Codex;
+using ABox.Domain.Agents;
+using ABox.Domain.Agents.Codex;
 
-namespace RemoteAgents.Tests.Unit.Tests;
+namespace ABox.Tests.Unit.Tests;
 
 public class ProviderPolicyTests
 {

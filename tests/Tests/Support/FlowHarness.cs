@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
-using RemoteAgents.Domain.Agents;
-using RemoteAgents.Domain.Flow;
-using RemoteAgents.Host;
+using ABox.Domain.Agents;
+using ABox.Domain.Flow;
+using ABox.Host;
 
-namespace RemoteAgents.Tests.Support;
+namespace ABox.Tests.Support;
 
 // The API-down e2e backbone: boots the real composition and drives a flow end to end in-process. Steps,
 // the Flow engine, the snapshot stream, and the resolver wiring are all real — only the agent's mouth (the

@@ -1,4 +1,4 @@
-namespace RemoteAgents.Infrastructure.Paths;
+namespace ABox.Infrastructure.Paths;
 
 public static class RepoRoot
 {

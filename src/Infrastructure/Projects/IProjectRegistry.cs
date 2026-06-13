@@ -1,4 +1,4 @@
-namespace RemoteAgents.Infrastructure.Projects;
+namespace ABox.Infrastructure.Projects;
 
 public readonly record struct ProjectEntry(string Name, string Path);
 

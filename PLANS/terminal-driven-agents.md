@@ -48,7 +48,7 @@ Until Phase 6 ships, T2 onward would churn.
 
 ### What this project is
 
-`remote-unity-agents` is a .NET orchestrator that drives the Claude
+`abox.server` is a .NET orchestrator that drives the Claude
 Code CLI (and other LLM CLIs) on a Windows host to automate
 Unity-project workflows. The user opens a Blazor-based UI (Web shell or
 MAUI Hybrid desktop / mobile), picks a project + a flow, starts a run,
@@ -59,7 +59,7 @@ The architecture-shaping constraint: **Claude's subscription billing
 requires `claude.exe` to run inside a real terminal** (`isatty()` must
 be true in the child). The orchestrator satisfies this by allocating a
 Windows ConPTY around `cmd.exe → claude.exe` and driving it from a
-[`PtySession`](../remote-agents-dotnet/src/RemoteAgents/Core/Pty/PtySession.cs).
+[`PtySession`](../remote-agents-dotnet/src/ABox/Core/Pty/PtySession.cs).
 There is **no API-key path** — if the PTY abstraction breaks,
 subscription billing breaks. This is why every option in this plan
 preserves the ConPTY and never proposes "just use the streaming JSON
@@ -151,7 +151,7 @@ didn't live through it):
    alt-screen, color. Produced the "Inieni\nnnng" spinner mess —
    animation frames that were supposed to overwrite in place became
    garbled stacked text. Documented in the comment at
-   [xterm-viewer.js:11](../ui/RemoteAgents.UI.Components/wwwroot/js/xterm-viewer.js#L11).
+   [xterm-viewer.js:11](../ui/ABox.UI.Components/wwwroot/js/xterm-viewer.js#L11).
 2. **xterm.js retrofit** (commit `88ee4b8`). Replaced `Sanitize` with a
    real VT100 emulator. Escape sequences now parse correctly. Removed
    "weird symbols" most of the time but symptoms persisted: animations
@@ -190,17 +190,17 @@ The "weird symbols + doesn't feel like a real terminal" complaint
 decomposes into five specific issues, none of which can be solved
 inside the renderer:
 
-1. **No stdin.** [xterm-viewer.js:26](../ui/RemoteAgents.UI.Components/wwwroot/js/xterm-viewer.js#L26)
+1. **No stdin.** [xterm-viewer.js:26](../ui/ABox.UI.Components/wwwroot/js/xterm-viewer.js#L26)
    sets `disableStdin: true`. The "terminal" is a silent replay; slash
    commands, paste, interrupt all impossible.
 2. **No resize back-channel.** ConPTY opened at hardcoded 120×40 in
-   [ClaudeAgent.cs:22-23](../remote-agents-dotnet/src/RemoteAgents/Providers/Claude/ClaudeAgent.cs#L22).
+   [ClaudeAgent.cs:22-23](../remote-agents-dotnet/src/ABox/Providers/Claude/ClaudeAgent.cs#L22).
    Browser xterm.js fits to viewport. The two diverge, cursor escapes
    land at wrong cells, repaints don't overlay.
 3. **Buffered transport breaks animation cadence.** Bytes go
    `PtySession → AgentEvent.StreamChunk → JsonlSink → transcript.jsonl
    → Host 50ms file-tail → SignalR → xterm.js`
-   ([FlowRunner.cs:242-272](../ui/RemoteAgents.Host/Runs/FlowRunner.cs#L242)).
+   ([FlowRunner.cs:242-272](../ui/ABox.Host/Runs/FlowRunner.cs#L242)).
    Spinners and progress bars arrive bunched. The cursor math is fine;
    the *cadence* is wrong.
 4. **Late-join misses the alt-screen handshake.** Claude emits
@@ -254,7 +254,7 @@ the symptoms.
 Add a capability interface alongside `IAgent`:
 
 ```csharp
-// New in RemoteAgents.Contracts
+// New in ABox.Contracts
 public interface ITerminalCapable
 {
     // Terminal byte stream is already exposed via AgentEvent.StreamChunk —
@@ -322,7 +322,7 @@ Host re-read. Concrete options (decision deferred to Phase T2 — see
   IPC primitive; reuses what the Host already speaks).
 - **stdout framing** (cheapest; abuses the existing
   RedirectStandardOutput path that today carries one line — the
-  session-id sniff at [FlowRunner.cs:200](../ui/RemoteAgents.Host/Runs/FlowRunner.cs#L200)).
+  session-id sniff at [FlowRunner.cs:200](../ui/ABox.Host/Runs/FlowRunner.cs#L200)).
 
 The Host's `RunsHub` gains:
 - `SendInput(runId, text)` → routes to the live agent's `SendInputAsync`.
@@ -358,7 +358,7 @@ this plan continues that deletion through to the rendering path.
   projection that survives the run.
 
 `ChatEvent` continues to come from Claude's own session JSONL
-([ClaudeJsonlTailer.cs](../ui/RemoteAgents.Host/Runs/ClaudeJsonlTailer.cs)),
+([ClaudeJsonlTailer.cs](../ui/ABox.Host/Runs/ClaudeJsonlTailer.cs)),
 which `architecture-refactor/` Phase 6 plans to delete in favor of
 agent-emitted `AgentEvent` variants. **This plan does not block on
 that fold** — terminal-driven rendering works equally well with the
@@ -368,15 +368,15 @@ current ChatEvent stream or with the future folded one.
 
 ## Current structure (citations)
 
-- PTY ownership / scripted phases: [ClaudeAgent.cs:84-139](../remote-agents-dotnet/src/RemoteAgents/Providers/Claude/ClaudeAgent.cs#L84)
-- PTY size hardcoded: [ClaudeAgent.cs:22-23](../remote-agents-dotnet/src/RemoteAgents/Providers/Claude/ClaudeAgent.cs#L22),
-  [ClaudeAgent.cs:186-195](../remote-agents-dotnet/src/RemoteAgents/Providers/Claude/ClaudeAgent.cs#L186)
-- PTY plumbing: [PtySession.cs:39-180](../remote-agents-dotnet/src/RemoteAgents/Core/Pty/PtySession.cs#L39)
-- Live bytes routed through JSONL file: [FlowRunner.cs:219-272](../ui/RemoteAgents.Host/Runs/FlowRunner.cs#L219)
-- xterm.js no-stdin: [xterm-viewer.js:22-34](../ui/RemoteAgents.UI.Components/wwwroot/js/xterm-viewer.js#L22)
-- RunView terminal pane: [RunView.razor:147-150](../ui/RemoteAgents.UI.Components/Pages/RunView.razor#L147)
-- StreamChunk consumption: [RunView.razor:233-235](../ui/RemoteAgents.UI.Components/Pages/RunView.razor#L233)
-- Session-id sniff over stdout: [FlowRunner.cs:200](../ui/RemoteAgents.Host/Runs/FlowRunner.cs#L200)
+- PTY ownership / scripted phases: [ClaudeAgent.cs:84-139](../remote-agents-dotnet/src/ABox/Providers/Claude/ClaudeAgent.cs#L84)
+- PTY size hardcoded: [ClaudeAgent.cs:22-23](../remote-agents-dotnet/src/ABox/Providers/Claude/ClaudeAgent.cs#L22),
+  [ClaudeAgent.cs:186-195](../remote-agents-dotnet/src/ABox/Providers/Claude/ClaudeAgent.cs#L186)
+- PTY plumbing: [PtySession.cs:39-180](../remote-agents-dotnet/src/ABox/Core/Pty/PtySession.cs#L39)
+- Live bytes routed through JSONL file: [FlowRunner.cs:219-272](../ui/ABox.Host/Runs/FlowRunner.cs#L219)
+- xterm.js no-stdin: [xterm-viewer.js:22-34](../ui/ABox.UI.Components/wwwroot/js/xterm-viewer.js#L22)
+- RunView terminal pane: [RunView.razor:147-150](../ui/ABox.UI.Components/Pages/RunView.razor#L147)
+- StreamChunk consumption: [RunView.razor:233-235](../ui/ABox.UI.Components/Pages/RunView.razor#L233)
+- Session-id sniff over stdout: [FlowRunner.cs:200](../ui/ABox.Host/Runs/FlowRunner.cs#L200)
 
 ---
 
@@ -401,7 +401,7 @@ current ChatEvent stream or with the future folded one.
 ### Phase T1 — Capability contract (Layer 1)
 
 Add `ITerminalCapable`, `TerminalInputPolicy`, `TerminalInputResult` to
-`RemoteAgents.Contracts`. No implementations yet.
+`ABox.Contracts`. No implementations yet.
 
 `PtySession.ResizeAsync` lands here as well (no callers yet).
 
@@ -560,7 +560,7 @@ Decision recorded here, revisitable.
   `RunView.Sanitize` and the mirror records. Cosmetic overlap with T4
   but independent.
 - **`interaction-modes.md`** — the "agent needs input" modal in
-  [RunView.razor:42-58](../ui/RemoteAgents.UI.Components/Pages/RunView.razor#L42)
+  [RunView.razor:42-58](../ui/ABox.UI.Components/Pages/RunView.razor#L42)
   is a natural place to surface the **take-control** prompt: instead of
   Yes/No, offer "take control of the terminal to answer." Out of scope
   for v1 but the integration point is named here so the two plans

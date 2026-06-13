@@ -1,8 +1,8 @@
 using System.Text;
 using System.Text.Json;
-using RemoteAgents.Infrastructure.Json;
+using ABox.Infrastructure.Json;
 
-namespace RemoteAgents.Domain.Agents.Claude;
+namespace ABox.Domain.Agents.Claude;
 
 public static class ClaudeJsonl
 {

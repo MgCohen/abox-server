@@ -1,6 +1,6 @@
-using RemoteAgents.Infrastructure.Projects;
+using ABox.Infrastructure.Projects;
 
-namespace RemoteAgents.Tests.Wire.Support;
+namespace ABox.Tests.Wire.Support;
 
 // A project registry with no projects.json behind it: resolves every name to one temp dir and lists a
 // single entry. Lets the wire be driven without the real file, so a wire test proves routing + the request

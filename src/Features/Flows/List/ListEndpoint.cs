@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
-using RemoteAgents.Domain.Flow;
-using RemoteAgents.Features.Flows.Shared;
+using ABox.Domain.Flow;
+using ABox.Features.Flows.Shared;
 
-namespace RemoteAgents.Features.Flows.List;
+namespace ABox.Features.Flows.List;
 
 public static class ListEndpoint
 {

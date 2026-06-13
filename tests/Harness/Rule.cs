@@ -1,4 +1,4 @@
-namespace RemoteAgents.Tests.Harness;
+namespace ABox.Tests.Harness;
 
 // A method-level citation naming the Rulebook header a test enforces. Composed ALONGSIDE the xUnit test
 // attribute ([Fact]/[Theory]/[LiveFact]) rather than derived from it, so "which guarantee" and "how it runs"

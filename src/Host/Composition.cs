@@ -1,14 +1,15 @@
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.DependencyInjection;
-using RemoteAgents.Domain.Agents;
-using RemoteAgents.Domain.Agents.Claude;
-using RemoteAgents.Domain.Flow;
-using RemoteAgents.Features.Flows.Module;
-using RemoteAgents.Features.Git.Module;
-using RemoteAgents.Infrastructure.Paths;
-using RemoteAgents.Infrastructure.Projects;
+using ABox.Domain.Agents;
+using ABox.Domain.Agents.Claude;
+using ABox.Domain.Flow;
+using ABox.Features.Flows.Module;
+using ABox.Features.Git.Module;
+using ABox.Features.Projects.Module;
+using ABox.Infrastructure.Paths;
+using ABox.Infrastructure.Projects;
 
-namespace RemoteAgents.Host;
+namespace ABox.Host;
 
 internal static class Composition
 {
@@ -34,6 +35,7 @@ internal static class Composition
         services.AddSingleton<ResolverSelector>();
         services.AddSingleton<IAgentFactory, AgentFactory>();
 
+        services.AddProjects();
         services.AddFlows(flows);
         services.AddGit();
     }

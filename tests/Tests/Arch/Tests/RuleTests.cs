@@ -1,8 +1,8 @@
 using ArchUnitNET.xUnit;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
-using static RemoteAgents.Tests.Arch.Support.ArchitectureModel;
+using static ABox.Tests.Arch.Support.ArchitectureModel;
 
-namespace RemoteAgents.Tests.Arch.Tests;
+namespace ABox.Tests.Arch.Tests;
 
 // One enforcing test per block in the Arch Rulebook, linked by the [Rule] id. The header carries the
 // rule itself + its rationale; this carries the executable assertion. ParityTests keeps them in sync.
@@ -39,9 +39,9 @@ public class RuleTests
     [Rule("Git operations depend on the floor, not on the flow engine")]
     [Fact]
     public void GitDependsOnFloorNotFlowEngine() =>
-        Types().That().ResideInNamespaceMatching(@"^RemoteAgents\.Domain\.Git(\.|$)").Should()
+        Types().That().ResideInNamespaceMatching(@"^ABox\.Domain\.Git(\.|$)").Should()
             .NotDependOnAny(Types().That()
-                .ResideInNamespaceMatching(@"^RemoteAgents\.Domain\.Flow(\.|$)").As("the flow engine"))
+                .ResideInNamespaceMatching(@"^ABox\.Domain\.Flow(\.|$)").As("the flow engine"))
             .Check(Architecture);
 
     [Rule("The agent spawn and billing primitives are internal to Domain.Agents")]

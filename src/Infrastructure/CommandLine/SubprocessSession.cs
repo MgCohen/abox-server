@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Threading.Channels;
 
-namespace RemoteAgents.Infrastructure.CommandLine;
+namespace ABox.Infrastructure.CommandLine;
 
 public sealed class SubprocessSession : IAsyncDisposable
 {

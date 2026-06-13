@@ -1,15 +1,15 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
-using RemoteAgents.Domain.Flow;
-using RemoteAgents.Features.Flows.Cancel;
-using RemoteAgents.Features.Flows.Catalog;
-using RemoteAgents.Features.Flows.Get;
-using RemoteAgents.Features.Flows.List;
-using RemoteAgents.Features.Flows.Start;
-using RemoteAgents.Features.Flows.Watch;
+using ABox.Domain.Flow;
+using ABox.Features.Flows.Cancel;
+using ABox.Features.Flows.Catalog;
+using ABox.Features.Flows.Get;
+using ABox.Features.Flows.List;
+using ABox.Features.Flows.Start;
+using ABox.Features.Flows.Watch;
 
-namespace RemoteAgents.Features.Flows.Module;
+namespace ABox.Features.Flows.Module;
 
 public static class FlowsModule
 {

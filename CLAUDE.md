@@ -38,16 +38,16 @@ which is exactly what we're re-authoring.
 
 ## The rebuild lives in `/src` + `/tests`
 
-One unified solution: `RemoteAgents.slnx`. Projects: `Core` (generic infra) ←
-`RemoteAgents` (the orchestrator — `Agents/`, `Steps/`, `Flows/` as folders, not
+One unified solution: `ABox.slnx`. Projects: `Core` (generic infra) ←
+`ABox` (the orchestrator — `Agents/`, `Steps/`, `Flows/` as folders, not
 separate assemblies); `Hosting` + `Host` compose; `Contracts` holds shared wire
 DTOs. An assembly boundary exists only where it earns enforcement or reuse — see
 `PLANS/rebuild/03-implementation-plan.md` § Assembly layout.
 
 **Build & test:**
 ```
-dotnet build RemoteAgents.slnx
-dotnet test  RemoteAgents.slnx
+dotnet build ABox.slnx
+dotnet test  ABox.slnx
 ```
 
 **Tests are Rulebooks.** `tests/` is organized into six types (Arch, Structure,

@@ -1,6 +1,6 @@
 using System.Reflection;
 
-namespace RemoteAgents.Tests.Harness;
+namespace ABox.Tests.Harness;
 
 // The registry of run attributes that mark a method as a repo test that must cite a [Rule]: [Fact], [Theory],
 // and the [LiveFact] gate. A method is matched by attribute type NAME, not by a base-type check against

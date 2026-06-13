@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 
-namespace RemoteAgents.Domain.Flow;
+namespace ABox.Domain.Flow;
 
 public sealed class FlowRegistry(IFlowHistory history)
 {

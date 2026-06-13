@@ -1,4 +1,4 @@
-namespace RemoteAgents.Domain.Agents.Codex;
+namespace ABox.Domain.Agents.Codex;
 
 public sealed record CodexConfig(
     string Name,

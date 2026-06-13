@@ -1,8 +1,8 @@
-using RemoteAgents.Domain.Agents;
-using RemoteAgents.Domain.Flow;
-using RemoteAgents.Domain.Flow.Operations;
+using ABox.Domain.Agents;
+using ABox.Domain.Flow;
+using ABox.Domain.Flow.Operations;
 
-namespace RemoteAgents.Tests.Support;
+namespace ABox.Tests.Support;
 
 // Walking-skeleton stub: placeholder steps around one fake agent, kept CLI-free. Test fixture used to
 // exercise the live host end-to-end (start → run → snapshot → cancel) without a real provider. Builds

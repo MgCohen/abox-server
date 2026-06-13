@@ -94,8 +94,8 @@ structured transcript per session to disk. We're not reading it.
 ### 3a. Claude Code — `~/.claude/projects/<encoded-cwd>/<session-id>.jsonl`
 
 `encoded-cwd` = the absolute path with `\`, `/`, and `:` replaced by `-`.
-Example for our repo: `C:\Unity\remote-unity-agents` →
-`C--Unity-remote-unity-agents`.
+Example for our repo: `C:\Unity\abox.server` →
+`C--Unity-abox.server`.
 
 Since the orchestrator passes `--session-id <uuid>` on fresh runs (claude
 provider, `src/providers/claudeProvider.js:46`), we **know the exact path
