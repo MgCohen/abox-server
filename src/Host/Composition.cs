@@ -8,6 +8,7 @@ using ABox.Features.Git.Module;
 using ABox.Features.Projects.Module;
 using ABox.Infrastructure.Paths;
 using ABox.Infrastructure.Projects;
+using ABox.Infrastructure.Storage;
 
 namespace ABox.Host;
 
@@ -26,6 +27,9 @@ internal static class Composition
 
         services.AddSingleton<IOrchestratorPaths, OrchestratorPaths>();
         services.AddSingleton<IProjectRegistry, ProjectRegistry>();
+
+        services.AddSingleton(StorageRoot.Default);
+        services.AddSingleton(typeof(IRepository<>), typeof(JsonRepository<>));
 
         services.AddSingleton<PendingDecisions>();
         services.AddSingleton<IDecisionResolver, InteractiveResolver>();

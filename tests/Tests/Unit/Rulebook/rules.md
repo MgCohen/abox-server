@@ -17,3 +17,19 @@ Template:
 > set of Rules below is intentionally smaller than the set of tests in `Unit/Tests/`.
 
 ---
+
+### JsonRepository round-trips entities through Add, Get, Update, and Remove
+- Why: the storage seam's core contract — an entity written through the repository is read back, replaced,
+  and deleted by id, with `GetAll`/`GetById` reflecting each mutation.
+
+### JsonRepository reloads persisted entities from a fresh instance
+- Why: writes are durable — a new repository over the same store sees everything a prior instance wrote,
+  proving persistence is on disk, not just in the in-memory cache.
+
+### JsonRepository starts empty when the backing file is unreadable
+- Why: a corrupt or unreadable store is non-fatal — the repository starts empty and a subsequent write
+  recovers it, so a bad file never crashes startup.
+
+### JsonRepository serializes concurrent writers without tearing the store
+- Why: the `SemaphoreSlim` + atomic temp→`File.Replace` write means concurrent `Add`s all land and the
+  on-disk file always parses — no torn write under contention.

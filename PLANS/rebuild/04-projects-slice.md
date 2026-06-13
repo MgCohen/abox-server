@@ -3,7 +3,15 @@
 Status: **built (2026-06-13).** Self-contained spec — readable without prior
 context. Implements the first real end-to-end feature of the rebuild: a server
 API that lists the projects the orchestrator can work on, and the model behind
-it. Storage is deliberately stubbed (see The stub).
+it. Storage was deliberately stubbed (see The stub).
+
+> **Superseded — storage (2026-06-13):** [`05-storage-repository.md`](05-storage-repository.md)
+> replaced the stub with real persistence and **revised the "port in Domain"
+> decision below.** Storage is now an *infrastructure* concern: the `IProjects`
+> port and `StubProjects` are gone; `Project : IEntity` is persisted by the
+> open-generic `IRepository<Project>` (JSON store) resolved in the endpoint. The
+> Domain↔DTO split, the GUID-id reasoning, and the additive-feature framing all
+> still hold; only the storage seam moved out of Domain.
 
 ## Why this feature
 
