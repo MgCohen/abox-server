@@ -19,8 +19,8 @@ public class WireTests(WireApp app) : IClassFixture<WireApp>
         Assert.Contains("ok", await res.Content.ReadAsStringAsync());
     }
 
-    [Rule("projects lists the stub projects as wire DTOs")]
-    public async Task Projects_lists_the_stub_projects()
+    [Rule("projects lists the seeded projects as wire DTOs")]
+    public async Task Projects_lists_the_seeded_projects()
     {
         using var res = await app.CreateClient().GetAsync("/projects");
 
