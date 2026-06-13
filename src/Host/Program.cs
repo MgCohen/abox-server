@@ -1,8 +1,8 @@
 using ABox.Features.Flows.Module;
 using ABox.Features.Git.Module;
+using ABox.Features.Projects.Module;
 using ABox.Features.Tasks.Module;
 using ABox.Host;
-using ABox.Infrastructure.Projects;
 
 var builder = WebApplication.CreateBuilder(args);
 Composition.AddServices(builder);
@@ -12,8 +12,7 @@ app.UseCors(Composition.CorsPolicy);
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
-app.MapGet("/projects", (IProjectRegistry projects) => projects.List());
-
+app.MapProjects();
 app.MapFlows();
 app.MapGit();
 app.MapTasks();

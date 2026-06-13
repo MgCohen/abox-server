@@ -1,6 +1,6 @@
 # Projects feature — vertical slice spec
 
-Status: **planned, not yet built.** Self-contained spec — readable without prior
+Status: **built (2026-06-13).** Self-contained spec — readable without prior
 context. Implements the first real end-to-end feature of the rebuild: a server
 API that lists the projects the orchestrator can work on, and the model behind
 it. Storage is deliberately stubbed (see The stub).

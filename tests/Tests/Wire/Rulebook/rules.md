@@ -17,8 +17,9 @@ Template:
 ### health returns ok
 - Why: the liveness probe must route and serialize — the simplest proof the Host composes and answers.
 
-### projects lists the registered projects
-- Why: GET /projects must route to the registry and serialize the project list to JSON.
+### projects lists the stub projects as wire DTOs
+- Why: GET /projects must route to IProjects and serialize the domain Project list to ProjectDto JSON
+  ({id, name}), proving the Domain → Contracts mapping on the wire.
 
 ### a started flow streams snapshots over SSE to completion
 - Why: the core streaming contract — POST /flows starts a run and returns its id; GET /flows/{id}/events
