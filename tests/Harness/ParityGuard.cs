@@ -2,22 +2,27 @@ using System.Reflection;
 
 namespace ABox.Tests.Harness;
 
-// The parity engine shared by every test type: it keeps a type's Rulebook (Rulebook/rules.md) and the
-// [Rule]-cited tests enforcing it in lockstep, scoped to the anchor type's namespace so multiple Rulebooks
-// coexist in one assembly without bleeding into each other's parity.
+// The parity engine: it keeps one test type's Rulebook (Rulebook/rules.md) and the [Rule]-cited tests that
+// enforce it in lockstep, scoped to a single namespace so types in the shared assembly don't bleed into each
+// other's parity. The Meta type drives this once over every registered type.
 public sealed class ParityGuard
 {
     private const string Heading = "### ";
 
-    private readonly Type anchor;
+    private readonly Assembly assembly;
+    private readonly string scope;
 
-    private ParityGuard(Type anchor) => this.anchor = anchor;
+    private ParityGuard(Assembly assembly, string scope)
+    {
+        this.assembly = assembly;
+        this.scope = scope;
+    }
 
-    public static ParityGuard For(Type anchor) => new(anchor);
+    public static ParityGuard For(Assembly assembly, string testTypeNamespace) => new(assembly, testTypeNamespace);
 
     public void Assert(bool requireAllCited = false)
     {
-        var rulebookPath = DeriveRulebookPath(anchor);
+        var rulebookPath = DeriveRulebookPath(scope);
         var declared = DeclaredRules(rulebookPath);
         var methods = ScopedMethods();
 
@@ -49,28 +54,25 @@ public sealed class ParityGuard
             """);
     }
 
-    // ABox.Tests.<Type>.Tests -> <Type>/Rulebook/rules.md. The path drifts with the folder; IDE0130 keeps
-    // the namespace mirroring the folder, so deriving it here means no literal to hand-sync at a call site.
-    private static string DeriveRulebookPath(Type anchor)
+    // ABox.Tests.<Type>.Tests -> <Type>/Rulebook/rules.md. The path drifts with the folder; IDE0130 keeps the
+    // namespace mirroring the folder, so deriving it here means no literal to hand-sync.
+    private static string DeriveRulebookPath(string scope)
     {
-        var parts = (anchor.Namespace ?? "").Split('.');
+        var parts = scope.Split('.');
         if (parts.Length < 4 || parts[0] != "ABox" || parts[1] != "Tests" || parts[^1] != "Tests")
             throw new ArgumentException(
-                $"Cannot derive a Rulebook path from namespace '{anchor.Namespace}'. A Parity anchor must live " +
-                "in 'ABox.Tests.<Type>.Tests' so the path resolves to '<Type>/Rulebook/rules.md'.", nameof(anchor));
+                $"Cannot derive a Rulebook path from namespace '{scope}'. A test type's namespace must be " +
+                "'ABox.Tests.<Type>.Tests' so the path resolves to '<Type>/Rulebook/rules.md'.", nameof(scope));
         return $"{parts[2]}/Rulebook/rules.md";
     }
 
-    private IReadOnlyList<MethodInfo> ScopedMethods()
-    {
-        var scope = anchor.Namespace ?? "";
-        return anchor.Assembly.GetTypes()
-            .Where(t => InScope(t.Namespace, scope))
+    private IReadOnlyList<MethodInfo> ScopedMethods() =>
+        assembly.GetTypes()
+            .Where(t => InScope(t.Namespace))
             .SelectMany(t => t.GetMethods())
             .ToList();
-    }
 
-    private static bool InScope(string? ns, string scope) =>
+    private bool InScope(string? ns) =>
         ns is not null && (ns == scope || ns.StartsWith(scope + ".", StringComparison.Ordinal));
 
     private static IReadOnlyList<string> DeclaredRules(string rulebookPath)

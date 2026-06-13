@@ -2,21 +2,22 @@
 name: test-rulebook
 description: >-
   How to add, move, or modify a test in this repo's tests/ tree. Use when writing an
-  xUnit test, deciding which of the six test types (Arch, Structure, Unit, E2E, Wire,
-  Live) a test belongs in, adding or editing a Rulebook (rules.md), or when a parity /
-  ArchUnitNET / Structure test fails. Keeps every test paired with a Rulebook Rule so
-  the ParityGuard stays green.
+  xUnit test, deciding which of the seven test types (Arch, Structure, Unit, E2E, Wire,
+  Live, Meta) a test belongs in, adding or editing a Rulebook (rules.md), or when a parity /
+  ArchUnitNET / Structure / Meta test fails. Keeps every test paired with a Rulebook Rule so
+  the parity guard stays green.
 ---
 
 # Adding a test = adding (or citing) a Rule
 
 Every test *type* in `tests/Tests/` is a **Rulebook**: a `<Type>/Rulebook/` folder with
 `template.md` (the type's Rule shape) and `rules.md` (a preamble + the `### ` Rules), each
-Rule enforced by a `[Rule("<header>")]` xUnit fact in `<Type>/Tests/`. A per-type `ParityGuard`
-fact fails the build if a Rule has no test or a test cites no Rule. So a test never lands
-alone — it lands **with its Rule**.
+Rule enforced by a `[Rule("<header>")]` xUnit fact in `<Type>/Tests/`. The **Meta** type runs
+one parity check over every type and fails the build if a Rule has no test or a test cites no
+Rule. So a test never lands alone — it lands **with its Rule**. (Six types test the product;
+Meta tests the test system itself.)
 
-Engine: `tests/Harness/` (`Rule.cs`, `ParityGuard.cs`). Detail docs:
+Engine: `tests/Harness/` (`Rule.cs`, `ParityGuard.cs`, `TestTypes`, `RulebookFormat`, `RepoTree`). Detail docs:
 [`tests/README.md`](../../../tests/README.md), [`tests/Tests/README.md`](../../../tests/Tests/README.md),
 [`tests/Harness/README.md`](../../../tests/Harness/README.md). The plan is
 [`PLANS/test-structure.md`](../../../PLANS/test-structure.md). Read those before
@@ -41,17 +42,19 @@ inventing structure; this skill is the *procedure*.
 | A whole flow end-to-end with a scripted (non-real) provider | **E2E** | real `Composition` via `FlowHarness` |
 | An HTTP endpoint contract | **Wire** | `WebApplicationFactory<Program>` |
 | The **real** `claude`/`codex` CLI + subscription | **Live** | real CLI, gated `[LiveFact]` / `RUN_LIVE=1` |
+| An invariant about the **test system itself** (taxonomy / Rulebook format / parity) | **Meta** | reflection + disk over the test tree |
 
 Rule of thumb: no real network/CLI/browser → Unit unless it spans a flow (E2E) or the
 HTTP surface (Wire). Real CLI → Live (and it **must** be `[LiveFact]`, never `[Fact]`,
-so CI skips it).
+so CI skips it). Testing the *product* → one of the first six; testing the *test system* → Meta.
 
 **Need a whole new *type* (not just a Rule)?** Rare — only when no existing type can host
 the guarantee (don't fork Unit into near-twins). Follow the step-by-step in
 `tests/Harness/README.md` § *Standing up a new test type*: create `<Type>/{Rulebook,Tests,Support}/`,
 fill `template.md` + `rules.md` from the canonical skeleton (don't copy a sibling), register the type
-in `Structure/Support/TestTypes`, add the `[ParityFact]` (`requireAllCited` if the set is complete), and
-write ≥1 Rule. No csproj edit needed. Don't invent a new Rulebook *shape* — reuse the uniform one.
+in `Harness/TestTypes` (add it to `GoingForward` if it backfills), and write ≥1 Rule. No csproj edit and
+no parity fact — the Meta type runs parity over your type once it's registered. Don't invent a new
+Rulebook *shape* — reuse the uniform one.
 
 ## 2. Add the test
 
@@ -74,13 +77,13 @@ write ≥1 Rule. No csproj edit needed. Don't invent a new Rulebook *shape* — 
 ## 3. Completeness (the one knob)
 
 Parity is always **1:N** — every Rule needs ≥1 test, every `[Rule]` cites a real header, a
-guarantee may have several case tests. The one knob is `Assert(requireAllCited: true)`: must
-*every* test in scope cite a Rule?
+guarantee may have several case tests. The one knob is `requireAllCited` — must *every* test in
+scope cite a Rule? — set per type by `TestTypes.RequiresAllCited`:
 
-- **Arch / Structure / E2E / Wire → `requireAllCited: true`.** The Rulebook is the complete
-  set; a bare `[Fact]` with no `[Rule]` fails parity.
-- **Unit / Live → default.** They accrue going-forward, so an uncited `[Fact]` is tolerated
-  until backfilled. (`ParityGuard.For(typeof(ParityTests)).Assert()`.)
+- **Complete types (Arch / Structure / E2E / Wire / Meta).** The Rulebook is the full set; a
+  bare `[Fact]` with no `[Rule]` fails parity.
+- **Going-forward types (Unit / Live).** They accrue over time, so an uncited `[Fact]` is
+  tolerated until backfilled (listed in `TestTypes.GoingForward`).
 
 ## 4. Derive, don't hardcode
 
@@ -100,8 +103,8 @@ unrelated code can turn the test red, you hardcoded something you should have de
   `None ... CopyToOutputDirectory` glob; `ParityGuard` reads `rules.md` at runtime. A Rule in a
   stray `.md` won't be seen.
 - **`rules.md` holds only Rules.** The example `### ` lives in `template.md`, not `rules.md`, so
-  every `### ` in `rules.md` counts — there's no fence to skip and nothing to game. Two Structure
-  guards enforce this: every Rule matches its `template.md`, and `rules.md` carries no stray sections.
+  every `### ` in `rules.md` counts — there's no fence to skip and nothing to game. Two Meta guards
+  enforce this: every Rule matches its `template.md`, and `rules.md` carries no stray sections.
 - **Arch model** auto-loads every production assembly from the output dir and excludes
   `*.Tests.*`. To add a layer band, add an `IObjectProvider<IType>` + `Layer` entry (with
   its `MayDependOn`) in `Arch/Support/ArchitectureModel` — the down-only rule covers it.

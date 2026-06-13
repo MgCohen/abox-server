@@ -1,10 +1,8 @@
-using ABox.Tests.Structure.Support;
+namespace ABox.Tests.Meta.Tests;
 
-namespace ABox.Tests.Structure.Tests;
-
-// Self-consistency of the Rulebooks themselves: every Rule matches its type's template.md schema, and each
-// rules.md holds nothing but its title and Rules. Read from disk like every other placement guard, so a new
-// test type is covered the moment its Rulebook folder lands — no per-type wiring.
+// The Rulebooks themselves stay well-formed: every Rule matches its type's template.md, and each rules.md
+// holds nothing but its title and Rules. Read from disk (RepoTree + RulebookFormat), so a new type's Rulebook
+// is covered the moment it lands.
 public class RulebookFormatTests
 {
     [Rule("Every Rule matches its type's template")]
@@ -12,7 +10,7 @@ public class RulebookFormatTests
     public void EveryRuleMatchesItsTemplate()
     {
         var violations = new List<string>();
-        foreach (var folder in SourceTree.RulebookFolders())
+        foreach (var folder in RepoTree.RulebookFolders())
         {
             var schema = RulebookFormat.ReadSchema(Path.Combine(folder, "template.md"));
             var rulesPath = Path.Combine(folder, "rules.md");
@@ -41,7 +39,7 @@ public class RulebookFormatTests
     public void EveryRulebookHoldsOnlyRules()
     {
         var violations = new List<string>();
-        foreach (var folder in SourceTree.RulebookFolders())
+        foreach (var folder in RepoTree.RulebookFolders())
         {
             var rulesPath = Path.Combine(folder, "rules.md");
             var headings = RulebookFormat.Headings(File.ReadAllLines(rulesPath));
@@ -63,7 +61,7 @@ public class RulebookFormatTests
             """);
     }
 
-    private static string Rel(string path) => Path.GetRelativePath(SourceTree.Root, path);
+    private static string Rel(string path) => Path.GetRelativePath(RepoTree.Root, path);
 
     private static string Join(IEnumerable<string> labels) =>
         string.Join(", ", labels.OrderBy(l => l, StringComparer.Ordinal));

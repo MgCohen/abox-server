@@ -1,11 +1,11 @@
 using System.Text.RegularExpressions;
 
-namespace ABox.Tests.Structure.Support;
+namespace ABox.Tests.Harness;
 
-// Parses a Rulebook's markdown into the structure the format/grammar guards check: the headings (with level)
-// and each '### ' Rule's set of bold-label bullets. A type's template.md carries one example Rule that fixes
-// the schema; every Rule in rules.md must match it.
-internal static class RulebookFormat
+// Parses a Rulebook's markdown into the structure the Meta format guards check: the headings (with level) and
+// each '### ' Rule's set of bold-label bullets. A type's template.md carries one bare example Rule that fixes
+// the schema (fenced examples in it are ignored); every Rule in rules.md must match it.
+public static class RulebookFormat
 {
     private static readonly Regex LabelBullet = new(@"^\s*-\s+\*\*(?<label>[^:*]+):\*\*", RegexOptions.Compiled);
     private const char Arrow = '→';
@@ -18,11 +18,11 @@ internal static class RulebookFormat
 
     public static Schema ReadSchema(string templatePath)
     {
-        var rules = Rules(File.ReadAllLines(templatePath));
+        var rules = Rules(OutsideFences(File.ReadAllLines(templatePath)));
         if (rules.Count != 1)
             throw new InvalidOperationException(
-                $"Template '{templatePath}' must contain exactly one '### ' example Rule defining the schema; " +
-                $"found {rules.Count}.");
+                $"Template '{templatePath}' must contain exactly one bare '### ' example Rule defining the " +
+                $"schema (fenced examples are ignored); found {rules.Count}.");
         return new Schema(rules[0].HeaderHasArrow, rules[0].Labels);
     }
 
@@ -57,6 +57,25 @@ internal static class RulebookFormat
             rules.Add(new RuleBlock(header, header.Contains(Arrow), labels));
         }
         return rules;
+    }
+
+    // Template files may show fenced examples for humans; those lines are dropped before the schema is read, so
+    // only the bare example counts. rules.md is never fence-filtered — every '### ' there is a real Rule.
+    private static IReadOnlyList<string> OutsideFences(IReadOnlyList<string> lines)
+    {
+        var kept = new List<string>();
+        var inFence = false;
+        foreach (var line in lines)
+        {
+            if (line.StartsWith("```", StringComparison.Ordinal))
+            {
+                inFence = !inFence;
+                continue;
+            }
+            if (!inFence)
+                kept.Add(line);
+        }
+        return kept;
     }
 
     private static int HeadingLevel(string line)
