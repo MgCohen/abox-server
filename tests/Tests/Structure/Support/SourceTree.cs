@@ -44,6 +44,22 @@ internal static class SourceTree
             .ToList();
     }
 
+    // Every <Type>/Rulebook/ folder under tests/Tests/ — the input to the Rulebook format/grammar guards.
+    public static IReadOnlyList<string> RulebookFolders()
+    {
+        var testsRoot = Path.Combine(Root, "tests", "Tests");
+        if (!Directory.Exists(testsRoot))
+            throw new DirectoryNotFoundException(
+                $"No 'tests/Tests/' under '{Root}'. The Rulebook-format guards would be vacuously green — " +
+                "fix the locator or the layout.");
+
+        return Directory.EnumerateDirectories(testsRoot)
+            .Select(t => Path.Combine(t, "Rulebook"))
+            .Where(Directory.Exists)
+            .OrderBy(d => d, StringComparer.Ordinal)
+            .ToList();
+    }
+
     // The top-most bin/obj/artifacts folders found under src/ or tests/ — Rule 13. The only legal
     // artifacts home is the repo-root /artifacts; any here means a project escaped the root props.
     public static IReadOnlyList<string> StrayBuildOutput() =>

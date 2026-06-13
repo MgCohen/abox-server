@@ -6,16 +6,21 @@ doubles, and harnesses stay in that type's own `Support/` until a *second* type 
 
 ## Every test type is a Rulebook
 
-A **Rulebook** (`<Type>/Rulebook/rules.md`) is the natural-language statement of what one test type
-guarantees. A **Rule** is one `### ` header in it. What a Rule *means* varies by type —
+A **Rulebook** is a folder `<Type>/Rulebook/` holding **two files**:
+
+- **`template.md`** — the type's Rule *shape*: one example Rule, header + `**Why:**` bullet. The schema, in one place.
+- **`rules.md`** — a short preamble, then the type's **Rules**. A **Rule** is one `### ` header here.
+
+What a Rule *means* varies by type —
 
 - **Arch** Rule = a dependency invariant: *"Dependencies flow down the layer graph only"*
 - **Structure** Rule = a placement invariant: *"Every project lives under an agreed home folder"*
-- **Unit** Rule = an expected result: *"Reverse of empty returns empty"*
+- **Unit** Rule = an expected result: *"Reverse of empty → empty"*
 - **E2E / Wire / Live** Rule = a flow / endpoint / real-CLI guarantee
 
-— but the **file shape, location, and parity discipline are identical across every type.** Learn the format
-from any Rulebook's own header; write the next Rule from its template.
+— but the **file shape, location, and parity discipline are identical across every type.** Splitting the
+template out of `rules.md` is deliberate: `rules.md` then holds nothing but Rules (no example `### ` to skip,
+nothing to game), and the two Structure guards below can enforce both halves.
 
 ## The two pieces
 
@@ -25,17 +30,19 @@ from any Rulebook's own header; write the next Rule from its template.
 - **`ParityGuard.cs`** — keeps a Rulebook and its tests in lockstep. Each type drops in one parity fact:
 
   ```csharp
-  public class Parity
+  public class ParityTests
   {
-      [Fact] public void RulebookMatchesTests() =>
-          ParityGuard.For(typeof(Parity)).Assert("Arch/Rulebook/rules.md");
+      [ParityFact] public void Rulebook_and_tests_are_in_sync() =>
+          ParityGuard.For(typeof(ParityTests)).Assert();
   }
   ```
 
   `For(anchor)` scopes `[Rule]` discovery to the anchor type's **namespace**, so multiple Rulebooks coexist
   in one assembly without counting against each other (Arch and Structure share a project — their Rules must
-  not bleed). `Assert(path)` loads the `### ` headers from the copied Rulebook and compares them to the
-  `[Rule]`s in scope, failing the build on any mismatch.
+  not bleed). `Assert()` derives the Rulebook path from that namespace (`ABox.Tests.<Type>.Tests` →
+  `<Type>/Rulebook/rules.md`), loads its `### ` headers, and compares them to the `[Rule]`s in scope, failing
+  the build on any mismatch. `[ParityFact]` is a plain `[Fact]` exempt from the cite-a-Rule completeness check
+  (it *is* the check), so the parity fact never has to cite itself.
 
 ## Failure output: active voice, say how to fix
 
@@ -69,25 +76,30 @@ different risk levels:
   here is a **design decision**, not a cleanup: justify why the invariant no longer holds (or moved),
   the same bar as changing the thing the Rule protects. When in doubt, ask — don't quietly edit.
 - **Changing the shape / template / format — most dangerous, and rarely warranted.** The `### `-heading
-  scan, the fenced-block skip, the namespace-scoped discovery, the strict-vs-1:N cardinality, the
-  `Rulebook/` + `Tests/` + `Support/` layout, the csproj copy glob — these are the engine's load-bearing
-  assumptions, shared by **every** type at once. Reshaping the template or the parsing rules can make
-  Rules silently stop being counted (enforcement evaporates with a *green* build) across the whole repo.
-  Don't refactor the format casually; a change here is an architecture change to the test system, with the
-  burden of proof to match.
+  scan, the `template.md` / `rules.md` split, the namespace-scoped discovery + path derivation, the
+  `requireAllCited` completeness knob, the `Rulebook/` + `Tests/` + `Support/` layout, the csproj copy glob,
+  and the two Structure format guards (*Every Rule matches its type's template*, *Every Rulebook holds only
+  rules*) — these are the engine's load-bearing assumptions, shared by **every** type at once. Reshaping the
+  template or the parsing rules can make Rules silently stop being counted (enforcement evaporates with a
+  *green* build) across the whole repo. Don't refactor the format casually; a change here is an architecture
+  change to the test system, with the burden of proof to match.
 
 The summary: **add Rules liberally; change or remove them deliberately; reshape the convention almost
 never.**
 
-## Cardinality (the one knob)
+## Completeness (the one knob)
 
-`ParityGuard.For(anchor)` defaults to **1:N** and `For(anchor, strict: true)` is **1:1**:
+Parity is always **1:N** — every Rule has ≥1 cited test, every `[Rule]` cites a real Rule, no Rule is
+undocumented; a Rule may be realized by several case tests. The lone knob is `Assert(requireAllCited: true)`,
+the *completeness* guard — **is every test in scope cited?**:
 
-- **Arch / Structure → `strict: true`.** One invariant, one sweeping assertion. A Rule tested twice, or a
-  test with no Rule, is an error.
-- **Unit / E2E / Wire / Live → default (1:N).** One guarantee may be realized by several case tests. The
-  contract is *every Rule has ≥1 test; every `[Rule]` test cites a real Rule; no Rule is undocumented* —
-  duplicates allowed.
+- **Arch / Structure / E2E / Wire → `requireAllCited: true`.** The Rulebook is the complete set; a bare test
+  (a `[Fact]` with no `[Rule]`) is an error.
+- **Unit / Live → default.** The Rulebook accrues going-forward, so an uncited `[Fact]` is tolerated until it
+  is backfilled with its Rule. Every `[Rule]` still pairs with a real header.
+
+(There is no duplicate-citation ban: a universal sweep plus a focused edge-case method may both cite the same
+Rule — that's the 1:N freedom, not drift.)
 
 ## Adoption is staged
 
@@ -100,37 +112,69 @@ backfilled opportunistically, never in one swept pass. A behavioral Rulebook sta
 
 ```
 <Type>/
-  Rulebook/  rules.md   the Rules — opens with a self-teaching preamble + this type's Rule template
-  Tests/                the [Rule]-tagged facts that enforce them + one Parity fact
-  Support/              optional, type-local: models, doubles, harnesses (no over-sharing)
+  Rulebook/  template.md   this type's Rule shape: one example Rule (header + **Why:**)
+             rules.md      a short preamble, then the type's '### ' Rules
+  Tests/                   the [Rule]-tagged facts that enforce them + one ParityFact
+  Support/                 optional, type-local: models, doubles, harnesses (no over-sharing)
 ```
 
-`Rulebook/rules.md` must be copied to the output directory so `ParityGuard` can read it at runtime — each
-type's csproj does this with a `None Include="**\Rulebook\*.md" CopyToOutputDirectory="PreserveNewest"`.
-Namespace mirrors folder, enforced at compile time by IDE0130 (`/.editorconfig`, scoped to `tests/`), so the
-type-folder taxonomy can't silently drift.
+Both Rulebook files are copied to the output directory so the guards can read them at runtime — the csproj
+does this with a `None Include="**\Rulebook\*.md" CopyToOutputDirectory="PreserveNewest"` (so a new type needs
+no csproj edit). Namespace mirrors folder, enforced at compile time by IDE0130 (`/.editorconfig`, scoped to
+`tests/`), so the type-folder taxonomy can't silently drift — and `Assert()` derives the Rulebook path from
+that namespace.
 
 ## Standing up a new test *type* (a new Rulebook)
 
 A new type is rarer and weightier than a new Rule — it's a new *kind* of guarantee, so add one only when an
 existing type genuinely can't host it (don't fork Unit into near-twins). Adding a Rule to an existing type
-is almost always the right move instead. When a new type really is warranted, define its Rulebook by
-following any existing one as the worked example — the shape is uniform on purpose:
+is almost always the right move instead. When a new type really is warranted, **fill the canonical skeleton**
+below — don't copy a sibling and edit (that's how two `Why:` stylings and six near-identical preambles crept
+in). The skeleton is the one owner of the shape:
 
-1. **Create `tests/Tests/<Type>/`** with the three sub-folders: `Rulebook/`, `Tests/`, and (if needed)
-   `Support/`. Namespace mirrors folder (`ABox.Tests.<Type>…`); IDE0130 enforces it.
-2. **Write `<Type>/Rulebook/rules.md`** — copy the preamble + Rule template from a sibling Rulebook and adapt
-   the one-line description of *what a Rule means for this type*. Don't invent a new template shape (see the
-   stability contract); the template is shared structure, not per-type creativity.
-3. **Add the Parity fact** in `<Type>/Tests/`: a single `[Fact]` calling
-   `ParityGuard.For(typeof(Parity)[, strict: true]).Assert("<Type>/Rulebook/rules.md")`. Choose strictness
-   deliberately — **1:1 (`strict: true`)** for invariant types where one Rule is one assertion (like Arch /
-   Structure), **1:N (default)** for behavioral types where a guarantee may have several case tests.
-4. **Write at least one `### ` Rule + its `[Rule("<header>")]` fact** so the type isn't an empty shell
-   (an Arch/Structure-style type ships complete; a behavioral type may start with one Rule and grow — see
-   *Adoption is staged*).
-5. **No csproj edit is needed** — `Tests.csproj` already globs `**\Rulebook\*.md` to the output and compiles
-   every `.cs` under the type. Just rebuild; the Parity fact proves the new Rulebook is wired correctly.
+```markdown
+<!-- <Type>/Rulebook/template.md -->
+# <Type> Rulebook — Rule template
 
-If the new type lives in the merged `ABox.Tests` assembly, its `Parity` anchor's namespace keeps its
-Rules from bleeding into another type's parity — that's why each type carries its own `Parity` fact.
+The shape every Rule in rules.md must follow. <invariant header (no →) | behavioral header ending in →>;
+exactly one **Why:** bullet. Anything else is a plain prose line under the Rule, never another bold-label bullet.
+
+### <the type's header shape — `<subject> must / must not <…>` or `<…> → <result>`>
+- **Why:** <what this protects>
+```
+
+```markdown
+<!-- <Type>/Rulebook/rules.md -->
+# <Type> Rulebook
+
+<one line: what a Rule means for this type>. Convention, parity discipline, and the Rule shape live in
+[`../../../Harness/README.md`](../../../Harness/README.md) and `template.md`.
+
+---
+
+### <first Rule, in the template's header shape>
+- **Why:** <…>
+```
+
+Then:
+
+1. **Create `tests/Tests/<Type>/`** with `Rulebook/`, `Tests/`, and (if needed) `Support/`. Namespace mirrors
+   folder (`ABox.Tests.<Type>…`); IDE0130 enforces it.
+2. **Fill `template.md` + `rules.md`** from the skeleton above — pick the header shape (invariant or
+   behavioral) and adapt the one-line "what a Rule means here." Don't invent a new shape (see the stability
+   contract); it's shared structure, not per-type creativity.
+3. **Register the type** in `Structure/Support/TestTypes.Registered`. The *Every folder under tests holds a
+   registered test type* guard goes red the moment the folder lands unregistered — this is the deliberate gate.
+4. **Add the parity fact** in `<Type>/Tests/`: a single `[ParityFact]` calling
+   `ParityGuard.For(typeof(ParityTests)).Assert(requireAllCited: <bool>)`. Pass `requireAllCited: true` when
+   the Rulebook is the complete set (every test cites a Rule, like Arch / Structure); omit it for a
+   going-forward type that backfills (Unit / Live). The path is derived from the namespace — no string.
+5. **Write at least one `### ` Rule + its `[Rule("<header>")]` fact** so the type isn't an empty shell (an
+   invariant type ships complete; a behavioral type may start with one Rule and grow — see *Adoption is
+   staged*).
+6. **No csproj edit is needed** — `Tests.csproj` already globs `**\Rulebook\*.md` to the output and compiles
+   every `.cs` under the type. Rebuild; the parity fact and the two Structure format guards prove the new
+   Rulebook is wired and well-formed.
+
+The `ParityTests` anchor's namespace keeps the new type's Rules from bleeding into another type's parity —
+that's why each type carries its own parity fact.

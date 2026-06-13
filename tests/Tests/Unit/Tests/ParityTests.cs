@@ -1,11 +1,11 @@
 namespace ABox.Tests.Unit.Tests;
 
 // Guards the link between the Unit Rulebook and its [Rule] tests, via the shared ParityGuard engine.
-// Cardinality 1:N (not strict) — a behavioral guarantee may be realized by several case tests. The
-// Rulebook accrues going-forward, so it (and this guard) starts with whatever Rules have been authored.
+// Default (not requireAllCited): the Rulebook accrues going-forward, so existing [Fact]s may run uncited
+// until backfilled, while every [Rule] still pairs 1:N with a real header.
 public class ParityTests
 {
     [ParityFact]
     public void Rulebook_and_tests_are_in_sync() =>
-        ParityGuard.For(typeof(ParityTests)).Assert("Unit/Rulebook/rules.md");
+        ParityGuard.For(typeof(ParityTests)).Assert();
 }

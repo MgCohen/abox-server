@@ -10,10 +10,11 @@ description: >-
 
 # Adding a test = adding (or citing) a Rule
 
-Every test *type* in `tests/Tests/` is a **Rulebook**: a `<Type>/Rulebook/rules.md`
-whose `### ` headers are the guarantees, enforced by `[Rule("<header>")]` xUnit facts
-in `<Type>/Tests/`. A per-type `ParityGuard` fact fails the build if a Rule has no test
-or a test cites no Rule. So a test never lands alone — it lands **with its Rule**.
+Every test *type* in `tests/Tests/` is a **Rulebook**: a `<Type>/Rulebook/` folder with
+`template.md` (the type's Rule shape) and `rules.md` (a preamble + the `### ` Rules), each
+Rule enforced by a `[Rule("<header>")]` xUnit fact in `<Type>/Tests/`. A per-type `ParityGuard`
+fact fails the build if a Rule has no test or a test cites no Rule. So a test never lands
+alone — it lands **with its Rule**.
 
 Engine: `tests/Harness/` (`Rule.cs`, `ParityGuard.cs`). Detail docs:
 [`tests/README.md`](../../../tests/README.md), [`tests/Tests/README.md`](../../../tests/Tests/README.md),
@@ -25,7 +26,7 @@ inventing structure; this skill is the *procedure*.
 > move; it only tightens guarantees. *Editing, re-wording, or removing* an existing Rule is a
 > **design decision** — each encodes a hard-won invariant, and parity keeps the header/test in
 > lockstep but can't tell you the guarantee got weaker. *Reshaping the template/format/shape* (the
-> `### ` scan, fenced-block skip, layout, cardinality, csproj copy) is the most dangerous: it can make
+> `### ` scan, the `template.md`/`rules.md` split, layout, the completeness knob, csproj copy) is the most dangerous: it can make
 > Rules silently stop being enforced across **every** type at once, with a green build. When a change
 > isn't a plain add, stop and confirm — don't quietly edit. Full contract: `tests/Harness/README.md`
 > § *Stability contract*.
@@ -48,15 +49,18 @@ so CI skips it).
 **Need a whole new *type* (not just a Rule)?** Rare — only when no existing type can host
 the guarantee (don't fork Unit into near-twins). Follow the step-by-step in
 `tests/Harness/README.md` § *Standing up a new test type*: create `<Type>/{Rulebook,Tests,Support}/`,
-copy a sibling's preamble + template, add the `Parity` fact with the right strictness, and write
-≥1 Rule. No csproj edit needed. Don't invent a new Rulebook *shape* — reuse the uniform one.
+fill `template.md` + `rules.md` from the canonical skeleton (don't copy a sibling), register the type
+in `Structure/Support/TestTypes`, add the `[ParityFact]` (`requireAllCited` if the set is complete), and
+write ≥1 Rule. No csproj edit needed. Don't invent a new Rulebook *shape* — reuse the uniform one.
 
 ## 2. Add the test
 
 1. **Write the `### ` Rule** in that type's `Rulebook/rules.md`, phrased as the
-   guarantee itself (Arch/Structure: an invariant — *"Dependencies flow down the layer
-   graph only"*; behavioral: a result — *"claude-ping completes with PONG"*). Match the
-   preamble's template; reuse an existing header if your case proves an existing Rule.
+   guarantee itself and matching the type's `template.md`: Arch/Structure use an invariant
+   header (no arrow) — *"Dependencies flow down the layer graph only"*; behavioral types end
+   in a `→` result — *"claude-ping with a scripted reply → implementer reaches Completed"*.
+   Exactly one `**Why:**` bullet; any extra note is plain prose under the Rule, never another
+   bold-label bullet. Reuse an existing header if your case proves an existing Rule.
 2. **Write the fact** in `<Type>/Tests/` carrying both the xUnit run attribute and a
    `[Rule("<exact header>")]` citation — they compose (`[Fact]` + `[Rule]`), the Rule is
    not derived from `FactAttribute`. Live tests use `[LiveFact]` + `[Rule("<header>")]`.
@@ -67,12 +71,16 @@ copy a sibling's preamble + template, add the `Parity` fact with the right stric
 4. Put any test-only double/harness in `<Type>/Support/`; promote to the shared
    `tests/Tests/Support/` only on a genuine **second** consumer.
 
-## 3. Cardinality (the one knob)
+## 3. Completeness (the one knob)
 
-- **Arch / Structure → strict 1:1.** One invariant, one test. A Rule tested twice, or a
-  test with no Rule, fails parity. (`ParityGuard.For(typeof(Parity), strict: true)`.)
-- **Unit / E2E / Wire / Live → 1:N.** One guarantee may have several case tests; every
-  Rule still needs ≥1 test and every `[Rule]` must cite a real header.
+Parity is always **1:N** — every Rule needs ≥1 test, every `[Rule]` cites a real header, a
+guarantee may have several case tests. The one knob is `Assert(requireAllCited: true)`: must
+*every* test in scope cite a Rule?
+
+- **Arch / Structure / E2E / Wire → `requireAllCited: true`.** The Rulebook is the complete
+  set; a bare `[Fact]` with no `[Rule]` fails parity.
+- **Unit / Live → default.** They accrue going-forward, so an uncited `[Fact]` is tolerated
+  until backfilled. (`ParityGuard.For(typeof(ParityTests)).Assert()`.)
 
 ## 4. Derive, don't hardcode
 
@@ -88,10 +96,12 @@ unrelated code can turn the test red, you hardcoded something you should have de
 - **No new test csproj.** `tests/Tests/ABox.Tests.csproj` globs
   `src\**\ABox.*.csproj` and `**\Rulebook\*.md` — a new feature/slice or
   Rulebook is picked up automatically. Don't add a project per type.
-- **Rulebook must reach the output dir.** It's copied via the `None ... CopyToOutputDirectory`
-  glob; `ParityGuard` reads it at runtime. A Rule in a stray `.md` won't be seen.
-- **Fenced ``` blocks are skipped** when counting Rules, so a Rulebook's own template can
-  show a sample `### ` without it counting as a declared Rule.
+- **Rulebook must reach the output dir.** Both `template.md` and `rules.md` are copied via the
+  `None ... CopyToOutputDirectory` glob; `ParityGuard` reads `rules.md` at runtime. A Rule in a
+  stray `.md` won't be seen.
+- **`rules.md` holds only Rules.** The example `### ` lives in `template.md`, not `rules.md`, so
+  every `### ` in `rules.md` counts — there's no fence to skip and nothing to game. Two Structure
+  guards enforce this: every Rule matches its `template.md`, and `rules.md` carries no stray sections.
 - **Arch model** auto-loads every production assembly from the output dir and excludes
   `*.Tests.*`. To add a layer band, add an `IObjectProvider<IType>` + `Layer` entry (with
   its `MayDependOn`) in `Arch/Support/ArchitectureModel` — the down-only rule covers it.
@@ -104,5 +114,5 @@ dotnet test  ABox.slnx   # parity facts + your new test green (Live stays skippe
 ```
 
 A parity failure names exactly what's out of sync (Rule with no test / test citing a
-missing Rule / Rule tested twice). Fix by aligning the header and the `[Rule("...")]`
+missing Rule / bare test with no Rule). Fix by aligning the header and the `[Rule("...")]`
 string to match exactly.

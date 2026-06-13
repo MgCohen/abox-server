@@ -10,7 +10,7 @@ namespace ABox.Tests.Wire.Tests;
 // routing + serialization + the SSE streaming contract, with a CLI-free StubFlow behind the flow endpoints.
 public class WireTests(WireApp app) : IClassFixture<WireApp>
 {
-    [Rule("health returns ok")]
+    [Rule("GET /health → ok")]
     [Fact]
     public async Task Health_returns_ok()
     {
@@ -20,7 +20,7 @@ public class WireTests(WireApp app) : IClassFixture<WireApp>
         Assert.Contains("ok", await res.Content.ReadAsStringAsync());
     }
 
-    [Rule("projects lists the stub projects as wire DTOs")]
+    [Rule("GET /projects → stub projects as ProjectDto JSON")]
     [Fact]
     public async Task Projects_lists_the_stub_projects()
     {
@@ -33,7 +33,7 @@ public class WireTests(WireApp app) : IClassFixture<WireApp>
         Assert.Contains(projects!, p => p.Name == "Scaffold");
     }
 
-    [Rule("a started flow streams snapshots over SSE to completion")]
+    [Rule("POST /flows then GET /flows/{id}/events → snapshots stream over SSE to completion")]
     [Fact]
     public async Task Started_flow_streams_snapshots_over_sse_to_completion()
     {
