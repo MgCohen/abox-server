@@ -38,12 +38,12 @@ analyzer **IDE0130** (`/.editorconfig`, `severity = error`, scoped to `src/` + `
 Use the **`test-rulebook`** skill (`.claude/skills/test-rulebook/`) — it carries the
 decision table (which type) and the add-a-Rule procedure. In short: pick the type, add a
 `### ` Rule to its `rules.md`, add the `[Rule("<header>")]` fact, keep namespace = folder,
-build + test. No new csproj is ever needed — `Tests.csproj` globs every `src\**\RemoteAgents.*.csproj`
+build + test. No new csproj is ever needed — `Tests.csproj` globs every `src\**\ABox.*.csproj`
 and every `**\Rulebook\*.md`.
 
 ```
-dotnet build RemoteAgents.slnx
-dotnet test  RemoteAgents.slnx
+dotnet build ABox.slnx
+dotnet test  ABox.slnx
 ```
 
 Plan of record: [`PLANS/test-structure.md`](../PLANS/test-structure.md).

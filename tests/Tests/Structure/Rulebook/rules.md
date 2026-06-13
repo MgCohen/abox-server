@@ -52,7 +52,7 @@ Template:
   same deliberate gate as adding a home folder.
 
 ### Every test lives inside a registered test type
-- **Why:** The per-type `ParityGuard` scopes `[Rule]` discovery to one `RemoteAgents.Tests.<Type>.Tests`
+- **Why:** The per-type `ParityGuard` scopes `[Rule]` discovery to one `ABox.Tests.<Type>.Tests`
   namespace, so a test placed anywhere else — shared `Support`, a type's own `Support`, the root — runs but is
   never required to cite a Rule. This is the assembly-wide backstop that closes that escape: every method an
   attribute marks as a test must sit inside a registered type's `Tests` namespace.

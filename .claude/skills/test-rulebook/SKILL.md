@@ -60,7 +60,7 @@ copy a sibling's preamble + template, add the `Parity` fact with the right stric
 2. **Write the fact** in `<Type>/Tests/` carrying both the xUnit run attribute and a
    `[Rule("<exact header>")]` citation — they compose (`[Fact]` + `[Rule]`), the Rule is
    not derived from `FactAttribute`. Live tests use `[LiveFact]` + `[Rule("<header>")]`.
-3. **Keep the namespace = folder** (`RemoteAgents.Tests.<Type>...`). IDE0130 is
+3. **Keep the namespace = folder** (`ABox.Tests.<Type>...`). IDE0130 is
    `severity = error` — a mismatch fails the build.
    - **Failure messages are fix instructions.** Active voice, name the file/type, say what to do
      ("Move X to Y", "Add a [Rule] citing Z") — not "X is wrong". One direct line, no essays.
@@ -85,8 +85,8 @@ unrelated code can turn the test red, you hardcoded something you should have de
 
 ## 5. Things that bite
 
-- **No new test csproj.** `tests/Tests/RemoteAgents.Tests.csproj` globs
-  `src\**\RemoteAgents.*.csproj` and `**\Rulebook\*.md` — a new feature/slice or
+- **No new test csproj.** `tests/Tests/ABox.Tests.csproj` globs
+  `src\**\ABox.*.csproj` and `**\Rulebook\*.md` — a new feature/slice or
   Rulebook is picked up automatically. Don't add a project per type.
 - **Rulebook must reach the output dir.** It's copied via the `None ... CopyToOutputDirectory`
   glob; `ParityGuard` reads it at runtime. A Rule in a stray `.md` won't be seen.
@@ -99,8 +99,8 @@ unrelated code can turn the test red, you hardcoded something you should have de
 ## 6. Verify
 
 ```
-dotnet build RemoteAgents.slnx   # warning-free; IDE0130 + parity compile-time checks
-dotnet test  RemoteAgents.slnx   # parity facts + your new test green (Live stays skipped)
+dotnet build ABox.slnx   # warning-free; IDE0130 + parity compile-time checks
+dotnet test  ABox.slnx   # parity facts + your new test green (Live stays skipped)
 ```
 
 A parity failure names exactly what's out of sync (Rule with no test / test citing a

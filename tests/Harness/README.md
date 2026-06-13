@@ -118,7 +118,7 @@ is almost always the right move instead. When a new type really is warranted, de
 following any existing one as the worked example — the shape is uniform on purpose:
 
 1. **Create `tests/Tests/<Type>/`** with the three sub-folders: `Rulebook/`, `Tests/`, and (if needed)
-   `Support/`. Namespace mirrors folder (`RemoteAgents.Tests.<Type>…`); IDE0130 enforces it.
+   `Support/`. Namespace mirrors folder (`ABox.Tests.<Type>…`); IDE0130 enforces it.
 2. **Write `<Type>/Rulebook/rules.md`** — copy the preamble + Rule template from a sibling Rulebook and adapt
    the one-line description of *what a Rule means for this type*. Don't invent a new template shape (see the
    stability contract); the template is shared structure, not per-type creativity.
@@ -132,5 +132,5 @@ following any existing one as the worked example — the shape is uniform on pur
 5. **No csproj edit is needed** — `Tests.csproj` already globs `**\Rulebook\*.md` to the output and compiles
    every `.cs` under the type. Just rebuild; the Parity fact proves the new Rulebook is wired correctly.
 
-If the new type lives in the merged `RemoteAgents.Tests` assembly, its `Parity` anchor's namespace keeps its
+If the new type lives in the merged `ABox.Tests` assembly, its `Parity` anchor's namespace keeps its
 Rules from bleeding into another type's parity — that's why each type carries its own `Parity` fact.
