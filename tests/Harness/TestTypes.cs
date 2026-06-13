@@ -1,12 +1,13 @@
 namespace ABox.Tests.Harness;
 
-// The registered test TYPES — each a Rulebook folder under tests/Tests/. THIS LIST is the source of truth; a
-// folder under tests/Tests/ that is none of these (and not shared Support) escaped the taxonomy. Add a type
-// here only when a genuinely new kind of guarantee is stood up.
+// The registered PRODUCT test TYPES — each a Rulebook folder under tests/Tests/ that guards src. THIS LIST is
+// the source of truth; a folder under tests/Tests/ that is none of these (and not shared Support) escaped the
+// taxonomy. Add a type here only when a genuinely new kind of guarantee is stood up. The Meta self-suite
+// (tests/Meta, ABox.Tests.Meta) validates this set from outside and is deliberately not a member.
 public static class TestTypes
 {
     public static readonly string[] Registered =
-        { "Arch", "Structure", "Unit", "E2E", "Wire", "Live", "Meta" };
+        { "Arch", "Structure", "Unit", "E2E", "Wire", "Live" };
 
     // Non-type folders legitimately under tests/Tests/: shared doubles promoted on a genuine second consumer.
     public static readonly string[] NonType = { "Support" };

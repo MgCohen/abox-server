@@ -1,6 +1,6 @@
 # Meta Rulebook — Rule template
 
-Convention, parity discipline, and how to add a type: [`../../../Harness/README.md`](../../../Harness/README.md).
+Convention, parity discipline, and how to add a type: [`../../Harness/README.md`](../../Harness/README.md).
 
 Each Meta Rule is one invariant about the test system itself — the taxonomy, the Rulebooks, and their parity
 with the tests. These guard the harness, not the product. Enforce it in `Meta/Tests/`.

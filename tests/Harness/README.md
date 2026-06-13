@@ -20,10 +20,12 @@ What a Rule *means* varies by type —
 - **E2E / Wire / Live** Rule = a flow / endpoint / real-CLI guarantee
 - **Meta** Rule = an invariant about the *test system itself*: *"Parity holds for every registered type"*
 
-The first six test the **product**; **Meta** tests the **test system** — the taxonomy, the Rulebook format,
-and parity. But the **file shape, location, and parity discipline are identical across every type.** Splitting
-the template out of `rules.md` is deliberate: `rules.md` then holds nothing but Rules (no example `### ` to
-skip, nothing to game), and the two Meta format guards enforce both halves.
+The first six test the **product** and live under `tests/Tests/` in the `ABox.Tests` assembly. **Meta** tests
+the **test system** — the taxonomy, the Rulebook format, and parity — and lives apart, under `tests/Meta/` in
+its own `ABox.Tests.Meta` assembly, validating the product suite from *outside* (via `ABox.Tests.SuiteAnchor`)
+the way the Arch guards validate `src`. The **Rulebook shape and parity discipline are identical across every
+type**, product or Meta. Splitting the template out of `rules.md` is deliberate: `rules.md` then holds nothing
+but Rules (no example `### ` to skip, nothing to game), and the two Meta format guards enforce both halves.
 
 ## The pieces
 
@@ -31,23 +33,30 @@ skip, nothing to game), and the two Meta format guards enforce both halves.
   A test can't enforce a Rule without citing it. (A guarantee realized by several cases is several
   `[Rule("<same header>")]` methods — see *Completeness* below.)
 - **`ParityGuard.cs`** — keeps one type's Rulebook and its `[Rule]` tests in lockstep, scoped to a single
-  `ABox.Tests.<Type>.Tests` namespace so types in the shared assembly don't bleed into each other's parity.
+  `ABox.Tests.<Type>.Tests` namespace so types sharing an assembly don't bleed into each other's parity.
 - **`TestTypes` / `TestMarkers` / `RulebookFormat` / `RepoTree`** — the test-system vocabulary the **Meta**
-  type's guards run on: the registry of types + the completeness flag, the run-attribute names, the Rulebook
-  parser, the on-disk locator.
+  self-suite's guards run on: the registry of types + the completeness flag, the run-attribute names, the
+  Rulebook parser, the on-disk locator.
 
-Parity is driven **once**, from the Meta type, over every registered type — there is no per-type parity fact:
+Parity is driven **once**, from the Meta self-suite — over every registered product type, then over Meta
+itself — so there is no per-type parity fact:
 
   ```csharp
   // Meta/Tests/ParityTests.cs
+  var product = typeof(SuiteAnchor).Assembly;
   foreach (var type in TestTypes.Registered)
-      ParityGuard.For(typeof(ParityTests).Assembly, type)
+      ParityGuard.For(product, type)
           .Assert(requireAllCited: TestTypes.RequiresAllCited(type));
+
+  ParityGuard.ForRulebook(typeof(ParityTests).Assembly, TestTypes.Namespace("Meta"),
+                          Path.Combine(RepoTree.MetaRoot, "Rulebook", "rules.md"))
+      .Assert(requireAllCited: true);
   ```
 
-`ParityGuard.For` maps the type to its namespace and Rulebook path through `TestTypes`
-(`<Type>` → `ABox.Tests.<Type>.Tests` + `<Type>/Rulebook/rules.md`), loads the Rulebook's `### ` headers, and
-compares them to the `[Rule]`s in that namespace — failing the build on any mismatch.
+`ParityGuard.For` maps a product type to its namespace and Rulebook path through `TestTypes`
+(`<Type>` → `ABox.Tests.<Type>.Tests` + `tests/Tests/<Type>/Rulebook/rules.md`), reads the Rulebook's `### `
+headers **from the source tree** (`RepoTree`, not the output dir), and compares them to the `[Rule]`s in that
+namespace — failing the build on any mismatch. `ForRulebook` is the explicit form Meta uses on itself.
 
 ## Failure output: active voice, say how to fix
 
@@ -99,8 +108,8 @@ Parity is always **1:N** — every Rule has ≥1 cited test, every `[Rule]` cite
 undocumented; a Rule may be realized by several case tests. The lone knob is `requireAllCited`, the
 *completeness* guard — **is every test in scope cited?** — set per type by `TestTypes.RequiresAllCited`:
 
-- **Complete types (Arch / Structure / E2E / Wire / Meta).** The Rulebook is the full set; a bare `[Fact]`
-  with no `[Rule]` is an error.
+- **Complete types (Arch / Structure / E2E / Wire, and Meta on itself).** The Rulebook is the full set; a
+  bare `[Fact]` with no `[Rule]` is an error.
 - **Going-forward types (Unit / Live).** They accrue Rules over time, so an uncited `[Fact]` is tolerated
   until it is backfilled with its Rule. Every `[Rule]` still pairs with a real header.
 
@@ -124,11 +133,11 @@ backfilled opportunistically, never in one swept pass. A behavioral Rulebook sta
   Support/                 optional, type-local: models, doubles, harnesses (no over-sharing)
 ```
 
-There is no per-type parity fact — the Meta type runs parity over every type at once. Both Rulebook files are
-copied to the output directory so the guards can read them at runtime — the csproj does this with a
-`None Include="**\Rulebook\*.md" CopyToOutputDirectory="PreserveNewest"` (so a new type needs no csproj edit).
-Namespace mirrors folder, enforced at compile time by IDE0130 (`/.editorconfig`, scoped to `tests/`), so the
-type-folder taxonomy can't silently drift — and parity derives each Rulebook path from that namespace.
+There is no per-type parity fact — the Meta self-suite runs parity over every type at once. The Meta guards
+read both Rulebook files straight from the **source tree** (`RepoTree` walks up to the `ABox.slnx` marker), so
+no csproj copy step is needed and a new type wires in with zero csproj edits. Namespace mirrors folder,
+enforced at compile time by IDE0130 (`/.editorconfig`, scoped to `tests/`), so the type-folder taxonomy can't
+silently drift — and parity derives each Rulebook path from that namespace.
 
 ## Standing up a new test *type* (a new Rulebook)
 
@@ -185,9 +194,9 @@ Then:
 4. **Write at least one `### ` Rule + its `[Rule("<header>")]` fact** in `<Type>/Tests/` so the type isn't an
    empty shell (an invariant type ships complete; a behavioral type may start with one Rule and grow — see
    *Adoption is staged*).
-5. **No csproj edit and no parity fact are needed** — `Tests.csproj` already globs `**\Rulebook\*.md` to the
-   output and compiles every `.cs` under the type, and the Meta type runs parity over your new type the moment
-   it's registered. Rebuild; the Meta parity + format guards prove the new Rulebook is wired and well-formed.
+5. **No csproj edit and no parity fact are needed** — `Tests.csproj` compiles every `.cs` under the type, the
+   Meta guards read your Rulebook straight from the source tree, and the Meta self-suite runs parity over your
+   new type the moment it's registered. Rebuild; the Meta parity + format guards prove it's wired and well-formed.
 
 Parity scopes by the `ABox.Tests.<Type>.Tests` namespace, so the new type's Rules never bleed into another
 type's parity — registering the type is all the wiring there is.
