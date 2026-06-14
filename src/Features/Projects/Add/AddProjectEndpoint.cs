@@ -2,11 +2,10 @@ using FastEndpoints;
 using ABox.Domain.Projects;
 using ABox.Features.Projects.Contracts;
 using ABox.Features.Projects.Get;
-using ABox.Infrastructure.Storage;
 
 namespace ABox.Features.Projects.Add;
 
-public sealed class AddProjectEndpoint(IRepository<Project> store) : Endpoint<CreateProjectRequest, ProjectDto>
+public sealed class AddProjectEndpoint(IProjectRepository projects) : Endpoint<CreateProjectRequest, ProjectDto>
 {
     public override void Configure()
     {
@@ -34,7 +33,7 @@ public sealed class AddProjectEndpoint(IRepository<Project> store) : Endpoint<Cr
             return;
         }
 
-        if ((await store.GetAll(ct)).Any(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase)))
+        if (await projects.GetByName(name, ct) is not null)
         {
             AddError(r => r.Name, "A project with that name already exists.");
             await Send.ErrorsAsync(409, ct);
@@ -42,7 +41,7 @@ public sealed class AddProjectEndpoint(IRepository<Project> store) : Endpoint<Cr
         }
 
         var project = Project.Create(name, path);
-        await store.Add(project, ct);
+        await projects.Add(project, ct);
         await Send.CreatedAtAsync<GetProjectEndpoint>(
             new { id = project.Id }, new ProjectDto(project.Id, project.Name, project.Path), cancellation: ct);
     }

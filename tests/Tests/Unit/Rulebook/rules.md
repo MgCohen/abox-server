@@ -34,6 +34,10 @@ Template:
 - Why: the only door that changes a project's path enforces the same path invariant as Create, leaving
   the project's identity (`Id`) and name unchanged.
 
+### ProjectRepository.GetByName finds a project case-insensitively, null when absent
+- Why: name uniqueness on create and project resolution on flow-launch share one query home — a
+  case-insensitive name lookup over the store — so the rule isn't duplicated across the two callers.
+
 ### JsonRepository round-trips entities through Add, Get, Update, and Remove
 - Why: the storage seam's core contract — an entity written through the repository is read back, replaced,
   and deleted by id, with `GetAll`/`GetById` reflecting each mutation.
