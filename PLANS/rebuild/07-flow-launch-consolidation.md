@@ -1,6 +1,6 @@
 # Flow-launch consolidation — one canonical Project, the registry retires
 
-Status: **planned (2026-06-14).** Self-contained — readable without prior context.
+Status: **built (2026-06-14).** Self-contained — readable without prior context.
 Closes the dual-`Project` split that [06](06-projects-crud-slice.md) deliberately
 left open: today there are **two** disjoint notions of "project," and only one of
 them can launch a flow. This slice makes the stored [`Project`](../../src/Domain/Projects/Project.cs)

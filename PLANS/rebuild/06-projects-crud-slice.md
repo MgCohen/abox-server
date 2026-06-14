@@ -260,6 +260,11 @@ seam*); `PUT` / `DELETE` (`Rename` is on the model, no endpoint yet); the server
 `Path` makes the map non-trivial); Steps-based field validation (ADR 0009, later);
 `ListProjectsRequest` / paging; re-keying `?project=` from name to id.
 
+> **Done in 07.** The server-only `Path` + flow-launch consolidation deferred above landed in
+> [`07-flow-launch-consolidation.md`](07-flow-launch-consolidation.md): `Path` is now required on
+> `Project`, `IProjectRepository.GetByName` is the second-query seam this slice reserved, and the
+> file-backed registry is deleted. `ProjectMapping` stayed inlined (the map is still 1:1).
+
 ## Blast radius (edits to existing code)
 
 1. `src/Domain/Projects/Project.cs` — positional record → init-property record +

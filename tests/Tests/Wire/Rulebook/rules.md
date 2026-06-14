@@ -30,6 +30,10 @@ Template:
   a blank path (400), and a duplicate name (409) — so the model invariants and uniqueness are enforced on
   the wire.
 
+### the legacy projects.json is imported into the empty store on first boot
+- Why: the canonical store replaces the file-backed registry, so existing projects.json entries must survive
+  the cutover — on first boot (empty store) each entry is imported as a Project and appears via GET /projects.
+
 ### a started flow streams snapshots over SSE to completion
 - Why: the core streaming contract — POST /flows starts a run and returns its id; GET /flows/{id}/events
   streams snapshots as Server-Sent Events through to the terminal phase. Proves routing + the start

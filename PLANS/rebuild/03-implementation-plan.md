@@ -173,6 +173,11 @@ domain-agnostic infra only — `ProjectRegistry`, paths. No DTOs, no
 **Done when.** `dotnet build` warning-free; `GET /health` returns ok; `/projects`
 lists from `projects.json`. Nothing domain-aware exists yet.
 
+> **Superseded (07).** L1's `ProjectRegistry` + `projects.json`-as-source were retired by
+> [`07-flow-launch-consolidation.md`](07-flow-launch-consolidation.md): projects are now the canonical
+> `IRepository<Project>` store, flow-launch resolves through `ProjectDirectory`, and the legacy
+> `projects.json` is imported once on first boot. Paths remain L1 infra.
+
 ## L2 · Flow tech + fake steps — REBUILD
 
 **Goal.** The snapshot pipe, proven end-to-end with placeholder work.

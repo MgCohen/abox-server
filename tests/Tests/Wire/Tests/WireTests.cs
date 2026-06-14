@@ -11,6 +11,7 @@ namespace ABox.Tests.Wire.Tests;
 
 // Wire smoke: a real HttpClient against the Host over WebApplicationFactory. Thin by design — it proves
 // routing + serialization + the SSE streaming contract, with a CLI-free StubFlow behind the flow endpoints.
+[Collection(WireHostCollection.Name)]
 public class WireTests(WireApp app) : IClassFixture<WireApp>
 {
     [Rule("health returns ok")]
