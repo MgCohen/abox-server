@@ -121,6 +121,93 @@ public class WireTests(WireApp app) : IClassFixture<WireApp>
         Assert.Equal(HttpStatusCode.Conflict, res.StatusCode);
     }
 
+    [Rule("PUT /projects/{id} updates a project, rejecting unknown id, blank fields, and duplicate names")]
+    [Fact]
+    public async Task Put_updates_name_and_path_and_round_trips()
+    {
+        var client = app.CreateClient();
+        var store = app.Services.GetRequiredService<IRepository<Project>>();
+        var original = Project.Create("Before Rename", app.ProjectDir);
+        await store.Add(original);
+
+        using var res = await client.PutAsJsonAsync(
+            $"/projects/{original.Id}", new UpdateProjectRequest(original.Id, "After Rename", app.StorageDir));
+
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        var dto = await res.Content.ReadFromJsonAsync<ProjectDto>();
+        Assert.Equal((original.Id, "After Rename", app.StorageDir), (dto!.Id, dto.Name, dto.Path));
+
+        using var fetched = await client.GetAsync($"/projects/{original.Id}");
+        var round = await fetched.Content.ReadFromJsonAsync<ProjectDto>();
+        Assert.Equal((dto.Id, dto.Name, dto.Path), (round!.Id, round.Name, round.Path));
+    }
+
+    [Rule("PUT /projects/{id} updates a project, rejecting unknown id, blank fields, and duplicate names")]
+    [Fact]
+    public async Task Put_returns_404_for_an_unknown_id()
+    {
+        var id = Guid.NewGuid();
+        using var res = await app.CreateClient().PutAsJsonAsync(
+            $"/projects/{id}", new UpdateProjectRequest(id, "Ghost", app.ProjectDir));
+
+        Assert.Equal(HttpStatusCode.NotFound, res.StatusCode);
+    }
+
+    [Rule("PUT /projects/{id} updates a project, rejecting unknown id, blank fields, and duplicate names")]
+    [Fact]
+    public async Task Put_rejects_a_blank_name()
+    {
+        var store = app.Services.GetRequiredService<IRepository<Project>>();
+        var p = Project.Create("Has A Name", app.ProjectDir);
+        await store.Add(p);
+
+        using var res = await app.CreateClient().PutAsJsonAsync(
+            $"/projects/{p.Id}", new UpdateProjectRequest(p.Id, "   ", app.ProjectDir));
+
+        Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
+    }
+
+    [Rule("PUT /projects/{id} updates a project, rejecting unknown id, blank fields, and duplicate names")]
+    [Fact]
+    public async Task Put_rejects_renaming_onto_another_projects_name()
+    {
+        var store = app.Services.GetRequiredService<IRepository<Project>>();
+        var alpha = Project.Create("Alpha Unique", app.ProjectDir);
+        var beta = Project.Create("Beta Unique", app.ProjectDir);
+        await store.Add(alpha);
+        await store.Add(beta);
+
+        using var res = await app.CreateClient().PutAsJsonAsync(
+            $"/projects/{beta.Id}", new UpdateProjectRequest(beta.Id, alpha.Name, app.ProjectDir));
+
+        Assert.Equal(HttpStatusCode.Conflict, res.StatusCode);
+    }
+
+    [Rule("DELETE /projects/{id} removes a project, or 404 when absent")]
+    [Fact]
+    public async Task Delete_removes_the_project()
+    {
+        var client = app.CreateClient();
+        var store = app.Services.GetRequiredService<IRepository<Project>>();
+        var p = Project.Create("Deletable Project", app.ProjectDir);
+        await store.Add(p);
+
+        using var res = await client.DeleteAsync($"/projects/{p.Id}");
+        Assert.Equal(HttpStatusCode.NoContent, res.StatusCode);
+
+        using var fetched = await client.GetAsync($"/projects/{p.Id}");
+        Assert.Equal(HttpStatusCode.NotFound, fetched.StatusCode);
+    }
+
+    [Rule("DELETE /projects/{id} removes a project, or 404 when absent")]
+    [Fact]
+    public async Task Delete_returns_404_for_an_unknown_id()
+    {
+        using var res = await app.CreateClient().DeleteAsync($"/projects/{Guid.NewGuid()}");
+
+        Assert.Equal(HttpStatusCode.NotFound, res.StatusCode);
+    }
+
     [Rule("a started flow streams snapshots over SSE to completion")]
     [Fact]
     public async Task Started_flow_streams_snapshots_over_sse_to_completion()
