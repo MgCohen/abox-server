@@ -1,12 +1,13 @@
 namespace ABox.Tests.Harness;
 
-// The registered test TYPES — each a Rulebook folder under tests/Tests/. THIS LIST is the source of truth; a
-// folder under tests/Tests/ that is none of these (and not shared Support) escaped the taxonomy. Add a type
-// here only when a genuinely new kind of guarantee is stood up.
+// The registered PRODUCT test TYPES — each a Rulebook folder under tests/Tests/ that guards src. THIS LIST is
+// the source of truth; a folder under tests/Tests/ that is none of these (and not shared Support) escaped the
+// taxonomy. Add a type here only when a genuinely new kind of guarantee is stood up. The Meta self-suite
+// (tests/Meta, ABox.Tests.Meta) validates this set from outside and is deliberately not a member.
 public static class TestTypes
 {
     public static readonly string[] Registered =
-        { "Arch", "Structure", "Unit", "E2E", "Wire", "Live", "Meta" };
+        { "Arch", "Structure", "Unit", "E2E", "Wire", "Live" };
 
     // Non-type folders legitimately under tests/Tests/: shared doubles promoted on a genuine second consumer.
     public static readonly string[] NonType = { "Support" };
@@ -14,6 +15,12 @@ public static class TestTypes
     // Types whose Rulebook is the complete set today, so every test must cite a Rule (requireAllCited). The
     // going-forward types accrue Rules over time and tolerate an uncited [Fact] until it is backfilled.
     private static readonly string[] GoingForward = { "Unit", "Live" };
+
+    // The convention, owned once: a type's namespace and the Rulebook path it pairs with. Both directions of the
+    // type ↔ namespace ↔ path triple (ParityGuard's scope, ContainsTest's membership) lean on these.
+    public static string Namespace(string type) => $"ABox.Tests.{type}.Tests";
+
+    public static string RulebookPath(string type) => $"{type}/Rulebook/rules.md";
 
     public static bool IsRegistered(string folder) =>
         Registered.Contains(folder, StringComparer.Ordinal);
@@ -24,16 +31,10 @@ public static class TestTypes
     public static bool RequiresAllCited(string type) =>
         !GoingForward.Contains(type, StringComparer.Ordinal);
 
-    // A method physically lives inside a registered type when its namespace is ABox.Tests.<Type>.Tests (or a
+    // A method physically lives inside a registered type when its namespace is a type's Namespace (or a
     // sub-namespace). Anything else — shared Support, a type's Support, the root — slips past the per-type
     // ParityGuard, which scopes to a single .Tests namespace.
-    public static bool ContainsTest(string? ns)
-    {
-        if (ns is null)
-            return false;
-        var parts = ns.Split('.');
-        return parts.Length >= 4
-            && parts[0] == "ABox" && parts[1] == "Tests"
-            && IsRegistered(parts[2]) && parts[3] == "Tests";
-    }
+    public static bool ContainsTest(string? ns) =>
+        ns is not null && Registered.Any(t =>
+            ns == Namespace(t) || ns.StartsWith(Namespace(t) + ".", StringComparison.Ordinal));
 }

@@ -1,4 +1,5 @@
 using ABox.Tests.Structure.Support;
+using static ABox.Tests.Harness.Report;
 using static ABox.Tests.Structure.Support.HomeFolders;
 
 namespace ABox.Tests.Structure.Tests;
@@ -48,7 +49,4 @@ public class StructureTests
             ArtifactsPath). A stray here means a project escaped the root Directory.Build.props.
             """);
     }
-
-    private static string Bullets(IEnumerable<string> items) =>
-        string.Join(Environment.NewLine, items.Select(i => $"  * {i}"));
 }

@@ -10,12 +10,12 @@ description: >-
 
 # Adding a test = adding (or citing) a Rule
 
-Every test *type* in `tests/Tests/` is a **Rulebook**: a `<Type>/Rulebook/` folder with
-`template.md` (the type's Rule shape) and `rules.md` (a preamble + the `### ` Rules), each
-Rule enforced by a `[Rule("<header>")]` xUnit fact in `<Type>/Tests/`. The **Meta** type runs
-one parity check over every type and fails the build if a Rule has no test or a test cites no
-Rule. So a test never lands alone — it lands **with its Rule**. (Six types test the product;
-Meta tests the test system itself.)
+Every product test *type* lives under `tests/Tests/` as a **Rulebook**: a `<Type>/Rulebook/` folder
+with `template.md` (the type's Rule shape) and `rules.md` (a preamble + the `### ` Rules), each
+Rule enforced by a `[Rule("<header>")]` xUnit fact in `<Type>/Tests/`. The **Meta** self-suite
+(`tests/Meta`, its own assembly) runs one parity check over every product type — and over itself —
+and fails the build if a Rule has no test or a test cites no Rule. So a test never lands alone — it
+lands **with its Rule**. (Six types test the product; Meta tests the test system itself, from outside.)
 
 Engine: `tests/Harness/` (`Rule.cs`, `ParityGuard.cs`, `TestTypes`, `RulebookFormat`, `RepoTree`). Detail docs:
 [`tests/README.md`](../../../tests/README.md), [`tests/Tests/README.md`](../../../tests/Tests/README.md),
@@ -27,7 +27,7 @@ inventing structure; this skill is the *procedure*.
 > move; it only tightens guarantees. *Editing, re-wording, or removing* an existing Rule is a
 > **design decision** — each encodes a hard-won invariant, and parity keeps the header/test in
 > lockstep but can't tell you the guarantee got weaker. *Reshaping the template/format/shape* (the
-> `### ` scan, the `template.md`/`rules.md` split, layout, the completeness knob, csproj copy) is the most dangerous: it can make
+> `### ` scan, the `template.md`/`rules.md` split, layout, the completeness knob, the source-tree Rulebook read) is the most dangerous: it can make
 > Rules silently stop being enforced across **every** type at once, with a green build. When a change
 > isn't a plain add, stop and confirm — don't quietly edit. Full contract: `tests/Harness/README.md`
 > § *Stability contract*.
@@ -42,7 +42,7 @@ inventing structure; this skill is the *procedure*.
 | A whole flow end-to-end with a scripted (non-real) provider | **E2E** | real `Composition` via `FlowHarness` |
 | An HTTP endpoint contract | **Wire** | `WebApplicationFactory<Program>` |
 | The **real** `claude`/`codex` CLI + subscription | **Live** | real CLI, gated `[LiveFact]` / `RUN_LIVE=1` |
-| An invariant about the **test system itself** (taxonomy / Rulebook format / parity) | **Meta** | reflection + disk over the test tree |
+| An invariant about the **test system itself** (taxonomy / Rulebook format / parity) | **Meta** | reflection over the product assembly + disk over the test tree |
 
 Rule of thumb: no real network/CLI/browser → Unit unless it spans a flow (E2E) or the
 HTTP surface (Wire). Real CLI → Live (and it **must** be `[LiveFact]`, never `[Fact]`,
@@ -53,7 +53,7 @@ the guarantee (don't fork Unit into near-twins). Follow the step-by-step in
 `tests/Harness/README.md` § *Standing up a new test type*: create `<Type>/{Rulebook,Tests,Support}/`,
 fill `template.md` + `rules.md` from the canonical skeleton (don't copy a sibling), register the type
 in `Harness/TestTypes` (add it to `GoingForward` if it backfills), and write ≥1 Rule. No csproj edit and
-no parity fact — the Meta type runs parity over your type once it's registered. Don't invent a new
+no parity fact — the Meta self-suite runs parity over your type once it's registered. Don't invent a new
 Rulebook *shape* — reuse the uniform one.
 
 ## 2. Add the test
@@ -80,8 +80,8 @@ Parity is always **1:N** — every Rule needs ≥1 test, every `[Rule]` cites a 
 guarantee may have several case tests. The one knob is `requireAllCited` — must *every* test in
 scope cite a Rule? — set per type by `TestTypes.RequiresAllCited`:
 
-- **Complete types (Arch / Structure / E2E / Wire / Meta).** The Rulebook is the full set; a
-  bare `[Fact]` with no `[Rule]` fails parity.
+- **Complete types (Arch / Structure / E2E / Wire, and Meta on itself).** The Rulebook is the full
+  set; a bare `[Fact]` with no `[Rule]` fails parity.
 - **Going-forward types (Unit / Live).** They accrue over time, so an uncited `[Fact]` is
   tolerated until backfilled (listed in `TestTypes.GoingForward`).
 
@@ -96,12 +96,11 @@ unrelated code can turn the test red, you hardcoded something you should have de
 
 ## 5. Things that bite
 
-- **No new test csproj.** `tests/Tests/ABox.Tests.csproj` globs
-  `src\**\ABox.*.csproj` and `**\Rulebook\*.md` — a new feature/slice or
-  Rulebook is picked up automatically. Don't add a project per type.
-- **Rulebook must reach the output dir.** Both `template.md` and `rules.md` are copied via the
-  `None ... CopyToOutputDirectory` glob; `ParityGuard` reads `rules.md` at runtime. A Rule in a
-  stray `.md` won't be seen.
+- **No new test csproj.** `tests/Tests/ABox.Tests.csproj` globs `src\**\ABox.*.csproj` — a new
+  feature/slice is picked up automatically. Don't add a project per type.
+- **Rulebooks are read from the source tree.** The Meta guards locate the repo root (`RepoTree`, via
+  the `ABox.slnx` marker) and read each `<Type>/Rulebook/rules.md` straight from disk — no copy step.
+  A Rule counts only if it sits in its type's `rules.md` under `tests/Tests/<Type>/` (or `tests/Meta/`).
 - **`rules.md` holds only Rules.** The example `### ` lives in `template.md`, not `rules.md`, so
   every `### ` in `rules.md` counts — there's no fence to skip and nothing to game. Two Meta guards
   enforce this: every Rule matches its `template.md`, and `rules.md` carries no stray sections.
