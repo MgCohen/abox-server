@@ -4,6 +4,21 @@ A reusable judge that grades **any artifact against a supplied list of Criteria*
 per-criterion results. Domain specifics live in **adapters**, not in the judge. The current
 test-rulebook judge becomes the *first adapter* of this generic judge.
 
+## Status — implemented in C# (2026-06-14)
+
+Built in the C# codebase at `src/Domain/Agents/Judging/` (the Claude Code JS workflow remains a dev-tool prototype only). All guards green: Arch/Structure/Wire/Unit/Meta, 188 tests.
+
+| Piece | Files | Tested |
+|---|---|---|
+| Deterministic core | `Verdict`, `Criterion`, `CriterionResult`, `JudgeRequest`, `JudgeScore`, `JudgeVerdict` | ✓ |
+| Prompt + parse | `JudgePrompt`, `JudgeParser` (`<<JUDGE_VERDICT>>` + JSON, prompt-and-parse like `QuestionParser`) | ✓ |
+| Operation | `Judge : Operation<JudgeArgs, JudgeVerdict>` over `IProvider` (fault → all-indeterminate) | ✓ |
+| First adapter | `TestRulebookAdapter` (file I/O injected; Domain stays pure) | ✓ |
+
+The LLM call is **prompt-and-parse via the existing CLI-driven `IProvider`** (subscription) — the only structured path on that transport, consistent with the rest of the system. No API/structured-output dependency.
+
+**Deferred (need a real consumer / second use):** production wiring (pass `File.ReadAllText` to the adapter, construct `Judge` via factory/DI, a Flow that runs it), the `IJudgeAdapter` base (adapter #2), per-criterion `severity`.
+
 ## Decisions (locked)
 
 - **Rubric-driven.** Criteria are **data** (input). The judge's method/persona is fixed; *what* it grades is passed in.
@@ -215,7 +230,7 @@ Workflow({ name: 'judge', args: adaptTest('tests/Tests/Unit/Tests/FlowTests.cs')
 | Adapter base abstraction (`IJudgeAdapter`) | at adapter #2 (PR/essay) |
 | Per-criterion `severity: must | should` (affects `overallPass`) | when a domain needs non-gating criteria |
 | Content hash / snapshot in output (reproducibility) | nice-to-have; add if audit trail matters |
-| C# / ABox port | when the system is ready — mapping below |
+| C# / ABox port | ✅ done — implemented in `src/Domain/Agents/Judging/` (see Status) |
 
 C# port mapping: JS shapes → `record` types; `judge.js` → a Flow; `deriveSchema`/`scoreOf` → pure functions; `adaptTest` → `IJudgeAdapter<TestTarget>`; structural well-formedness → the type system.
 
