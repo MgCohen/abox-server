@@ -18,6 +18,14 @@ Template:
 
 ---
 
+### Project.Create mints a project with a trimmed, non-blank name
+- Why: the create door is the single home of the name invariant — a project cannot exist nameless;
+  surrounding whitespace is trimmed and a blank or whitespace-only name is rejected.
+
+### Project.Rename returns a renamed project with a trimmed, non-blank name
+- Why: rename is the only other mutation door and enforces the same name invariant as Create, leaving
+  the project's identity (`Id`) unchanged.
+
 ### JsonRepository round-trips entities through Add, Get, Update, and Remove
 - Why: the storage seam's core contract — an entity written through the repository is read back, replaced,
   and deleted by id, with `GetAll`/`GetById` reflecting each mutation.

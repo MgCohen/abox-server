@@ -10,8 +10,8 @@ internal sealed class ProjectSeeder(IRepository<Project> projects) : IHostedServ
 {
     private static readonly Project[] Seed =
     [
-        new(Guid.Parse("3f2a8c10-9b4e-4d21-a7c6-1e0f5b8d2a44"), "Card Framework"),
-        new(Guid.Parse("b71d4e92-0c3a-4f88-9a15-6d2e7c4b1f03"), "Scaffold"),
+        new() { Id = Guid.Parse("3f2a8c10-9b4e-4d21-a7c6-1e0f5b8d2a44"), Name = "Card Framework" },
+        new() { Id = Guid.Parse("b71d4e92-0c3a-4f88-9a15-6d2e7c4b1f03"), Name = "Scaffold" },
     ];
 
     public async Task StartAsync(CancellationToken ct)
