@@ -17,7 +17,7 @@ Template:
 ### health returns ok
 - Why: the liveness probe must route and serialize — the simplest proof the Host composes and answers.
 
-### projects lists the seeded projects as wire DTOs
+### GET /projects lists the stored projects as wire DTOs
 - Why: GET /projects must route to IRepository<Project> and serialize the domain Project list to ProjectDto
   JSON ({id, name}), proving the Domain → Contracts mapping on the wire.
 

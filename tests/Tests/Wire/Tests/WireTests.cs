@@ -23,18 +23,19 @@ public class WireTests(WireApp app) : IClassFixture<WireApp>
         Assert.Contains("ok", await res.Content.ReadAsStringAsync());
     }
 
-    [Rule("projects lists the seeded projects as wire DTOs")]
+    [Rule("GET /projects lists the stored projects as wire DTOs")]
     [Fact]
-    public async Task Projects_lists_the_seeded_projects()
+    public async Task Projects_lists_the_stored_projects()
     {
-        var stored = await app.Services.GetRequiredService<IRepository<Project>>().GetAll();
-        Assert.NotEmpty(stored);
+        var store = app.Services.GetRequiredService<IRepository<Project>>();
+        await store.Add(Project.Create("Listed Project"));
 
         using var res = await app.CreateClient().GetAsync("/projects");
 
         Assert.Equal(HttpStatusCode.OK, res.StatusCode);
         var projects = await res.Content.ReadFromJsonAsync<ProjectDto[]>();
         Assert.NotNull(projects);
+        var stored = await store.GetAll();
         Assert.Equal(
             stored.Select(p => (p.Id, p.Name)).OrderBy(p => p.Name),
             projects!.Select(p => (p.Id, p.Name)).OrderBy(p => p.Name));
@@ -42,15 +43,16 @@ public class WireTests(WireApp app) : IClassFixture<WireApp>
 
     [Rule("GET /projects/{id} returns the project, or 404 when absent")]
     [Fact]
-    public async Task Get_by_id_returns_the_seeded_project()
+    public async Task Get_by_id_returns_the_stored_project()
     {
-        var seeded = (await app.Services.GetRequiredService<IRepository<Project>>().GetAll())[0];
+        var stored = Project.Create("Fetchable Project");
+        await app.Services.GetRequiredService<IRepository<Project>>().Add(stored);
 
-        using var res = await app.CreateClient().GetAsync($"/projects/{seeded.Id}");
+        using var res = await app.CreateClient().GetAsync($"/projects/{stored.Id}");
 
         Assert.Equal(HttpStatusCode.OK, res.StatusCode);
         var dto = await res.Content.ReadFromJsonAsync<ProjectDto>();
-        Assert.Equal((seeded.Id, seeded.Name), (dto!.Id, dto.Name));
+        Assert.Equal((stored.Id, stored.Name), (dto!.Id, dto.Name));
     }
 
     [Rule("GET /projects/{id} returns the project, or 404 when absent")]
@@ -96,7 +98,8 @@ public class WireTests(WireApp app) : IClassFixture<WireApp>
     [Fact]
     public async Task Post_rejects_a_duplicate_name()
     {
-        var existing = (await app.Services.GetRequiredService<IRepository<Project>>().GetAll())[0];
+        var existing = Project.Create("Existing Project");
+        await app.Services.GetRequiredService<IRepository<Project>>().Add(existing);
 
         using var res = await app.CreateClient().PostAsJsonAsync("/projects", new CreateProjectRequest(existing.Name));
 

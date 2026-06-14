@@ -79,9 +79,9 @@ consumer. `Rename` ships on the model now (it is the same one-line guard) even t
 no `PUT` endpoint binds it yet — it is free and keeps both write doors in one place.
 
 > **Blast radius on the model.** This flips `Project` from the positional record
-> `Project(Guid Id, string Name) : IEntity` to the init-property form above, so
-> `ProjectSeeder`'s seed entries switch from positional `new(Guid.Parse(…), "…")` to
-> `new() { Id = Guid.Parse(…), Name = "…" }`. The fixed seed GUIDs are unchanged.
+> `Project(Guid Id, string Name) : IEntity` to the init-property form above. (The provisional
+> `ProjectSeeder` briefly tracked this shape in Phase 1, then was removed once `POST /projects`
+> landed — see *Seeding removed*.)
 
 ## Endpoints — FastEndpoints (ADR 0009), each binds `IRepository<Project>`
 
@@ -217,8 +217,8 @@ internal sealed class JsonProjectRepository(IRepository<Project> inner) : IProje
 // DI: services.AddSingleton<IProjectRepository, JsonProjectRepository>();
 ```
 
-`inner` resolves to the one open-generic `JsonRepository<Project>` singleton the seeder
-already uses, so there is a **single load-once cache** — no coherence hazard. Crucially
+`inner` resolves to the one open-generic `JsonRepository<Project>` singleton the endpoints
+already bind, so there is a **single load-once cache** — no coherence hazard. Crucially
 this **keeps `JsonRepository<T>` sealed**: subclassing would force unsealing the floor
 *and* a three-way DI alias to reconcile two caches over one `projects.json` — accidental
 complexity this slice avoids entirely by not building the seam at all yet.
@@ -236,12 +236,23 @@ slice ships with two guards and no Step yet:
 Both are superseded by the Step when it lands; the model guard stays. The inline check is
 labeled provisional so it is never mistaken for the settled validation home.
 
+## Seeding removed
+
+05 graduated 04's `StubProjects` into a provisional `ProjectSeeder` (`IHostedService`) that wrote
+two demo projects to an empty store on first boot, explicitly *"until create/edit in the UI
+becomes the real source of entries — remove when create lands."* This slice **lands create**, so
+the seeder is removed: a fresh store starts empty and is populated through `POST /projects`. With
+it goes `ProjectsModule.AddProjects()` (it registered only the seeder) and the `AddProjects()`
+call in `Composition`; `ProjectsModule` keeps just `EndpointsAssembly` for FE discovery. The wire
+tests no longer lean on seeded data — each **arranges its own** projects in the store (the seam we
+own) before asserting, per [`test-authoring.md`](../test-authoring.md).
+
 ## Scope
 
-**In:** `Project` invariants (`Create` / `Rename`) + the record-shape flip; `ProjectSeeder`
-updated to the new shape; `CreateProjectRequest` / `GetProjectRequest`; `GET /projects`
-(refactored, behavior identical), `GET /projects/{id}` (new), `POST /projects` (new), all
-as FastEndpoints.
+**In:** `Project` invariants (`Create` / `Rename`) + the record-shape flip;
+`CreateProjectRequest` / `GetProjectRequest`; `GET /projects` (refactored, behavior identical),
+`GET /projects/{id}` (new), `POST /projects` (new), all as FastEndpoints; removal of the
+provisional `ProjectSeeder` now that create is the source of entries (*Seeding removed*).
 
 **Out (deliberately):** `IProjectRepository` (deferred to the 2nd query — *The deferred
 seam*); `PUT` / `DELETE` (`Rename` is on the model, no endpoint yet); the server-only
@@ -253,16 +264,15 @@ seam*); `PUT` / `DELETE` (`Rename` is on the model, no endpoint yet); the server
 
 1. `src/Domain/Projects/Project.cs` — positional record → init-property record +
    `Create` / `Rename`.
-2. `src/Features/Projects/Module/ProjectSeeder.cs` — seed entries to object-initializer
-   syntax (positional ctor is gone); fixed GUIDs unchanged.
-3. `src/Features/Projects/List/ListProjectsEndpoint.cs` — unchanged behavior; touched only
+2. `src/Features/Projects/List/ListProjectsEndpoint.cs` — unchanged behavior; touched only
    if the inline map is normalized.
-4. **New:** `GetProjectEndpoint`, `AddProjectEndpoint`, `CreateProjectRequest`,
+3. **New:** `GetProjectEndpoint`, `AddProjectEndpoint`, `CreateProjectRequest`,
    `GetProjectRequest`.
-5. `ProjectsModule` — no change: new endpoints are auto-discovered via `EndpointsAssembly`
-   (ADR 0009); `AddProjects()` still registers only the seeder. **No new DI** — the
-   endpoints bind the existing open-generic `IRepository<Project>`.
-6. `ABox.slnx` / csprojs — touched only if the assembly collapse (Phase 4) is taken.
+4. `ProjectSeeder` **removed** and `ProjectsModule.AddProjects()` with it (it registered only
+   the seeder); the `services.AddProjects()` call drops from `Composition`. `ProjectsModule`
+   keeps just `EndpointsAssembly` for FE discovery. New endpoints need **no DI** — they bind
+   the existing open-generic `IRepository<Project>`.
+5. `ABox.slnx` + the Host reference — repointed to the collapsed `ABox.Projects` (Phase 2).
 
 ## Phased implementation plan (as built)
 
@@ -274,8 +284,8 @@ verb folder its correct `ABox.Features.Projects.<Verb>` namespace. The originall
 trivial 1:1 today and is inlined, so `List` was untouched (`ProjectMapping` arrives with `Path`).
 
 **Phase 1 — model. ✅** `Project` invariants (`Create` / `Rename`, non-empty guard) + the
-record-shape flip; `ProjectSeeder` to object-initializer syntax. Unit Rules + facts: `Create`
-/ `Rename` trim and reject blank.
+record-shape flip (the seeder briefly tracked it, then was removed — see *Seeding removed*).
+Unit Rules + facts: `Create` / `Rename` trim and reject blank.
 
 **Phase 2 — collapse. ✅** Merge `ABox.Projects.List` + `ABox.Projects.Module` into one
 `ABox.Projects` assembly at the feature root (folders + namespaces unchanged); `Contracts`
@@ -284,8 +294,9 @@ repoint; Composition unchanged. Behavior identical — the existing `GET /projec
 is the regression guard.
 
 **Phase 3 — Get + Add. ✅** Two FastEndpoints + `Contracts` request DTOs. Wire Rules + facts,
-written per [`test-authoring.md`](../test-authoring.md) (assert **state** against the seeded
-store, swap doubles via `ConfigureTestServices`, AAA bodies): `GET /projects/{id}` hit + 404;
+written per [`test-authoring.md`](../test-authoring.md) (each test **arranges its own** projects
+in the store, then asserts **state**; doubles via `ConfigureTestServices`; AAA bodies):
+`GET /projects/{id}` hit + 404;
 `POST /projects` creates (201 + `Location`), rejects blank name (400), rejects duplicate (409);
 the created project round-trips through a subsequent `GET`.
 
