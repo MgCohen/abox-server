@@ -36,6 +36,10 @@ cannot hold one, and a workflow cannot import a sibling file. That single constr
 `judge.js` is **not** "the generic workflow" — it is the judge's typed structure, in JS only because
 that is where a schema can live today. The actual generic plumbing is the built-in `agent({schema})`.
 
+To build the two core files from scratch — the merged agent-+-workflow pattern, and *why* a schema
+must live in the workflow layer — see [`.claude/workflows/how-to-create-an-agent.md`](../.claude/workflows/how-to-create-an-agent.md)
+(B4 shows this judge as the worked example). Most work, though, is just *adding a use-case* below.
+
 ## Use cases (adapters)
 
 Each adapter is a command that builds a `REQUEST`-shaped object and runs the one workflow. The
@@ -43,6 +47,53 @@ shared workflow is what makes the judge generic, not test-specific.
 
 1. **`/judge <test file>`** — rule ↔ test: a unit test vs its Rulebook. (First use.)
 2. **`/judge-rulebook <Rulebook dir>`** — rulebook ↔ standard: a test type's Rulebook vs `tests/Harness/README.md`. (Second use — proves genericity.)
+
+### Adding a use-case (adapter)
+
+A use case is *just a command* — no new workflow, agent, or schema:
+
+1. Create `.claude/commands/<name>.md` (it registers as `/<name>` on the next session start).
+2. In the body: read the artifact + the standard it's graded against, assemble a labeled `context`
+   blob, and run the one workflow with your rubric:
+
+   ```
+   Workflow({ name: 'judge', args: {
+     subject: '<what is being judged, vs what standard>',
+     context: '<labeled blob: the artifact, then the standard>',
+     files: [ <paths the judge may need for evidence> ],
+     criteria: [ { id, description, howToCheck? }, … ],   // ← the only thing that really changes
+   }})
+   ```
+
+3. Render the returned `generalFeedback` + per-criterion results.
+
+The criteria (and the context you feed) are the whole of a use case. Copy `commands/judge.md` as a template.
+
+## What controls what — knobs & levels
+
+Four levels, from "set once" to "per call". Move the knob at the **lowest** level that achieves the
+change — re-tuning the persona to fix one rubric is a smell.
+
+| Level | File / field | Governs | Move it when… |
+|---|---|---|---|
+| **Persona** | `agents/judge.md` body | grading methodology — strictness, pass/fail/indeterminate semantics, evidence rules, `generalFeedback` tone | the judge mis-grades *in general* (too lenient, hedges, weak evidence) — this affects every use case |
+| **Model / tools** | `agents/judge.md` frontmatter (`model:`, `tools:`) | cost vs rigor; what the judge may read | you need cheaper/faster, or the judge must read more/fewer file types |
+| **Structure** | `workflows/judge.js` (`output()`, `render()`, the request guard) | the verdict's *shape* and the prompt's *layout* — what every verdict carries, schema enforcement, how the request flattens | you want a new field on *every* verdict, or stricter/looser schema constraints |
+| **Adapter** | `commands/<name>.md` (the request) | one use case — `subject`, how `context` is built, which `files`, and the `criteria` (the rubric) + per-criterion `howToCheck` | you're grading a *new kind of thing*, or tuning one rubric |
+
+Behavior → knob, quick map:
+
+- **Grades too leniently / hedges to `indeterminate`** → persona rules (`judge.md`).
+- **Wrong things are being checked** → the `criteria` in the adapter.
+- **Right criterion, checked the wrong way** → that criterion's `howToCheck`.
+- **Want more/less detail per verdict** → fields in `output()` (`judge.js`). Schema is the primary
+  verbosity knob: add fields for more, remove for less; `minItems`/`maxItems`/`enum` tighten enforcement.
+- **Too expensive / slow** → `model:` in `judge.md` (or `agent({ model })`).
+- **Judge can't see a needed file** → add it to `files` (adapter); ensure `tools:` permits `Read`.
+- **Verdict should drive a score or decision** → that's the **caller**, not a knob — see Iteration.
+
+Not knobs — structural guarantees, don't touch them to tune output: exactly one result per criterion,
+ids echoed verbatim and `enum`-bound, and no score/overall in the verdict (computed downstream).
 
 ## Iteration (lives in the caller, not the judge)
 
