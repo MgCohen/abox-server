@@ -188,59 +188,48 @@ return await agent(taskPrompt, { agentType: 'judge', schema: VERDICT })
 
 ## B4. Worked example — merged pattern
 
-> The live `.claude/workflows/judge.js` is a **generic rubric judge** — it grades any artifact against a supplied list of criteria and derives its output schema from those criteria, returning per-criterion verdicts plus `generalFeedback`. It is one-shot: scoring, decisions, and any iteration are the caller's job, not the judge's. See [`PLANS/generic-judge.md`](../../PLANS/generic-judge.md) for that design. The example below is kept as a teaching case for the *merged* (`agentType` + `schema`) pattern.
+> The example below **is** the live `.claude/workflows/judge.js` — a **generic rubric judge** that grades any artifact against a supplied list of criteria, derives its output schema from those criteria, and returns per-criterion verdicts plus `generalFeedback`. It is one-shot: scoring, decisions, and iteration are the caller's job, not the judge's. See [`PLANS/generic-judge.md`](../../PLANS/generic-judge.md) for the full design.
 
 ```js
 export const meta = {
   name: 'judge',
-  description: 'Schema-enforced test judge — reuses .claude/agents/judge.md and returns a validated verdict.',
+  description: 'Generic rubric judge: artifact + criteria in, per-criterion verdict + general feedback out.',
   phases: [{ title: 'Judge' }],
 }
 
-const VERDICT = {
-  type: 'object',
-  properties: {
-    target: { type: 'string' },
-    overall_pass: { type: 'boolean' },
-    score: { type: 'integer', minimum: 0, maximum: 10 },
-    rulebook_compliance: {
-      type: 'object',
-      properties: { pass: { type: 'boolean' }, findings: { type: 'array', items: { type: 'string' } } },
-      required: ['pass', 'findings'],
-    },
-    faithfulness: {
-      type: 'object',
-      properties: {
-        pass: { type: 'boolean' },
-        checks: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              test: { type: 'string' }, claims: { type: 'string' },
-              verifies: { type: 'string' }, faithful: { type: 'boolean' },
-            },
-            required: ['test', 'claims', 'verifies', 'faithful'],
+// Output schema is DERIVED from the request's criteria: one result per id, ids enum-bound.
+function output(criteria) {
+  const ids = criteria.map(c => c.id)
+  return {
+    type: 'object',
+    required: ['generalFeedback', 'results'],
+    properties: {
+      generalFeedback: { type: 'string' },
+      results: {
+        type: 'array', minItems: ids.length, maxItems: ids.length,
+        items: {
+          type: 'object', required: ['criterionId', 'status', 'evidence'],
+          properties: {
+            criterionId: { type: 'string', enum: ids },
+            status: { type: 'string', enum: ['pass', 'fail', 'indeterminate'] },
+            evidence: { type: 'string' },
           },
         },
       },
-      required: ['pass', 'checks'],
     },
-    faults: { type: 'array', items: { type: 'string' } },
-    recommendations: { type: 'array', items: { type: 'string' } },
-  },
-  required: ['target', 'overall_pass', 'score', 'rulebook_compliance', 'faithfulness', 'faults', 'recommendations'],
+  }
 }
 
+function render(r) { /* flatten { subject, context, files?, criteria } → a readable prompt blob */ }
+
 phase('Judge')
-const target = args || 'tests/Tests/Unit/Tests/FlowTests.cs'
-return await agent(
-  `Grade the test file at "${target}". Follow your judging procedure and return the verdict.`,
-  { agentType: 'judge', schema: VERDICT }
-)
+const req = typeof args === 'string' ? JSON.parse(args) : args
+if (!req?.subject || !req?.context || !req?.criteria?.length)
+  throw new Error('judge: request needs { subject, context, criteria[] }')
+return await agent(render(req), { agentType: 'judge', schema: output(req.criteria) })
 ```
 
-With the merge, the workflow prompt shrinks to the task — the methodology lives in `judge.md`.
+With the merge, the workflow holds only structure (request contract + derived schema); the methodology lives in `judge.md`, reached via `agentType: 'judge'`.
 
 ## B4b. Worked example — inline variant (one file, no agent file)
 
@@ -329,6 +318,8 @@ description: Run the schema-enforced judge workflow on a test file.
 ---
 Run the judge workflow on $ARGUMENTS using `Workflow({ name: 'judge', args: '$ARGUMENTS' })`. Render the returned verdict.
 ```
+
+> Naming note: the template above passes `$ARGUMENTS` straight through as a string — the minimal generic shape. In this repo the real `/judge` (and `/judge-rulebook`) commands are *adapters*: their bodies read the artifact + its standard, build a full `{ subject, context, criteria }` request, and pass it as an **object**. So `/judge` here means "the test-rulebook adapter," not "the raw workflow runner." See [`.claude/commands/judge.md`](../commands/judge.md) for a real adapter body.
 
 ---
 

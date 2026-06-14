@@ -17,7 +17,7 @@ any iteration or scoring is the **caller's** job, outside the judge.
 
 - **Topic-blind.** The methodology is ingrained in the agent; everything topical is *input*:
   a subject, an inline context blob, optional file links, and a list of criteria.
-- **In:** `{ subject, context, files?, criteria: { id, description, howToCheck? }[] }`.
+- **In:** `{ subject, context, files?, criteria: { id, description, howToCheck? }[] }`. Each criterion needs an `id` (echoed back verbatim) and a `description`; the optional `howToCheck` is a short hint shown to the judge (rendered as `— check: …`) when the description alone doesn't say *how* to verify it.
 - **Out:** `{ generalFeedback, results: { criterionId, status: pass|fail|indeterminate, evidence }[] }`.
 - **Not its job:** scoring, rollup, pass/fail decisions, retry loops — all downstream of the judge.
 
