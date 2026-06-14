@@ -188,7 +188,7 @@ return await agent(taskPrompt, { agentType: 'judge', schema: VERDICT })
 
 ## B4. Worked example — merged pattern
 
-> The live `.claude/workflows/judge.js` has since evolved into a **generic rubric judge** — it grades any artifact against a supplied list of criteria, derives its output schema from those criteria, and computes the score deterministically in code. See [`PLANS/generic-judge.md`](../../PLANS/generic-judge.md) for that design. The example below is kept as a teaching case for the *merged* (`agentType` + `schema`) pattern.
+> The live `.claude/workflows/judge.js` is a **generic rubric judge** — it grades any artifact against a supplied list of criteria and derives its output schema from those criteria, returning per-criterion verdicts plus `generalFeedback`. It is one-shot: scoring, decisions, and any iteration are the caller's job, not the judge's. See [`PLANS/generic-judge.md`](../../PLANS/generic-judge.md) for that design. The example below is kept as a teaching case for the *merged* (`agentType` + `schema`) pattern.
 
 ```js
 export const meta = {
