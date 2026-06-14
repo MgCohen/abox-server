@@ -60,14 +60,24 @@ A use case is *just a command* — no new workflow, agent, or schema:
    Workflow({ name: 'judge', args: {
      subject: '<what is being judged, vs what standard>',
      context: '<labeled blob: the artifact, then the standard>',
-     files: [ <paths the judge may need for evidence> ],
-     criteria: [ { id, description, howToCheck? }, … ],   // ← the only thing that really changes
+     files: [ <paths the judge may read for evidence> ],
+     criteria: [ { id, description, howToCheck? }, … ],   // ← your rubric
    }})
    ```
 
 3. Render the returned `generalFeedback` + per-criterion results.
 
-The criteria (and the context you feed) are the whole of a use case. Copy `commands/judge.md` as a template.
+Notes for the request you build:
+
+- **The standard.** If a written standard exists (a template, a README, a spec), read it into the
+  `context`. If none exists yet, just *state the standard inline* in the `context` blob — the judge
+  grades against whatever the context labels as the standard.
+- **`context` vs `files`.** Put everything a criterion needs to be judged into `context`; list a path
+  in `files` only as a fallback the judge `Read`s when the context can't settle a criterion (its
+  persona reads a file only then). Don't dump sources into `files` and a thin `context`.
+
+The `criteria` and the `context` you assemble are what change per use case (`subject` and `files` are
+usually a line each). Copy `commands/judge.md` as a template.
 
 ## What controls what — knobs & levels
 
@@ -93,7 +103,9 @@ Behavior → knob, quick map:
 - **Verdict should drive a score or decision** → that's the **caller**, not a knob — see Iteration.
 
 Not knobs — structural guarantees, don't touch them to tune output: exactly one result per criterion,
-ids echoed verbatim and `enum`-bound, and no score/overall in the verdict (computed downstream).
+ids echoed verbatim and `enum`-bound, and no rollup score / overall pass-fail in the verdict (computed
+downstream). Per-criterion *detail* is fine and is a Structure knob — e.g. adding a `severity` field to
+each result; what's banned is the judge emitting an *aggregate* score or decision.
 
 ## Iteration (lives in the caller, not the judge)
 
