@@ -19,15 +19,16 @@ Template:
 
 ### GET /projects lists the stored projects as wire DTOs
 - Why: GET /projects must route to IRepository<Project> and serialize the domain Project list to ProjectDto
-  JSON ({id, name}), proving the Domain → Contracts mapping on the wire.
+  JSON ({id, name, path}), proving the Domain → Contracts mapping on the wire.
 
 ### GET /projects/{id} returns the project, or 404 when absent
 - Why: the by-id read must route the `{id}` param to `IRepository<Project>.GetById` and serialize the hit
   as `ProjectDto`; an unknown id is a 404, not an empty 200.
 
-### POST /projects creates a project, rejecting blank and duplicate names
-- Why: create must mint + persist a project (201 + a `Location` to the new id), reject a blank name (400)
-  and a duplicate name (409) — so the model invariant and uniqueness are enforced on the wire.
+### POST /projects creates a project, rejecting blank name, blank path, and duplicate names
+- Why: create must mint + persist a project (201 + a `Location` to the new id), reject a blank name (400),
+  a blank path (400), and a duplicate name (409) — so the model invariants and uniqueness are enforced on
+  the wire.
 
 ### a started flow streams snapshots over SSE to completion
 - Why: the core streaming contract — POST /flows starts a run and returns its id; GET /flows/{id}/events

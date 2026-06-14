@@ -16,6 +16,6 @@ public sealed class ListProjectsEndpoint(IRepository<Project> store) : EndpointW
     public override async Task HandleAsync(CancellationToken ct)
     {
         var projects = await store.GetAll(ct);
-        await Send.OkAsync([.. projects.Select(p => new ProjectDto(p.Id, p.Name))], ct);
+        await Send.OkAsync([.. projects.Select(p => new ProjectDto(p.Id, p.Name, p.Path))], ct);
     }
 }

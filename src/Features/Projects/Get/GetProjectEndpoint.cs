@@ -21,6 +21,6 @@ public sealed class GetProjectEndpoint(IRepository<Project> store) : Endpoint<Ge
             return;
         }
 
-        await Send.OkAsync(new ProjectDto(project.Id, project.Name), ct);
+        await Send.OkAsync(new ProjectDto(project.Id, project.Name, project.Path), ct);
     }
 }

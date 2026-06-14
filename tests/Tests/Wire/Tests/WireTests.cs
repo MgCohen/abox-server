@@ -28,7 +28,7 @@ public class WireTests(WireApp app) : IClassFixture<WireApp>
     public async Task Projects_lists_the_stored_projects()
     {
         var store = app.Services.GetRequiredService<IRepository<Project>>();
-        await store.Add(Project.Create("Listed Project"));
+        await store.Add(Project.Create("Listed Project", app.ProjectDir));
 
         using var res = await app.CreateClient().GetAsync("/projects");
 
@@ -37,22 +37,22 @@ public class WireTests(WireApp app) : IClassFixture<WireApp>
         Assert.NotNull(projects);
         var stored = await store.GetAll();
         Assert.Equal(
-            stored.Select(p => (p.Id, p.Name)).OrderBy(p => p.Name),
-            projects!.Select(p => (p.Id, p.Name)).OrderBy(p => p.Name));
+            stored.Select(p => (p.Id, p.Name, p.Path)).OrderBy(p => p.Name),
+            projects!.Select(p => (p.Id, p.Name, p.Path)).OrderBy(p => p.Name));
     }
 
     [Rule("GET /projects/{id} returns the project, or 404 when absent")]
     [Fact]
     public async Task Get_by_id_returns_the_stored_project()
     {
-        var stored = Project.Create("Fetchable Project");
+        var stored = Project.Create("Fetchable Project", app.ProjectDir);
         await app.Services.GetRequiredService<IRepository<Project>>().Add(stored);
 
         using var res = await app.CreateClient().GetAsync($"/projects/{stored.Id}");
 
         Assert.Equal(HttpStatusCode.OK, res.StatusCode);
         var dto = await res.Content.ReadFromJsonAsync<ProjectDto>();
-        Assert.Equal((stored.Id, stored.Name), (dto!.Id, dto.Name));
+        Assert.Equal((stored.Id, stored.Name, stored.Path), (dto!.Id, dto.Name, dto.Path));
     }
 
     [Rule("GET /projects/{id} returns the project, or 404 when absent")]
@@ -64,44 +64,58 @@ public class WireTests(WireApp app) : IClassFixture<WireApp>
         Assert.Equal(HttpStatusCode.NotFound, res.StatusCode);
     }
 
-    [Rule("POST /projects creates a project, rejecting blank and duplicate names")]
+    [Rule("POST /projects creates a project, rejecting blank name, blank path, and duplicate names")]
     [Fact]
     public async Task Post_creates_a_project_and_it_round_trips()
     {
         var client = app.CreateClient();
 
-        using var created = await client.PostAsJsonAsync("/projects", new CreateProjectRequest("  Fresh Project  "));
+        using var created = await client.PostAsJsonAsync(
+            "/projects", new CreateProjectRequest("  Fresh Project  ", app.ProjectDir));
 
         Assert.Equal(HttpStatusCode.Created, created.StatusCode);
         var dto = await created.Content.ReadFromJsonAsync<ProjectDto>();
         Assert.NotNull(dto);
         Assert.Equal("Fresh Project", dto!.Name);
+        Assert.Equal(app.ProjectDir, dto.Path);
         Assert.NotEqual(Guid.Empty, dto.Id);
         Assert.Contains(dto.Id.ToString(), created.Headers.Location?.ToString());
 
         using var fetched = await client.GetAsync($"/projects/{dto.Id}");
         Assert.Equal(HttpStatusCode.OK, fetched.StatusCode);
         var round = await fetched.Content.ReadFromJsonAsync<ProjectDto>();
-        Assert.Equal((dto.Id, dto.Name), (round!.Id, round.Name));
+        Assert.Equal((dto.Id, dto.Name, dto.Path), (round!.Id, round.Name, round.Path));
     }
 
-    [Rule("POST /projects creates a project, rejecting blank and duplicate names")]
+    [Rule("POST /projects creates a project, rejecting blank name, blank path, and duplicate names")]
     [Fact]
     public async Task Post_rejects_a_blank_name()
     {
-        using var res = await app.CreateClient().PostAsJsonAsync("/projects", new CreateProjectRequest("   "));
+        using var res = await app.CreateClient().PostAsJsonAsync(
+            "/projects", new CreateProjectRequest("   ", app.ProjectDir));
 
         Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
     }
 
-    [Rule("POST /projects creates a project, rejecting blank and duplicate names")]
+    [Rule("POST /projects creates a project, rejecting blank name, blank path, and duplicate names")]
+    [Fact]
+    public async Task Post_rejects_a_blank_path()
+    {
+        using var res = await app.CreateClient().PostAsJsonAsync(
+            "/projects", new CreateProjectRequest("Pathless Project", "   "));
+
+        Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
+    }
+
+    [Rule("POST /projects creates a project, rejecting blank name, blank path, and duplicate names")]
     [Fact]
     public async Task Post_rejects_a_duplicate_name()
     {
-        var existing = Project.Create("Existing Project");
+        var existing = Project.Create("Existing Project", app.ProjectDir);
         await app.Services.GetRequiredService<IRepository<Project>>().Add(existing);
 
-        using var res = await app.CreateClient().PostAsJsonAsync("/projects", new CreateProjectRequest(existing.Name));
+        using var res = await app.CreateClient().PostAsJsonAsync(
+            "/projects", new CreateProjectRequest(existing.Name, app.ProjectDir));
 
         Assert.Equal(HttpStatusCode.Conflict, res.StatusCode);
     }
