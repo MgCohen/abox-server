@@ -24,12 +24,6 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
-  <!-- Each type's Rulebook is the source of truth; ParityGuard reads it at runtime. Glob preserves the
-       <Type>\Rulebook\ prefix in the output so the per-type Rulebooks never collide. -->
-  <ItemGroup>
-    <None Include="**\Rulebook\*.md" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
-
   <!-- Every production assembly by glob: the Arch model loads them all from the output dir, and the
        runtime types (Unit/E2E/Wire/Live) exercise whichever they need. A new feature/slice is referenced
        the moment its csproj exists — no edit here. The merged test assembly is named ABox.Tests

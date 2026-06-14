@@ -1,28 +1,37 @@
 namespace ABox.Tests.Harness;
 
-// The repo layout on disk that the Meta (test-system) guards read: the repo root, located by the ABox.slnx
-// marker, and the test tree under tests/Tests/. Source-tree queries (src/ projects, build output) live with
-// the Structure type, which owns source placement; this owns the test system's own layout. Root is the shared
-// locator both sides build on. Throws on a missing root/tree so a broken scan can't go vacuously green.
+// The repo layout on disk that the Meta self-suite reads: the repo root (located by the ABox.slnx marker), the
+// product test tree under tests/Tests/, and Meta's own home under tests/Meta/. Source-tree queries (src/
+// projects, build output) live with the Structure type, which owns source placement; this owns the test
+// system's layout. Root is the shared locator both sides build on. Throws on a missing root/tree so a broken
+// scan can't go vacuously green.
 public static class RepoTree
 {
     private const string Marker = "ABox.slnx";
-    private static readonly string[] Ignored = { "bin", "obj", "artifacts" };
+
+    // The build-output directory names, owned once: the only legal artifacts home is the repo-root /artifacts,
+    // so any folder by these names under src/ or tests/ is stray output. Both trees (here + Structure's
+    // SourceTree) read this one fact.
+    public static readonly string[] BuildOutputDirs = { "bin", "obj", "artifacts" };
 
     public static readonly string Root = LocateRoot();
-    public static readonly string TestsRoot = RequireTestsRoot();
+    public static readonly string TestsRoot = RequireDir("the product test tree", "tests", "Tests");
+    public static readonly string MetaRoot = RequireDir("the Meta self-suite", "tests", "Meta");
 
     public static IReadOnlyList<string> TestTypeFolders() =>
         Directory.EnumerateDirectories(TestsRoot)
             .Select(Path.GetFileName)
-            .Where(name => name is not null && !Ignored.Contains(name, StringComparer.OrdinalIgnoreCase))
+            .Where(name => name is not null && !BuildOutputDirs.Contains(name, StringComparer.OrdinalIgnoreCase))
             .Select(name => name!)
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToList();
 
+    // Every Rulebook the format guard must keep well-formed: each product type's under tests/Tests/, plus
+    // Meta's own under tests/Meta/. Format applies uniformly, regardless of which assembly owns the type.
     public static IReadOnlyList<string> RulebookFolders() =>
         Directory.EnumerateDirectories(TestsRoot)
             .Select(t => Path.Combine(t, "Rulebook"))
+            .Append(Path.Combine(MetaRoot, "Rulebook"))
             .Where(Directory.Exists)
             .OrderBy(d => d, StringComparer.Ordinal)
             .ToList();
@@ -38,13 +47,13 @@ public static class RepoTree
             "The Meta structure guards would be vacuously green — fix the marker or the locator.");
     }
 
-    private static string RequireTestsRoot()
+    private static string RequireDir(string what, params string[] segments)
     {
-        var path = Path.Combine(Root, "tests", "Tests");
+        var path = Path.Combine(new[] { Root }.Concat(segments).ToArray());
         if (!Directory.Exists(path))
             throw new DirectoryNotFoundException(
-                $"No 'tests/Tests/' under '{Root}'. The Meta structure guards would be vacuously green — " +
-                "fix the locator or the layout.");
+                $"No '{string.Join('/', segments)}/' under '{Root}' ({what}). The Meta guards would be " +
+                "vacuously green — fix the locator or the layout.");
         return path;
     }
 }

@@ -1,8 +1,11 @@
+using static ABox.Tests.Harness.Report;
+
 namespace ABox.Tests.Meta.Tests;
 
-// The test taxonomy holds together: every folder under tests/Tests/ is a registered type, and every test lives
-// inside one — so no test escapes the namespace its type's ParityGuard scopes to. Reads disk (RepoTree) and
-// reflects over the test assembly, the two surfaces a test can hide on.
+// The test taxonomy holds together: every folder under tests/Tests/ is a registered type, and every test in
+// the product suite lives inside one — so no test escapes the namespace its type's ParityGuard scopes to.
+// Reads disk (RepoTree) and reflects over the product assembly (SuiteAnchor), the two surfaces a test can hide
+// on. Meta's own tests are covered by Meta's self-parity (ParityTests), not this product-suite sweep.
 public class TaxonomyTests
 {
     [Rule("Every folder under tests holds a registered test type")]
@@ -28,7 +31,7 @@ public class TaxonomyTests
     [Fact]
     public void EveryTestInsideARegisteredType()
     {
-        var misplaced = typeof(TaxonomyTests).Assembly.GetTypes()
+        var misplaced = typeof(SuiteAnchor).Assembly.GetTypes()
             .SelectMany(t => t.GetMethods())
             .Where(TestMarkers.Marks)
             .Where(m => !TestTypes.ContainsTest(m.DeclaringType?.Namespace))
@@ -45,7 +48,4 @@ public class TaxonomyTests
             Move each into a registered type's Tests/ folder.
             """);
     }
-
-    private static string Bullets(IEnumerable<string> items) =>
-        string.Join(Environment.NewLine, items.Select(i => $"  * {i}"));
 }

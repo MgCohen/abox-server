@@ -1,3 +1,5 @@
+using static ABox.Tests.Harness.Report;
+
 namespace ABox.Tests.Meta.Tests;
 
 // The Rulebooks themselves stay well-formed: every Rule matches its type's template.md, and each rules.md
@@ -62,10 +64,4 @@ public class RulebookFormatTests
     }
 
     private static string Rel(string path) => Path.GetRelativePath(RepoTree.Root, path);
-
-    private static string Join(IEnumerable<string> labels) =>
-        string.Join(", ", labels.OrderBy(l => l, StringComparer.Ordinal));
-
-    private static string Bullets(IEnumerable<string> items) =>
-        string.Join(Environment.NewLine, items.Select(i => $"  * {i}"));
 }

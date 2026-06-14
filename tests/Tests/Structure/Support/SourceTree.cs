@@ -6,7 +6,6 @@ namespace ABox.Tests.Structure.Support;
 // still caught. The repo root is located once in Harness.RepoTree; this owns the src/ queries.
 internal static class SourceTree
 {
-    private static readonly string[] Ignored = { "bin", "obj", "artifacts" };
     private static readonly char[] Separators = { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar };
 
     public static readonly string Root = RepoTree.Root;
@@ -48,8 +47,8 @@ internal static class SourceTree
     private static bool IsOutputRoot(string relativePath)
     {
         var segments = relativePath.Split(Separators);
-        return Ignored.Contains(segments[^1], StringComparer.OrdinalIgnoreCase)
-            && !segments[..^1].Any(s => Ignored.Contains(s, StringComparer.OrdinalIgnoreCase));
+        return RepoTree.BuildOutputDirs.Contains(segments[^1], StringComparer.OrdinalIgnoreCase)
+            && !segments[..^1].Any(s => RepoTree.BuildOutputDirs.Contains(s, StringComparer.OrdinalIgnoreCase));
     }
 
     private static IEnumerable<string> Projects() =>
@@ -57,7 +56,7 @@ internal static class SourceTree
 
     private static bool NotIgnored(string path) =>
         !Path.GetRelativePath(SrcRoot, path).Split(Separators)
-            .Any(seg => Ignored.Contains(seg, StringComparer.OrdinalIgnoreCase));
+            .Any(seg => RepoTree.BuildOutputDirs.Contains(seg, StringComparer.OrdinalIgnoreCase));
 
     private static string TopSegment(string path) =>
         Path.GetRelativePath(SrcRoot, path).Split(Separators)[0];

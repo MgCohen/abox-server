@@ -1,9 +1,10 @@
 # Meta Rulebook
 
 Each Rule is one invariant about the **test system itself** — the taxonomy of test types, the Rulebook files,
-and their parity with the enforcing tests. These guard the harness, not the product, and run in the same
-assembly so they can reflect over it. Convention, parity discipline, and the Rule shape live in
-[`../../../Harness/README.md`](../../../Harness/README.md) and `template.md`.
+and their parity with the enforcing tests. These guard the harness, not the product: they run in their own
+assembly (`ABox.Tests.Meta`) and reflect over the product suite from outside (via `ABox.Tests.SuiteAnchor`),
+the way the Arch guards reflect over `src`. Convention, parity discipline, and the Rule shape live in
+[`../../Harness/README.md`](../../Harness/README.md) and `template.md`.
 
 ---
 
@@ -12,8 +13,9 @@ assembly so they can reflect over it. Convention, parity discipline, and the Rul
   enforced by a test, every test citing a real Rule. This is the one parity guard for the whole repo, driven
   over every registered type, so a Rule with no test (or a test citing a missing Rule) fails the build.
 
-Replaces the former per-type parity facts: one data-driven check reads `TestTypes.Registered` and scopes
-`ParityGuard` to each `ABox.Tests.<Type>.Tests` namespace, applying `requireAllCited` for the complete types.
+One data-driven check reads `TestTypes.Registered` and scopes `ParityGuard` to each `ABox.Tests.<Type>.Tests`
+namespace in the product assembly, applying `requireAllCited` for the complete types — then runs once more over
+Meta's own Rulebook and tests, so the self-suite holds itself to the same bar.
 
 ### Every folder under tests holds a registered test type
 - **Why:** Each folder under `tests/Tests/` is a kind of guarantee — a Rulebook with its own parity scope. A
@@ -26,10 +28,11 @@ Replaces the former per-type parity facts: one data-driven check reads `TestType
 ### Every test lives inside a registered test type
 - **Why:** Parity scopes `[Rule]` discovery to one `ABox.Tests.<Type>.Tests` namespace, so a test placed
   anywhere else — shared `Support`, a type's own `Support`, the root — runs but is never required to cite a
-  Rule. This is the assembly-wide backstop that closes that escape.
+  Rule. This is the suite-wide backstop that closes that escape.
 
-Reflection over the test assembly selects `TestMarkers.Marks` methods whose namespace fails
-`TestTypes.ContainsTest`. An unregistered marker is a patch-when-seen event: add the name to `TestMarkers`.
+Reflection over the product assembly (`ABox.Tests.SuiteAnchor`) selects `TestMarkers.Marks` methods whose
+namespace fails `TestTypes.ContainsTest`. Meta's own tests are held in scope by Meta's self-parity instead. An
+unregistered marker is a patch-when-seen event: add the name to `TestMarkers`.
 
 ### Every Rule matches its type's template
 - **Why:** A type's `template.md` is the schema; without a check it is only aspirational. A rule missing its
