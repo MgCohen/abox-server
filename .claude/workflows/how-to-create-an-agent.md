@@ -182,7 +182,7 @@ return await agent(taskPrompt, { agentType: 'judge', schema: VERDICT })
 
 **How the script runs.** You don't import anything — the workflow runtime injects ambient globals: `agent()`, `parallel()`, `pipeline()`, `phase()`, `log()`, `workflow()`, and `args` (the value passed in via `Workflow({ args })`, verbatim). The script body runs in an async context, so `await` works at top level.
 
-- `args` is your input. Guard it: `const x = args || '<default>'` so the script runs even with no argument.
+- `args` is your input — passed verbatim, so it can be a **string** (`/judge X` → `args = 'X'`) *or* a structured **object** (`Workflow({ args: { subject, criteria, … } })`). A robust script handles both: `const req = typeof args === 'string' ? JSON.parse(args) : args`. Guard it: `const x = args || '<default>'` so the script runs even with no argument.
 - `phase('Title')` groups later `agent()` calls under that heading in the progress view; use the **same** titles as `meta.phases`. It's cosmetic — purely for display.
 - **Retry bound:** a schema mismatch is retried automatically a few times; if it never validates (or the call hits a terminal error), `agent()` ultimately fails and returns `null`. Filter with `.filter(Boolean)` when fanning out.
 
@@ -383,4 +383,3 @@ claude -p (real CLI, subscription) → Workflow name:'judge' → agent({agentTyp
 | Enforcement location | inside the session (forced-tool + validate + retry) — host parse becomes "extract an already-validated block" |
 | Raw `tool_choice` over CLI stdin | ❌ not available — enforcement rides the workflow/schema mechanism |
 | Raw `tool_choice` in host code | ✅ only via a direct Anthropic API call (API-key billing), a separate path from the subscription CLI |
-```
