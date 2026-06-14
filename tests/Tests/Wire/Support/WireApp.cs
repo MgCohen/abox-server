@@ -10,8 +10,9 @@ namespace ABox.Tests.Wire.Support;
 
 // Boots the real Host (Program) over an in-memory TestServer, then swaps three seams so the wire is driven
 // deterministically without a live CLI or touching the user's data dir: a fake project registry (resolves to
-// a temp dir, lists one entry), a temp StorageRoot (so JsonRepository + the project seeder write under a
-// throwaway dir, not ~/.abox), and a catalog carrying the CLI-free StubFlow. ConfigureTestServices runs after
+// a temp dir, lists one entry), a temp StorageRoot (so JsonRepository reads/writes under a throwaway dir, not
+// ~/.abox — wire tests arrange their own projects there), and a catalog carrying the CLI-free StubFlow.
+// ConfigureTestServices runs after
 // the app's own registration, so these win.
 public sealed class WireApp : WebApplicationFactory<Program>
 {

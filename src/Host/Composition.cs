@@ -42,7 +42,6 @@ internal static class Composition
         services.AddSingleton<ResolverSelector>();
         services.AddSingleton<IAgentFactory, AgentFactory>();
 
-        services.AddProjects();
         services.AddFlows(flows);
         services.AddGit();
     }

@@ -1,7 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
+using Microsoft.Extensions.DependencyInjection;
+using ABox.Domain.Projects;
 using ABox.Features.Flows.Contracts;
 using ABox.Features.Projects.Contracts;
+using ABox.Infrastructure.Storage;
 using ABox.Tests.Wire.Support;
 
 namespace ABox.Tests.Wire.Tests;
@@ -20,17 +23,87 @@ public class WireTests(WireApp app) : IClassFixture<WireApp>
         Assert.Contains("ok", await res.Content.ReadAsStringAsync());
     }
 
-    [Rule("projects lists the seeded projects as wire DTOs")]
+    [Rule("GET /projects lists the stored projects as wire DTOs")]
     [Fact]
-    public async Task Projects_lists_the_seeded_projects()
+    public async Task Projects_lists_the_stored_projects()
     {
+        var store = app.Services.GetRequiredService<IRepository<Project>>();
+        await store.Add(Project.Create("Listed Project"));
+
         using var res = await app.CreateClient().GetAsync("/projects");
 
         Assert.Equal(HttpStatusCode.OK, res.StatusCode);
         var projects = await res.Content.ReadFromJsonAsync<ProjectDto[]>();
         Assert.NotNull(projects);
-        Assert.Contains(projects!, p => p.Name == "Card Framework");
-        Assert.Contains(projects!, p => p.Name == "Scaffold");
+        var stored = await store.GetAll();
+        Assert.Equal(
+            stored.Select(p => (p.Id, p.Name)).OrderBy(p => p.Name),
+            projects!.Select(p => (p.Id, p.Name)).OrderBy(p => p.Name));
+    }
+
+    [Rule("GET /projects/{id} returns the project, or 404 when absent")]
+    [Fact]
+    public async Task Get_by_id_returns_the_stored_project()
+    {
+        var stored = Project.Create("Fetchable Project");
+        await app.Services.GetRequiredService<IRepository<Project>>().Add(stored);
+
+        using var res = await app.CreateClient().GetAsync($"/projects/{stored.Id}");
+
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        var dto = await res.Content.ReadFromJsonAsync<ProjectDto>();
+        Assert.Equal((stored.Id, stored.Name), (dto!.Id, dto.Name));
+    }
+
+    [Rule("GET /projects/{id} returns the project, or 404 when absent")]
+    [Fact]
+    public async Task Get_by_id_returns_404_for_an_unknown_id()
+    {
+        using var res = await app.CreateClient().GetAsync($"/projects/{Guid.NewGuid()}");
+
+        Assert.Equal(HttpStatusCode.NotFound, res.StatusCode);
+    }
+
+    [Rule("POST /projects creates a project, rejecting blank and duplicate names")]
+    [Fact]
+    public async Task Post_creates_a_project_and_it_round_trips()
+    {
+        var client = app.CreateClient();
+
+        using var created = await client.PostAsJsonAsync("/projects", new CreateProjectRequest("  Fresh Project  "));
+
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var dto = await created.Content.ReadFromJsonAsync<ProjectDto>();
+        Assert.NotNull(dto);
+        Assert.Equal("Fresh Project", dto!.Name);
+        Assert.NotEqual(Guid.Empty, dto.Id);
+        Assert.Contains(dto.Id.ToString(), created.Headers.Location?.ToString());
+
+        using var fetched = await client.GetAsync($"/projects/{dto.Id}");
+        Assert.Equal(HttpStatusCode.OK, fetched.StatusCode);
+        var round = await fetched.Content.ReadFromJsonAsync<ProjectDto>();
+        Assert.Equal((dto.Id, dto.Name), (round!.Id, round.Name));
+    }
+
+    [Rule("POST /projects creates a project, rejecting blank and duplicate names")]
+    [Fact]
+    public async Task Post_rejects_a_blank_name()
+    {
+        using var res = await app.CreateClient().PostAsJsonAsync("/projects", new CreateProjectRequest("   "));
+
+        Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
+    }
+
+    [Rule("POST /projects creates a project, rejecting blank and duplicate names")]
+    [Fact]
+    public async Task Post_rejects_a_duplicate_name()
+    {
+        var existing = Project.Create("Existing Project");
+        await app.Services.GetRequiredService<IRepository<Project>>().Add(existing);
+
+        using var res = await app.CreateClient().PostAsJsonAsync("/projects", new CreateProjectRequest(existing.Name));
+
+        Assert.Equal(HttpStatusCode.Conflict, res.StatusCode);
     }
 
     [Rule("a started flow streams snapshots over SSE to completion")]
