@@ -1,7 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
+using Microsoft.Extensions.DependencyInjection;
+using ABox.Domain.Projects;
 using ABox.Features.Flows.Contracts;
 using ABox.Features.Projects.Contracts;
+using ABox.Infrastructure.Storage;
 using ABox.Tests.Wire.Support;
 
 namespace ABox.Tests.Wire.Tests;
@@ -24,13 +27,17 @@ public class WireTests(WireApp app) : IClassFixture<WireApp>
     [Fact]
     public async Task Projects_lists_the_seeded_projects()
     {
+        var stored = await app.Services.GetRequiredService<IRepository<Project>>().GetAll();
+        Assert.NotEmpty(stored);
+
         using var res = await app.CreateClient().GetAsync("/projects");
 
         Assert.Equal(HttpStatusCode.OK, res.StatusCode);
         var projects = await res.Content.ReadFromJsonAsync<ProjectDto[]>();
         Assert.NotNull(projects);
-        Assert.Contains(projects!, p => p.Name == "Card Framework");
-        Assert.Contains(projects!, p => p.Name == "Scaffold");
+        Assert.Equal(
+            stored.Select(p => (p.Id, p.Name)).OrderBy(p => p.Name),
+            projects!.Select(p => (p.Id, p.Name)).OrderBy(p => p.Name));
     }
 
     [Rule("a started flow streams snapshots over SSE to completion")]
