@@ -1,6 +1,6 @@
 # Projects CRUD slice — full CRUD on the storage floor, model owns its rules
 
-Status: **proposed (2026-06-14).** Self-contained — readable without prior context.
+Status: **built (2026-06-14).** Self-contained — readable without prior context.
 Grows the read-only [Projects slice](04-projects-slice.md) onto writes (List / Get /
 Add) by **executing [05](05-storage-repository.md)'s Phase 3**, not by changing its
 shape. Endpoints stay on the generic `IRepository<Project>` (05's floor); the
@@ -264,27 +264,30 @@ seam*); `PUT` / `DELETE` (`Rename` is on the model, no endpoint yet); the server
    endpoints bind the existing open-generic `IRepository<Project>`.
 6. `ABox.slnx` / csprojs — touched only if the assembly collapse (Phase 4) is taken.
 
-## Phased implementation plan
+## Phased implementation plan (as built)
 
 Each phase: warning-free build + green tests + one coherent commit, per the per-layer gate.
+The collapse was pulled **ahead of** Get/Add (not left for last): FastEndpoints discovers a
+single assembly, so the merged `ABox.Projects` at the feature root is what gives each new
+verb folder its correct `ABox.Features.Projects.<Verb>` namespace. The originally-planned
+"refactor List onto `ProjectMapping`" phase fell away — the `Project → ProjectDto` map is a
+trivial 1:1 today and is inlined, so `List` was untouched (`ProjectMapping` arrives with `Path`).
 
-**Phase 1 — model.** `Project` invariants; update `ProjectSeeder` to the new shape. Unit
-tests: `Create` / `Rename` reject blank and trim surrounding whitespace.
+**Phase 1 — model. ✅** `Project` invariants (`Create` / `Rename`, non-empty guard) + the
+record-shape flip; `ProjectSeeder` to object-initializer syntax. Unit Rules + facts: `Create`
+/ `Rename` trim and reject blank.
 
-**Phase 2 — refactor List (no behavior change).** The existing `GET /projects` wire test —
-now asserting against the seeded `IRepository<Project>` (per
-[`test-authoring.md`](../test-authoring.md)) — stays green through the touch; it is the
-regression guard.
+**Phase 2 — collapse. ✅** Merge `ABox.Projects.List` + `ABox.Projects.Module` into one
+`ABox.Projects` assembly at the feature root (folders + namespaces unchanged); `Contracts`
+stays its own assembly, excluded via `DefaultItemExcludes`. `.slnx` + the Host reference
+repoint; Composition unchanged. Behavior identical — the existing `GET /projects` wire test
+is the regression guard.
 
-**Phase 3 — Get + Add.** New endpoints + `Contracts` request DTOs. Wire tests, written per
-[`test-authoring.md`](../test-authoring.md) (assert **state** against the seeded store,
-swap doubles via `ConfigureTestServices`, AAA bodies): `GET /projects/{id}` hit + 404;
-`POST /projects` creates (201 + `Location`), rejects blank name (400), rejects duplicate
-(409); the created project round-trips through a subsequent `GET`.
-
-**Phase 4 — assembly collapse (optional, recommended).** Mechanical: merge `List` / `Get`
-/ `Add` / `Module` into one `ABox.Projects` assembly, update `.slnx` + the Host reference,
-keep namespaces. Its own commit so the diff is a pure restructure.
+**Phase 3 — Get + Add. ✅** Two FastEndpoints + `Contracts` request DTOs. Wire Rules + facts,
+written per [`test-authoring.md`](../test-authoring.md) (assert **state** against the seeded
+store, swap doubles via `ConfigureTestServices`, AAA bodies): `GET /projects/{id}` hit + 404;
+`POST /projects` creates (201 + `Location`), rejects blank name (400), rejects duplicate (409);
+the created project round-trips through a subsequent `GET`.
 
 ## Assembly granularity (recommended: collapse)
 
