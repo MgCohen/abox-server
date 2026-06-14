@@ -186,7 +186,9 @@ return await agent(taskPrompt, { agentType: 'judge', schema: VERDICT })
 - `phase('Title')` groups later `agent()` calls under that heading in the progress view; use the **same** titles as `meta.phases`. It's cosmetic — purely for display.
 - **Retry bound:** a schema mismatch is retried automatically a few times; if it never validates (or the call hits a terminal error), `agent()` ultimately fails and returns `null`. Filter with `.filter(Boolean)` when fanning out.
 
-## B4. Worked example — `.claude/workflows/judge.js`
+## B4. Worked example — merged pattern
+
+> The live `.claude/workflows/judge.js` has since evolved into a **generic rubric judge** — it grades any artifact against a supplied list of criteria, derives its output schema from those criteria, and computes the score deterministically in code. See [`PLANS/generic-judge.md`](../../PLANS/generic-judge.md) for that design. The example below is kept as a teaching case for the *merged* (`agentType` + `schema`) pattern.
 
 ```js
 export const meta = {
