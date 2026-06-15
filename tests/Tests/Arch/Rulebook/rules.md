@@ -1,10 +1,5 @@
-# Arch Rulebook
-
-Each Rule is one dependency invariant over the *loaded* assemblies (ArchUnitNET) and is the single source of
-truth for it. Convention, parity discipline, and the Rule shape live in [`../../../Harness/README.md`](../../../Harness/README.md)
-and `template.md`.
-
----
+Template: [template.md](./template.md)
+Harness: [Rulebook convention](../../../Harness/README.md)
 
 ### Dependencies flow down the layer graph only
 - **Why:** The layers form a DAG — Contracts and Infrastructure depend on nothing internal; Domain depends

@@ -1,11 +1,5 @@
-# E2E Rulebook
-
-Each Rule is one flow guarantee — a whole flow driven end to end through the real composition (real Steps, real
-Flow engine, real snapshot stream) with only the agent's mouth scripted or a real local tool behind it. The
-in-process `ScriptedProvider` is the default driver; the real CLI is the Live type. Convention, parity
-discipline, and the Rule shape live in [`../../../Harness/README.md`](../../../Harness/README.md) and `template.md`.
-
----
+Template: [template.md](./template.md)
+Harness: [Rulebook convention](../../../Harness/README.md)
 
 ### claude-ping with a scripted reply → implementer reaches Completed
 - **Why:** proves the API-down backbone — real composition, Flow engine, snapshot stream, resolver wiring —

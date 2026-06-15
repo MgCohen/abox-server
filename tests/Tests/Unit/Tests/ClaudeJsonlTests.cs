@@ -26,6 +26,7 @@ public class ClaudeJsonlTests : IDisposable
         try { Directory.Delete(_dir, recursive: true); } catch { /* best-effort cleanup */ }
     }
 
+    [Rule("ResolveSessionFile with a staged session id → returns the matching .jsonl path regardless of folder name")]
     [Fact]
     public void ResolveSessionFile_finds_the_file_by_id_regardless_of_folder()
     {
@@ -33,18 +34,21 @@ public class ClaudeJsonlTests : IDisposable
         Assert.Equal(_jsonlPath, ClaudeJsonl.ResolveSessionFile(_sessionId));
     }
 
+    [Rule("ResolveSessionFile with an unknown session id → returns null")]
     [Fact]
     public void ResolveSessionFile_returns_null_for_unknown_id()
     {
         Assert.Null(ClaudeJsonl.ResolveSessionFile(Guid.NewGuid().ToString()));
     }
 
+    [Rule("TryReadLastAssistantText with no session file → returns null")]
     [Fact]
     public void TryReadLastAssistantText_missing_file_returns_null()
     {
         Assert.Null(ClaudeJsonl.TryReadLastAssistantText(_sessionId));
     }
 
+    [Rule("TryReadLastAssistantText for a turn → returns the assistant's reply text for that prompt")]
     [Fact]
     public void TryReadLastAssistantText_returns_assistant_text_after_user_prompt()
     {
@@ -58,6 +62,7 @@ public class ClaudeJsonlTests : IDisposable
         Assert.Equal("Sure — here is a summary.", result);
     }
 
+    [Rule("TryReadLastAssistantText with multiple text blocks → joins them newline-separated in order")]
     [Fact]
     public void TryReadLastAssistantText_concatenates_multiple_text_blocks()
     {
@@ -72,6 +77,7 @@ public class ClaudeJsonlTests : IDisposable
         Assert.Equal("Part one.\nPart two.", result);
     }
 
+    [Rule("TryReadLastAssistantText with thinking and tool_use blocks → returns only the text blocks, excluding reasoning and tool noise")]
     [Fact]
     public void TryReadLastAssistantText_skips_tool_use_and_thinking_blocks()
     {
@@ -88,6 +94,7 @@ public class ClaudeJsonlTests : IDisposable
         Assert.DoesNotContain("Bash", result);
     }
 
+    [Rule("TryReadLastAssistantText with a prompt hint → anchors on the matching user message and returns that turn's reply")]
     [Fact]
     public void TryReadLastAssistantText_with_prompt_hint_anchors_on_matching_user_message()
     {
@@ -103,6 +110,7 @@ public class ClaudeJsonlTests : IDisposable
         Assert.Equal("Fixed.", result);
     }
 
+    [Rule("TryReadLastAssistantText with no prompt hint → falls back to the last user turn's reply")]
     [Fact]
     public void TryReadLastAssistantText_falls_back_to_last_user_when_hint_missing()
     {
@@ -118,6 +126,7 @@ public class ClaudeJsonlTests : IDisposable
         Assert.Equal("Second answer.", result);
     }
 
+    [Rule("TryReadLastAssistantText with tool_result user messages → ignores them as turn boundaries and spans the real turn")]
     [Fact]
     public void TryReadLastAssistantText_ignores_internal_tool_result_user_messages()
     {
@@ -133,6 +142,7 @@ public class ClaudeJsonlTests : IDisposable
         Assert.Equal("Running them now.\nAll 42 tests passed.", result);
     }
 
+    [Rule("TryReadLastAssistantText with bare string message content → treats it as a single text block")]
     [Fact]
     public void TryReadLastAssistantText_treats_string_content_as_a_text_block()
     {
@@ -146,6 +156,7 @@ public class ClaudeJsonlTests : IDisposable
         Assert.Equal("bare string", result);
     }
 
+    [Rule("TryReadLastAssistantText with an assistant turn carrying no text blocks → returns an empty string")]
     [Fact]
     public void TryReadLastAssistantText_no_assistant_text_returns_empty_string()
     {
@@ -159,12 +170,14 @@ public class ClaudeJsonlTests : IDisposable
         Assert.Equal("", result);
     }
 
+    [Rule("TryReadLastTurnTranscript with no session file → returns null")]
     [Fact]
     public void TryReadLastTurnTranscript_missing_file_returns_null()
     {
         Assert.Null(ClaudeJsonl.TryReadLastTurnTranscript(_sessionId));
     }
 
+    [Rule("TryReadLastTurnTranscript for a turn → returns every block (thinking, text, tool_use, tool_result) tagged with its kind in source order")]
     [Fact]
     public void TryReadLastTurnTranscript_returns_all_block_kinds_in_order()
     {
@@ -192,6 +205,7 @@ public class ClaudeJsonlTests : IDisposable
         Assert.Equal("All green.", turns[4].Body);
     }
 
+    [Rule("TryReadLastTurnTranscript with a large tool_use input → preserves the full tool input args untruncated")]
     [Fact]
     public void TryReadLastTurnTranscript_keeps_full_tool_input_args()
     {

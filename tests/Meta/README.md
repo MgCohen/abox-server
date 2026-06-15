@@ -14,8 +14,8 @@ Its three guards:
   holds itself to the same bar.
 - **Taxonomy** — every folder under `tests/Tests/` is a registered type, and every product test lives inside
   one (so none escapes a parity scope).
-- **Rulebook format** — every Rule matches its type's `template.md`, and each `rules.md` holds nothing but its
-  title and Rules.
+- **Rulebook format** — every Rule matches its type's `template.md`, each `rules.md` holds nothing but its
+  Template/Harness pointers and Rules, and every `template.md` carries a `## Criteria` rubric for the judge.
 
 `Meta` is deliberately **not** in `TestTypes.Registered`: that list is the product taxonomy it checks, and a
 validator doesn't enrol itself in the set it validates.

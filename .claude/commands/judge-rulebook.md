@@ -1,31 +1,26 @@
 ---
-description: Grade a test type's Rulebook against the Rulebook standard using the generic judge.
+description: Grade a test type's Rulebook Rules against its own template criteria, via the generic judge.
 ---
 
-You are the **rulebook adapter** for the generic judge. The target Rulebook directory is: $ARGUMENTS (e.g. `tests/Tests/Unit/Rulebook`).
+You are the **rulebook adapter** for the generic judge. The target Rulebook directory is: $ARGUMENTS (e.g. `tests/Tests/Wire/Rulebook`).
 
 Do this:
 
-1. Read `rules.md` and `template.md` in $ARGUMENTS.
-2. Read the Rulebook standard they must follow: `tests/Harness/README.md`.
+1. Read `template.md` in $ARGUMENTS. Extract its `## Criteria` bullets — each `- **<id>:** <text>` becomes a criterion `{ id: '<id>', description: '<text>' }`.
+2. Read `rules.md` in $ARGUMENTS — the Rules under review.
 3. Compose a `context` blob with clearly labeled sections:
-   - `## Rulebook under review (<path>)` followed by rules.md then template.md.
-   - `## Standard — what a Rulebook must satisfy` followed by the Harness README.
-4. Run the generic judge workflow with this request:
+   - `## Rules under review (<path>)` followed by rules.md.
+   - `## Template — shape + standard` followed by template.md.
+4. Run the generic judge workflow with the EXTRACTED criteria:
 
    ```
    Workflow({ name: 'judge', args: {
-     subject: 'a test-type Rulebook vs the Rulebook standard',
+     subject: "a test type's Rulebook Rules vs its template criteria",
      context: '<the labeled blob from step 3>',
-     criteria: [
-       { id: 'one_owner', description: 'every Rule is one behavioral guarantee with a single owning header' },
-       { id: 'header_map', description: 'each `### ` Rule header maps 1:1/1:N to a guarantee a [Rule] proves' },
-       { id: 'why',        description: 'every Rule states a Why that justifies the guarantee' },
-       { id: 'template',   description: 'template.md matches the Rule shape the rules.md entries use' },
-     ],
+     criteria: <the { id, description } list parsed from template.md's ## Criteria>,
    }})
    ```
 
-5. Render the returned verdict for the user: `generalFeedback`, then each per-criterion result (id, status, evidence).
+5. Render the returned verdict: `generalFeedback`, then each per-criterion result (id, status, evidence).
 
 If $ARGUMENTS is empty, ask which Rulebook directory to grade.

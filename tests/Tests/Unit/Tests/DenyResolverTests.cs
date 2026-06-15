@@ -5,6 +5,7 @@ namespace ABox.Tests.Unit.Tests;
 
 public class DenyResolverTests
 {
+    [Rule("DenyResolver on a permission request → answers Deny")]
     [Fact]
     public async Task Refuses_a_permission_with_an_explicit_deny()
     {
@@ -17,6 +18,7 @@ public class DenyResolverTests
         Assert.False(ClaudePermission.IsAllow(answer));
     }
 
+    [Rule("DenyResolver on an open question → abstains with null")]
     [Fact]
     public async Task Abstains_on_an_open_question()
     {

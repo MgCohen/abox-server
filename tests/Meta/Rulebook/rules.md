@@ -1,12 +1,5 @@
-# Meta Rulebook
-
-Each Rule is one invariant about the **test system itself** — the taxonomy of test types, the Rulebook files,
-and their parity with the enforcing tests. These guard the harness, not the product: they run in their own
-assembly (`ABox.Tests.Meta`) and reflect over the product suite from outside (via `ABox.Tests.SuiteAnchor`),
-the way the Arch guards reflect over `src`. Convention, parity discipline, and the Rule shape live in
-[`../../Harness/README.md`](../../Harness/README.md) and `template.md`.
-
----
+Template: [template.md](./template.md)
+Harness: [Rulebook convention](../../Harness/README.md)
 
 ### Parity holds for every registered type
 - **Why:** Each type's Rulebook headers and its `[Rule]`-cited tests must stay in lockstep — every Rule
@@ -14,7 +7,7 @@ the way the Arch guards reflect over `src`. Convention, parity discipline, and t
   over every registered type, so a Rule with no test (or a test citing a missing Rule) fails the build.
 
 One data-driven check reads `TestTypes.Registered` and scopes `ParityGuard` to each `ABox.Tests.<Type>.Tests`
-namespace in the product assembly, applying `requireAllCited` for the complete types — then runs once more over
+namespace in the product assembly, requiring every marked test to cite a Rule — then runs once more over
 Meta's own Rulebook and tests, so the self-suite holds itself to the same bar.
 
 ### Every folder under tests holds a registered test type
@@ -44,8 +37,17 @@ unregistered marker is a patch-when-seen event: add the name to `TestMarkers`.
 Format only, never placeholder content; a new test type is covered the moment its folder lands.
 
 ### Every Rulebook holds only rules
-- **Why:** Format-checking the `### ` blocks it finds leaves the gaps unguarded — a `## Scratch` section or a
-  loose section heading between rules would slip in and let `rules.md` rot into a dumping ground.
+- **Why:** A `rules.md` is a pure rule list — its Template/Harness pointer lines then `### ` Rules, nothing
+  else. A stray `## Scratch` section or a loose heading between rules would let it rot into a dumping ground;
+  all context belongs in `template.md`.
 
-`RulebookFormat.Headings` over each `rules.md` allows only the single `# ` title and the `### ` rules; any other
-heading level is rejected. Plain prose under a rule stays allowed (the one-line-comment allowance).
+`RulebookFormat.Headings` over each `rules.md` rejects any heading that is not a `### ` rule, and the opening
+preamble must carry the Template and Harness links. Plain prose under a rule stays allowed.
+
+### Every template carries judge criteria
+- **Why:** Each `template.md` owns a `## Criteria` list — the per-type semantic rubric `/judge-rulebook` grades
+  Rules against. Without it the judge has no rubric for that type, so the semantic layer (the checks the
+  mechanical guards can't make) would silently go ungraded.
+
+`RulebookFormat.Criteria` reads each `template.md` for `- **<id>:** <description>` bullets under `## Criteria`;
+a template with none fails. Mechanical shape stays the other guards' job, so criteria carry only judgment.

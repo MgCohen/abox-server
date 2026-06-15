@@ -12,10 +12,6 @@ public static class TestTypes
     // Non-type folders legitimately under tests/Tests/: shared doubles promoted on a genuine second consumer.
     public static readonly string[] NonType = { "Support" };
 
-    // Types whose Rulebook is the complete set today, so every test must cite a Rule (requireAllCited). The
-    // going-forward types accrue Rules over time and tolerate an uncited [Fact] until it is backfilled.
-    private static readonly string[] GoingForward = { "Unit", "Live" };
-
     // The convention, owned once: a type's namespace and the Rulebook path it pairs with. Both directions of the
     // type ↔ namespace ↔ path triple (ParityGuard's scope, ContainsTest's membership) lean on these.
     public static string Namespace(string type) => $"ABox.Tests.{type}.Tests";
@@ -27,9 +23,6 @@ public static class TestTypes
 
     public static bool IsNonType(string folder) =>
         NonType.Contains(folder, StringComparer.Ordinal);
-
-    public static bool RequiresAllCited(string type) =>
-        !GoingForward.Contains(type, StringComparer.Ordinal);
 
     // A method physically lives inside a registered type when its namespace is a type's Namespace (or a
     // sub-namespace). Anything else — shared Support, a type's Support, the root — slips past the per-type

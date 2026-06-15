@@ -4,6 +4,7 @@ namespace ABox.Tests.Unit.Tests;
 
 public class RunCommandTests
 {
+    [Rule("RunCommand running a successful command → result with exit code 0, captured stdout, and TimedOut false")]
     [Fact]
     public async Task Echo_captures_stdout_and_zero_exit()
     {
@@ -14,6 +15,7 @@ public class RunCommandTests
         Assert.False(res.TimedOut);
     }
 
+    [Rule("RunCommand running a command that exits non-zero → result carrying that exact exit code, TimedOut false")]
     [Fact]
     public async Task Nonzero_exit_is_surfaced()
     {
@@ -23,6 +25,7 @@ public class RunCommandTests
         Assert.False(res.TimedOut);
     }
 
+    [Rule("RunCommand whose command outlives the configured timeout → result with TimedOut true")]
     [Fact]
     public async Task Timeout_is_flagged()
     {
@@ -32,6 +35,7 @@ public class RunCommandTests
         Assert.True(res.TimedOut);
     }
 
+    [Rule("EnsureOk on a non-zero result → throws InvalidOperationException naming the failed step")]
     [Fact]
     public async Task EnsureOk_throws_on_nonzero_and_passes_through_on_zero()
     {

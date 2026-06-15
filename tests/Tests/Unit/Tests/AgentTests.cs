@@ -12,6 +12,7 @@ public class AgentTests
             new(new FakeProvider(config), new NonInteractiveResolver(), null, projectDir);
     }
 
+    [Rule("A factory-minted agent run through a flow → a Completed operation whose summary is the agent's text")]
     [Fact]
     public async Task A_factory_minted_agent_runs_through_the_flow_and_its_text_is_the_summary()
     {
@@ -28,6 +29,7 @@ public class AgentTests
         Assert.Equal("[implementer] do the thing", op.Summary);
     }
 
+    [Rule("An agent across successive calls → reuses the session minted on its first call")]
     [Fact]
     public async Task An_agent_reuses_its_session_across_calls()
     {
@@ -42,6 +44,7 @@ public class AgentTests
         Assert.Equal(MintedSession, seen[1].SessionId);
     }
 
+    [Rule("An agent's first call → a request carrying the prompt and baked-in project dir with no session")]
     [Fact]
     public async Task An_agent_bakes_its_project_dir_and_starts_the_first_call_without_a_session()
     {
@@ -56,6 +59,7 @@ public class AgentTests
         Assert.Null(seen.SessionId);
     }
 
+    [Rule("A completed agent outcome → a transcript with the agent's text turn and a session id")]
     [Fact]
     public async Task An_agent_result_carries_the_transcript()
     {
@@ -70,6 +74,7 @@ public class AgentTests
         Assert.False(string.IsNullOrEmpty(result.SessionId));
     }
 
+    [Rule("AgentRunRequest with a blank prompt → ArgumentException")]
     [Fact]
     public void AgentRunRequest_rejects_a_blank_prompt()
     {

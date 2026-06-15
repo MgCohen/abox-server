@@ -8,6 +8,7 @@ public class DecisionAuditTests
     private const string Envelope =
         "Reasoning...\n<<NEEDS_INPUT>>\n{ \"kind\": \"open\", \"prompt\": \"Which bucket?\" }";
 
+    [Rule("Agent auto-resolves a question → the decision is recorded on the run ledger as an Auto-sourced answered Question")]
     [Fact]
     public async Task An_auto_resolved_question_is_recorded_on_the_run_ledger()
     {

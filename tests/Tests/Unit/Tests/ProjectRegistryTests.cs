@@ -19,6 +19,7 @@ public class ProjectRegistryTests
         return new ProjectRegistry(new FakePaths { Root = dir, ProjectsFile = file });
     }
 
+    [Rule("ProjectRegistry.List → every registered project as a name with an absolute path, without touching the filesystem")]
     [Fact]
     public void List_returns_names_with_absolute_paths_without_checking_existence()
     {
@@ -31,6 +32,7 @@ public class ProjectRegistryTests
         Assert.All(entries, e => Assert.True(Path.IsPathRooted(e.Path)));
     }
 
+    [Rule("ProjectRegistry.Resolve of an unregistered name → throws InvalidOperationException naming the unknown project")]
     [Fact]
     public void Resolve_throws_for_unknown_name()
     {
@@ -40,6 +42,7 @@ public class ProjectRegistryTests
         Assert.Contains("Unknown project", ex.Message);
     }
 
+    [Rule("ProjectRegistry.Resolve of an existing absolute path → returns its full path without requiring registration")]
     [Fact]
     public void Resolve_accepts_an_existing_absolute_path_directly()
     {
@@ -48,6 +51,7 @@ public class ProjectRegistryTests
         Assert.Equal(Path.GetFullPath(dir), reg.Resolve(dir));
     }
 
+    [Rule("ProjectRegistry.Resolve of a registered name whose directory is missing → throws InvalidOperationException reporting the path doesn't exist")]
     [Fact]
     public void Resolve_throws_when_registered_directory_does_not_exist()
     {

@@ -1,12 +1,5 @@
-# Wire Rulebook
-
-Each Rule is one endpoint contract — proven with a real `HttpClient` against the Host booted over
-`WebApplicationFactory<Program>`. These test the wire (routing + serialization + the streaming contract), not
-the spine (Unit + E2E cover that). A scripted, CLI-free flow runs behind the flow endpoints so the suite is
-deterministic in CI. Convention, parity discipline, and the Rule shape live in
-[`../../../Harness/README.md`](../../../Harness/README.md) and `template.md`.
-
----
+Template: [template.md](./template.md)
+Harness: [Rulebook convention](../../../Harness/README.md)
 
 ### GET /health → ok
 - **Why:** the liveness probe must route and serialize — the simplest proof the Host composes and answers.
