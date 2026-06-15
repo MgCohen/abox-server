@@ -229,6 +229,10 @@ Consolidation, when chosen, is a contained follow-up:
 3. Point `StartEndpoint` at `IProjects`; delete `Infrastructure/Projects` and
    the root `projects.json`.
 
+> **Done.** All three landed in [`07-flow-launch-consolidation.md`](07-flow-launch-consolidation.md)
+> plus the follow-up that re-keyed `StartRunRequest` to `ProjectId` (Guid) and dropped the
+> absolute-path passthrough — flow-launch now resolves a project strictly by id.
+
 And the stub graduates on its own trigger: when **create/edit projects moves
 into the UI**, the server generates `Guid.NewGuid()` on create and persists — a
 real store (file, then EF Core + SQLite, with a `JsonSerializerContext` /

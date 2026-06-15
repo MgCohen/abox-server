@@ -267,7 +267,9 @@ launches by name (behavior-verify gate).
   composition over `IRepository<Project>` (never subclassing `sealed JsonRepository<T>`),
   earned by two consumers (resolution + uniqueness).
 - **Resolution keeps the absolute-path passthrough** (behavior lock); `?project=`
-  stays name-keyed (id rekey deferred).
+  stays name-keyed (id rekey deferred). *(Followed up immediately after 07: `StartRunRequest`
+  re-keyed to `ProjectId` (Guid), resolution moved to `GetById`, and the passthrough dropped —
+  flow-launch now resolves strictly by id. `ProjectDirectory` → `ProjectResolver`.)*
 - **Existing `projects.json` is imported once** via a provisional, empty-store-guarded
   hosted service, removed at L12.
 - **`ProjectDto` exposes `Path`** (the UI creates and shows it); the map stays inlined

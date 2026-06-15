@@ -38,10 +38,10 @@ Template:
 - Why: name uniqueness on create and project resolution on flow-launch share one query home — a
   case-insensitive name lookup over the store — so the rule isn't duplicated across the two callers.
 
-### ProjectDirectory.Resolve maps a project reference to its launch directory, or fails clearly
-- Why: flow-launch needs the directory a flow runs in. A known project name resolves to its stored path,
-  an existing absolute path passes through directly, an unknown name throws, and a stored path whose
-  directory is gone throws — so a launch never starts against a non-existent directory.
+### ProjectResolver.Resolve returns the project for a known id, or fails clearly
+- Why: flow-launch is keyed by project id. A known id resolves to its stored Project (name for the run
+  label, path for the working dir); an unknown id throws, and a stored path whose directory is gone throws —
+  so a launch never starts against a non-existent directory.
 
 ### JsonRepository round-trips entities through Add, Get, Update, and Remove
 - Why: the storage seam's core contract — an entity written through the repository is read back, replaced,

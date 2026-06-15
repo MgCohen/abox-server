@@ -213,10 +213,10 @@ public class WireTests(WireApp app) : IClassFixture<WireApp>
     public async Task Started_flow_streams_snapshots_over_sse_to_completion()
     {
         var client = app.CreateClient();
-        await app.Services.GetRequiredService<IRepository<Project>>()
-            .Add(Project.Create("demo", app.ProjectDir));
+        var demo = Project.Create("demo", app.ProjectDir);
+        await app.Services.GetRequiredService<IRepository<Project>>().Add(demo);
 
-        using var started = await client.PostAsJsonAsync("/flows", new StartRunRequest("demo", "stub", "do the thing"));
+        using var started = await client.PostAsJsonAsync("/flows", new StartRunRequest(demo.Id, "stub", "do the thing"));
         Assert.Equal(HttpStatusCode.OK, started.StatusCode);
         var run = await started.Content.ReadFromJsonAsync<StartRunResponse>();
         Assert.NotNull(run);
