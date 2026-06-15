@@ -31,7 +31,7 @@ public sealed class ParityGuard
     private static string ProductRulebook(string type) =>
         Path.Combine(RepoTree.TestsRoot, TestTypes.RulebookPath(type).Replace('/', Path.DirectorySeparatorChar));
 
-    public void Assert(bool requireAllCited = false)
+    public void Assert()
     {
         var declared = DeclaredRules(rulesPath);
         var methods = ScopedMethods();
@@ -48,9 +48,8 @@ public sealed class ParityGuard
             .Where(m => m.GetCustomAttribute<Rule>() is not null && !TestMarkers.Marks(m))
             .Select(m => m.Name)
             .ToList();
-        var uncited = requireAllCited
-            ? methods.Where(TestMarkers.Marks).Where(m => m.GetCustomAttribute<Rule>() is null).Select(m => m.Name).ToList()
-            : [];
+        var uncited = methods.Where(TestMarkers.Marks)
+            .Where(m => m.GetCustomAttribute<Rule>() is null).Select(m => m.Name).ToList();
 
         Xunit.Assert.True(
             unenforced.Count == 0 && undocumented.Count == 0 && orphaned.Count == 0 && uncited.Count == 0,

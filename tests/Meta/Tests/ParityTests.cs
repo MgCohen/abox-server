@@ -12,13 +12,12 @@ public class ParityTests
     {
         var product = typeof(SuiteAnchor).Assembly;
         foreach (var type in TestTypes.Registered)
-            ParityGuard.For(product, type)
-                .Assert(requireAllCited: TestTypes.RequiresAllCited(type));
+            ParityGuard.For(product, type).Assert();
 
         ParityGuard.ForRulebook(
                 typeof(ParityTests).Assembly,
                 TestTypes.Namespace("Meta"),
                 Path.Combine(RepoTree.MetaRoot, "Rulebook", "rules.md"))
-            .Assert(requireAllCited: true);
+            .Assert();
     }
 }

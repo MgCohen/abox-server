@@ -7,7 +7,7 @@ Harness: [Rulebook convention](../../Harness/README.md)
   over every registered type, so a Rule with no test (or a test citing a missing Rule) fails the build.
 
 One data-driven check reads `TestTypes.Registered` and scopes `ParityGuard` to each `ABox.Tests.<Type>.Tests`
-namespace in the product assembly, applying `requireAllCited` for the complete types — then runs once more over
+namespace in the product assembly, requiring every marked test to cite a Rule — then runs once more over
 Meta's own Rulebook and tests, so the self-suite holds itself to the same bar.
 
 ### Every folder under tests holds a registered test type

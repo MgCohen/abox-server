@@ -48,12 +48,11 @@ itself — so there is no per-type parity fact:
   // Meta/Tests/ParityTests.cs
   var product = typeof(SuiteAnchor).Assembly;
   foreach (var type in TestTypes.Registered)
-      ParityGuard.For(product, type)
-          .Assert(requireAllCited: TestTypes.RequiresAllCited(type));
+      ParityGuard.For(product, type).Assert();
 
   ParityGuard.ForRulebook(typeof(ParityTests).Assembly, TestTypes.Namespace("Meta"),
                           Path.Combine(RepoTree.MetaRoot, "Rulebook", "rules.md"))
-      .Assert(requireAllCited: true);
+      .Assert();
   ```
 
 `ParityGuard.For` maps a product type to its namespace and Rulebook path through `TestTypes`
@@ -94,7 +93,7 @@ different risk levels:
   the same bar as changing the thing the Rule protects. When in doubt, ask — don't quietly edit.
 - **Changing the shape / template / format — most dangerous, and rarely warranted.** The `### `-heading
   scan, the `template.md` / `rules.md` split, the namespace-scoped discovery + path derivation, the
-  `requireAllCited` completeness knob, the `Rulebook/` + `Tests/` + `Support/` layout, the csproj copy glob,
+  universal completeness check (every marked test cites a Rule), the `Rulebook/` + `Tests/` + `Support/` layout, the csproj copy glob,
   and the Meta guards (*Parity holds for every registered type*, *Every Rule matches its type's template*,
   *Every Rulebook holds only rules*, *Every template carries judge criteria*) — these are the engine's
   load-bearing assumptions, shared by **every**
@@ -106,26 +105,21 @@ different risk levels:
 The summary: **add Rules liberally; change or remove them deliberately; reshape the convention almost
 never.**
 
-## Completeness (the one knob)
+## Completeness
 
 Parity is always **1:N** — every Rule has ≥1 cited test, every `[Rule]` cites a real Rule, no Rule is
-undocumented; a Rule may be realized by several case tests. The lone knob is `requireAllCited`, the
-*completeness* guard — **is every test in scope cited?** — set per type by `TestTypes.RequiresAllCited`:
-
-- **Complete types (Arch / Structure / E2E / Wire, and Meta on itself).** The Rulebook is the full set; a
-  bare `[Fact]` with no `[Rule]` is an error.
-- **Going-forward types (Unit / Live).** They accrue Rules over time, so an uncited `[Fact]` is tolerated
-  until it is backfilled with its Rule. Every `[Rule]` still pairs with a real header.
+undocumented; a Rule may be realized by several case tests. Completeness is **universal and mandatory**: for
+every type, a bare `[Fact]`/`[Theory]` with no `[Rule]` is an error — there is no opt-out. (Arch / Structure /
+E2E / Wire / Unit / Live, and Meta on itself.)
 
 (There is no duplicate-citation ban: a universal sweep plus a focused edge-case method may both cite the same
 Rule — that's the 1:N freedom, not drift.)
 
-## Adoption is staged
+## Adoption is complete
 
-The *model* applies to all types from day one; the *authoring* does not. Arch + Structure ship complete
-Rulebooks (their Rules already exist). The behavioral types (Unit / E2E / Wire / Live) get the folder shape
-now and accrue Rules **going-forward** — every new behavioral test lands with its Rule; existing tests are
-backfilled opportunistically, never in one swept pass. A behavioral Rulebook starts small and grows.
+Every registered type is fully backfilled and enforced: each Rulebook is the complete set for its type, and
+parity requires every test to cite a Rule with no going-forward exemption. A new test of any type now lands
+with its Rule or the build fails — the ratchet is closed.
 
 ## The uniform per-type layout
 
@@ -185,12 +179,10 @@ Then:
    behavioral), adapt the description, and give `template.md` its semantic `## Criteria` for the judge — one
    per distinct judgment, as many as the type needs (at least one). Don't invent a new shape (see the
    stability contract); it's shared structure, not per-type creativity.
-3. **Register the type** in `Harness/TestTypes.Registered` (and add it to `GoingForward` if it backfills rather
-   than shipping complete). The Meta *Every folder under tests holds a registered test type* guard goes red the
-   moment the folder lands unregistered — this is the deliberate gate.
-4. **Write at least one `### ` Rule + its `[Rule("<header>")]` fact** in `<Type>/Tests/` so the type isn't an
-   empty shell (an invariant type ships complete; a behavioral type may start with one Rule and grow — see
-   *Adoption is staged*).
+3. **Register the type** in `Harness/TestTypes.Registered`. The Meta *Every folder under tests holds a
+   registered test type* guard goes red the moment the folder lands unregistered — this is the deliberate gate.
+4. **Write a `### ` Rule + its `[Rule("<header>")]` fact for every test** in `<Type>/Tests/`. Completeness is
+   mandatory: the type ships fully cited from the start (there is no going-forward exemption).
 5. **No csproj edit and no parity fact are needed** — `Tests.csproj` compiles every `.cs` under the type, the
    Meta guards read your Rulebook straight from the source tree, and the Meta self-suite runs parity over your
    new type the moment it's registered. Rebuild; the Meta parity + format guards prove it's wired and well-formed.
