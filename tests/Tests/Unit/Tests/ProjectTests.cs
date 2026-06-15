@@ -4,7 +4,7 @@ namespace ABox.Tests.Unit.Tests;
 
 public sealed class ProjectTests
 {
-    [Rule("Project.Create mints a project with a trimmed, non-blank name")]
+    [Rule("Project.Create → a project with a trimmed, non-blank name")]
     [Fact]
     public void Create_trims_the_name_and_assigns_an_id()
     {
@@ -15,13 +15,13 @@ public sealed class ProjectTests
     }
 
     [Theory]
-    [Rule("Project.Create mints a project with a trimmed, non-blank name")]
+    [Rule("Project.Create → a project with a trimmed, non-blank name")]
     [InlineData("")]
     [InlineData("   ")]
     public void Create_rejects_a_blank_name(string name) =>
         Assert.Throws<ArgumentException>(() => Project.Create(name, "C:/work/cards"));
 
-    [Rule("Project.Create requires a path and stores it absolute")]
+    [Rule("Project.Create → a project whose required path is stored absolute")]
     [Fact]
     public void Create_absolutizes_a_relative_path()
     {
@@ -32,13 +32,13 @@ public sealed class ProjectTests
     }
 
     [Theory]
-    [Rule("Project.Create requires a path and stores it absolute")]
+    [Rule("Project.Create → a project whose required path is stored absolute")]
     [InlineData("")]
     [InlineData("   ")]
     public void Create_rejects_a_blank_path(string path) =>
         Assert.Throws<ArgumentException>(() => Project.Create("Cards", path));
 
-    [Rule("Project.Rename returns a renamed project with a trimmed, non-blank name")]
+    [Rule("Project.Rename → a renamed project with a trimmed, non-blank name")]
     [Fact]
     public void Rename_trims_the_name_and_keeps_the_id()
     {
@@ -52,7 +52,7 @@ public sealed class ProjectTests
     }
 
     [Theory]
-    [Rule("Project.Rename returns a renamed project with a trimmed, non-blank name")]
+    [Rule("Project.Rename → a renamed project with a trimmed, non-blank name")]
     [InlineData("")]
     [InlineData("   ")]
     public void Rename_rejects_a_blank_name(string name)
@@ -62,7 +62,7 @@ public sealed class ProjectTests
         Assert.Throws<ArgumentException>(() => project.Rename(name));
     }
 
-    [Rule("Project.MoveTo returns a relocated project with an absolutized path")]
+    [Rule("Project.MoveTo → a relocated project with an absolutized path")]
     [Fact]
     public void MoveTo_absolutizes_the_path_and_keeps_id_and_name()
     {
@@ -76,7 +76,7 @@ public sealed class ProjectTests
     }
 
     [Theory]
-    [Rule("Project.MoveTo returns a relocated project with an absolutized path")]
+    [Rule("Project.MoveTo → a relocated project with an absolutized path")]
     [InlineData("")]
     [InlineData("   ")]
     public void MoveTo_rejects_a_blank_path(string path)

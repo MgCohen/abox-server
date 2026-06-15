@@ -6,7 +6,7 @@ namespace ABox.Tests.E2E.Tests;
 
 public class GitChoreFlowTests
 {
-    [Rule("chore commits the working tree and pushes it to the remote")]
+    [Rule("chore on a dirty tree → committed and pushed, working copy clean")]
     [Fact]
     public async Task Chore_commits_working_changes_and_pushes_them_to_the_remote()
     {

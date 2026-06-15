@@ -14,7 +14,7 @@ namespace ABox.Tests.Wire.Tests;
 [Collection(WireHostCollection.Name)]
 public sealed class ProjectsImportWireTests
 {
-    [Rule("the legacy projects.json is imported into the empty store on first boot")]
+    [Rule("first boot with an empty store → the legacy projects.json is imported")]
     [Fact]
     public async Task Legacy_projects_json_is_imported_on_boot()
     {

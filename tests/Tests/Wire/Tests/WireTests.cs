@@ -14,7 +14,7 @@ namespace ABox.Tests.Wire.Tests;
 [Collection(WireHostCollection.Name)]
 public class WireTests(WireApp app) : IClassFixture<WireApp>
 {
-    [Rule("health returns ok")]
+    [Rule("GET /health → ok")]
     [Fact]
     public async Task Health_returns_ok()
     {
@@ -24,7 +24,7 @@ public class WireTests(WireApp app) : IClassFixture<WireApp>
         Assert.Contains("ok", await res.Content.ReadAsStringAsync());
     }
 
-    [Rule("GET /projects lists the stored projects as wire DTOs")]
+    [Rule("GET /projects → the stored projects as wire DTOs")]
     [Fact]
     public async Task Projects_lists_the_stored_projects()
     {
@@ -42,7 +42,7 @@ public class WireTests(WireApp app) : IClassFixture<WireApp>
             projects!.Select(p => (p.Id, p.Name, p.Path)).OrderBy(p => p.Name));
     }
 
-    [Rule("GET /projects/{id} returns the project, or 404 when absent")]
+    [Rule("GET /projects/{id} → the project, or 404 when absent")]
     [Fact]
     public async Task Get_by_id_returns_the_stored_project()
     {
@@ -56,7 +56,7 @@ public class WireTests(WireApp app) : IClassFixture<WireApp>
         Assert.Equal((stored.Id, stored.Name, stored.Path), (dto!.Id, dto.Name, dto.Path));
     }
 
-    [Rule("GET /projects/{id} returns the project, or 404 when absent")]
+    [Rule("GET /projects/{id} → the project, or 404 when absent")]
     [Fact]
     public async Task Get_by_id_returns_404_for_an_unknown_id()
     {
@@ -65,7 +65,7 @@ public class WireTests(WireApp app) : IClassFixture<WireApp>
         Assert.Equal(HttpStatusCode.NotFound, res.StatusCode);
     }
 
-    [Rule("POST /projects creates a project, rejecting blank name, blank path, and duplicate names")]
+    [Rule("POST /projects → a created project, rejecting blank name, blank path, and duplicate names")]
     [Fact]
     public async Task Post_creates_a_project_and_it_round_trips()
     {
@@ -88,7 +88,7 @@ public class WireTests(WireApp app) : IClassFixture<WireApp>
         Assert.Equal((dto.Id, dto.Name, dto.Path), (round!.Id, round.Name, round.Path));
     }
 
-    [Rule("POST /projects creates a project, rejecting blank name, blank path, and duplicate names")]
+    [Rule("POST /projects → a created project, rejecting blank name, blank path, and duplicate names")]
     [Fact]
     public async Task Post_rejects_a_blank_name()
     {
@@ -98,7 +98,7 @@ public class WireTests(WireApp app) : IClassFixture<WireApp>
         Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
     }
 
-    [Rule("POST /projects creates a project, rejecting blank name, blank path, and duplicate names")]
+    [Rule("POST /projects → a created project, rejecting blank name, blank path, and duplicate names")]
     [Fact]
     public async Task Post_rejects_a_blank_path()
     {
@@ -108,7 +108,7 @@ public class WireTests(WireApp app) : IClassFixture<WireApp>
         Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
     }
 
-    [Rule("POST /projects creates a project, rejecting blank name, blank path, and duplicate names")]
+    [Rule("POST /projects → a created project, rejecting blank name, blank path, and duplicate names")]
     [Fact]
     public async Task Post_rejects_a_duplicate_name()
     {
@@ -121,7 +121,7 @@ public class WireTests(WireApp app) : IClassFixture<WireApp>
         Assert.Equal(HttpStatusCode.Conflict, res.StatusCode);
     }
 
-    [Rule("PUT /projects/{id} updates a project, rejecting unknown id, blank fields, and duplicate names")]
+    [Rule("PUT /projects/{id} → an updated project, rejecting unknown id, blank fields, and duplicate names")]
     [Fact]
     public async Task Put_updates_name_and_path_and_round_trips()
     {
@@ -142,7 +142,7 @@ public class WireTests(WireApp app) : IClassFixture<WireApp>
         Assert.Equal((dto.Id, dto.Name, dto.Path), (round!.Id, round.Name, round.Path));
     }
 
-    [Rule("PUT /projects/{id} updates a project, rejecting unknown id, blank fields, and duplicate names")]
+    [Rule("PUT /projects/{id} → an updated project, rejecting unknown id, blank fields, and duplicate names")]
     [Fact]
     public async Task Put_returns_404_for_an_unknown_id()
     {
@@ -153,7 +153,7 @@ public class WireTests(WireApp app) : IClassFixture<WireApp>
         Assert.Equal(HttpStatusCode.NotFound, res.StatusCode);
     }
 
-    [Rule("PUT /projects/{id} updates a project, rejecting unknown id, blank fields, and duplicate names")]
+    [Rule("PUT /projects/{id} → an updated project, rejecting unknown id, blank fields, and duplicate names")]
     [Fact]
     public async Task Put_rejects_a_blank_name()
     {
@@ -167,7 +167,7 @@ public class WireTests(WireApp app) : IClassFixture<WireApp>
         Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
     }
 
-    [Rule("PUT /projects/{id} updates a project, rejecting unknown id, blank fields, and duplicate names")]
+    [Rule("PUT /projects/{id} → an updated project, rejecting unknown id, blank fields, and duplicate names")]
     [Fact]
     public async Task Put_rejects_renaming_onto_another_projects_name()
     {
@@ -183,7 +183,7 @@ public class WireTests(WireApp app) : IClassFixture<WireApp>
         Assert.Equal(HttpStatusCode.Conflict, res.StatusCode);
     }
 
-    [Rule("DELETE /projects/{id} removes a project, or 404 when absent")]
+    [Rule("DELETE /projects/{id} → the project removed, or 404 when absent")]
     [Fact]
     public async Task Delete_removes_the_project()
     {
@@ -199,7 +199,7 @@ public class WireTests(WireApp app) : IClassFixture<WireApp>
         Assert.Equal(HttpStatusCode.NotFound, fetched.StatusCode);
     }
 
-    [Rule("DELETE /projects/{id} removes a project, or 404 when absent")]
+    [Rule("DELETE /projects/{id} → the project removed, or 404 when absent")]
     [Fact]
     public async Task Delete_returns_404_for_an_unknown_id()
     {
@@ -208,7 +208,7 @@ public class WireTests(WireApp app) : IClassFixture<WireApp>
         Assert.Equal(HttpStatusCode.NotFound, res.StatusCode);
     }
 
-    [Rule("a started flow streams snapshots over SSE to completion")]
+    [Rule("POST /flows then GET /flows/{id}/events → snapshots stream over SSE to completion")]
     [Fact]
     public async Task Started_flow_streams_snapshots_over_sse_to_completion()
     {

@@ -50,6 +50,7 @@ public class FlowTests
     private static FlowContext ContextFor(FlowConfig config) =>
         new(config.Name, "proj", "C:/proj", "request");
 
+    [Rule("Flow that runs every operation successfully → Completed with each operation recorded as Completed")]
     [Fact]
     public async Task ExecuteAsync_runs_all_operations_and_reaches_Completed()
     {
@@ -68,6 +69,7 @@ public class FlowTests
         Assert.Equal("two-step", snap.Flow);
     }
 
+    [Rule("Snapshot version after a run → strictly greater than before the run")]
     [Fact]
     public async Task Version_is_monotonic_across_the_run()
     {
@@ -82,6 +84,7 @@ public class FlowTests
         Assert.True(stream.Latest.Version > before);
     }
 
+    [Rule("Flow whose operation throws → Failed with the operation Failed and its error recorded")]
     [Fact]
     public async Task A_failing_operation_marks_the_flow_Failed_and_records_the_error()
     {
@@ -98,6 +101,7 @@ public class FlowTests
         Assert.Equal("nope", snap.Operations[0].Error);
     }
 
+    [Rule("Flow that passes context data into an operation's args → that data appears in the operation's recorded result")]
     [Fact]
     public async Task A_flow_feeds_run_data_to_an_operation_through_its_args()
     {
@@ -111,6 +115,7 @@ public class FlowTests
         Assert.Equal("request", stream.Latest.Operations[0].Summary);
     }
 
+    [Rule("Flow that runs operations concurrently → every operation recorded exactly once with no loss or corruption")]
     [Fact]
     public async Task Concurrent_operations_are_all_recorded_without_corruption()
     {
@@ -131,6 +136,7 @@ public class FlowTests
             snap.Operations.Select(s => s.Name).OrderBy(n => n, StringComparer.Ordinal));
     }
 
+    [Rule("Changes subscribed after a run finished → yields the latest snapshot once then completes")]
     [Fact]
     public async Task Changes_replays_latest_for_a_finished_run_then_completes()
     {
@@ -148,11 +154,13 @@ public class FlowTests
         Assert.Equal(FlowPhase.Completed, seen[0].Phase);
     }
 
+    [Rule("FlowDefinition built from a type that is not a Flow → throws ArgumentException")]
     [Fact]
     public void FlowDefinition_rejects_a_non_Flow_type() =>
         Assert.Throws<ArgumentException>(() =>
             new FlowDefinition(typeof(string), new FlowConfig("x", "y")));
 
+    [Rule("FlowDefinition built from a concrete Flow type → exposes that type as its FlowType")]
     [Fact]
     public void FlowDefinition_accepts_a_concrete_flow_type() =>
         Assert.Equal(typeof(TwoStepFlow),

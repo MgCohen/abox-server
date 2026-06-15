@@ -2,32 +2,38 @@ using System.Reflection;
 
 namespace ABox.Tests.Harness;
 
-// The parity engine shared by every test type. A Rulebook (Rulebook/rules.md) lists a type's guarantees as
-// '### ' headers — the DECLARED rules; the [Rule("<header>")] citations sitting on its tests are the ENFORCED
-// rules. For(anchor) scopes discovery to the anchor type's namespace, so multiple Rulebooks can live in one
-// assembly without bleeding into each other's parity. Assert fails the build on any mismatch — including a
-// test with no [Rule] (requireAllCited) and a [Rule] that sits on no runnable test.
+// The parity engine: it keeps one test type's Rulebook (Rulebook/rules.md) and the [Rule]-cited tests that
+// enforce it in lockstep, scoped to a single namespace so types sharing an assembly don't bleed into each
+// other's parity. The Meta self-suite drives this over every product type (For) and over itself (ForRulebook).
 public sealed class ParityGuard
 {
     private const string Heading = "### ";
 
-    private readonly Type anchor;
-    private readonly bool strict;
+    private readonly Assembly assembly;
+    private readonly string scope;
+    private readonly string rulesPath;
 
-    private ParityGuard(Type anchor, bool strict)
+    private ParityGuard(Assembly assembly, string scope, string rulesPath)
     {
-        this.anchor = anchor;
-        this.strict = strict;
+        this.assembly = assembly;
+        this.scope = scope;
+        this.rulesPath = rulesPath;
     }
 
-    // strict = 1:1 (every Rule has exactly one test) for invariant types (Arch, Structure). The default 1:N
-    // (every Rule has >=1 test, every test cites a real Rule) fits behavioral types, where one guarantee may
-    // be realized by several case tests. requireAllCited turns on the completeness guard: no bare test.
-    public static ParityGuard For(Type anchor, bool strict = false) => new(anchor, strict);
+    public static ParityGuard For(Assembly assembly, string type) =>
+        new(assembly, TestTypes.Namespace(type), ProductRulebook(type));
 
-    public void Assert(string rulebookPath, bool requireAllCited = false)
+    public static ParityGuard ForRulebook(Assembly assembly, string scope, string rulesPath) =>
+        new(assembly, scope, rulesPath);
+
+    // Product Rulebooks are read from the source tree, not the output dir — the same surface the Meta guards
+    // already read, so a separate self-suite needs no copy of the product's Rulebooks to validate them.
+    private static string ProductRulebook(string type) =>
+        Path.Combine(RepoTree.TestsRoot, TestTypes.RulebookPath(type).Replace('/', Path.DirectorySeparatorChar));
+
+    public void Assert()
     {
-        var declared = DeclaredRules(rulebookPath);
+        var declared = DeclaredRules(rulesPath);
         var methods = ScopedMethods();
 
         var enforced = methods
@@ -38,64 +44,45 @@ public sealed class ParityGuard
 
         var unenforced = declared.Except(enforced).ToList();
         var undocumented = enforced.Except(declared).ToList();
-        var duplicated = strict
-            ? enforced.GroupBy(name => name).Where(g => g.Count() > 1).Select(g => g.Key).ToList()
-            : [];
         var orphaned = methods
             .Where(m => m.GetCustomAttribute<Rule>() is not null && !TestMarkers.Marks(m))
             .Select(m => m.Name)
             .ToList();
-        var uncited = requireAllCited
-            ? methods.Where(TestMarkers.Marks).Where(m => m.GetCustomAttribute<Rule>() is null).Select(m => m.Name).ToList()
-            : [];
+        var uncited = methods.Where(TestMarkers.Marks)
+            .Where(m => m.GetCustomAttribute<Rule>() is null).Select(m => m.Name).ToList();
 
         Xunit.Assert.True(
-            unenforced.Count == 0 && undocumented.Count == 0 && duplicated.Count == 0
-                && orphaned.Count == 0 && uncited.Count == 0,
+            unenforced.Count == 0 && undocumented.Count == 0 && orphaned.Count == 0 && uncited.Count == 0,
             $"""
-            Rulebook ({rulebookPath}) and its [Rule] tests are out of sync — fix each non-empty list:
+            Rulebook ({Path.GetRelativePath(RepoTree.Root, rulesPath)}) and its [Rule] tests are out of sync — fix each non-empty list:
               Add a [Rule]-cited test for the header:          {Fmt(unenforced)}
               Add a '### ' header (or correct the citation) for: {Fmt(undocumented)}
-              Remove the duplicate citation of the Rule:       {Fmt(duplicated)}
               Add a test attribute ([Fact]/[Theory]) to the [Rule] method: {Fmt(orphaned)}
               Add a [Rule("<header>")] to the bare test:        {Fmt(uncited)}
-            Each '### <name>' header pairs 1:{(strict ? "1" : "N")} with a [Rule("<name>")] on a runnable test.
+            Each '### <name>' header pairs 1:N with a [Rule("<name>")] on a runnable test.
             """);
     }
 
-    private IReadOnlyList<MethodInfo> ScopedMethods()
-    {
-        var scope = anchor.Namespace ?? "";
-        return anchor.Assembly.GetTypes()
-            .Where(t => InScope(t.Namespace, scope))
+    private IReadOnlyList<MethodInfo> ScopedMethods() =>
+        assembly.GetTypes()
+            .Where(t => InScope(t.Namespace))
             .SelectMany(t => t.GetMethods())
             .ToList();
-    }
 
-    private static bool InScope(string? ns, string scope) =>
+    private bool InScope(string? ns) =>
         ns is not null && (ns == scope || ns.StartsWith(scope + ".", StringComparison.Ordinal));
 
-    private static IReadOnlyList<string> DeclaredRules(string rulebookPath)
+    private static IReadOnlyList<string> DeclaredRules(string rulesPath)
     {
-        var path = Path.Combine(AppContext.BaseDirectory, rulebookPath.Replace('/', Path.DirectorySeparatorChar));
-        if (!File.Exists(path))
+        if (!File.Exists(rulesPath))
             throw new FileNotFoundException(
-                $"Rulebook not found at '{path}'. The csproj must copy it to the output directory " +
-                "(a None item with CopyToOutputDirectory).");
+                $"Rulebook not found at '{rulesPath}'. Parity reads rules.md from the source tree (RepoTree); " +
+                "check the type's folder layout or the repo-root locator.");
 
-        // Skip fenced ``` blocks so a Rulebook's self-teaching template can show a real '### ' example
-        // without it being counted as a declared Rule.
-        var rules = new List<string>();
-        var inFence = false;
-        foreach (var line in File.ReadAllLines(path))
-        {
-            if (line.StartsWith("```", StringComparison.Ordinal))
-                inFence = !inFence;
-            else if (!inFence && line.StartsWith(Heading, StringComparison.Ordinal))
-                rules.Add(line[Heading.Length..].Trim());
-        }
-
-        return rules;
+        return File.ReadAllLines(rulesPath)
+            .Where(line => line.StartsWith(Heading, StringComparison.Ordinal))
+            .Select(line => line[Heading.Length..].Trim())
+            .ToList();
     }
 
     private static string Fmt(IReadOnlyList<string> names) =>

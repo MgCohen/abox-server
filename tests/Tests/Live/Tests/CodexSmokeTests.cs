@@ -8,6 +8,7 @@ public class CodexSmokeTests(ITestOutputHelper output)
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromMinutes(3);
 
+    [Rule("a ping flow with a trivial prompt → the agent replies and the run completes")]
     [LiveFact]
     public async Task Ping_completes_with_a_reply()
     {
@@ -19,6 +20,7 @@ public class CodexSmokeTests(ITestOutputHelper output)
 
     // The ping flow's Reviewer is Autonomous, so a question is self-resolved by the
     // auto-resolver and the run continues instead of surfacing "Needs input:".
+    [Rule("an autonomous agent given an under-specified prompt → self-resolves and completes without Needs input")]
     [LiveFact]
     public async Task Missing_secret_self_resolves_under_autonomy()
     {
@@ -28,6 +30,7 @@ public class CodexSmokeTests(ITestOutputHelper output)
         Assert.DoesNotContain("Needs input:", op.Summary ?? "");
     }
 
+    [Rule("an agent given a file request → writes the file into the project on disk")]
     [LiveFact]
     public async Task File_request_edits_the_project()
     {

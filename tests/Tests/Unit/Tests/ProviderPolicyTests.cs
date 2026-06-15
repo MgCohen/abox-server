@@ -5,6 +5,7 @@ namespace ABox.Tests.Unit.Tests;
 
 public class ProviderPolicyTests
 {
+    [Rule("Codex resume → reuses the prior session via bypass, without re-setting cd or sandbox")]
     [Fact]
     public void Codex_resume_omits_cd_and_sandbox_and_bypasses_instead()
     {
@@ -16,6 +17,7 @@ public class ProviderPolicyTests
         Assert.Contains("--dangerously-bypass-approvals-and-sandbox", args);
     }
 
+    [Rule("Codex new turn → sets cd and the OS-specific sandbox default")]
     [Fact]
     public void Codex_new_turn_sets_cd_and_the_baked_sandbox_default()
     {
@@ -30,6 +32,7 @@ public class ProviderPolicyTests
         Assert.Equal(expected, sandbox);
     }
 
+    [Rule("Codex driven with a non-bypass policy → throws an actionable NotSupportedException naming the policy")]
     [Fact]
     public async Task Codex_rejects_a_non_bypass_policy_with_an_actionable_error()
     {
@@ -44,6 +47,7 @@ public class ProviderPolicyTests
         Assert.Contains("Ask", ex.Message);
     }
 
+    [Rule("Directive composed with a role prompt → preserves the role text and appends the directive")]
     [Fact]
     public void The_directive_appends_to_a_role_system_prompt()
     {
@@ -54,6 +58,7 @@ public class ProviderPolicyTests
         Assert.Contains("irreversible", composed);
     }
 
+    [Rule("Directive composed with an empty role prompt → returns the standalone unattended directive")]
     [Fact]
     public void The_directive_stands_alone_when_there_is_no_role_prompt()
         => Assert.Equal(AgentDirective.Unattended, AgentDirective.ComposeSystemPrompt(""));

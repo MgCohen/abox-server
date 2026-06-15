@@ -10,6 +10,7 @@ public class AutoPolicyTests
     private static PermissionRequest Bash(string command)
         => new("1", $"{{\"tool_name\":\"Bash\",\"tool_input\":{{\"command\":{System.Text.Json.JsonSerializer.Serialize(command)}}}}}");
 
+    [Rule("AutoPolicy on a dangerous Bash command → denied with a guardrail reason")]
     [Theory]
     [InlineData("rm -rf /")]
     [InlineData("rm -fr build")]
@@ -29,6 +30,7 @@ public class AutoPolicyTests
         Assert.Contains("guardrail", verdict.Reason);
     }
 
+    [Rule("AutoPolicy on an ordinary Bash command → auto-approved")]
     [Theory]
     [InlineData("ls -la")]
     [InlineData("dotnet build")]
@@ -44,6 +46,7 @@ public class AutoPolicyTests
         Assert.Equal("auto-approved", verdict.Reason);
     }
 
+    [Rule("AutoPolicy on a payload with no Bash command to inspect → allowed")]
     [Fact]
     public void Evaluate_allows_a_file_write_its_path_is_not_a_command()
     {
@@ -52,12 +55,14 @@ public class AutoPolicyTests
         Assert.True(Policy.Evaluate(write).Allow);
     }
 
+    [Rule("AutoPolicy on a payload with no Bash command to inspect → allowed")]
     [Fact]
     public void Evaluate_allows_when_the_payload_has_no_command_detail()
     {
         Assert.True(Policy.Evaluate(new PermissionRequest("1", "not json")).Allow);
     }
 
+    [Rule("AutoPolicy with a custom denylist → applies only those rules, replacing the built-in guardrails")]
     [Fact]
     public void A_custom_denylist_is_honored()
     {

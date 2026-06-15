@@ -8,7 +8,7 @@ public sealed class JsonRepositoryTests : IDisposable
 
     private JsonRepository<Thing> NewRepo() => new(new StorageRoot(_dir));
 
-    [Rule("JsonRepository round-trips entities through Add, Get, Update, and Remove")]
+    [Rule("JsonRepository → round-trips entities through Add, Get, Update, and Remove")]
     [Fact]
     public async Task Crud_round_trips()
     {
@@ -26,7 +26,7 @@ public sealed class JsonRepositoryTests : IDisposable
         Assert.Empty(await repo.GetAll());
     }
 
-    [Rule("JsonRepository reloads persisted entities from a fresh instance")]
+    [Rule("JsonRepository on a fresh instance → reloads persisted entities")]
     [Fact]
     public async Task Reloads_from_disk()
     {
@@ -43,7 +43,7 @@ public sealed class JsonRepositoryTests : IDisposable
         Assert.Contains(b, all);
     }
 
-    [Rule("JsonRepository starts empty when the backing file is unreadable")]
+    [Rule("JsonRepository with an unreadable backing file → starts empty")]
     [Fact]
     public async Task Corrupt_file_starts_empty()
     {
@@ -57,7 +57,7 @@ public sealed class JsonRepositoryTests : IDisposable
         Assert.Equal(fresh, await repo.GetById(fresh.Id));
     }
 
-    [Rule("JsonRepository serializes concurrent writers without tearing the store")]
+    [Rule("JsonRepository under concurrent writers → no torn store")]
     [Fact]
     public async Task Concurrent_writes_do_not_tear()
     {

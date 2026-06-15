@@ -7,7 +7,7 @@ namespace ABox.Tests.E2E.Tests;
 // flow against the real agent.
 public class PingFlowTests
 {
-    [Rule("claude-ping drives the implementer to completion with the scripted reply")]
+    [Rule("claude-ping with a scripted reply → implementer reaches Completed")]
     [Fact]
     public async Task Claude_ping_completes_with_the_scripted_reply()
     {

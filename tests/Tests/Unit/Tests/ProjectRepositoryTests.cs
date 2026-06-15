@@ -9,7 +9,7 @@ public sealed class ProjectRepositoryTests : IDisposable
 
     private ProjectRepository NewRepo() => new(new JsonRepository<Project>(new StorageRoot(_dir)));
 
-    [Rule("ProjectRepository.GetByName finds a project case-insensitively, null when absent")]
+    [Rule("ProjectRepository.GetByName → the project matched case-insensitively, null when absent")]
     [Fact]
     public async Task GetByName_matches_case_insensitively()
     {

@@ -14,7 +14,7 @@ public sealed class ProjectResolverTests : IDisposable
         return (new ProjectResolver(store), store);
     }
 
-    [Rule("ProjectResolver.Resolve returns the project for a known id, or fails clearly")]
+    [Rule("ProjectResolver.Resolve → the project for a known id, else a clear failure")]
     [Fact]
     public async Task Resolve_returns_a_known_project()
     {
@@ -27,7 +27,7 @@ public sealed class ProjectResolverTests : IDisposable
         Assert.Equal((project.Id, project.Name, project.Path), (resolved.Id, resolved.Name, resolved.Path));
     }
 
-    [Rule("ProjectResolver.Resolve returns the project for a known id, or fails clearly")]
+    [Rule("ProjectResolver.Resolve → the project for a known id, else a clear failure")]
     [Fact]
     public async Task Resolve_throws_for_an_unknown_id()
     {
@@ -37,7 +37,7 @@ public sealed class ProjectResolverTests : IDisposable
         Assert.Contains("Unknown project", ex.Message);
     }
 
-    [Rule("ProjectResolver.Resolve returns the project for a known id, or fails clearly")]
+    [Rule("ProjectResolver.Resolve → the project for a known id, else a clear failure")]
     [Fact]
     public async Task Resolve_throws_when_the_stored_directory_does_not_exist()
     {
