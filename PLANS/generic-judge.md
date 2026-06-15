@@ -82,7 +82,7 @@ usually a line each). Copy `commands/judge.md` as a template.
 ## What controls what — knobs & levels
 
 Four levels, from "set once" to "per call". Move the knob at the **lowest** level that achieves the
-change — re-tuning the persona to fix one rubric is a smell.
+change — re-tuning the persona to adjust one rubric is a smell.
 
 | Level | File / field | Governs | Move it when… |
 |---|---|---|---|
@@ -111,9 +111,9 @@ each result; what's banned is the judge emitting an *aggregate* score or decisio
 
 To "iterate on something," a caller runs author → judge → feed `results[].evidence` +
 `generalFeedback` back to the author → re-judge, bounded by the caller's own budget. The judge is
-re-invoked fresh each time; it holds no loop state. By hand that is just: fix, then `/judge` again.
-This is the `claude-validate` / `full-review` validate-fix-loop shape (feature map B2/B3), with the
-judge as the generalized validator.
+re-invoked fresh each time; it holds no loop state. By hand that is just: the author revises the
+artifact, then `/judge` again. This is the `claude-validate` / `full-review` validate-then-revise loop
+(feature map B2/B3), with the judge **only evaluating** — the author, not the judge, does the revising.
 
 ## C# evolution (deferred until a real ABox consumer)
 
