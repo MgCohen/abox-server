@@ -1,11 +1,10 @@
 using FastEndpoints;
 using ABox.Domain.Projects;
 using ABox.Features.Projects.Contracts;
-using ABox.Infrastructure.Storage;
 
 namespace ABox.Features.Projects.Delete;
 
-public sealed class DeleteProjectEndpoint(IRepository<Project> store) : Endpoint<GetProjectRequest>
+public sealed class DeleteProjectEndpoint(IProjectRepository projects) : Endpoint<ProjectByIdRequest>
 {
     public override void Configure()
     {
@@ -13,15 +12,15 @@ public sealed class DeleteProjectEndpoint(IRepository<Project> store) : Endpoint
         AllowAnonymous();
     }
 
-    public override async Task HandleAsync(GetProjectRequest req, CancellationToken ct)
+    public override async Task HandleAsync(ProjectByIdRequest req, CancellationToken ct)
     {
-        if (await store.GetById(req.Id, ct) is null)
+        if (await projects.GetById(req.Id, ct) is null)
         {
             await Send.NotFoundAsync(ct);
             return;
         }
 
-        await store.Remove(req.Id, ct);
+        await projects.Remove(req.Id, ct);
         await Send.NoContentAsync(ct);
     }
 }

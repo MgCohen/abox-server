@@ -1,9 +1,8 @@
 using ABox.Domain.Projects;
-using ABox.Infrastructure.Storage;
 
 namespace ABox.Features.Flows.Start;
 
-public sealed class ProjectResolver(IRepository<Project> projects)
+public sealed class ProjectResolver(IProjectRepository projects)
 {
     public async Task<Project> Resolve(Guid id, CancellationToken ct = default)
     {

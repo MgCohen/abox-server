@@ -1,11 +1,10 @@
 using FastEndpoints;
 using ABox.Domain.Projects;
 using ABox.Features.Projects.Contracts;
-using ABox.Infrastructure.Storage;
 
 namespace ABox.Features.Projects.Get;
 
-public sealed class GetProjectEndpoint(IRepository<Project> store) : Endpoint<GetProjectRequest, ProjectDto>
+public sealed class GetProjectEndpoint(IProjectRepository projects) : Endpoint<ProjectByIdRequest, ProjectDto>
 {
     public override void Configure()
     {
@@ -13,9 +12,9 @@ public sealed class GetProjectEndpoint(IRepository<Project> store) : Endpoint<Ge
         AllowAnonymous();
     }
 
-    public override async Task HandleAsync(GetProjectRequest req, CancellationToken ct)
+    public override async Task HandleAsync(ProjectByIdRequest req, CancellationToken ct)
     {
-        if (await store.GetById(req.Id, ct) is not { } project)
+        if (await projects.GetById(req.Id, ct) is not { } project)
         {
             await Send.NotFoundAsync(ct);
             return;

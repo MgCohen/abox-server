@@ -1,11 +1,10 @@
 using FastEndpoints;
 using ABox.Domain.Projects;
 using ABox.Features.Projects.Contracts;
-using ABox.Infrastructure.Storage;
 
 namespace ABox.Features.Projects.List;
 
-public sealed class ListProjectsEndpoint(IRepository<Project> store) : EndpointWithoutRequest<IReadOnlyList<ProjectDto>>
+public sealed class ListProjectsEndpoint(IProjectRepository projects) : EndpointWithoutRequest<IReadOnlyList<ProjectDto>>
 {
     public override void Configure()
     {
@@ -15,7 +14,7 @@ public sealed class ListProjectsEndpoint(IRepository<Project> store) : EndpointW
 
     public override async Task HandleAsync(CancellationToken ct)
     {
-        var projects = await store.GetAll(ct);
-        await Send.OkAsync([.. projects.Select(p => new ProjectDto(p.Id, p.Name, p.Path))], ct);
+        var all = await projects.GetAll(ct);
+        await Send.OkAsync([.. all.Select(p => new ProjectDto(p.Id, p.Name, p.Path))], ct);
     }
 }

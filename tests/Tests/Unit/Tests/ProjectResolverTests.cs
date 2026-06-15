@@ -8,9 +8,9 @@ public sealed class ProjectResolverTests : IDisposable
 {
     private readonly string _dir = Directory.CreateTempSubdirectory("projres-").FullName;
 
-    private (ProjectResolver Resolver, IRepository<Project> Store) New()
+    private (ProjectResolver Resolver, IProjectRepository Store) New()
     {
-        var store = new JsonRepository<Project>(new StorageRoot(_dir));
+        var store = new ProjectRepository(new JsonRepository<Project>(new StorageRoot(_dir)));
         return (new ProjectResolver(store), store);
     }
 
