@@ -19,8 +19,7 @@
     <Project Path="src/Features/Git/PrOps/ABox.Git.PrOps.csproj" />
     <Project Path="src/Features/Git/Module/ABox.Git.Module.csproj" />
     <Project Path="src/Features/Projects/Contracts/ABox.Projects.Contracts.csproj" />
-    <Project Path="src/Features/Projects/List/ABox.Projects.List.csproj" />
-    <Project Path="src/Features/Projects/Module/ABox.Projects.Module.csproj" />
+    <Project Path="src/Features/Projects/ABox.Projects.csproj" />
     <Project Path="src/Features/Tasks/Contracts/ABox.Tasks.Contracts.csproj" />
     <Project Path="src/Features/Tasks/Create/ABox.Tasks.Create.csproj" />
     <Project Path="src/Features/Tasks/Module/ABox.Tasks.Module.csproj" />

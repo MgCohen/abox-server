@@ -1,22 +1,9 @@
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Routing;
-using Microsoft.Extensions.DependencyInjection;
-using ABox.Domain.Projects;
+using System.Reflection;
 using ABox.Features.Projects.List;
 
 namespace ABox.Features.Projects.Module;
 
 public static class ProjectsModule
 {
-    public static IServiceCollection AddProjects(this IServiceCollection services)
-    {
-        services.AddSingleton<IProjects, StubProjects>();
-        return services;
-    }
-
-    public static void MapProjects(this IEndpointRouteBuilder app)
-    {
-        var projects = app.MapGroup("/projects");
-        ListProjectsEndpoint.Map(projects);
-    }
+    public static Assembly EndpointsAssembly => typeof(ListProjectsEndpoint).Assembly;
 }

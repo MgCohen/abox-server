@@ -1,14 +1,20 @@
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Routing;
+using FastEndpoints;
 using ABox.Domain.Projects;
 using ABox.Features.Projects.Contracts;
 
 namespace ABox.Features.Projects.List;
 
-public static class ListProjectsEndpoint
+public sealed class ListProjectsEndpoint(IProjectRepository projects) : EndpointWithoutRequest<IReadOnlyList<ProjectDto>>
 {
-    public static void Map(IEndpointRouteBuilder projects) =>
-        projects.MapGet("/", (IProjects store) =>
-            Results.Ok(store.List().Select(p => new ProjectDto(p.Id, p.Name))));
+    public override void Configure()
+    {
+        Get("/projects");
+        AllowAnonymous();
+    }
+
+    public override async Task HandleAsync(CancellationToken ct)
+    {
+        var all = await projects.GetAll(ct);
+        await Send.OkAsync([.. all.Select(p => new ProjectDto(p.Id, p.Name, p.Path))], ct);
+    }
 }

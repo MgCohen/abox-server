@@ -308,18 +308,6 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 ### AutoResolver on a permission choice → never self-answers Allow
 - **Why:** auto-allowing a permission would let an unattended run authorize destructive actions like rm -rf, so degrading to deny is the safety boundary that must hold.
 
-### ProjectRegistry.List → every registered project as a name with an absolute path, without touching the filesystem
-- **Why:** callers enumerate projects to build menus before any directory exists, so List must report what's configured rather than only what's currently on disk, and must hand back rooted paths so downstream resolution never depends on the process's cwd.
-
-### ProjectRegistry.Resolve of an unregistered name → throws InvalidOperationException naming the unknown project
-- **Why:** silently returning a bogus or empty path would let an agent run against the wrong directory; a named failure tells the operator exactly which key was mistyped.
-
-### ProjectRegistry.Resolve of an existing absolute path → returns its full path without requiring registration
-- **Why:** users pass ad-hoc directories that were never added to projects.json, so Resolve must accept a real path directly instead of forcing every target through the registry.
-
-### ProjectRegistry.Resolve of a registered name whose directory is missing → throws InvalidOperationException reporting the path doesn't exist
-- **Why:** a registry entry can go stale when its folder is deleted or moved; failing loudly at resolve time prevents the orchestrator from launching against a vanished working directory.
-
 ### Codex resume → reuses the prior session via bypass, without re-setting cd or sandbox
 - **Why:** a resume must continue the existing CLI session as-is; re-asserting --cd/--sandbox would fork context or re-prompt approvals, so resume relies on the already-granted bypass instead.
 
@@ -379,3 +367,44 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 
 ### ClaudePermission.IsAllow on an answer → true only for a case-insensitive trimmed "allow", else false
 - **Why:** approval must fail-closed: blanks, nulls, denials, or anything ambiguous must never be read as consent to run a tool.
+
+### Project.Create → a project with a trimmed, non-blank name
+- **Why:** the create door is the single home of the name invariant — a project cannot exist nameless;
+  surrounding whitespace is trimmed and a blank or whitespace-only name is rejected.
+
+### Project.Create → a project whose required path is stored absolute
+- **Why:** a project must point at a directory to be launchable; the create door rejects a blank path and
+  normalizes whatever it accepts to an absolute path (existence is checked later, at resolve-time).
+
+### Project.Rename → a renamed project with a trimmed, non-blank name
+- **Why:** rename is a mutation door and enforces the same name invariant as Create, leaving the project's
+  identity (`Id`) and path unchanged.
+
+### Project.MoveTo → a relocated project with an absolutized path
+- **Why:** the only door that changes a project's path enforces the same path invariant as Create, leaving
+  the project's identity (`Id`) and name unchanged.
+
+### ProjectRepository.GetByName → the project matched case-insensitively, null when absent
+- **Why:** name uniqueness on create and project resolution on flow-launch share one query home — a
+  case-insensitive name lookup over the store — so the rule isn't duplicated across the two callers.
+
+### ProjectResolver.Resolve → the project for a known id, else a clear failure
+- **Why:** flow-launch is keyed by project id. A known id resolves to its stored Project (name for the run
+  label, path for the working dir); an unknown id throws, and a stored path whose directory is gone throws —
+  so a launch never starts against a non-existent directory.
+
+### JsonRepository → round-trips entities through Add, Get, Update, and Remove
+- **Why:** the storage seam's core contract — an entity written through the repository is read back, replaced,
+  and deleted by id, with `GetAll`/`GetById` reflecting each mutation.
+
+### JsonRepository on a fresh instance → reloads persisted entities
+- **Why:** writes are durable — a new repository over the same store sees everything a prior instance wrote,
+  proving persistence is on disk, not just in the in-memory cache.
+
+### JsonRepository with an unreadable backing file → starts empty
+- **Why:** a corrupt or unreadable store is non-fatal — the repository starts empty and a subsequent write
+  recovers it, so a bad file never crashes startup.
+
+### JsonRepository under concurrent writers → no torn store
+- **Why:** the `SemaphoreSlim` + atomic temp→`File.Replace` write means concurrent `Add`s all land and the
+  on-disk file always parses — no torn write under contention.

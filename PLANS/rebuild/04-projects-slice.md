@@ -3,7 +3,15 @@
 Status: **built (2026-06-13).** Self-contained spec — readable without prior
 context. Implements the first real end-to-end feature of the rebuild: a server
 API that lists the projects the orchestrator can work on, and the model behind
-it. Storage is deliberately stubbed (see The stub).
+it. Storage was deliberately stubbed (see The stub).
+
+> **Superseded — storage (2026-06-13):** [`05-storage-repository.md`](05-storage-repository.md)
+> replaced the stub with real persistence and **revised the "port in Domain"
+> decision below.** Storage is now an *infrastructure* concern: the `IProjects`
+> port and `StubProjects` are gone; `Project : IEntity` is persisted by the
+> open-generic `IRepository<Project>` (JSON store) resolved in the endpoint. The
+> Domain↔DTO split, the GUID-id reasoning, and the additive-feature framing all
+> still hold; only the storage seam moved out of Domain.
 
 ## Why this feature
 
@@ -220,6 +228,10 @@ Consolidation, when chosen, is a contained follow-up:
 2. Re-key the `?project=` / `StartRunRequest.Project` wire param from name to id.
 3. Point `StartEndpoint` at `IProjects`; delete `Infrastructure/Projects` and
    the root `projects.json`.
+
+> **Done.** All three landed in [`07-flow-launch-consolidation.md`](07-flow-launch-consolidation.md)
+> plus the follow-up that re-keyed `StartRunRequest` to `ProjectId` (Guid) and dropped the
+> absolute-path passthrough — flow-launch now resolves a project strictly by id.
 
 And the stub graduates on its own trigger: when **create/edit projects moves
 into the UI**, the server generates `Guid.NewGuid()` on create and persists — a

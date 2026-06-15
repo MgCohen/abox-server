@@ -19,6 +19,7 @@ public static class FlowsModule
         services.AddSingleton<FlowRegistry>();
         services.AddSingleton<FlowLauncher>();
         services.AddSingleton<IFlowFactory, FlowFactory>();
+        services.AddSingleton<ProjectResolver>();
 
         // Flows are content, not engine: the composition root supplies the catalog (empty in production
         // today). Eager build → fail-fast on a bad entry. Flows are stateless (config is a run arg), so

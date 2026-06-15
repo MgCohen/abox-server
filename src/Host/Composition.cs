@@ -1,13 +1,15 @@
 using System.Text.Json.Serialization;
+using FastEndpoints;
 using Microsoft.Extensions.DependencyInjection;
 using ABox.Domain.Agents;
 using ABox.Domain.Agents.Claude;
 using ABox.Domain.Flow;
+using ABox.Domain.Projects;
 using ABox.Features.Flows.Module;
 using ABox.Features.Git.Module;
 using ABox.Features.Projects.Module;
 using ABox.Infrastructure.Paths;
-using ABox.Infrastructure.Projects;
+using ABox.Infrastructure.Storage;
 
 namespace ABox.Host;
 
@@ -24,8 +26,14 @@ internal static class Composition
 
         services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
+        services.AddFastEndpoints(o => o.Assemblies = [ProjectsModule.EndpointsAssembly]);
+
         services.AddSingleton<IOrchestratorPaths, OrchestratorPaths>();
-        services.AddSingleton<IProjectRegistry, ProjectRegistry>();
+
+        services.AddSingleton(StorageRoot.Default);
+        services.AddSingleton(typeof(IRepository<>), typeof(JsonRepository<>));
+        services.AddSingleton<IProjectRepository, ProjectRepository>();
+        services.AddHostedService<ProjectsJsonImport>();
 
         services.AddSingleton<PendingDecisions>();
         services.AddSingleton<IDecisionResolver, InteractiveResolver>();
@@ -35,7 +43,6 @@ internal static class Composition
         services.AddSingleton<ResolverSelector>();
         services.AddSingleton<IAgentFactory, AgentFactory>();
 
-        services.AddProjects();
         services.AddFlows(flows);
         services.AddGit();
     }

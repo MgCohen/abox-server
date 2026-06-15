@@ -11,6 +11,11 @@ billing). This is a **rebuild of internals, not behavior**: if a user can't tell
 the difference in what the system *does*, the rebuild succeeded. We build in
 **12 layers (L1→L12)**, walking-skeleton-first.
 
+> **The Blazor UI lives in a separate client repo — it is NOT rebuilt here.** This
+> repo is the **server/API** the existing client consumes. Don't scaffold a UI here;
+> wire contracts in `*.Contracts` are the seam the client binds. (The `prototype/ui/`
+> Blazor is reference-only, like the rest of `prototype/`.)
+
 Source of truth, in order:
 
 - **Constitution (behavior):** [`design/behavioral-oracle.md`](design/behavioral-oracle.md)
