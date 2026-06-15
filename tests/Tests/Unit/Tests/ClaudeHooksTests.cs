@@ -102,7 +102,7 @@ public class ClaudeHooksTests
         Assert.Throws<InvalidOperationException>(() => hook.Respond(new PermissionRequest("x", "{}"), "{}"));
     }
 
-    [Rule("ClaudeHooks.HasFired → false until the signal file has content, true once written")]
+    [Rule("ClaudeHooks.HasFired → reflects whether the signal file has content")]
     [Fact]
     public void HasFired_is_false_until_the_signal_file_has_content()
     {

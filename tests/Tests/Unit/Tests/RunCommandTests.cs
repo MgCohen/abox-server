@@ -35,7 +35,7 @@ public class RunCommandTests
         Assert.True(res.TimedOut);
     }
 
-    [Rule("EnsureOk on a zero-exit result → returns the same result; on a non-zero result → throws InvalidOperationException naming the failed step")]
+    [Rule("EnsureOk on a non-zero result → throws InvalidOperationException naming the failed step")]
     [Fact]
     public async Task EnsureOk_throws_on_nonzero_and_passes_through_on_zero()
     {

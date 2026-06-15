@@ -29,7 +29,7 @@ public class AgentTests
         Assert.Equal("[implementer] do the thing", op.Summary);
     }
 
-    [Rule("An agent across successive calls → no session on the first call, then the minted session on later calls")]
+    [Rule("An agent across successive calls → reuses the session minted on its first call")]
     [Fact]
     public async Task An_agent_reuses_its_session_across_calls()
     {

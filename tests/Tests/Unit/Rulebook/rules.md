@@ -65,7 +65,7 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 ### A factory-minted agent run through a flow → a Completed operation whose summary is the agent's text
 - **Why:** the factory path is what composition uses, so a minted agent must actually drive the flow to completion and surface its text — proving the wiring isn't inert.
 
-### An agent across successive calls → no session on the first call, then the minted session on later calls
+### An agent across successive calls → reuses the session minted on its first call
 - **Why:** session reuse is what keeps a multi-turn conversation coherent; dropping it would silently restart the agent's context on every call.
 
 ### An agent's first call → a request carrying the prompt and baked-in project dir with no session
@@ -101,7 +101,7 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 ### ClaudeHooks.Respond with gating off → throws InvalidOperationException
 - **Why:** responding when no gate exists is a caller bug; failing loudly stops a decision from being silently dropped into a directory nothing reads.
 
-### ClaudeHooks.HasFired → false until the signal file has content, true once written
+### ClaudeHooks.HasFired → reflects whether the signal file has content
 - **Why:** completion is detected by polling HasFired, so an empty file must not read as fired (premature finish) and a written one must (missed finish).
 
 ### ClaudeHooks.ReadFinalMessage → returns the last_assistant_message from the signal file
@@ -275,7 +275,7 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 ### ChangedFiles on a dirty tree → returns each modified and untracked path
 - **Why:** callers decide what to stage/commit from this list, so both already-tracked edits and brand-new files must surface or work silently gets dropped.
 
-### CheckDirty → IsDirty true when the tree has changes, false when clean
+### CheckDirty → reports whether the working tree has uncommitted changes
 - **Why:** the dirty flag gates whether a commit step runs at all, so a false negative would skip persisting real work and a false positive would commit nothing.
 
 ### Commit of listed files → stages and commits them, returning the full hash and subject and leaving the tree clean
@@ -374,8 +374,8 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 ### RunCommand whose command outlives the configured timeout → result with TimedOut true
 - **Why:** a hung child process must be detectable and reapable rather than blocking forever, so the timeout has to be observable distinctly from an ordinary exit.
 
-### EnsureOk on a zero-exit result → returns the same result; on a non-zero result → throws InvalidOperationException naming the failed step
-- **Why:** EnsureOk is the fail-fast guard pipelines rely on, so success must pass the result through untouched while failure must abort loudly with a message that pinpoints which step broke.
+### EnsureOk on a non-zero result → throws InvalidOperationException naming the failed step
+- **Why:** EnsureOk is the fail-fast guard pipelines rely on, so a failed step must abort loudly with a message that pinpoints which step broke.
 
 ### ClaudePermission.IsAllow on an answer → true only for a case-insensitive trimmed "allow", else false
 - **Why:** approval must fail-closed: blanks, nulls, denials, or anything ambiguous must never be read as consent to run a tool.

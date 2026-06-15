@@ -23,7 +23,7 @@ public class GitTests
         Assert.Equal(2, result.Files.Count);
     }
 
-    [Rule("CheckDirty → IsDirty true when the tree has changes, false when clean")]
+    [Rule("CheckDirty → reports whether the working tree has uncommitted changes")]
     [Fact]
     public async Task CheckDirty_true_when_changed_false_when_clean()
     {
