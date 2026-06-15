@@ -5,6 +5,7 @@ namespace ABox.Tests.Unit.Tests;
 
 public class ClaudeHooksTests
 {
+    [Rule("ClaudeHooks.Create → settings file wires a Stop hook to the stop-shim")]
     [Fact]
     public void Create_writes_a_settings_file_with_a_Stop_command_pointing_at_the_shim()
     {
@@ -18,6 +19,7 @@ public class ClaudeHooksTests
         Assert.Contains("stop-shim.ps1", command);
     }
 
+    [Rule("ClaudeHooks.Create without gating → no PreToolUse hook and no permission dir")]
     [Fact]
     public void Create_without_gating_emits_no_PreToolUse_hook_and_no_permission_dir()
     {
@@ -27,6 +29,7 @@ public class ClaudeHooksTests
         Assert.Null(hook.PermissionDir);
     }
 
+    [Rule("ClaudeHooks.Create with gating → PreToolUse perm-shim hook matching the mutating tools and a permission dir")]
     [Fact]
     public void Create_with_gating_emits_a_PreToolUse_hook_matching_the_mutating_tools()
     {
@@ -43,6 +46,7 @@ public class ClaudeHooksTests
         Assert.NotNull(hook.PermissionDir);
     }
 
+    [Rule("perm-shim script → reads the stdin payload and emits a permissionDecision against the permission dir")]
     [Fact]
     public void The_perm_shim_reads_payload_and_targets_the_permission_dir()
     {
@@ -54,6 +58,7 @@ public class ClaudeHooksTests
         Assert.Contains("permissionDecision", shim);
     }
 
+    [Rule("ClaudeHooks.DrainRequests → returns each pending request once with its id and payload, then nothing")]
     [Fact]
     public void DrainRequests_reads_each_request_file_exactly_once()
     {
@@ -67,6 +72,7 @@ public class ClaudeHooksTests
         Assert.Empty(hook.DrainRequests());
     }
 
+    [Rule("ClaudeHooks.DrainRequests with gating off → returns empty")]
     [Fact]
     public void DrainRequests_is_empty_when_gating_is_off()
     {
@@ -74,6 +80,7 @@ public class ClaudeHooksTests
         Assert.Empty(hook.DrainRequests());
     }
 
+    [Rule("ClaudeHooks.Respond → writes the decision to the response file matching the request id")]
     [Fact]
     public void Respond_writes_the_decision_to_the_matching_response_file()
     {
@@ -87,6 +94,7 @@ public class ClaudeHooksTests
         Assert.Contains("allow", File.ReadAllText(resp));
     }
 
+    [Rule("ClaudeHooks.Respond with gating off → throws InvalidOperationException")]
     [Fact]
     public void Respond_throws_when_gating_is_off()
     {
@@ -94,6 +102,7 @@ public class ClaudeHooksTests
         Assert.Throws<InvalidOperationException>(() => hook.Respond(new PermissionRequest("x", "{}"), "{}"));
     }
 
+    [Rule("ClaudeHooks.HasFired → false until the signal file has content, true once written")]
     [Fact]
     public void HasFired_is_false_until_the_signal_file_has_content()
     {
@@ -104,6 +113,7 @@ public class ClaudeHooksTests
         Assert.True(hook.HasFired);
     }
 
+    [Rule("ClaudeHooks.ReadFinalMessage → returns the last_assistant_message from the signal file")]
     [Fact]
     public void ReadFinalMessage_extracts_last_assistant_message()
     {
@@ -114,6 +124,7 @@ public class ClaudeHooksTests
         Assert.Equal("the final answer", hook.ReadFinalMessage());
     }
 
+    [Rule("ClaudeHooks.ReadFinalMessage with missing or malformed signal → returns null")]
     [Fact]
     public void ReadFinalMessage_returns_null_when_absent_or_malformed()
     {
@@ -124,6 +135,7 @@ public class ClaudeHooksTests
         Assert.Null(hook.ReadFinalMessage());
     }
 
+    [Rule("ClaudeHooks.Dispose → removes the temp artifacts it created")]
     [Fact]
     public void Dispose_removes_the_temp_artifacts()
     {

@@ -5,6 +5,7 @@ namespace ABox.Tests.Unit.Tests;
 
 public class ClaudeProtocolTests
 {
+    [Rule("PermissionMode given a permission policy → the matching Claude permission-mode flag value")]
     [Theory]
     [InlineData(PermissionPolicy.Bypass, "bypassPermissions")]
     [InlineData(PermissionPolicy.Auto, "default")]
@@ -13,6 +14,7 @@ public class ClaudeProtocolTests
         => Assert.Equal(expected, ClaudeProtocol.PermissionMode(policy));
 
 
+    [Rule("BuildArgs for a fresh run → leads with --session-id and omits --resume")]
     [Fact]
     public void BuildArgs_fresh_run_uses_session_id_not_resume()
     {
@@ -22,6 +24,7 @@ public class ClaudeProtocolTests
         Assert.DoesNotContain("--resume", args);
     }
 
+    [Rule("BuildArgs for a resumed run → leads with --resume and omits --session-id")]
     [Fact]
     public void BuildArgs_resumed_run_uses_resume_not_session_id()
     {
@@ -31,6 +34,7 @@ public class ClaudeProtocolTests
         Assert.DoesNotContain("--session-id", args);
     }
 
+    [Rule("BuildArgs with permission mode, model, and system-prompt file → each as its paired flag and value")]
     [Fact]
     public void BuildArgs_carries_permission_mode_model_and_system_prompt_file()
     {
@@ -41,6 +45,7 @@ public class ClaudeProtocolTests
         AssertPair(args, "--append-system-prompt-file", "C:/tmp/sys.txt");
     }
 
+    [Rule("BuildArgs with a settings file → emits --settings paired with that path")]
     [Fact]
     public void BuildArgs_adds_the_settings_file_when_provided()
     {
@@ -49,6 +54,7 @@ public class ClaudeProtocolTests
         AssertPair(args, "--settings", "C:/tmp/ra-hooks.json");
     }
 
+    [Rule("BuildArgs with no settings file → omits --settings entirely")]
     [Fact]
     public void BuildArgs_omits_the_settings_file_by_default()
     {
@@ -57,6 +63,7 @@ public class ClaudeProtocolTests
         Assert.DoesNotContain("--settings", args);
     }
 
+    [Rule("BuildArgs with blank optional fields → omits --permission-mode, --model, and --append-system-prompt-file")]
     [Fact]
     public void BuildArgs_omits_optional_flags_when_blank()
     {
@@ -67,16 +74,19 @@ public class ClaudeProtocolTests
         Assert.DoesNotContain("--append-system-prompt-file", args);
     }
 
+    [Rule("IsPromptReady given the input-bar footer in any permission mode → true")]
     [Theory]
     [InlineData("⏵⏵ bypass permissions on (shift+tab to cycle)")]
     [InlineData("? for shortcuts · ← for agents")]
     public void IsPromptReady_recognizes_the_input_bar_in_either_permission_mode(string footer)
         => Assert.True(ClaudeProtocol.IsPromptReady(footer));
 
+    [Rule("IsPromptReady given a startup-dialog screen → false")]
     [Fact]
     public void IsPromptReady_is_false_for_a_startup_dialog()
         => Assert.False(ClaudeProtocol.IsPromptReady("Is this a project you trust? Enter to confirm · Esc to cancel"));
 
+    [Rule("DetectStartupDialog given a known dialog's text → its StartupDialog classification")]
     [Theory]
     [InlineData("Do you trust this folder?", StartupDialog.Trust)]
     [InlineData("Is this a project you want to open?", StartupDialog.Trust)]
@@ -87,12 +97,14 @@ public class ClaudeProtocolTests
         Assert.Equal(expected, ClaudeProtocol.DetectStartupDialog(buffer));
     }
 
+    [Rule("DetectStartupDialog given ordinary output → null")]
     [Fact]
     public void DetectStartupDialog_returns_null_for_ordinary_output()
     {
         Assert.Null(ClaudeProtocol.DetectStartupDialog("Welcome to Claude Code"));
     }
 
+    [Rule("DetectStartupDialog given dialog text split by ANSI escapes → still classifies it")]
     [Fact]
     public void DetectStartupDialog_matches_through_ansi_noise()
     {

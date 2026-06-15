@@ -4,6 +4,7 @@ namespace ABox.Tests.Unit.Tests;
 
 public class GitTests
 {
+    [Rule("ChangedFiles on a dirty tree → returns each modified and untracked path")]
     [Fact]
     public async Task ChangedFiles_reports_modified_and_untracked()
     {
@@ -22,6 +23,7 @@ public class GitTests
         Assert.Equal(2, result.Files.Count);
     }
 
+    [Rule("CheckDirty → IsDirty true when the tree has changes, false when clean")]
     [Fact]
     public async Task CheckDirty_true_when_changed_false_when_clean()
     {
@@ -36,6 +38,7 @@ public class GitTests
         Assert.True((await Op.Exec(git.CheckDirty, new DirtyArgs())).IsDirty);
     }
 
+    [Rule("Commit of listed files → stages and commits them, returning the full hash and subject and leaving the tree clean")]
     [Fact]
     public async Task Commit_stages_listed_files_and_returns_hash_and_subject()
     {
@@ -52,6 +55,7 @@ public class GitTests
         Assert.False((await Op.Exec(git.CheckDirty, new DirtyArgs())).IsDirty);
     }
 
+    [Rule("Diff on a dirty tree → reports the changed-file count and the diff text naming each file")]
     [Fact]
     public async Task Diff_reports_file_count_and_text()
     {
@@ -66,6 +70,7 @@ public class GitTests
         Assert.Contains("a.txt", result.Text);
     }
 
+    [Rule("ChangedFiles after a reverting checkout → reports no changes")]
     [Fact]
     public async Task ChangedFiles_stable_after_checkout_dash_dash()
     {

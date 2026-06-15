@@ -7,6 +7,7 @@ public class InteractiveResolverTests
     private const string Envelope =
         "Reasoning...\n<<NEEDS_INPUT>>\n{ \"kind\": \"open\", \"prompt\": \"Which bucket?\" }";
 
+    [Rule("Agent emitting NEEDS_INPUT → blocks on a pending decision until a human resolves it, then resumes to Completed")]
     [Fact]
     public async Task Blocks_until_a_human_resolves_then_the_run_resumes()
     {
@@ -23,6 +24,7 @@ public class InteractiveResolverTests
         Assert.IsType<AgentOutcome.Completed>(outcome);
     }
 
+    [Rule("Run cancelled while awaiting a decision → unblocks as terminal NeedsInput and drops the pending decision")]
     [Fact]
     public async Task Run_cancel_unblocks_the_await_as_terminal_needs_input()
     {

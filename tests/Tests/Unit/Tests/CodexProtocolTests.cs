@@ -5,6 +5,7 @@ namespace ABox.Tests.Unit.Tests;
 
 public class CodexProtocolTests
 {
+    [Rule("BuildArgs with no session id → a fresh exec run that reads the prompt from stdin")]
     [Fact]
     public void BuildArgs_fresh_run_starts_with_exec_and_reads_stdin()
     {
@@ -15,6 +16,7 @@ public class CodexProtocolTests
         Assert.Equal("-", args[^1]);
     }
 
+    [Rule("BuildArgs with a session id → an exec resume run that threads that session id")]
     [Fact]
     public void BuildArgs_resumed_run_threads_the_session_id()
     {
@@ -23,6 +25,7 @@ public class CodexProtocolTests
         Assert.Equal(new[] { "exec", "resume", "sess-12345678" }, args.Take(3));
     }
 
+    [Rule("BuildArgs → carries the working dir, output path, OS-aware sandbox, model, and JSON flags")]
     [Fact]
     public void BuildArgs_carries_dir_output_sandbox_model_and_json()
     {
@@ -37,6 +40,7 @@ public class CodexProtocolTests
         Assert.Contains("--skip-git-repo-check", args);
     }
 
+    [Rule("BuildArgs with a blank model → omits the --model flag entirely")]
     [Fact]
     public void BuildArgs_omits_model_flag_when_model_is_blank()
     {
@@ -45,6 +49,7 @@ public class CodexProtocolTests
         Assert.DoesNotContain("--model", args);
     }
 
+    [Rule("ScanSessionId over any known JSON shape → the embedded session id")]
     [Theory]
     [InlineData("{\"thread_id\":\"abcd1234ef\"}")]
     [InlineData("{\"session_id\":\"abcd1234ef\"}")]
@@ -57,6 +62,7 @@ public class CodexProtocolTests
         Assert.Equal("abcd1234ef", CodexProtocol.ScanSessionId(line));
     }
 
+    [Rule("ScanSessionId when no valid id is present → null")]
     [Theory]
     [InlineData("codex_core::exec ERROR not json")]
     [InlineData("{\"thread_id\":\"short\"}")]
@@ -66,6 +72,7 @@ public class CodexProtocolTests
         Assert.Null(CodexProtocol.ScanSessionId(line));
     }
 
+    [Rule("ExtractTranscript over a completed agent_message → a single Text turn carrying its text")]
     [Fact]
     public void ExtractTranscript_agent_message_becomes_a_text_turn()
     {
@@ -77,6 +84,7 @@ public class CodexProtocolTests
         Assert.Equal("hello", turn.Body);
     }
 
+    [Rule("ExtractTranscript over a command_execution → a ToolUse turn followed by a ToolResult turn with exit code and output")]
     [Fact]
     public void ExtractTranscript_command_execution_becomes_tooluse_then_toolresult()
     {
@@ -90,6 +98,7 @@ public class CodexProtocolTests
         Assert.Equal("[exit 0]\na.txt", turns[1].Body);
     }
 
+    [Rule("ExtractTranscript over a completed reasoning item → a single Thinking turn carrying its text")]
     [Fact]
     public void ExtractTranscript_reasoning_becomes_a_thinking_turn()
     {
@@ -101,6 +110,7 @@ public class CodexProtocolTests
         Assert.Equal("hmm", turn.Body);
     }
 
+    [Rule("ExtractTranscript over mixed tracing and incomplete events → only the completed items become turns")]
     [Fact]
     public void ExtractTranscript_skips_non_json_tracing_and_incomplete_events()
     {
@@ -114,6 +124,7 @@ public class CodexProtocolTests
         Assert.Equal("final", turn.Body);
     }
 
+    [Rule("ExtractTranscript over empty output → no turns")]
     [Fact]
     public void ExtractTranscript_empty_output_yields_no_turns()
     {

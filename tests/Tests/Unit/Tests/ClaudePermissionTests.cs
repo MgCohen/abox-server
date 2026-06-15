@@ -6,6 +6,7 @@ namespace ABox.Tests.Unit.Tests;
 
 public class ClaudePermissionTests
 {
+    [Rule("ClaudePermission.ToQuestion on a tool call → an Allow/Deny choice naming the tool and its target")]
     [Fact]
     public void ToQuestion_builds_an_allow_deny_choice_naming_the_tool_and_command()
     {
@@ -19,6 +20,7 @@ public class ClaudePermissionTests
         Assert.Equal(payload, question.RawTail);
     }
 
+    [Rule("ClaudePermission.ToQuestion on a tool call → an Allow/Deny choice naming the tool and its target")]
     [Fact]
     public void ToQuestion_uses_the_file_path_for_write_and_edit_tools()
     {
@@ -29,6 +31,7 @@ public class ClaudePermissionTests
         Assert.Contains("secret.env", question.Prompt);
     }
 
+    [Rule("ClaudePermission.ToQuestion on an unparseable payload → a still-valid Allow/Deny question instead of a throw")]
     [Fact]
     public void ToQuestion_falls_back_to_the_bare_tool_when_payload_is_unparseable()
     {
@@ -38,6 +41,7 @@ public class ClaudePermissionTests
         Assert.Equal(new[] { "Allow", "Deny" }, question.Options);
     }
 
+    [Rule("ClaudePermission.Describe on a tool call → the tool name and its full untruncated detail")]
     [Fact]
     public void Describe_returns_the_full_untruncated_command_for_the_guardrail()
     {
@@ -50,6 +54,7 @@ public class ClaudePermissionTests
         Assert.Equal(command, detail);
     }
 
+    [Rule("ClaudePermission.ToQuestion on an overlong command → a truncated prompt marked with an ellipsis")]
     [Fact]
     public void ToQuestion_truncates_a_long_command_for_display()
     {
@@ -62,6 +67,7 @@ public class ClaudePermissionTests
         Assert.True(question.Prompt.Length < command.Length);
     }
 
+    [Rule("ClaudePermission.IsAllow on an answer → true only for a case-insensitive trimmed \"allow\", else false")]
     [Theory]
     [InlineData("Allow", true)]
     [InlineData("allow", true)]
@@ -73,6 +79,7 @@ public class ClaudePermissionTests
     public void IsAllow_only_accepts_the_allow_answer(string? answer, bool expected)
         => Assert.Equal(expected, ClaudePermission.IsAllow(answer));
 
+    [Rule("ClaudePermission.RenderResponse with a decision → the hook-specific PreToolUse envelope carrying that decision and reason")]
     [Fact]
     public void RenderResponse_emits_the_hook_specific_allow_envelope()
     {
@@ -84,6 +91,7 @@ public class ClaudePermissionTests
         Assert.Equal("approved", output.GetProperty("permissionDecisionReason").GetString());
     }
 
+    [Rule("ClaudePermission.RenderResponse with a decision → the hook-specific PreToolUse envelope carrying that decision and reason")]
     [Fact]
     public void RenderResponse_emits_deny_for_a_refused_call()
     {

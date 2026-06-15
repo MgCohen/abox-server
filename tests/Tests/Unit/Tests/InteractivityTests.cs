@@ -5,11 +5,13 @@ namespace ABox.Tests.Unit.Tests;
 
 public class InteractivityTests
 {
+    [Rule("ComposeSystemPrompt in Auto → emits the unattended directive")]
     [Fact]
     public void Auto_composes_the_unattended_directive()
         => Assert.Equal(AgentDirective.Unattended,
             AgentDirective.ComposeSystemPrompt("", Resolution.Auto));
 
+    [Rule("ComposeSystemPrompt in Human → emits a distinct interactive ask-first directive")]
     [Fact]
     public void Human_composes_a_distinct_ask_first_directive()
     {
@@ -21,6 +23,7 @@ public class InteractivityTests
         Assert.Contains("ask rather than guess", composed);
     }
 
+    [Rule("ComposeSystemPrompt in either mode → appends the directive after the role prompt and includes the envelope sentinel")]
     [Fact]
     public void Both_directives_share_the_envelope_format_and_append_to_a_role_prompt()
     {
@@ -32,6 +35,7 @@ public class InteractivityTests
         }
     }
 
+    [Rule("AutoResolver on an open question → self-answers a non-empty proceed instruction tagged with the Auto source")]
     [Fact]
     public async Task The_auto_resolver_self_answers_with_a_proceed_instruction()
     {
@@ -45,6 +49,7 @@ public class InteractivityTests
     }
 
     // Auto + Ask degrades to deny: the self-answer is never "Allow".
+    [Rule("AutoResolver on a permission choice → never self-answers Allow")]
     [Fact]
     public async Task The_auto_resolver_does_not_allow_a_permission_choice()
     {
