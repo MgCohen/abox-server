@@ -201,3 +201,30 @@ CODEOWNERS (use a machine *account*, not an App, for the owner role). **[probe/S
    hard wall? *(Phase 4)*
 3. **lefthook vs raw shell** for the git-hook layer — pick when we build Phase 1
    (raw shell is most neutral; lefthook adds ergonomics).
+
+---
+
+## Decisions taken (2026-06-15) + status
+
+Phase 0 decisions are locked (see [ADR 0010](../../design/adr/0010-agent-repo-controls.md)):
+
+- **D1 — Identity:** non-admin **machine account** (not a GitHub App; CODEOWNERS
+  can't name an App). The agent authors as the bot; `MgCohen` approves. **Deferred
+  to Phase 3.**
+- **D2 — Home:** `governance/` for the controls (policy + enforcers + CODEOWNERS
+  generator); ADRs stay in `design/adr/`.
+- **D3 — Stack:** raw POSIX shell + a flat `glob | owner | reason` list (no YAML/OPA
+  dependency). lefthook / OPA noted as upgrade paths for a real second need.
+- **D4 — Interim posture:** lock `main` now **checks-only** (no-direct-push +
+  required checks + block force-push/deletion + empty bypass, **approvals = 0**);
+  upgrade to approvals = 1 + code-owner review once the machine account lands.
+
+**Phase 1 — done (this PR):** `governance/protected-paths`, the shared
+`protected-paths-check.sh`, `.githooks/{pre-commit,pre-push}`, the CI `policy-guard`
+job, generated `.github/CODEOWNERS`, and the `.claude/` PreToolUse adapter +
+`SessionStart` hook bootstrap. The harness "intact" guarantee is covered by the
+existing `build-test` check (it runs `ParityGuard` + the Rulebooks under
+`dotnet test`), so no separate job was added (YAGNI).
+
+**Deferred (admin / provisioning):** Phases 2–4 are checklisted in
+[`governance/README.md`](../../governance/README.md#deferred-steps--not-yet-done).

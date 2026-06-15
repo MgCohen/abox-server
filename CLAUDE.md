@@ -62,6 +62,15 @@ the Rule it proves. Adding or moving a test? Use the **`test-rulebook`** skill; 
 front door is [`tests/README.md`](tests/README.md), the plan is
 [`PLANS/test-structure.md`](PLANS/test-structure.md).
 
+## Repo controls (agent guardrails)
+
+This repo protects its **enforcement surface** — the test harness, ADRs, CI, and
+build config — from any agent. One policy ([`governance/protected-paths`](governance/protected-paths)),
+many enforcers (CI `policy-guard`, git hooks, a Claude `PreToolUse` deny). Editing a
+protected path is a deliberate, reviewed act: route it through a PR (don't disable
+the block; `ABOX_ALLOW_PROTECTED=1` is a logged local override, CI re-checks). Front
+door: [`governance/README.md`](governance/README.md); the why: [`ADR 0010`](design/adr/0010-agent-repo-controls.md).
+
 ## Code standards
 
 Judgment-call rules we operate by. Mechanical style (formatting, naming) moves
