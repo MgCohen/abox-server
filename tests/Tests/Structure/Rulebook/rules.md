@@ -1,11 +1,5 @@
-# Structure Rulebook
-
-Each Rule is one source-placement invariant over `src/` and `tests/`, read straight from disk so it governs
-where production code lives before code compiles, and is the single source of truth for it. The test system's
-own layout — the taxonomy and Rulebook format — is the Meta type's job, not this one. Convention, parity
-discipline, and the Rule shape live in [`../../../Harness/README.md`](../../../Harness/README.md) and `template.md`.
-
----
+Template: [template.md](./template.md)
+Harness: [Rulebook convention](../../../Harness/README.md)
 
 ### Every project lives under an agreed home folder
 - **Why:** The agreed home folders (Infrastructure, Domain, Features, Host) are the only legal places

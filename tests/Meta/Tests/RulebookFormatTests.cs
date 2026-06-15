@@ -2,9 +2,9 @@ using static ABox.Tests.Harness.Report;
 
 namespace ABox.Tests.Meta.Tests;
 
-// The Rulebooks themselves stay well-formed: every Rule matches its type's template.md, and each rules.md
-// holds nothing but its title and Rules. Read from disk (RepoTree + RulebookFormat), so a new type's Rulebook
-// is covered the moment it lands.
+// The Rulebooks themselves stay well-formed: every Rule matches its type's template.md, each rules.md holds
+// nothing but its Template/Harness pointers and Rules, and every template.md carries judge criteria. Read from
+// disk (RepoTree + RulebookFormat), so a new type's Rulebook is covered the moment it lands.
 public class RulebookFormatTests
 {
     [Rule("Every Rule matches its type's template")]
@@ -44,22 +44,43 @@ public class RulebookFormatTests
         foreach (var folder in RepoTree.RulebookFolders())
         {
             var rulesPath = Path.Combine(folder, "rules.md");
-            var headings = RulebookFormat.Headings(File.ReadAllLines(rulesPath));
+            var lines = File.ReadAllLines(rulesPath);
 
-            var titles = headings.Count(h => h.Level == 1);
-            if (titles != 1)
-                violations.Add($"{Rel(rulesPath)} :: must have exactly one '# ' title (found {titles})");
-
-            foreach (var stray in headings.Where(h => h.Level is not 1 and not 3))
+            foreach (var stray in RulebookFormat.Headings(lines).Where(h => h.Level != 3))
                 violations.Add($"{Rel(rulesPath)} :: stray '{new string('#', stray.Level)} {stray.Text}' — " +
-                    "only the '# ' title and '### ' Rules are allowed");
+                    "rules.md holds only its Template/Harness pointers and '### ' Rules; context lives in template.md");
+
+            var preamble = string.Join('\n', lines.TakeWhile(l => RulebookFormat.HeadingLevel(l) != 3));
+            if (!preamble.Contains("template.md") || !preamble.Contains("Harness/README.md"))
+                violations.Add($"{Rel(rulesPath)} :: must open with Template: and Harness: links before the Rules");
         }
 
         Assert.True(violations.Count == 0,
             $"""
-            rules.md files contain headings other than the title and Rules:
+            rules.md files drift from the shape (Template/Harness pointers, then '### ' Rules only):
             {Bullets(violations)}
-            Keep rules.md to a '# ' title, a short preamble, and '### ' Rules. Move sections elsewhere.
+            Keep rules.md to the Template:/Harness: links and '### ' Rules. All prose/context lives in template.md.
+            """);
+    }
+
+    [Rule("Every template carries judge criteria")]
+    [Fact]
+    public void EveryTemplateCarriesCriteria()
+    {
+        var violations = new List<string>();
+        foreach (var folder in RepoTree.RulebookFolders())
+        {
+            var templatePath = Path.Combine(folder, "template.md");
+            if (RulebookFormat.Criteria(File.ReadAllLines(templatePath)).Count == 0)
+                violations.Add($"{Rel(templatePath)} :: no '## Criteria' with '- **id:** …' bullets — " +
+                    "/judge-rulebook has no rubric for this type");
+        }
+
+        Assert.True(violations.Count == 0,
+            $"""
+            template.md files are missing their judge criteria:
+            {Bullets(violations)}
+            Add a '## Criteria' section of '- **<id>:** <description>' bullets — the semantic rubric the judge grades against.
             """);
     }
 

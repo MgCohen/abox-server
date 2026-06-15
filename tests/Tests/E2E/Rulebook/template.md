@@ -1,20 +1,16 @@
-# E2E Rulebook — Rule template
+# E2E Rulebook
 
-Convention, parity discipline, and how to add a type: [`../../../Harness/README.md`](../../../Harness/README.md).
-
-Each E2E Rule is one whole-flow guarantee, driven end to end through the real composition with a
-scripted (non-CLI) provider. Add one when a new flow path needs proving; enforce it in `E2E/Tests/`.
-(Well-formed Rules live in `rules.md` — read those for good examples.)
+Each E2E Rule is one whole-flow guarantee, driven end to end through the real composition (real Steps, Flow
+engine, snapshot stream) with a scripted (non-CLI) provider or a real local tool. Add one when a new flow path
+needs proving; enforce it in `E2E/Tests/`.
 
 ## Template
 
 ### <flow> <given some input> → <observable end state>
 - **Why:** <the user-visible behavior this proves>
 
-## Don't — and why
+## Criteria
 
-```markdown
-### chore commits and pushes the tree                ← behavioral header must end in a → result
-- Why: stages and pushes the dirty tree              ← "Why" must be bold: - **Why:**
-- **Note:** runs GitChoreFlow                        ← no second bold-label bullet; use plain prose
-```
+- **one_flow:** describes exactly one whole-flow path to an end state, not several
+- **observable_end:** the result is an observable end state (terminal phase, commit/push, clean tree), not an internal step
+- **why_justifies:** the **Why:** states the user-visible behavior proven, not a restatement of the header

@@ -38,6 +38,26 @@ public static class RulebookFormat
         return headings;
     }
 
+    // The '- **<id>:** <description>' bullets under a template's '## Criteria' heading — the per-type semantic
+    // rubric /judge-rulebook grades Rules against. Returns the ids; an empty list means the template has none.
+    public static IReadOnlyList<string> Criteria(IReadOnlyList<string> lines)
+    {
+        var labels = new List<string>();
+        var inCriteria = false;
+        foreach (var line in lines)
+        {
+            var level = HeadingLevel(line);
+            if (level > 0)
+            {
+                inCriteria = level == 2 && line[(level + 1)..].Trim().StartsWith("Criteria", StringComparison.Ordinal);
+                continue;
+            }
+            if (inCriteria && LabelBullet.Match(line) is { Success: true } match)
+                labels.Add(match.Groups["label"].Value.Trim());
+        }
+        return labels;
+    }
+
     public static IReadOnlyList<RuleBlock> Rules(IReadOnlyList<string> lines)
     {
         var rules = new List<RuleBlock>();
@@ -78,7 +98,7 @@ public static class RulebookFormat
         return kept;
     }
 
-    private static int HeadingLevel(string line)
+    public static int HeadingLevel(string line)
     {
         var hashes = 0;
         while (hashes < line.Length && line[hashes] == '#')

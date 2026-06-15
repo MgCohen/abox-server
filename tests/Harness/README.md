@@ -9,8 +9,10 @@ in that type's own `Support/` until a *second* type genuinely reuses them.
 
 A **Rulebook** is a folder `<Type>/Rulebook/` holding **two files**:
 
-- **`template.md`** — the type's Rule *shape*: one example Rule, header + `**Why:**` bullet. The schema, in one place.
-- **`rules.md`** — a short preamble, then the type's **Rules**. A **Rule** is one `### ` header here.
+- **`template.md`** — the type's context home: a one-paragraph description, the Rule *shape* (one example Rule,
+  header + `**Why:**` bullet — the schema, in one place), and a `## Criteria` list (the per-type semantic rubric
+  `/judge-rulebook` grades Rules against).
+- **`rules.md`** — the `Template:`/`Harness:` pointer links, then the type's **Rules**. A **Rule** is one `### ` header here.
 
 What a Rule *means* varies by type —
 
@@ -25,7 +27,8 @@ the **test system** — the taxonomy, the Rulebook format, and parity — and li
 its own `ABox.Tests.Meta` assembly, validating the product suite from *outside* (via `ABox.Tests.SuiteAnchor`)
 the way the Arch guards validate `src`. The **Rulebook shape and parity discipline are identical across every
 type**, product or Meta. Splitting the template out of `rules.md` is deliberate: `rules.md` then holds nothing
-but Rules (no example `### ` to skip, nothing to game), and the two Meta format guards enforce both halves.
+but its pointer links and Rules (no example `### ` to skip, nothing to game), while `template.md` owns all
+context — the description, the shape, and the judge criteria. The Meta format guards enforce both files.
 
 ## The pieces
 
@@ -93,7 +96,8 @@ different risk levels:
   scan, the `template.md` / `rules.md` split, the namespace-scoped discovery + path derivation, the
   `requireAllCited` completeness knob, the `Rulebook/` + `Tests/` + `Support/` layout, the csproj copy glob,
   and the Meta guards (*Parity holds for every registered type*, *Every Rule matches its type's template*,
-  *Every Rulebook holds only rules*) — these are the engine's load-bearing assumptions, shared by **every**
+  *Every Rulebook holds only rules*, *Every template carries judge criteria*) — these are the engine's
+  load-bearing assumptions, shared by **every**
   type at once. Reshaping the
   template or the parsing rules can make Rules silently stop being counted (enforcement evaporates with a
   *green* build) across the whole repo. Don't refactor the format casually; a change here is an architecture
@@ -127,8 +131,8 @@ backfilled opportunistically, never in one swept pass. A behavioral Rulebook sta
 
 ```
 <Type>/
-  Rulebook/  template.md   this type's Rule shape: one example Rule (header + **Why:**) + a "Don't" example
-             rules.md      a short preamble, then the type's '### ' Rules
+  Rulebook/  template.md   context home: description + the Rule shape (one example) + a '## Criteria' rubric
+             rules.md      the Template:/Harness: pointer links, then the type's '### ' Rules
   Tests/                   the [Rule]-tagged facts that enforce them
   Support/                 optional, type-local: models, doubles, harnesses (no over-sharing)
 ```
@@ -149,33 +153,25 @@ in). The skeleton is the one owner of the shape:
 
 ```markdown
 <!-- <Type>/Rulebook/template.md -->
-# <Type> Rulebook — Rule template
+# <Type> Rulebook
 
-Convention, parity discipline, and how to add a type: [`../../../Harness/README.md`](../../../Harness/README.md).
-
-<one line: what a Rule means for this type, and where it's enforced.>
-(Well-formed Rules live in `rules.md` — read those for good examples.)
+<one paragraph: what a Rule means for this type, how it's proven, and where it's enforced.>
 
 ## Template
 
 ### <the type's header shape — `<subject> must / must not <…>` (invariant) or `<…> → <result>` (behavioral)>
 - **Why:** <what this protects>
 
-## Don't — and why
+## Criteria
 
-​```markdown
-### <a malformed Rule for this type>   ← what's wrong (wrong arrow / plain Why / extra bold bullet)
-​```
+- **<id>:** <one semantic check the judge grades a Rule against — judgment only, not mechanical shape>
+- **<id>:** <…>
 ```
 
 ```markdown
 <!-- <Type>/Rulebook/rules.md -->
-# <Type> Rulebook
-
-<one line: what a Rule means for this type>. Convention, parity discipline, and the Rule shape live in
-[`../../../Harness/README.md`](../../../Harness/README.md) and `template.md`.
-
----
+Template: [template.md](./template.md)
+Harness: [Rulebook convention](../../../Harness/README.md)
 
 ### <first Rule, in the template's header shape>
 - **Why:** <…>
@@ -186,8 +182,8 @@ Then:
 1. **Create `tests/Tests/<Type>/`** with `Rulebook/`, `Tests/`, and (if needed) `Support/`. Namespace mirrors
    folder (`ABox.Tests.<Type>…`); IDE0130 enforces it.
 2. **Fill `template.md` + `rules.md`** from the skeleton above — pick the header shape (invariant or
-   behavioral) and adapt the one-line "what a Rule means here." Don't invent a new shape (see the stability
-   contract); it's shared structure, not per-type creativity.
+   behavioral), adapt the description, and give `template.md` 2-3 semantic `## Criteria` for the judge. Don't
+   invent a new shape (see the stability contract); it's shared structure, not per-type creativity.
 3. **Register the type** in `Harness/TestTypes.Registered` (and add it to `GoingForward` if it backfills rather
    than shipping complete). The Meta *Every folder under tests holds a registered test type* guard goes red the
    moment the folder lands unregistered — this is the deliberate gate.
