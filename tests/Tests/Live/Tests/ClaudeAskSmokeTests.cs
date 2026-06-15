@@ -15,6 +15,7 @@ public class ClaudeAskSmokeTests(ITestOutputHelper output)
         "Create a file named hello.txt in the current directory containing exactly: Hello from Claude";
     private static readonly TimeSpan Timeout = TimeSpan.FromMinutes(3);
 
+    [Rule("Ask policy with a gated tool and Allow → the hook fires and the write goes through")]
     [LiveFact]
     public async Task Ask_detects_the_request_and_allow_lets_the_write_through()
     {
@@ -33,6 +34,7 @@ public class ClaudeAskSmokeTests(ITestOutputHelper output)
 
     // Auto auto-approves through the same gate without a human: the write runs even
     // though the resolver would have denied, and the resolver is never consulted.
+    [Rule("Auto policy with a gated tool → the tool runs without consulting the resolver")]
     [LiveFact]
     public async Task Auto_runs_the_gated_tool_without_consulting_the_resolver()
     {
@@ -51,6 +53,7 @@ public class ClaudeAskSmokeTests(ITestOutputHelper output)
 
     // null is exactly what NonInteractiveResolver returns: the deny-on-null path
     // that replaces acceptEdits' silent mid-turn hang.
+    [Rule("Ask policy with a gated tool and a denial → the write is blocked and the run does not hang")]
     [LiveFact]
     public async Task Ask_deny_blocks_the_write_without_hanging()
     {
