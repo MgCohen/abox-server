@@ -98,6 +98,10 @@ unrelated code can turn the test red, you hardcoded something you should have de
 input like `Reverse("abc") → "cba"`, a path segment, a member of an agreed set) → a literal is fine,
 ideally as an `[InlineData]` row rather than a bare `Assert.Equal` so the contract reads as a table.
 
+This is the expectations slice of the broader **craft** rules — substitute-by-ownership, AAA shape, and
+the *tautological assertion* failure mode — which live in `tests/Harness/authoring.md` and are
+judge-graded (see §6), not parity-enforced.
+
 ## 5. Things that bite
 
 - **No new test csproj.** `tests/Tests/ABox.Tests.csproj` globs `src\**\ABox.*.csproj` — a new
@@ -119,9 +123,10 @@ dotnet build ABox.slnx   # warning-free; IDE0130 + parity compile-time checks
 dotnet test  ABox.slnx   # parity facts + your new test green (Live stays skipped)
 ```
 
-To grade a Rule's *wording* against its type's `## Criteria` (semantics, not parity), use the
-`judge` / `judge-rulebook` skills — they read the test or Rulebook from an **on-disk path**, so judge
-a file in the tree, not a snippet pasted into chat.
+To grade a Rule's *wording* against its type's `## Criteria` use `judge-rulebook`; to grade a test's
+*body craft* against `tests/Harness/authoring.md` use `/judge-authoring <test file>`; to grade a test
+against its Rulebook use `/judge`. All run the generic judge and read from an **on-disk path**, so
+judge a file in the tree, not a snippet pasted into chat. These are semantic checks, not parity.
 
 A parity failure names exactly what's out of sync (Rule with no test / test citing a
 missing Rule / bare test with no Rule). Fix by aligning the header and the `[Rule("...")]`
