@@ -41,3 +41,16 @@ depend on each other."
 
 A named visibility rule, not a dependency edge — `BeInternal()` on each named primitive; if a wall is reopened
 or a primitive renamed, this fails. Add a primitive to the rule's name list as the agent runtime grows.
+
+### Feature endpoints are internal sealed
+- **Why:** The canonical slice (ADR 0010 D3) forfeits verb↔verb compile isolation — a feature's verbs share one
+  assembly — and recovers the blast-radius mitigation by declaring every endpoint `internal sealed`. Same-feature
+  verbs may still collaborate (Projects' `Send.CreatedAtAsync<GetProjectEndpoint>` routing reference), yet no
+  assembly *outside* the feature can name a verb type. A `public` endpoint reopens that wall across the solution.
+
+Asserted positively over the conformant features (`BeInternal().AndShould().BeSealed()` over each feature's
+`*Endpoint` types) so the rule is non-vacuous from day one — Projects satisfies it on its own. The not-yet-migrated
+features (still Minimal-API `public static` classes awaiting Gate 5) sit in `EndpointConformance.PendingFastEndpointsMigration`,
+an explicit allow-list: the rule still rejects any new `public` endpoint in a conformant feature, and a staleness
+check fails the moment a listed feature's endpoints actually become internal sealed, forcing the list to shrink
+instead of rotting. A per-feature non-vacuity guard rejects a conformant feature that declares no endpoints at all.

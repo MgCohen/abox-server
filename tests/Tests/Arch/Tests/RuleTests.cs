@@ -1,6 +1,7 @@
 using ArchUnitNET.xUnit;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
 using static ABox.Tests.Arch.Support.ArchitectureModel;
+using static ABox.Tests.Arch.Support.EndpointConformance;
 
 namespace ABox.Tests.Arch.Tests;
 
@@ -50,4 +51,39 @@ public class RuleTests
         Classes().That().HaveName("PtySession").Or().HaveName("SubscriptionGuard").Should()
             .BeInternal()
             .Check(Architecture);
+
+    // The canonical slice (ADR 0010 D3) declares every endpoint `internal sealed`: same-feature verbs may
+    // collaborate (Projects' Send.CreatedAtAsync<GetProjectEndpoint>), yet no outside assembly can name a verb
+    // type. Asserted positively over the conformant features; the laggards (still Minimal-API `public static`)
+    // sit in a shrinking allow-list whose staleness check fails once one actually migrates.
+    [Rule("Feature endpoints are internal sealed")]
+    [Fact]
+    public void FeatureEndpointsAreInternalSealed()
+    {
+        var conformant = FeatureNames().Where(f => !IsPendingMigration(f)).ToList();
+        Assert.Contains("Projects", conformant);
+
+        foreach (var feature in conformant)
+        {
+            Assert.True(FeatureEndpointCount(feature) > 0,
+                $"Feature '{feature}' has no '*Endpoint' types, so its endpoint-visibility check is vacuous — " +
+                "the canonical slice expects one endpoint per verb folder.");
+            Classes().That().Are(FeatureEndpoints(feature)).Should()
+                .BeInternal().AndShould().BeSealed()
+                .Check(Architecture);
+        }
+
+        var migrated = PendingFastEndpointsMigration
+            .Where(f => FeatureEndpointCount(f) > 0)
+            .Where(f => Classes().That().Are(FeatureEndpoints(f)).Should()
+                .BeInternal().AndShould().BeSealed()
+                .HasNoViolations(Architecture))
+            .ToList();
+        Assert.True(migrated.Count == 0,
+            $"""
+            These features' endpoints are now internal sealed but are still listed pending migration:
+              {string.Join(", ", migrated)}
+            Drop them from EndpointConformance.PendingFastEndpointsMigration.
+            """);
+    }
 }

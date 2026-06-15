@@ -4,7 +4,7 @@ using ABox.Features.Projects.Contracts;
 
 namespace ABox.Features.Projects.List;
 
-public sealed class ListProjectsEndpoint(IProjectRepository projects) : EndpointWithoutRequest<IReadOnlyList<ProjectDto>>
+internal sealed class ListProjectsEndpoint(IProjectRepository projects) : EndpointWithoutRequest<IReadOnlyList<ProjectDto>>
 {
     public override void Configure()
     {

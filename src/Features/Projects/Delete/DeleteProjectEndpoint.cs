@@ -4,7 +4,7 @@ using ABox.Features.Projects.Contracts;
 
 namespace ABox.Features.Projects.Delete;
 
-public sealed class DeleteProjectEndpoint(IProjectRepository projects) : Endpoint<ProjectByIdRequest>
+internal sealed class DeleteProjectEndpoint(IProjectRepository projects) : Endpoint<ProjectByIdRequest>
 {
     public override void Configure()
     {

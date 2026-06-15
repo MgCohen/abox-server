@@ -11,6 +11,18 @@ the guard still rejects any new stray, and a staleness check fails if a listed f
 shrinks instead of rotting. It is now empty: Morph and Web both evicted to the web repo. *Namespace mirrors
 folder* is the companion guarantee, enforced at compile time by IDE0130 (`/.editorconfig`), not a test here.
 
+### Each feature is one implementation project plus one Contracts leaf
+- **Why:** The canonical slice (ADR 0010 D2) is exactly one implementation project per feature (verbs as folders,
+  `Module` folded in) + one Contracts leaf — no per-verb, per-`Module`, or `Shared` sub-assemblies. "Every feature
+  looks like this" is the strongest agent-first guardrail, and it is undecidable while granularity is a 2-to-9
+  judgment call. Read on disk so a stray sub-project is caught the moment it lands, before it compiles.
+
+Decided from the csproj layout under `src/Features/<F>` (`SourceTree.ProjectsOf`): one implementation project +
+one project under a `Contracts/` folder. Projects satisfies it positively, so the rule is non-vacuous from day one.
+`FeatureShape.PendingConsolidation` is an explicit allow-list for the not-yet-migrated features (per-use-case
+Flows, per-verb Git/Tasks awaiting Gate 5); the guard still rejects any new non-canonical feature, and a staleness
+check fails once a listed feature consolidates to the canonical two, so the list shrinks instead of rotting.
+
 ### No build output lives under src or tests
 - **Why:** `UseArtifactsOutput` + a pinned `ArtifactsPath` centralize every project's bin/obj into the repo-root
   `/artifacts`. A `bin`, `obj`, or `artifacts` folder under `src/` or `tests/` means a project escaped the root

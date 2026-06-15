@@ -92,5 +92,21 @@ internal static class ArchitectureModel
     public static string FeatureNamespace(string feature) =>
         $@"^ABox\.Features\.{Regex.Escape(feature)}(?!\.Contracts(\.|$))(\.|$)";
 
+    // The HTTP endpoint classes of one feature: classes named `*Endpoint` inside the feature's own namespace (its
+    // Contracts leaf is excluded by FeatureNamespace — it holds no endpoints). The canonical shape declares each
+    // `internal sealed` (ADR 0010 D3); this selector feeds both the positive visibility assertion (internal AND
+    // sealed needs a Classes() chain — BeSealed is class-only) and its staleness guard.
+    public static IObjectProvider<IType> FeatureEndpoints(string feature) =>
+        Classes().That().ResideInNamespaceMatching(FeatureNamespace(feature))
+            .And().HaveNameEndingWith("Endpoint")
+            .As($"'{feature}' endpoints");
+
+    public static int FeatureEndpointCount(string feature) =>
+        Architecture.Types.Count(t =>
+            FeatureSegment.Match(t.FullName) is { Success: true } m
+            && m.Groups[1].Value == feature
+            && t.Name.EndsWith("Endpoint", StringComparison.Ordinal)
+            && !t.FullName.Contains(".Contracts.", StringComparison.Ordinal));
+
     private static readonly Regex FeatureSegment = new(@"^ABox\.Features\.([^.]+)");
 }

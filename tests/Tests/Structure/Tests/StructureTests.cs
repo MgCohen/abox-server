@@ -1,6 +1,7 @@
 using ABox.Tests.Structure.Support;
 using static ABox.Tests.Harness.Report;
 using static ABox.Tests.Structure.Support.HomeFolders;
+using static ABox.Tests.Structure.Support.FeatureShape;
 
 namespace ABox.Tests.Structure.Tests;
 
@@ -33,6 +34,42 @@ public class StructureTests
             These folders are gone but still listed in PendingEviction:
             {Bullets(stale)}
             Drop them from HomeFolders.PendingEviction.
+            """);
+    }
+
+    [Rule("Each feature is one implementation project plus one Contracts leaf")]
+    [Fact]
+    public void EachFeatureIsOneImplPlusOneContracts()
+    {
+        var features = SourceTree.FeatureFolders();
+        Assert.Contains("Projects", features);
+
+        var strays = features
+            .Where(f => !IsPendingConsolidation(f))
+            .Where(f => !SourceTree.ProjectsOf(f).IsCanonical)
+            .Select(f => $"{f} ({SourceTree.ProjectsOf(f)})")
+            .OrderBy(s => s, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.True(strays.Count == 0,
+            $"""
+            Features do not match the canonical shape — exactly one implementation project (verbs as
+            folders, Module folded in) + one Contracts leaf (ADR 0010 D2):
+            {Bullets(strays)}
+            Consolidate the feature to two projects, or list it in FeatureShape.PendingConsolidation.
+            """);
+
+        // The consolidation list must not outlive the split — a feature that became canonical but is still
+        // listed is a silent allow-hole.
+        var stale = PendingConsolidation
+            .Where(features.Contains)
+            .Where(f => SourceTree.ProjectsOf(f).IsCanonical)
+            .ToList();
+        Assert.True(stale.Count == 0,
+            $"""
+            These features are now one impl + one Contracts but still listed pending consolidation:
+            {Bullets(stale)}
+            Drop them from FeatureShape.PendingConsolidation.
             """);
     }
 
