@@ -86,4 +86,45 @@ public class RuleTests
             Drop them from EndpointConformance.PendingFastEndpointsMigration.
             """);
     }
+
+    // The Module anchor (ADR 0010 D2/Gate-1): a feature's impl assembly must export exactly one public type — its
+    // <F>Module — and that Module must expose `public static Assembly EndpointsAssembly`. Without it a feature can
+    // compile with internal endpoints and never be served (the dead-route failure), or leak a public verb type past
+    // the assembly wall. Asserted positively over Projects (sole export ProjectsModule, anchor present); laggards
+    // sit in the SAME shrinking allow-list as the endpoint-visibility rule, with a staleness check that fails the
+    // moment a listed feature consolidates to the conformant single-Module shape.
+    [Rule("Each feature's implementation assembly exports only its Module")]
+    [Fact]
+    public void FeatureAssemblyExportsOnlyItsModule()
+    {
+        var conformant = FeatureNames().Where(f => !IsPendingMigration(f)).ToList();
+        Assert.Contains("Projects", conformant);
+
+        foreach (var feature in conformant)
+            Assert.True(ExportsOnlyItsModule(feature),
+                $"""
+                Feature '{feature}' must export exactly one public type — its '{feature}Module' — exposing a
+                `public static System.Reflection.Assembly EndpointsAssembly`. Its impl assemblies export:
+                  {ExportSummary(feature)}
+                Fold the feature into one impl assembly, make every other type internal, and add the
+                EndpointsAssembly anchor so Host can hand it to AddFastEndpoints.
+                """);
+
+        var ready = PendingFastEndpointsMigration
+            .Where(FeatureNames().Contains)
+            .Where(ExportsOnlyItsModule)
+            .ToList();
+        Assert.True(ready.Count == 0,
+            $"""
+            These features now export only their Module but are still listed pending migration:
+              {string.Join(", ", ready)}
+            Drop them from EndpointConformance.PendingFastEndpointsMigration.
+            """);
+    }
+
+    private static string ExportSummary(string feature) =>
+        string.Join(
+            "; ",
+            FeatureImplAssemblies(feature)
+                .Select(a => $"{a.GetName().Name} -> [{string.Join(", ", a.GetExportedTypes().Select(t => t.Name))}]"));
 }

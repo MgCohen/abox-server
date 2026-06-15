@@ -78,6 +78,27 @@ needs (the `CreatedAtAsync<>` routing reference). Splitting per-verb would buy t
 of isolation at the cost of the 2-to-9 granularity sprawl this ADR exists to kill; accepting
 `public` as-is would leave verb types nameable across the whole solution for no benefit.
 
+## Validation against references
+
+The shape was cross-checked against modular-monolith / VSA references before ratifying the
+`<F>Module` + `EndpointsAssembly` anchor as a *required* seam, not a Projects accident:
+
+- **A per-feature public registration symbol is universal.** RiverBooks gives each module an
+  `IModule`/`AddModule` entry point (`research/riverbooks-module-sharing.md`); our own
+  `spikes/layered-vsa` exposes one public `FlowsFeature.AddFlows()` per feature; the
+  Thinktecture / NimblePros modular-monolith write-ups land on the same one-public-anchor rule.
+  Every feature published exactly one type the host names; the rest stays internal.
+- **`EndpointsAssembly` is the standard FastEndpoints-across-assemblies form.** FE discovers
+  endpoints in other assemblies either by reflection (`o.Assemblies = [...]`) or source-gen
+  (`<Asm>.DiscoveredTypes.All`); either way the Host references a per-assembly **public symbol**.
+  Our `static Assembly EndpointsAssembly` is the reflection variant, and matches the universal
+  registration-anchor above — one public face per feature, doubling as the discovery handle.
+- **The only anchor-free path was rejected upstream.** Explicit per-handler registration
+  (MediatR / an `IApiHandler` scan) needs no per-feature symbol, but ADR 0009 already chose FE
+  for its compile-enforced endpoint shape over that style. Source-gen discovery and a Host-side
+  convention-scan were considered and rejected: both move the wall off the type system (a missing
+  Module becomes a runtime/scan miss, not a build error), which is what the Gate-3 rule exists to prevent.
+
 ## Consequences
 
 - **Migration delta.** Today's `public sealed` endpoints (e.g. `AddProjectEndpoint`) tighten

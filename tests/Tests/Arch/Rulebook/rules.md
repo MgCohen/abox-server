@@ -54,3 +54,20 @@ features (still Minimal-API `public static` classes awaiting Gate 5) sit in `End
 an explicit allow-list: the rule still rejects any new `public` endpoint in a conformant feature, and a staleness
 check fails the moment a listed feature's endpoints actually become internal sealed, forcing the list to shrink
 instead of rotting. A per-feature non-vacuity guard rejects a conformant feature that declares no endpoints at all.
+
+### Each feature's implementation assembly exports only its Module
+- **Why:** Internal-sealed endpoints alone let a feature compile yet never be served — the `<F>Module` is the
+  Host-facing anchor that hands the feature's assembly to FastEndpoints (`AddFastEndpoints(o => o.Assemblies)`),
+  so a missing Module is a silent dead route. Requiring the impl assembly to export *exactly* its `<F>Module`
+  catches three regressions in one assertion: the missing Module (dead route), any accidentally-`public` endpoint
+  or helper (the ADR-0010 D3 wall, enforced at assembly granularity rather than per type), and a missing
+  `EndpointsAssembly` anchor — the per-assembly public symbol Host references without naming any verb type.
+
+Reflects over the loaded impl assembly's `ExportedTypes` (`EndpointConformance.ExportsOnlyItsModule`): exactly
+one public type, named `<F>Module`, exposing `public static System.Reflection.Assembly EndpointsAssembly`. It
+counts exported *types*, not members, so a Module's public `AddX()` methods (Git/Flows) are fine, and the
+separate `Contracts` leaf assembly is excluded — the wall is the impl assembly alone. Asserted positively over
+Projects (sole export `ProjectsModule`, anchor present) so the rule is non-vacuous; the not-yet-consolidated
+features share the same `EndpointConformance.PendingFastEndpointsMigration` allow-list as the endpoint-visibility
+rule (a listed feature is still multi-assembly with public endpoints), and a staleness check fails the moment a
+listed feature collapses to the conformant single-Module shape, forcing the list to shrink instead of rotting.

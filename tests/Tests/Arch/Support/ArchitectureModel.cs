@@ -10,8 +10,14 @@ namespace ABox.Tests.Arch.Support;
 // dir (not hand-listed), and a band is one IObjectProvider keyed by namespace, so a new feature needs no edit here.
 internal static class ArchitectureModel
 {
+    // The self-assembling production graph as a reflection handle, kept alongside the ArchUnitNET model:
+    // visibility-of-exported-types facts (the feature impl assembly exports only its Module) need real
+    // System.Reflection.Assembly.ExportedTypes, which the ArchUnitNET IType graph does not surface. Declared
+    // before Architecture so its initializer has already run when the loader consumes it.
+    public static readonly Assembly[] LoadedProductionAssemblies = ProductionAssemblies();
+
     public static readonly Architecture Architecture =
-        new ArchLoader().LoadAssemblies(ProductionAssemblies()).Build();
+        new ArchLoader().LoadAssemblies(LoadedProductionAssemblies).Build();
 
     // The csproj globs every src\**\ABox.*.csproj (excluding Web), so their dlls sit beside
     // this one. Load them all and drop the test assemblies — the production graph, self-assembling.
@@ -107,6 +113,18 @@ internal static class ArchitectureModel
             && m.Groups[1].Value == feature
             && t.Name.EndsWith("Endpoint", StringComparison.Ordinal)
             && !t.FullName.Contains(".Contracts.", StringComparison.Ordinal));
+
+    // The loaded implementation assemblies of one feature: every production assembly that carries a type in
+    // ABox.Features.<Feature> outside the feature's Contracts leaf. The canonical slice (ADR 0010 D2) has exactly
+    // one such assembly; a not-yet-consolidated feature still has many. The Contracts leaf is a separate assembly
+    // and is excluded so the Module-export rule reflects over the impl wall alone, never the published channel.
+    public static IReadOnlyList<Assembly> FeatureImplAssemblies(string feature) =>
+        LoadedProductionAssemblies
+            .Where(a => a.GetExportedTypes().Any(t =>
+                FeatureSegment.Match(t.FullName ?? "") is { Success: true } m
+                && m.Groups[1].Value == feature
+                && !(t.Namespace ?? "").Contains(".Contracts", StringComparison.Ordinal)))
+            .ToList();
 
     private static readonly Regex FeatureSegment = new(@"^ABox\.Features\.([^.]+)");
 }
