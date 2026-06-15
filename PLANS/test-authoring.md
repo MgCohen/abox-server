@@ -26,8 +26,10 @@ When you write a test in this repo, four rules apply:
    matters.
 
 **Scope:** the authoring contract [`test-structure.md`](test-structure.md) deferred. That plan
-fixed the *taxonomy* (six types, every type a Rulebook, parity-guarded) and explicitly chose
-**staged adoption** — *"behavioral Rules accrue going-forward, not backfilled."* It never said
+fixed the *taxonomy* (six types, every type a Rulebook, parity-guarded) and chose **staged adoption**
+— *"behavioral Rules accrue going-forward, not backfilled."* (That staging is now **complete**: every
+type is fully cited and the build rejects an uncited test — see
+[`tests/Harness/README.md`](../tests/Harness/README.md) § *Adoption is complete*.) It never said
 what "well-authored" means for a behavioral test. This doc does: **what to substitute, how the
 substitution works, the shape of the body, and where expected values come from.**
 

@@ -174,11 +174,13 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 Then:
 
 1. **Create `tests/Tests/<Type>/`** with `Rulebook/`, `Tests/`, and (if needed) `Support/`. Namespace mirrors
-   folder (`ABox.Tests.<Type>…`); IDE0130 enforces it.
+   folder — `ABox.Tests.<Type>.Tests` for files in `<Type>/Tests/`; IDE0130 is `severity = error`, so a
+   mismatch is a build error, not a warning.
 2. **Fill `template.md` + `rules.md`** from the skeleton above — pick the header shape (invariant or
-   behavioral), adapt the description, and give `template.md` its semantic `## Criteria` for the judge — one
-   per distinct judgment, as many as the type needs (at least one). Don't invent a new shape (see the
-   stability contract); it's shared structure, not per-type creativity.
+   behavioral), adapt the description, and write the first Rule. **`template.md` must carry a `## Criteria`
+   block** — at least one `- **<id>:** …` bullet of semantic judgment for the judge (as many as the type
+   needs); the Meta *Every template carries judge criteria* guard fails the build if it's missing. Don't
+   invent a new shape (see the stability contract); it's shared structure, not per-type creativity.
 3. **Register the type** in `Harness/TestTypes.Registered`. The Meta *Every folder under tests holds a
    registered test type* guard goes red the moment the folder lands unregistered — this is the deliberate gate.
 4. **Write a `### ` Rule + its `[Rule("<header>")]` fact for every test** in `<Type>/Tests/`. Completeness is
