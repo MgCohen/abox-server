@@ -102,6 +102,14 @@ src/Features/<Feature>/
 
 ### Gate 1 — Kill-shot: does FastEndpoints survive multi-assembly?
 
+> **Correction (post-hoc).** This plan frames the framework as an open fork to
+> decide. That was inaccurate: **ADR 0009 (2026-06-13) had already ratified
+> FastEndpoints AND already prescribed the `Module.EndpointsAssembly` discovery
+> seam** before this plan was written. The user re-affirmed FastEndpoints; Gate 1
+> therefore *empirically confirmed* 0009's prescribed multi-assembly discovery
+> rather than discovering it fresh. D1 ratifies 0009 for *every* slice (the open
+> part was granularity, D2), not the framework choice.
+
 The one fact that can sink D1+D2 together. FastEndpoints discovers endpoints by
 reflecting over the assemblies handed to it; today only Projects' single assembly is
 registered (`Composition.cs:29`). With every feature its own assembly, `o.Assemblies`
