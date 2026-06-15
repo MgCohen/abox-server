@@ -7,6 +7,7 @@ public class AgentOutcomeTests
     private const string Envelope =
         "Reasoning...\n<<NEEDS_INPUT>>\n{ \"kind\": \"open\", \"prompt\": \"Which bucket?\" }";
 
+    [Rule("Agent with a NEEDS_INPUT envelope in the output → NeedsInput carrying the question")]
     [Fact]
     public async Task An_envelope_in_the_output_becomes_NeedsInput()
     {
@@ -18,6 +19,7 @@ public class AgentOutcomeTests
         Assert.Equal("Which bucket?", needs.Question.Prompt);
     }
 
+    [Rule("Agent output with no envelope → Completed with the final text")]
     [Fact]
     public async Task Output_without_an_envelope_is_Completed()
     {
@@ -28,6 +30,7 @@ public class AgentOutcomeTests
         Assert.Equal("All done.", Assert.IsType<AgentOutcome.Completed>(outcome).Result.Text);
     }
 
+    [Rule("Agent with a non-zero exit → Faulted even when an envelope is present")]
     [Fact]
     public async Task A_nonzero_exit_faults_even_when_an_envelope_is_present()
     {
@@ -39,6 +42,7 @@ public class AgentOutcomeTests
         Assert.Equal(1, Assert.IsType<AgentOutcome.Faulted>(outcome).Error.ExitCode);
     }
 
+    [Rule("Agent that resolves its question → resumes and completes using the answer")]
     [Fact]
     public async Task The_agent_resolves_a_question_and_resumes_to_completion()
     {
@@ -50,6 +54,7 @@ public class AgentOutcomeTests
         Assert.Contains("s3://acme", done.Result.Text);
     }
 
+    [Rule("Agent whose question gets a null answer → stays NeedsInput")]
     [Fact]
     public async Task A_null_answer_leaves_the_question_terminal()
     {
@@ -60,6 +65,7 @@ public class AgentOutcomeTests
         Assert.IsType<AgentOutcome.NeedsInput>(outcome);
     }
 
+    [Rule("Agent whose question loop never settles → Faulted when the cap is exhausted")]
     [Fact]
     public async Task The_cap_faults_a_question_loop_that_never_settles()
     {
