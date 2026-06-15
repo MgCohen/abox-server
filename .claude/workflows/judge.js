@@ -1,53 +1,56 @@
 export const meta = {
   name: 'judge',
-  description: 'Schema-enforced test judge — reuses the .claude/agents/judge.md persona and returns a validated verdict.',
+  description: 'Generic rubric judge: artifact + criteria in, per-criterion verdict + general feedback out.',
   phases: [{ title: 'Judge' }],
 }
 
-const VERDICT = {
-  type: 'object',
-  properties: {
-    target: { type: 'string' },
-    overall_pass: { type: 'boolean' },
-    score: { type: 'integer', minimum: 0, maximum: 10 },
-    rulebook_compliance: {
-      type: 'object',
-      properties: {
-        pass: { type: 'boolean' },
-        findings: { type: 'array', items: { type: 'string' } },
-      },
-      required: ['pass', 'findings'],
-    },
-    faithfulness: {
-      type: 'object',
-      properties: {
-        pass: { type: 'boolean' },
-        checks: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              test: { type: 'string' },
-              claims: { type: 'string' },
-              verifies: { type: 'string' },
-              faithful: { type: 'boolean' },
-            },
-            required: ['test', 'claims', 'verifies', 'faithful'],
+// The judge's typed structure — its future C# record, expressed in JS because a schema
+// can only live in the workflow layer (agent .md frontmatter cannot hold one).
+// Request contract every adapter conforms to:
+//   { subject: string, context: string, files?: string[],
+//     criteria: { id: string, description: string, howToCheck?: string }[] }
+// Response:
+//   { generalFeedback: string,
+//     results: { criterionId, status: 'pass'|'fail'|'indeterminate', evidence }[] }
+
+function output(criteria) {
+  const ids = criteria.map(c => c.id)
+  return {
+    type: 'object',
+    required: ['generalFeedback', 'results'],
+    properties: {
+      generalFeedback: { type: 'string' },
+      results: {
+        type: 'array', minItems: ids.length, maxItems: ids.length,
+        items: {
+          type: 'object', required: ['criterionId', 'status', 'evidence'],
+          properties: {
+            criterionId: { type: 'string', enum: ids },
+            status: { type: 'string', enum: ['pass', 'fail', 'indeterminate'] },
+            evidence: { type: 'string' },
           },
         },
       },
-      required: ['pass', 'checks'],
     },
-    faults: { type: 'array', items: { type: 'string' } },
-    recommendations: { type: 'array', items: { type: 'string' } },
-  },
-  required: ['target', 'overall_pass', 'score', 'rulebook_compliance', 'faithfulness', 'faults', 'recommendations'],
+  }
+}
+
+function render(r) {
+  return `Subject: ${r.subject}
+
+Context (use this first):
+${r.context}
+
+Supporting files (read only if a criterion can't be assessed from the context):
+${(r.files || []).map(p => `- ${p}`).join('\n') || '(none)'}
+
+Criteria (return exactly one result per id):
+${r.criteria.map((c, i) => `${i + 1}. [${c.id}] ${c.description}${c.howToCheck ? ` — check: ${c.howToCheck}` : ''}`).join('\n')}`
 }
 
 phase('Judge')
-const target = args || 'tests/Tests/Unit/Tests/FlowTests.cs'
-const verdict = await agent(
-  `Grade the test file at "${target}". Follow your judging procedure and return the verdict.`,
-  { agentType: 'judge', schema: VERDICT }
-)
-return verdict
+const req = typeof args === 'string' ? JSON.parse(args) : args
+if (!req?.subject || !req?.context || !req?.criteria?.length)
+  throw new Error('judge: request needs { subject, context, criteria[] }')
+
+return await agent(render(req), { agentType: 'judge', schema: output(req.criteria) })
