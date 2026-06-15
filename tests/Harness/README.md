@@ -182,8 +182,9 @@ Then:
 1. **Create `tests/Tests/<Type>/`** with `Rulebook/`, `Tests/`, and (if needed) `Support/`. Namespace mirrors
    folder (`ABox.Tests.<Type>…`); IDE0130 enforces it.
 2. **Fill `template.md` + `rules.md`** from the skeleton above — pick the header shape (invariant or
-   behavioral), adapt the description, and give `template.md` 2-3 semantic `## Criteria` for the judge. Don't
-   invent a new shape (see the stability contract); it's shared structure, not per-type creativity.
+   behavioral), adapt the description, and give `template.md` its semantic `## Criteria` for the judge — one
+   per distinct judgment, as many as the type needs (at least one). Don't invent a new shape (see the
+   stability contract); it's shared structure, not per-type creativity.
 3. **Register the type** in `Harness/TestTypes.Registered` (and add it to `GoingForward` if it backfills rather
    than shipping complete). The Meta *Every folder under tests holds a registered test type* guard goes red the
    moment the folder lands unregistered — this is the deliberate gate.
