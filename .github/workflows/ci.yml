@@ -19,3 +19,33 @@ jobs:
           dotnet-version: '10.0.x'
       - run: dotnet build ABox.slnx -c Release
       - run: dotnet test ABox.slnx -c Release --no-build
+
+  policy-guard:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Determine changed files
+        run: |
+          base="${{ github.event.pull_request.base.sha }}"
+          if [ -z "$base" ] || ! git cat-file -e "$base" 2>/dev/null; then
+            base=$(git rev-parse HEAD~1 2>/dev/null || git rev-parse HEAD)
+          fi
+          git diff --name-only "$base" "${{ github.sha }}" > changed.txt || true
+          echo "Changed files:"; cat changed.txt
+      - name: Flag protected-path changes (advisory)
+        run: |
+          if [ ! -s changed.txt ]; then
+            echo "No files changed."; exit 0
+          fi
+          if out=$(xargs -a changed.txt -r governance/protected-paths-check.sh 2>&1); then
+            echo "No protected paths changed."; exit 0
+          fi
+          echo "$out"
+          printf '%s\n' "$out" | grep '^  - ' | while IFS= read -r line; do
+            echo "::warning::Protected path changed — code-owner review required:${line#  - }"
+          done || true
+          echo "::notice::This PR changes protected paths; merging requires code-owner review (CODEOWNERS). This check is advisory and does not block."
+          exit 0
