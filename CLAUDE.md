@@ -71,6 +71,10 @@ protected path is a deliberate, reviewed act: route it through a PR (don't disab
 the block; `ABOX_ALLOW_PROTECTED=1` is a logged local override, CI re-checks). Front
 door: [`governance/README.md`](governance/README.md); the why: [`ADR 0010`](design/adr/0010-agent-repo-controls.md).
 
+**You act as the bot `ABox-Agent` — never as the owner.** Use only the credentials this
+session was given. A permission wall — protected path, required review, blocked merge to
+`main` — is by design: stop and ask the owner to act, don't work around it.
+
 ## Code standards
 
 Judgment-call rules we operate by. Mechanical style (formatting, naming) moves
