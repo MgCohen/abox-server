@@ -23,10 +23,22 @@ jobs:
   policy-guard:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Verify CODEOWNERS matches generator
+        run: |
+          governance/generate-codeowners.sh >/dev/null
+          if ! git diff --quiet -- .github/CODEOWNERS; then
+            echo "::error::CODEOWNERS is out of sync with governance/protected-paths. Run ./governance/generate-codeowners.sh and commit."
+            git --no-pager diff -- .github/CODEOWNERS
+            exit 1
+          fi
+          echo "CODEOWNERS is in sync with the policy."
       - name: Determine changed files
         run: |
           base="${{ github.event.pull_request.base.sha }}"
@@ -40,7 +52,7 @@ jobs:
           if [ ! -s changed.txt ]; then
             echo "No files changed."; exit 0
           fi
-          if out=$(xargs -a changed.txt -r governance/protected-paths-check.sh 2>&1); then
+          if out=$(governance/protected-paths-check.sh < changed.txt 2>&1); then
             echo "No protected paths changed."; exit 0
           fi
           echo "$out"
@@ -48,4 +60,47 @@ jobs:
             echo "::warning::Protected path changed — code-owner review required:${line#  - }"
           done || true
           echo "::notice::This PR changes protected paths; merging requires code-owner review (CODEOWNERS). This check is advisory and does not block."
+          exit 0
+      # The 'critical-path' label is a projection of protected-paths(critical) ∩ diff,
+      # recomputed here for routing/UI only. It is NOT the authority: any downstream
+      # flow that gates on criticality MUST recompute via protected-paths-check.sh
+      # (fail-closed), never trust the label alone.
+      - name: Label critical-path PRs (reconcile)
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          hits=
+          if [ -s changed.txt ]; then
+            hits=$(governance/protected-paths-check.sh --tier critical < changed.txt || true)
+          fi
+          if [ -n "$hits" ]; then
+            echo "Critical paths changed — labelling PR #$PR 'critical-path'."
+            gh pr edit "$PR" --repo "${{ github.repository }}" --add-label "critical-path" || echo "label add failed (non-blocking)"
+          else
+            echo "No critical paths — ensuring 'critical-path' label is absent."
+            gh pr edit "$PR" --repo "${{ github.repository }}" --remove-label "critical-path" || true
+          fi
+      # C2 (ADR 0012): this step runs on PR-triggered builds, where a bot-authored
+      # PR could exfiltrate any secret it can read. Only the low-value NTFY_TOPIC
+      # (an unguessable string, not a credential) belongs here. Do NOT add a
+      # sensitive secret (e.g. an auth token) to this step — gate authenticated
+      # channels behind a protected Environment or a post-merge push-triggered job.
+      - name: Alert on critical-path changes (non-blocking)
+        if: always()
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: |
+          [ -s changed.txt ] || { echo "No files changed."; exit 0; }
+          hits=$(governance/protected-paths-check.sh --tier critical < changed.txt || true)
+          if [ -z "$hits" ]; then echo "No critical-path changes."; exit 0; fi
+          echo "Critical-path changes detected:"; printf '%s\n' "$hits" | sed 's/^/  - /'
+          if [ -z "${NTFY_TOPIC:-}" ]; then
+            echo "::warning::Critical path changed but no alert channel configured (set the NTFY_TOPIC secret; see governance/notify.yml)."
+            exit 0
+          fi
+          pipx install apprise >/dev/null 2>&1 || python3 -m pip install --quiet apprise || { echo "apprise unavailable (non-blocking)"; exit 0; }
+          governance/notify-critical.sh < changed.txt || echo "notify step failed (non-blocking)"
           exit 0

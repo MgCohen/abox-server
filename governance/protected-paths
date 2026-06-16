@@ -1,27 +1,32 @@
 # Protected paths — single source of truth for the repo's agent guardrails.
 #
-# Consumed by: the git hooks (.githooks/), the CI `policy-guard` job, the Claude
-# PreToolUse adapter (.claude/hooks/), and the CODEOWNERS generator. Editing any
-# path matched here is a deliberate, reviewed act — not routine work.
+# Consumed by: the git hooks (.githooks/), the CI `policy-guard` job, the
+# CODEOWNERS generator, and the critical-path notifier. Editing any path matched
+# here is a deliberate, reviewed act — not routine work.
 #
-# Format, one rule per line:   <glob>  |  <owner>  |  <reason>
+# Format, one rule per line:   <glob>  |  <owner>  |  <tier>  |  <reason>
 #   - glob: gitignore-style; `**` spans directories, `*` stays within a segment.
 #   - owner: GitHub handle that must review changes (flows into CODEOWNERS).
+#   - tier: `critical` also fires a loud alert when the path changes (ADR 0012);
+#           `review` is gated by code-owner review only. Blank/unknown = review.
 #   - reason: why this is load-bearing.
 # Blank lines and lines starting with `#` are ignored.
 #
 # Deliberately a flat list, not YAML: the enforcers are zero-dependency POSIX
-# shell, so the policy must parse without a YAML library. See ADR 0010.
+# shell, so the policy must parse without a YAML library. See ADR 0010 (and ADR
+# 0012 for why the non-load-bearing notifier may use a library).
 
-tests/Harness/**          | @MgCohen | Test harness: the enforcement engine (ParityGuard, Rule, TestTypes).
-tests/Meta/**             | @MgCohen | Meta tests that police the test taxonomy and parity.
-tests/**/Rulebook/**      | @MgCohen | Rulebooks: the guarantees each test type proves.
-.github/**                | @MgCohen | CI, CODEOWNERS, and repo workflow config — the server-side backstop.
-.githooks/**              | @MgCohen | Local git-hook enforcers.
-governance/**             | @MgCohen | The policy itself and its enforcers — cannot be quietly weakened.
-design/adr/**             | @MgCohen | Architecture Decision Records — frozen history, not living docs.
-.claude/settings.json     | @MgCohen | Claude harness config, incl. the PreToolUse guard — cannot disable its own guard.
-CLAUDE.md                 | @MgCohen | Agent operating instructions for this repo.
-Directory.Build.props     | @MgCohen | Solution-wide build config (nullable, warnings-as-errors, net10).
-.editorconfig             | @MgCohen | Mechanical style rules.
-ABox.slnx                 | @MgCohen | The one unified solution definition.
+tests/Harness/**          | @MgCohen | critical | Test harness: the enforcement engine (ParityGuard, Rule, TestTypes).
+tests/Meta/**             | @MgCohen | critical | Meta tests that police the test taxonomy and parity.
+tests/**/Rulebook/**      | @MgCohen | critical | Rulebooks: the guarantees each test type proves.
+tests/Tests/Arch/**       | @MgCohen | critical | Architecture rules: the asserting test code, not just its rulebook.
+tests/Tests/Structure/**  | @MgCohen | critical | Structure/placement rules: the asserting test code, not just its rulebook.
+.github/**                | @MgCohen | critical | CI, CODEOWNERS, and repo workflow config — the server-side backstop.
+.githooks/**              | @MgCohen | critical | Local git-hook enforcers.
+governance/**             | @MgCohen | critical | The policy itself and its enforcers — cannot be quietly weakened.
+design/adr/**             | @MgCohen | review   | Architecture Decision Records — frozen history, not living docs.
+CLAUDE.md                 | @MgCohen | review   | Agent operating instructions for this repo.
+Directory.Build.props     | @MgCohen | review   | Solution-wide build config (nullable, warnings-as-errors, net10).
+.editorconfig             | @MgCohen | review   | Mechanical style rules.
+.gitattributes            | @MgCohen | review   | Line-ending normalization that keeps the POSIX enforcers LF.
+ABox.slnx                 | @MgCohen | review   | The one unified solution definition.

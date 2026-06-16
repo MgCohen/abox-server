@@ -10,21 +10,24 @@ and probe evidence are in
 ## The one idea
 
 One declarative policy, many enforcers. The single source of truth is
-[`protected-paths`](protected-paths) — a flat `glob | owner | reason` list. Every
-enforcer reads that one file:
+[`protected-paths`](protected-paths) — a flat `glob | owner | tier | reason` list.
+Every enforcer reads that one file:
 
 | Enforcer | Where | Role | Bypassable? |
 |---|---|---|---|
-| GitHub ruleset + `CODEOWNERS` review | repo settings + `.github/CODEOWNERS` | **Merge gate of record** (deferred, see below) | Only by admin/bypass |
+| GitHub ruleset + `CODEOWNERS` review | repo settings + `.github/CODEOWNERS` | **Merge gate of record** — required PR review by code owners | Only by admin/bypass |
 | `policy-guard` CI job | `.github/workflows/ci.yml` | **Advisory** — annotates protected-path changes for visibility; never blocks | n/a (does not block) |
 | `pre-commit` / `pre-push` | [`.githooks/`](../.githooks) | Fast local catch | Yes (`--no-verify`, opt-in clone) |
-| Claude `PreToolUse` guard | [`.claude/`](../.claude) | Earliest feedback at write time | In-process |
 
-`protected-paths-check.sh` is the one checker all of them call. The git hooks and
-the Claude guard are local accident-prevention; `policy-guard` is server-side
-visibility. The **guarantee of what merges is CODEOWNERS required review** — it
-*allows* an owner-reviewed change and blocks an unreviewed one, which a CI check
-can't distinguish. That gate is the deferred Phase 2/3 work below.
+`protected-paths-check.sh` is the one checker all of them call. The git hooks are
+local accident-prevention; `policy-guard` is server-side visibility. The
+**guarantee of what merges is CODEOWNERS required review** — it *allows* an
+owner-reviewed change and blocks an unreviewed one, which a CI check can't
+distinguish. That gate is **live** on `main` (see Status below).
+
+The `tier` column adds one thing on top of review: paths tiered **`critical`** also
+raise a push notification and a `critical-path` label when they change. See
+[`notify.md`](notify.md).
 
 ## Working with it
 
@@ -35,38 +38,30 @@ can't distinguish. That gate is the deferred Phase 2/3 work below.
   the local hook/guard for that invocation (it is logged). CI re-checks regardless,
   so this never changes what can merge.
 - **Enable the git hooks** in a clone: `git config core.hooksPath .githooks`.
-  Claude Code web sessions run this automatically via the `SessionStart` hook in
-  `.claude/settings.json`.
-- **Changing what's protected:** edit [`protected-paths`](protected-paths), then
-  regenerate CODEOWNERS — never hand-edit it:
+- **Changing what's protected:** edit [`protected-paths`](protected-paths) (the
+  `tier` column controls whether a path also alerts — see [`notify.md`](notify.md)),
+  then regenerate CODEOWNERS — never hand-edit it:
 
   ```sh
   ./governance/generate-codeowners.sh
   ```
 
-## Deferred steps — not yet done
+## Status — what's live, what's optional
 
-Phase 1 (everything above) lands via this PR. The remaining steps need repo-admin
-actions or identity provisioning and are **intentionally not done yet**. Track them
-here so they don't slip (see ADR 0010 D1/D4 for the why).
+Phase 1 (everything above) plus the server-side gate are **live on `main`**. The
+remaining phase is optional hardening.
 
-- [ ] **Phase 2 — Apply the branch ruleset on `main`** (admin, ~15 min). After this
-      PR merges so the required checks exist: Settings → Rules → Rulesets → New
-      branch ruleset, target = default branch, **Active**. Enable: require PR before
-      merge; required status checks `build-test (ubuntu-latest)`
-      and `build-test (windows-latest)` (these also prove the harness intact) +
-      "require branches up to date"; block force pushes; restrict deletions;
-      **bypass list empty**. (`policy-guard` is advisory — leave it out of the
-      *required* list; it still runs and annotates every PR.) Set **required
-      approvals = 0 for now** (the interim posture, D4 — approvals = 1 would deadlock
-      agent PRs until the machine account exists).
-- [ ] **Phase 3 — Identity separation, the real guarantee** (admin + provisioning).
-      Add a **non-admin machine account** (not a GitHub App — Apps can't appear in
-      CODEOWNERS) with 2FA; have the agent author PRs as the bot and you approve as
-      `MgCohen`. Then flip the ruleset to **required approvals = 1 + require review
-      from Code Owners**. This closes the solo-account paradox: the agent literally
-      cannot land protected-path changes without your approval, and (no `administration`
-      scope) cannot dismantle the ruleset.
+- **Phase 2 — branch ruleset on `main`: done.** The `protect-main` ruleset is
+  active on the default branch: require a PR before merge; required status checks
+  `build-test (ubuntu-latest)` and `build-test (windows-latest)` (these also prove
+  the harness intact) + "require branches up to date"; block force pushes; restrict
+  deletions; **bypass list empty**. `policy-guard` is advisory — deliberately *not*
+  in the required list, though it runs and annotates every PR.
+- **Phase 3 — identity separation: done.** A **non-admin machine account** authors
+  PRs and the owner (`MgCohen`) approves. The ruleset requires **1 approval +
+  review from Code Owners + last-push approval**, closing the solo-account paradox:
+  the agent cannot land a protected-path change without owner review, and (no
+  `administration` scope) cannot dismantle the ruleset.
 - [ ] **Phase 4 — Hard wall + provenance (optional, later).** Read-only mount for
       `tests/Harness/**` in a devcontainer where the runtime allows; require signed
       commits on `main` (this env already signs); per-provider hook adapters (Codex,
@@ -77,6 +72,9 @@ here so they don't slip (see ADR 0010 D1/D4 for the why).
 - [`protected-paths`](protected-paths) — the policy (single source of truth).
 - [`protected-paths-check.sh`](protected-paths-check.sh) — the shared checker.
 - [`generate-codeowners.sh`](generate-codeowners.sh) — regenerates `.github/CODEOWNERS`.
+- [`notify.md`](notify.md) — critical-path alerts: how it works + all the knobs.
+- [`notify.yml`](notify.yml) — Apprise channel config for alerts.
+- [`notify-critical.sh`](notify-critical.sh) — the alert detector + dispatcher.
 - [`../.githooks/`](../.githooks) — `pre-commit`, `pre-push`.
-- [`../.claude/settings.json`](../.claude/settings.json) + `../.claude/hooks/` — Claude adapter.
 - [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml) — the `policy-guard` job.
+- [`../.gitattributes`](../.gitattributes) — pins the enforcer files to LF.
