@@ -23,7 +23,9 @@ determine changed files
 ```
 
 - **Detection:** `protected-paths-check.sh --tier critical` intersects the PR diff
-  with policy rows tiered `critical`.
+  with policy rows tiered `critical`. Each policy row is `glob | owner | tier |
+  reason`; that format and the glob semantics (`**` spans directories, `*` stays
+  within a segment) are documented in the [`protected-paths`](protected-paths) header.
 - **Two sinks, independent:** the label and the notification are separate steps —
   one failing never affects the other.
 - **The label is a *projection*, not the authority.** The source of truth is
@@ -35,11 +37,11 @@ determine changed files
 
 | To change… | Edit | How |
 |---|---|---|
-| Which files are critical | [`protected-paths`](protected-paths) | set the `tier` column to `critical` (or `review` for gate-only) |
+| Which files are critical | [`protected-paths`](protected-paths) | set an existing row's `tier` to `critical`, **or** add a new `glob \| owner \| tier \| reason` row, then run `./governance/generate-codeowners.sh` (see *Make a new path critical*) |
 | The message (title / body) | [`notify-critical.sh`](notify-critical.sh) | the `title=` / `body=` lines |
 | Channels + presentation | [`notify.yml`](notify.yml) | add/edit Apprise URLs |
 | Channel secrets | repo Actions secrets | e.g. `NTFY_TOPIC`, `NTFY_TOKEN` |
-| Which secrets reach the runtime | [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml) | the alert step's `env:` block |
+| Which secrets reach the runtime | [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml) | the `Alert on critical-path changes` step's `env:` block |
 
 ## Operations
 
@@ -49,34 +51,64 @@ Channel fan-out is **Apprise's** job — you add a URL, not code. Each service h
 own URL syntax; **read its page in the Apprise wiki:**
 <https://github.com/caronc/apprise/wiki>.
 
-1. Add a line under `urls:` in [`notify.yml`](notify.yml). Put any secret as a
-   `${VAR}` placeholder — it is filled from the environment at runtime; **never
-   commit a secret.** Example (Discord):
+1. In [`notify.yml`](notify.yml), add a line under `urls:` (after the existing
+   `ntfy://` line). Put any secret as a `${VAR}` placeholder — it is filled from the
+   environment at runtime; **never commit a secret.** Example (Discord):
    ```yaml
    - "discord://${DISCORD_WEBHOOK_ID}/${DISCORD_WEBHOOK_TOKEN}"
    ```
 2. Add the matching secret(s) under repo **Settings → Secrets and variables →
    Actions**.
-3. Wire those secrets into the alert step's `env:` in
-   [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml) so the runtime sees
-   them (this is what makes `${VAR}` expand):
+3. Wire those secrets into the **`Alert on critical-path changes`** step's `env:`
+   block in [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml) — the step
+   that already has `NTFY_TOPIC`, *not* the label step — so the `${VAR}` placeholders
+   expand at runtime:
    ```yaml
    env:
      DISCORD_WEBHOOK_ID: ${{ secrets.DISCORD_WEBHOOK_ID }}
      DISCORD_WEBHOOK_TOKEN: ${{ secrets.DISCORD_WEBHOOK_TOKEN }}
    ```
-   (`NTFY_TOPIC` / `NTFY_TOKEN` are already wired as the worked example.)
 
 That is the whole operation — no per-channel code, because Apprise owns the
 integrations.
 
 ### Change the message
 
-Edit `title=` / `body=` in [`notify-critical.sh`](notify-critical.sh). Variables
-already available: `${GITHUB_REPOSITORY}`, `${PR_URL}`, and `$hits` (the changed
-critical files). To add a new field (PR number, author, branch): add it to the alert
-step's `env:` in `ci.yml` from `${{ github.event.pull_request.* }}`, then reference
-it in `notify-critical.sh`.
+The message is built in [`notify-critical.sh`](notify-critical.sh) (`title=` /
+`body=`). Variables already available: `${GITHUB_REPOSITORY}`, `${PR_URL}`, and
+`$hits` (the changed critical files).
+
+To add a **new** field, wire it in **two places** — the env-var name in `ci.yml` and
+the `$VAR` in the script must match exactly; that pairing is what makes the field
+appear at runtime:
+
+1. In [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml), add it to the
+   `Alert on critical-path changes` step's `env:`, mapping a GitHub event field to an
+   env var. Common fields:
+   - PR number → `PR_NUMBER: ${{ github.event.pull_request.number }}`
+   - PR author login → `PR_AUTHOR: ${{ github.event.pull_request.user.login }}`
+   - source branch → `PR_BRANCH: ${{ github.event.pull_request.head.ref }}`
+2. In [`notify-critical.sh`](notify-critical.sh), reference the same var in `body=`
+   (or `title=`). Use the `${VAR:+ …}` form so the field is omitted when the var is
+   empty, matching the existing `${PR_URL:+ ($PR_URL)}`:
+   ```sh
+   body="Critical files changed${PR_URL:+ ($PR_URL)}${PR_NUMBER:+ — PR #$PR_NUMBER}${PR_AUTHOR:+ by @$PR_AUTHOR}:
+   $(printf '%s\n' "$hits" | sed 's/^/- /')"
+   ```
+
+### Make a new path critical (alert + label)
+
+1. Add a row to [`protected-paths`](protected-paths) in the format
+   `glob | owner | tier | reason`, with `tier = critical`. (`**` spans directories,
+   `*` stays within a segment. To make an *existing* path critical, just change its
+   `tier` to `critical` — no new row.)
+2. Regenerate the owner map — never hand-edit `CODEOWNERS`:
+   ```sh
+   ./governance/generate-codeowners.sh
+   ```
+   Adding any protected path without this leaves it with no code owner / merge gate.
+
+Use `tier = review` instead for gate-only (code-owner review, no alert).
 
 ### Tune ntfy loudness / format
 
@@ -92,8 +124,10 @@ a private/reserved topic, use a token and the form
 ### Test it
 
 Open or update a PR that touches a critical path (or re-run the `policy-guard` job),
-and watch the **"Alert on critical-path changes"** step. Apprise is **silent on
-success** — no error means it sent.
+and watch the **`Alert on critical-path changes`** step. Apprise is **silent on
+success** — no error means it sent. To validate a channel URL offline before
+relying on CI, run it locally with real values, e.g.
+`apprise -t test -b test 'discord://id/token'`.
 
 ## Troubleshooting
 
@@ -108,7 +142,10 @@ success** — no error means it sent.
 
 ## Files
 
-- [`protected-paths`](protected-paths) — which paths, which tier.
+- [`protected-paths`](protected-paths) — which paths, which tier (`glob | owner | tier | reason`).
+- [`protected-paths-check.sh`](protected-paths-check.sh) — the shared checker; `--tier <name>` lists matches of a tier.
+- [`generate-codeowners.sh`](generate-codeowners.sh) — regenerate `.github/CODEOWNERS` after editing the policy.
+- [`../.github/CODEOWNERS`](../.github/CODEOWNERS) — generated owner map (do not hand-edit).
 - [`notify.yml`](notify.yml) — channels (Apprise URLs).
 - [`notify-critical.sh`](notify-critical.sh) — detection + message + delivery.
 - [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml) — the `policy-guard` job that runs it.
