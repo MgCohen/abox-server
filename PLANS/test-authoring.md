@@ -1,10 +1,13 @@
 # Test authoring — doubles, shape, expectations
 
-**Status:** 🟡 decided 2026-06-13, not yet applied. Captures the *how-a-test-is-written* rules
-we settled while integrating two in-flight branches — one moving the HTTP layer to FastEndpoints,
-one adding a JSON-file repository — whose shared `/projects` endpoint forced the question. This is
-a **decisions + rollout** doc, not a cleanup plan — see *Non-goals*. The one worked example (the
-Wire test) lands now; the rest of the suite is **not** refactored here.
+**Status:** ✅ applied 2026-06-15 — **superseded as the controller** by
+[`tests/Harness/authoring.md`](../tests/Harness/authoring.md) (the distilled craft convention + its
+`## Criteria`, graded by `/judge-authoring`). This file remains the **decision record**: the *why*,
+the alternatives weighed, and the sources. Read it for rationale; author tests against `authoring.md`.
+
+Captures the *how-a-test-is-written* rules we settled while integrating two in-flight branches — one
+moving the HTTP layer to FastEndpoints, one adding a JSON-file repository — whose shared `/projects`
+endpoint forced the question. This is a **decisions + rollout** doc, not a cleanup plan — see *Non-goals*.
 
 ## TL;DR
 
