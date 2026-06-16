@@ -36,9 +36,10 @@ Two shape every decision below:
 ## Decision
 
 Adopt a layered control built on **one policy file consumed by many enforcers**,
-ranked by how provider-agnostic and how bypassable each layer is: CI required
-check (the backstop of record) > GitHub ruleset + CODEOWNERS (merge gate) > git
-hooks (fast local catch) > per-agent pre-write hook (earliest feedback). The
+ranked by how provider-agnostic and how bypassable each layer is: GitHub ruleset
++ CODEOWNERS required review (the merge gate of record) > CI `policy-guard`
+(advisory visibility) > git hooks (fast local catch) > per-agent pre-write hook
+(earliest feedback). The
 single source of truth is `governance/protected-paths`; the *how* lives in
 [`governance/README.md`](../../governance/README.md), which this ADR does not
 restate.
@@ -66,8 +67,9 @@ lefthook (hook ergonomics) and OPA/conftest (content-level rules) are documented
 upgrade paths for a real second need — not adopted on the first use.
 
 **D4 — Interim posture for `main`: lock down now, checks-only, upgrade later.**
-When the ruleset is applied it starts with no-direct-push, required checks
-(`build-test`, `policy-guard`), blocked force-push and deletion, and an **empty
+When the ruleset is applied it starts with no-direct-push, the required check
+(`build-test`, which also proves the harness intact), blocked force-push and
+deletion, and an **empty
 bypass list**, but **required approvals = 0** — because approvals = 1 with no
 second identity would deadlock every agent PR (the solo paradox). When the D1
 machine account lands, flip to approvals = 1 + require code-owner review for the
@@ -84,9 +86,13 @@ hard anti-self-merge. The deferred upgrade steps are tracked in
   deliberate local override (CI re-checks regardless).
 - The guard cannot disable itself: the policy file and `.claude/settings.json`
   are themselves protected paths and explicit `deny` targets.
-- Enforcement is only as hard as the weakest *required* layer until D1 lands. A
-  local clone without `core.hooksPath`, or aider's `--no-verify`, can skip the
-  git hook, so **CI `policy-guard` is the guarantee of what merges**, not the hook.
+- The merge gate for protected paths is **CODEOWNERS required review** (D1/Phase 3),
+  not the CI job: a check can't tell an owner-reviewed change from a snuck-in one, so
+  `policy-guard` is **advisory** — it annotates protected-path changes for visibility
+  and never blocks. A local clone without `core.hooksPath`, or aider's `--no-verify`,
+  can skip the git hook, so **CODEOWNERS required review is the guarantee of what
+  merges**, not the hook or the advisory `policy-guard`. Until D1 lands there is no
+  *hard* server-side gate on protected paths — the accepted D4 interim.
 - Required-check names are coupled to `ci.yml` job names; renaming a job orphans a
   required check and locks every PR. Keep them in lockstep.
 

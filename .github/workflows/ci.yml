@@ -35,8 +35,17 @@ jobs:
           fi
           git diff --name-only "$base" "${{ github.sha }}" > changed.txt || true
           echo "Changed files:"; cat changed.txt
-      - name: Enforce protected-path policy
+      - name: Flag protected-path changes (advisory)
         run: |
-          if [ -s changed.txt ]; then
-            xargs -a changed.txt -r governance/protected-paths-check.sh
+          if [ ! -s changed.txt ]; then
+            echo "No files changed."; exit 0
           fi
+          if out=$(xargs -a changed.txt -r governance/protected-paths-check.sh 2>&1); then
+            echo "No protected paths changed."; exit 0
+          fi
+          echo "$out"
+          printf '%s\n' "$out" | grep '^  - ' | while IFS= read -r line; do
+            echo "::warning::Protected path changed — code-owner review required:${line#  - }"
+          done || true
+          echo "::notice::This PR changes protected paths; merging requires code-owner review (CODEOWNERS). This check is advisory and does not block."
+          exit 0

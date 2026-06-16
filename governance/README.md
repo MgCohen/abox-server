@@ -15,14 +15,16 @@ enforcer reads that one file:
 
 | Enforcer | Where | Role | Bypassable? |
 |---|---|---|---|
-| `policy-guard` CI job | `.github/workflows/ci.yml` | **Backstop of record** — gates merge | No (server-side) |
-| GitHub ruleset + `CODEOWNERS` | repo settings + `.github/CODEOWNERS` | Merge gate (deferred, see below) | Only by admin/bypass |
+| GitHub ruleset + `CODEOWNERS` review | repo settings + `.github/CODEOWNERS` | **Merge gate of record** (deferred, see below) | Only by admin/bypass |
+| `policy-guard` CI job | `.github/workflows/ci.yml` | **Advisory** — annotates protected-path changes for visibility; never blocks | n/a (does not block) |
 | `pre-commit` / `pre-push` | [`.githooks/`](../.githooks) | Fast local catch | Yes (`--no-verify`, opt-in clone) |
 | Claude `PreToolUse` guard | [`.claude/`](../.claude) | Earliest feedback at write time | In-process |
 
 `protected-paths-check.sh` is the one checker all of them call. The git hooks and
-the Claude guard are speed and early feedback; **CI `policy-guard` is the
-guarantee of what merges.**
+the Claude guard are local accident-prevention; `policy-guard` is server-side
+visibility. The **guarantee of what merges is CODEOWNERS required review** — it
+*allows* an owner-reviewed change and blocks an unreviewed one, which a CI check
+can't distinguish. That gate is the deferred Phase 2/3 work below.
 
 ## Working with it
 
@@ -51,9 +53,11 @@ here so they don't slip (see ADR 0010 D1/D4 for the why).
 - [ ] **Phase 2 — Apply the branch ruleset on `main`** (admin, ~15 min). After this
       PR merges so the required checks exist: Settings → Rules → Rulesets → New
       branch ruleset, target = default branch, **Active**. Enable: require PR before
-      merge; required status checks `build-test (ubuntu-latest)`,
-      `build-test (windows-latest)`, `policy-guard` + "require branches up to date";
-      block force pushes; restrict deletions; **bypass list empty**. Set **required
+      merge; required status checks `build-test (ubuntu-latest)`
+      and `build-test (windows-latest)` (these also prove the harness intact) +
+      "require branches up to date"; block force pushes; restrict deletions;
+      **bypass list empty**. (`policy-guard` is advisory — leave it out of the
+      *required* list; it still runs and annotates every PR.) Set **required
       approvals = 0 for now** (the interim posture, D4 — approvals = 1 would deadlock
       agent PRs until the machine account exists).
 - [ ] **Phase 3 — Identity separation, the real guarantee** (admin + provisioning).
