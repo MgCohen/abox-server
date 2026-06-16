@@ -10,8 +10,8 @@ and probe evidence are in
 ## The one idea
 
 One declarative policy, many enforcers. The single source of truth is
-[`protected-paths`](protected-paths) — a flat `glob | owner | reason` list. Every
-enforcer reads that one file:
+[`protected-paths`](protected-paths) — a flat `glob | owner | tier | reason` list.
+Every enforcer reads that one file:
 
 | Enforcer | Where | Role | Bypassable? |
 |---|---|---|---|
@@ -26,6 +26,10 @@ visibility. The **guarantee of what merges is CODEOWNERS required review** — i
 *allows* an owner-reviewed change and blocks an unreviewed one, which a CI check
 can't distinguish. That gate is the deferred Phase 2/3 work below.
 
+The `tier` column adds one thing on top of review: paths tiered **`critical`** also
+raise a push notification and a `critical-path` label when they change. See
+[`notify.md`](notify.md).
+
 ## Working with it
 
 - **Editing a protected path** (harness, ADRs, CI, build config, the policy) is a
@@ -37,8 +41,9 @@ can't distinguish. That gate is the deferred Phase 2/3 work below.
 - **Enable the git hooks** in a clone: `git config core.hooksPath .githooks`.
   Claude Code web sessions run this automatically via the `SessionStart` hook in
   `.claude/settings.json`.
-- **Changing what's protected:** edit [`protected-paths`](protected-paths), then
-  regenerate CODEOWNERS — never hand-edit it:
+- **Changing what's protected:** edit [`protected-paths`](protected-paths) (the
+  `tier` column controls whether a path also alerts — see [`notify.md`](notify.md)),
+  then regenerate CODEOWNERS — never hand-edit it:
 
   ```sh
   ./governance/generate-codeowners.sh
@@ -77,6 +82,9 @@ here so they don't slip (see ADR 0010 D1/D4 for the why).
 - [`protected-paths`](protected-paths) — the policy (single source of truth).
 - [`protected-paths-check.sh`](protected-paths-check.sh) — the shared checker.
 - [`generate-codeowners.sh`](generate-codeowners.sh) — regenerates `.github/CODEOWNERS`.
+- [`notify.md`](notify.md) — critical-path alerts: how it works + all the knobs.
+- [`notify.yml`](notify.yml) — Apprise channel config for alerts.
+- [`notify-critical.sh`](notify-critical.sh) — the alert detector + dispatcher.
 - [`../.githooks/`](../.githooks) — `pre-commit`, `pre-push`.
 - [`../.claude/settings.json`](../.claude/settings.json) + `../.claude/hooks/` — Claude adapter.
 - [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml) — the `policy-guard` job.
