@@ -24,6 +24,33 @@ internal static class SourceTree
     public static bool HasTopSegment(string segment) =>
         Projects().Any(p => string.Equals(TopSegment(p), segment, StringComparison.Ordinal));
 
+    public static readonly string FeaturesRoot = RequireDir(Path.Combine("src", "Features"));
+
+    public static IReadOnlyList<string> FeatureFolders() =>
+        Directory.EnumerateDirectories(FeaturesRoot)
+            .Select(Path.GetFileName)
+            .Where(name => name is not null)
+            .Select(name => name!)
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToList();
+
+    // The csproj shape of one feature folder: every implementation project (anywhere but under a Contracts/
+    // folder) and every Contracts-leaf project. The canonical slice (ADR 0011 D2) is exactly one of each.
+    public static FeatureProjects ProjectsOf(string feature)
+    {
+        var root = Path.Combine(FeaturesRoot, feature);
+        var projects = Directory.EnumerateFiles(root, "*.csproj", SearchOption.AllDirectories)
+            .Where(NotIgnored)
+            .ToList();
+        var contracts = projects.Where(UnderContractsFolder).ToList();
+        var impl = projects.Except(contracts).ToList();
+        return new FeatureProjects(impl.Count, contracts.Count);
+    }
+
+    private static bool UnderContractsFolder(string csproj) =>
+        Path.GetRelativePath(FeaturesRoot, csproj).Split(Separators)
+            .Any(seg => string.Equals(seg, "Contracts", StringComparison.Ordinal));
+
     // The top-most bin/obj/artifacts folders found under src/ or tests/. The only legal artifacts home is the
     // repo-root /artifacts; any here means a project escaped the root props.
     public static IReadOnlyList<string> StrayBuildOutput() =>

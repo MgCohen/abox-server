@@ -4,7 +4,7 @@ using ABox.Features.Projects.Contracts;
 
 namespace ABox.Features.Projects.Get;
 
-public sealed class GetProjectEndpoint(IProjectRepository projects) : Endpoint<ProjectByIdRequest, ProjectDto>
+internal sealed class GetProjectEndpoint(IProjectRepository projects) : Endpoint<ProjectByIdRequest, ProjectDto>
 {
     public override void Configure()
     {

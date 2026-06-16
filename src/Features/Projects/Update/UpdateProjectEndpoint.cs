@@ -4,7 +4,7 @@ using ABox.Features.Projects.Contracts;
 
 namespace ABox.Features.Projects.Update;
 
-public sealed class UpdateProjectEndpoint(IProjectRepository projects) : Endpoint<UpdateProjectRequest, ProjectDto>
+internal sealed class UpdateProjectEndpoint(IProjectRepository projects) : Endpoint<UpdateProjectRequest, ProjectDto>
 {
     public override void Configure()
     {

@@ -5,6 +5,11 @@ engine, the `TestMarkers`/`TestTypes` registries, the `RulebookFormat` parser, a
 locator — plus this doc. Nothing *product*-specific lives here; a type's models, doubles, and harnesses stay
 in that type's own `Support/` until a *second* type genuinely reuses them.
 
+This doc is the **framework** layer — where a test lives and that parity enforces it. The **craft** layer —
+what a test *body* should look like and check (substitute-by-ownership, AAA, assert-against-arranged-state)
+— lives in [`authoring.md`](authoring.md), graded by `/judge-authoring` rather than parity, because "is this
+a *good* test" is a semantic judgment, not a structural one.
+
 ## Every test type is a Rulebook
 
 A **Rulebook** is a folder `<Type>/Rulebook/` holding **two files**:
@@ -76,6 +81,9 @@ the repo name; a home folder is one of the agreed set), and even then **extract 
 can — read the csproj/registry/constant rather than restating its string. Rule of thumb: if editing unrelated
 code can turn the test red, you hardcoded something you should have derived. (The Arch rules model this — the
 down-only rule is *derived* from one allow-graph, and the csproj *globs* assemblies instead of listing them.)
+
+The behavioral companion to this — *assert against arranged state*, and the **tautological assertion** it
+guards against — lives in [`authoring.md`](authoring.md) § 4.
 
 ## Stability contract — a Rulebook is a ratchet
 
@@ -174,11 +182,13 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 Then:
 
 1. **Create `tests/Tests/<Type>/`** with `Rulebook/`, `Tests/`, and (if needed) `Support/`. Namespace mirrors
-   folder (`ABox.Tests.<Type>…`); IDE0130 enforces it.
+   folder — `ABox.Tests.<Type>.Tests` for files in `<Type>/Tests/`; IDE0130 is `severity = error`, so a
+   mismatch is a build error, not a warning.
 2. **Fill `template.md` + `rules.md`** from the skeleton above — pick the header shape (invariant or
-   behavioral), adapt the description, and give `template.md` its semantic `## Criteria` for the judge — one
-   per distinct judgment, as many as the type needs (at least one). Don't invent a new shape (see the
-   stability contract); it's shared structure, not per-type creativity.
+   behavioral), adapt the description, and write the first Rule. **`template.md` must carry a `## Criteria`
+   block** — at least one `- **<id>:** …` bullet of semantic judgment for the judge (as many as the type
+   needs); the Meta *Every template carries judge criteria* guard fails the build if it's missing. Don't
+   invent a new shape (see the stability contract); it's shared structure, not per-type creativity.
 3. **Register the type** in `Harness/TestTypes.Registered`. The Meta *Every folder under tests holds a
    registered test type* guard goes red the moment the folder lands unregistered — this is the deliberate gate.
 4. **Write a `### ` Rule + its `[Rule("<header>")]` fact for every test** in `<Type>/Tests/`. Completeness is

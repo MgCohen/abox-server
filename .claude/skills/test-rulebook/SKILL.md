@@ -51,8 +51,10 @@ so CI skips it). Testing the *product* → one of the first six; testing the *te
 **Need a whole new *type* (not just a Rule)?** Rare — only when no existing type can host
 the guarantee (don't fork Unit into near-twins). Follow the step-by-step in
 `tests/Harness/README.md` § *Standing up a new test type*: create `<Type>/{Rulebook,Tests,Support}/`,
-fill `template.md` + `rules.md` from the canonical skeleton (don't copy a sibling), register the type
-in `Harness/TestTypes` (add it to `GoingForward` if it backfills), and write ≥1 Rule. No csproj edit and
+fill `template.md` + `rules.md` from the canonical skeleton (don't copy a sibling) — `template.md`
+**must** carry a `## Criteria` block or the Meta *Every template carries judge criteria* guard fails —
+register the type in `Harness/TestTypes.Registered`, and write a `### ` Rule + its `[Rule]` fact for
+**every** test (the type ships fully cited — there is no going-forward exemption). No csproj edit and
 no parity fact — the Meta self-suite runs parity over your type once it's registered. Don't invent a new
 Rulebook *shape* — reuse the uniform one.
 
@@ -67,23 +69,20 @@ Rulebook *shape* — reuse the uniform one.
 2. **Write the fact** in `<Type>/Tests/` carrying both the xUnit run attribute and a
    `[Rule("<exact header>")]` citation — they compose (`[Fact]` + `[Rule]`), the Rule is
    not derived from `FactAttribute`. Live tests use `[LiveFact]` + `[Rule("<header>")]`.
-3. **Keep the namespace = folder** (`ABox.Tests.<Type>...`). IDE0130 is
-   `severity = error` — a mismatch fails the build.
+3. **Keep the namespace = folder** — `ABox.Tests.<Type>.Tests` for a file in `<Type>/Tests/`. IDE0130 is
+   `severity = error`, so a mismatch is a **build error, not a warning**.
    - **Failure messages are fix instructions.** Active voice, name the file/type, say what to do
      ("Move X to Y", "Add a [Rule] citing Z") — not "X is wrong". One direct line, no essays.
 4. Put any test-only double/harness in `<Type>/Support/`; promote to the shared
    `tests/Tests/Support/` only on a genuine **second** consumer.
 
-## 3. Completeness (the one knob)
+## 3. Completeness (universal and mandatory)
 
 Parity is always **1:N** — every Rule needs ≥1 test, every `[Rule]` cites a real header, a
-guarantee may have several case tests. The one knob is `requireAllCited` — must *every* test in
-scope cite a Rule? — set per type by `TestTypes.RequiresAllCited`:
-
-- **Complete types (Arch / Structure / E2E / Wire, and Meta on itself).** The Rulebook is the full
-  set; a bare `[Fact]` with no `[Rule]` fails parity.
-- **Going-forward types (Unit / Live).** They accrue over time, so an uncited `[Fact]` is
-  tolerated until backfilled (listed in `TestTypes.GoingForward`).
+guarantee may have several case tests. Completeness is **universal**: for *every* type, a bare
+`[Fact]`/`[Theory]` with no `[Rule]` fails parity — there is no opt-out and no per-type knob.
+Adoption is complete; the old going-forward exemption for Unit/Live is **closed** — the build now
+rejects an uncited test of any type. See `tests/Harness/README.md` § *Adoption is complete*.
 
 ## 4. Derive, don't hardcode
 
@@ -93,6 +92,15 @@ that's churn, not a guarantee. Literal expectations are only for **stable, struc
 facts (a path contains the repo name; a home folder is one of the agreed set), and even
 then extract from the project (csproj/registry/constant) where you can. If editing
 unrelated code can turn the test red, you hardcoded something you should have derived.
+
+**Bright line:** could editing unrelated production code legitimately change this expected value?
+*Yes* → derive it. *No* — it's a deterministic structural fact (a pure-function output on a fixed
+input like `Reverse("abc") → "cba"`, a path segment, a member of an agreed set) → a literal is fine,
+ideally as an `[InlineData]` row rather than a bare `Assert.Equal` so the contract reads as a table.
+
+This is the expectations slice of the broader **craft** rules — substitute-by-ownership, AAA shape, and
+the *tautological assertion* failure mode — which live in `tests/Harness/authoring.md` and are
+judge-graded (see §6), not parity-enforced.
 
 ## 5. Things that bite
 
@@ -114,6 +122,11 @@ unrelated code can turn the test red, you hardcoded something you should have de
 dotnet build ABox.slnx   # warning-free; IDE0130 + parity compile-time checks
 dotnet test  ABox.slnx   # parity facts + your new test green (Live stays skipped)
 ```
+
+To grade a Rule's *wording* against its type's `## Criteria` use `judge-rulebook`; to grade a test's
+*body craft* against `tests/Harness/authoring.md` use `/judge-authoring <test file>`; to grade a test
+against its Rulebook use `/judge`. All run the generic judge and read from an **on-disk path**, so
+judge a file in the tree, not a snippet pasted into chat. These are semantic checks, not parity.
 
 A parity failure names exactly what's out of sync (Rule with no test / test citing a
 missing Rule / bare test with no Rule). Fix by aligning the header and the `[Rule("...")]`

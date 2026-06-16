@@ -5,7 +5,7 @@ using ABox.Features.Projects.Get;
 
 namespace ABox.Features.Projects.Add;
 
-public sealed class AddProjectEndpoint(IProjectRepository projects) : Endpoint<CreateProjectRequest, ProjectDto>
+internal sealed class AddProjectEndpoint(IProjectRepository projects) : Endpoint<CreateProjectRequest, ProjectDto>
 {
     public override void Configure()
     {
