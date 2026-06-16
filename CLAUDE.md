@@ -118,3 +118,5 @@ the no-comments rule at L3, so existing files already conform.
   code genuinely cannot express, and (b) an oracle / Tier-A citation on a ported
   tricky bit. Reaching for anything else means rename or restructure instead.
 - **Small, focused methods and classes.**
+
+<!-- probe: protected-path edit, safe to revert -->
