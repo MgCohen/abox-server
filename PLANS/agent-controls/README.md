@@ -44,6 +44,11 @@ Done once per machine; applies to **every** project automatically.
      (your Git Credential Manager) and route github.com auth through `gh` — but
      only inside Claude's processes, because env-injected git config is per-process.
    - The `GIT_*_NAME/EMAIL` make the commit author cosmetically the bot too.
+   - **Caution — deliver this only via `env`.** Never bake the github.com helper
+     override into the global `~/.gitconfig` (`git config --global ...`): it applies
+     to *every* git on your machine, including SourceTree, routing your manual auth
+     through the bot's `gh` (which is logged out) and breaking your push/pull. The
+     `env` channel is per-process on purpose — keep it there.
 
    Restart the Claude session after editing so the new `env` is picked up.
 
@@ -54,20 +59,32 @@ Done once per machine; applies to **every** project automatically.
    - Log the owner out of the `gh` CLI: `gh auth logout --hostname github.com --user MgCohen`.
    - Sweep any Git Credential Manager github entry:
      `"protocol=https`nhost=github.com`n" | git-credential-manager erase`.
-   - **Keep SourceTree's own credentials.** SourceTree stores its token under its
-     own `sourcetree-rest:*` target in Windows Credential Manager — separate from
-     `gh`/git — so your manual workflow keeps working untouched. Verify with
-     `cmdkey /list | findstr github`.
+   - **SourceTree needs a one-time re-auth — it is *not* untouched.** SourceTree's
+     git push/pull transport uses exactly the GCM `git:https://github.com` entry you
+     just erased. (`sourcetree-rest:*` is only SourceTree's REST integration, not git
+     auth — don't confuse the two.) After the erase, the next fetch prompts once; sign
+     in as the owner via Git Credential Manager and it re-stores the credential.
+     Verify the entries with `cmdkey /list | Select-String github`.
 
-   After this, an agent with `GH_TOKEN` unset gets *empty* from both `gh` and
-   `gh auth git-credential` — the owner fallback is dead.
+   After this, the **`gh` fallback is dead**: an agent with `GH_TOKEN` unset gets
+   *empty* from both `gh` and `gh auth git-credential`. This kills the `gh` path —
+   not every path. The owner's `git:https://github.com` credential still lives in
+   Windows Credential Manager (SourceTree needs it); see the trade-off below for what
+   that leaves reachable.
 
-**Trade-off (Practical tier):** the agent runs as your Windows user. Step 3 removes
-the casual fallback, but a *determined* same-user process could still read
-SourceTree's token via the Windows credential API (`CredRead`). This is the
-strongest same-user posture; the ruleset below is the real backstop. For a *truly*
-impossible guarantee, run the agent under a separate Windows user or a WSL/container
-sandbox — which is also the provider-agnostic seam (see "Multi-provider" below).
+**Trade-off (Practical tier):** the agent runs as your Windows user, so it shares one
+credential store with SourceTree. Step 3 kills the `gh` fallback, but the owner's
+`git:https://github.com` credential must stay in Windows Credential Manager for
+SourceTree to work. Because the bot routing lives only in Claude's per-process `env`
+(never the global `.gitconfig` — see the caution in Step 2), an agent that
+*deliberately* clears its env and runs plain `git` falls back to `manager` →
+Credential Manager → the owner credential. This never happens by accident or in a
+low-context session — the default path is always the bot — but it *is* reachable, via
+plain git, not just the `CredRead` API. This is the strongest *same-user* posture; the
+ruleset below is the real backstop against the bot (though not against stolen owner
+creds — those act as a code owner). For a *truly* impossible guarantee, run the agent
+under a separate Windows user or a WSL/container sandbox — which is also the
+provider-agnostic seam (see "Multi-provider" below).
 
 ## 2. Per-repo onboarding (enforcement)
 
