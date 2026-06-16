@@ -28,13 +28,17 @@ title="⚠️ critical-path change in ${GITHUB_REPOSITORY:-this repo}"
 body="Critical files changed${PR_URL:+ ($PR_URL)}:
 $(printf '%s\n' "$hits" | sed 's/^/- /')"
 
-tmp=$(mktemp)
-trap 'rm -f "$tmp"' EXIT
+# Render ${VAR} secrets from the env into a .yml temp file. The .yml extension
+# matters: apprise picks its config parser from the file extension, and an
+# extension-less temp file is misread as TEXT instead of YAML.
+tmpdir=$(mktemp -d)
+trap 'rm -rf "$tmpdir"' EXIT
+rendered="$tmpdir/notify.yml"
 if command -v envsubst >/dev/null 2>&1; then
-  envsubst < "$cfg" > "$tmp"
+  envsubst < "$cfg" > "$rendered"
 else
-  cp "$cfg" "$tmp"
+  cp "$cfg" "$rendered"
 fi
 
-apprise -c "$tmp" -t "$title" -b "$body" || echo "notify: apprise delivery failed (non-blocking)." >&2
+apprise -c "$rendered" -t "$title" -b "$body" || echo "notify: apprise delivery failed (non-blocking)." >&2
 exit 0
