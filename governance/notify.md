@@ -40,7 +40,7 @@ determine changed files
 | Which files are critical | [`protected-paths`](protected-paths) | set an existing row's `tier` to `critical`, **or** add a new `glob \| owner \| tier \| reason` row, then run `./governance/generate-codeowners.sh` (see *Make a new path critical*) |
 | The message (title / body) | [`notify-critical.sh`](notify-critical.sh) | the `title=` / `body=` lines |
 | Channels + presentation | [`notify.yml`](notify.yml) | add/edit Apprise URLs |
-| Channel secrets | repo Actions secrets | e.g. `NTFY_TOPIC`, `NTFY_TOKEN` |
+| Channel secrets | repo Actions secrets | e.g. `NTFY_TOPIC` — low-value only in PR CI; see the secrets caveat under *Add a channel* |
 | Which secrets reach the runtime | [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml) | the `Alert on critical-path changes` step's `env:` block |
 
 ## Operations
@@ -71,6 +71,15 @@ own URL syntax; **read its page in the Apprise wiki:**
 
 That is the whole operation — no per-channel code, because Apprise owns the
 integrations.
+
+> **⚠️ Secrets in PR-triggered CI (C2 / [ADR 0012](../design/adr/0012-dependency-budget-by-failure-mode.md)).**
+> This step runs on `pull_request`, including PRs authored by the agent. A secret
+> wired here is readable by that PR's workflow *before* an owner approves it. Only a
+> **low-value** secret belongs here — `NTFY_TOPIC` is an unguessable string, not a
+> credential, so it is safe. For an **authenticated** channel (an API token, a
+> webhook secret, `NTFY_TOKEN`), do **not** add it to this step: gate it behind a
+> protected **Environment** (required reviewer) or move delivery to a **post-merge**
+> `push`-triggered job, so the credential is never exposed to an unreviewed PR.
 
 ### Change the message
 
@@ -119,7 +128,9 @@ Edit the URL params in [`notify.yml`](notify.yml): `priority` (`min`…`max`), `
 
 Install the ntfy app, subscribe to your topic, and set the `NTFY_TOPIC` secret. For
 a private/reserved topic, use a token and the form
-`ntfy://${NTFY_TOKEN}@ntfy.sh/${NTFY_TOPIC}`.
+`ntfy://${NTFY_TOKEN}@ntfy.sh/${NTFY_TOPIC}` — but `NTFY_TOKEN` is a credential, so
+wire it per the secrets caveat above (protected Environment or post-merge job), not
+into the PR-triggered alert step.
 
 ### Test it
 

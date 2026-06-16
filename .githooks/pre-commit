@@ -1,6 +1,7 @@
 #!/bin/sh
-# Fast local catch: block commits that touch protected paths. The CI policy-guard
-# job is the non-bypassable backstop (this hook can be skipped with --no-verify).
+# Fast local catch: block commits that touch protected paths. The merge gate of
+# record is CODEOWNERS required review; the CI policy-guard job is advisory. This
+# hook is local convenience and can be skipped with --no-verify.
 # Enable once per clone:  git config core.hooksPath .githooks
 set -eu
 

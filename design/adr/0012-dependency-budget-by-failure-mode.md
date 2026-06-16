@@ -9,7 +9,8 @@ amends: 0010
 ## Context
 
 ADR 0010-D3 fixed the repo's enforcers as dependency-free POSIX `sh`: a flat
-`glob | owner | reason` policy read by shell, no Node/Python/Rego toolchain,
+`glob | owner | reason` policy read by shell (since extended to
+`glob | owner | tier | reason`, where `critical` rows also alert), no Node/Python/Rego toolchain,
 framed as "least mechanism for blocking paths." A second kind of repo tooling is
 now arriving — CI steps that *observe* rather than *enforce* (the first is a
 notifier that pings when a critical path changes). These want a real library

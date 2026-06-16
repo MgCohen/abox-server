@@ -35,7 +35,11 @@ tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
 rendered="$tmpdir/notify.yml"
 if command -v envsubst >/dev/null 2>&1; then
-  envsubst < "$cfg" > "$rendered"
+  # Expand only the ${VAR} placeholders the config actually declares, so a literal
+  # '$' elsewhere in a channel URL survives — and the dispatcher stays
+  # channel-agnostic (it never hardcodes a specific channel's variable names).
+  vars=$(grep -o '${[A-Za-z_][A-Za-z0-9_]*}' "$cfg" | sort -u | tr '\n' ' ')
+  envsubst "$vars" < "$cfg" > "$rendered"
 else
   cp "$cfg" "$rendered"
 fi
