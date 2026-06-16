@@ -1,0 +1,1 @@
+Smoke test: agent push + PR verification. Safe to delete. Run 2026-06-16.
