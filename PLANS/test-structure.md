@@ -115,6 +115,11 @@ invariant-style Rules — which is exactly what `ArchTests/Fixtures/rules.md` al
 
 ### Adoption is staged (the model is universal; the authoring is not up-front)
 
+> **Superseded — historical.** This staged-adoption section describes the rollout, not the current
+> rule. Adoption is now **complete**: every type is fully backfilled and the build rejects an uncited
+> test of any type (there is no going-forward exemption). Current convention:
+> [`tests/Harness/README.md`](../tests/Harness/README.md) § *Adoption is complete*.
+
 The *model* applies to all six types from day one. The *authoring* does not:
 
 - **Arch + Structure adopt fully now** — their Rules already exist (the current `rules.md`), so they ship

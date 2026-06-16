@@ -48,6 +48,10 @@ decision table (which type) and the add-a-Rule procedure. In short: pick the typ
 build + test. No new csproj is ever needed — `Tests.csproj` globs every `src\**\ABox.*.csproj`,
 and the Meta guards read Rulebooks straight from the source tree.
 
+That's *where* a test goes. For *how the test body is written* — substitute-by-ownership, AAA, and
+assert-against-arranged-state — see [`Harness/authoring.md`](Harness/authoring.md), graded by
+`/judge-authoring <test file>`.
+
 ```
 dotnet build ABox.slnx
 dotnet test  ABox.slnx

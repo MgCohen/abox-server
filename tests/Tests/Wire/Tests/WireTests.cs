@@ -28,18 +28,16 @@ public class WireTests(WireApp app) : IClassFixture<WireApp>
     [Fact]
     public async Task Projects_lists_the_stored_projects()
     {
-        var store = app.Services.GetRequiredService<IRepository<Project>>();
-        await store.Add(Project.Create("Listed Project", app.ProjectDir));
+        var listed = Project.Create("Listed Project", app.ProjectDir);
+        await app.Services.GetRequiredService<IRepository<Project>>().Add(listed);
 
         using var res = await app.CreateClient().GetAsync("/projects");
 
         Assert.Equal(HttpStatusCode.OK, res.StatusCode);
         var projects = await res.Content.ReadFromJsonAsync<ProjectDto[]>();
         Assert.NotNull(projects);
-        var stored = await store.GetAll();
-        Assert.Equal(
-            stored.Select(p => (p.Id, p.Name, p.Path)).OrderBy(p => p.Name),
-            projects!.Select(p => (p.Id, p.Name, p.Path)).OrderBy(p => p.Name));
+        var match = Assert.Single(projects!, p => p.Id == listed.Id);
+        Assert.Equal((listed.Name, listed.Path), (match.Name, match.Path));
     }
 
     [Rule("GET /projects/{id} → the project, or 404 when absent")]
