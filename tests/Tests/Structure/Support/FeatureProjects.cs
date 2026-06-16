@@ -1,6 +1,6 @@
 namespace ABox.Tests.Structure.Support;
 
-// The csproj tally of one feature folder, split by role. The canonical slice (ADR 0010 D2) is exactly one
+// The csproj tally of one feature folder, split by role. The canonical slice (ADR 0011 D2) is exactly one
 // implementation project (verbs as folders, Module folded in) and exactly one Contracts leaf.
 internal sealed record FeatureProjects(int Implementation, int Contracts)
 {

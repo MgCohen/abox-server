@@ -12,7 +12,7 @@ shrinks instead of rotting. It is now empty: Morph and Web both evicted to the w
 folder* is the companion guarantee, enforced at compile time by IDE0130 (`/.editorconfig`), not a test here.
 
 ### Each feature is one implementation project plus one Contracts leaf
-- **Why:** The canonical slice (ADR 0010 D2) is exactly one implementation project per feature (verbs as folders,
+- **Why:** The canonical slice (ADR 0011 D2) is exactly one implementation project per feature (verbs as folders,
   `Module` folded in) + one Contracts leaf — no per-verb, per-`Module`, or `Shared` sub-assemblies. "Every feature
   looks like this" is the strongest agent-first guardrail, and it is undecidable while granularity is a 2-to-9
   judgment call. Read on disk so a stray sub-project is caught the moment it lands, before it compiles.

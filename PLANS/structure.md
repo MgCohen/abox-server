@@ -3,7 +3,7 @@ type: reference
 status: settled
 tags: [#structure, #assemblies, #reference-graph, #rules]
 related: [[architecture-vsa]]
-adr: [0009, 0010]
+adr: [0009, 0011]
 ---
 
 # Structure & rules — the concise filter
@@ -11,7 +11,7 @@ adr: [0009, 0010]
 > The single canonical description of the vertical-slice feature shape. Folder
 > layout, assembly placement, and the rules that matter. No rationale here — the
 > ADRs carry the *why*; this is the *what*. Reflects ADR 0009 (FastEndpoints HTTP
-> boundary) + ADR 0010 (per-feature assembly, internal-sealed endpoints), derived
+> boundary) + ADR 0011 (per-feature assembly, internal-sealed endpoints), derived
 > from `src/Features/Projects` as the worked example. The per-use-case stance this
 > doc once held is retired — see those ADRs.
 
@@ -119,7 +119,7 @@ so Host can *load* but never *name* a verb. The Host→`*.Module`-only edge surv
 3. **One feature = one implementation assembly** (verbs as folders, `Module` folded
    in) **+ one `Contracts` leaf.** Verbs share the assembly and *may* collaborate —
    the sanctioned case is FastEndpoints routing (`Send.CreatedAtAsync<GetProjectEndpoint>`).
-   Verb↔verb compile isolation is deliberately forfeited (ADR 0010 D3) and recovered
+   Verb↔verb compile isolation is deliberately forfeited (ADR 0011 D3) and recovered
    in practice by `internal sealed` endpoints: nothing outside the feature can name a
    verb. No per-verb, per-`Module`, or `Shared` sub-assemblies.
 4. **Feature ↔ Feature is impossible by construction.** No feature assembly
@@ -206,7 +206,7 @@ The shape above is not prose-only — two Rulebook Rules pin it in the agent's c
 
 - **`Each feature is one implementation project plus one Contracts leaf`** (Structure
   rulebook) — reads `src/Features/<F>` on disk; fails on a per-verb, per-`Module`, or
-  `Shared` sub-project. Enforces Rule 3 / ADR 0010 D2.
+  `Shared` sub-project. Enforces Rule 3 / ADR 0011 D2.
 - **`Feature endpoints are internal sealed`** (Arch rulebook) — asserts every endpoint
   type `BeInternal().AndShould().BeSealed()`, so no assembly outside the feature can
-  name a verb. Enforces ADR 0010 D3.
+  name a verb. Enforces ADR 0011 D3.

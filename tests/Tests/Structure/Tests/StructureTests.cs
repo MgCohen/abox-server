@@ -54,7 +54,7 @@ public class StructureTests
         Assert.True(strays.Count == 0,
             $"""
             Features do not match the canonical shape — exactly one implementation project (verbs as
-            folders, Module folded in) + one Contracts leaf (ADR 0010 D2):
+            folders, Module folded in) + one Contracts leaf (ADR 0011 D2):
             {Bullets(strays)}
             Consolidate the feature to two projects, or list it in FeatureShape.PendingConsolidation.
             """);

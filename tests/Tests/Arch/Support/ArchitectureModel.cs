@@ -100,7 +100,7 @@ internal static class ArchitectureModel
 
     // The HTTP endpoint classes of one feature: classes named `*Endpoint` inside the feature's own namespace (its
     // Contracts leaf is excluded by FeatureNamespace — it holds no endpoints). The canonical shape declares each
-    // `internal sealed` (ADR 0010 D3); this selector feeds both the positive visibility assertion (internal AND
+    // `internal sealed` (ADR 0011 D3); this selector feeds both the positive visibility assertion (internal AND
     // sealed needs a Classes() chain — BeSealed is class-only) and its staleness guard.
     public static IObjectProvider<IType> FeatureEndpoints(string feature) =>
         Classes().That().ResideInNamespaceMatching(FeatureNamespace(feature))
@@ -115,7 +115,7 @@ internal static class ArchitectureModel
             && !t.FullName.Contains(".Contracts.", StringComparison.Ordinal));
 
     // The loaded implementation assemblies of one feature: every production assembly that carries a type in
-    // ABox.Features.<Feature> outside the feature's Contracts leaf. The canonical slice (ADR 0010 D2) has exactly
+    // ABox.Features.<Feature> outside the feature's Contracts leaf. The canonical slice (ADR 0011 D2) has exactly
     // one such assembly; a not-yet-consolidated feature still has many. The Contracts leaf is a separate assembly
     // and is excluded so the Module-export rule reflects over the impl wall alone, never the published channel.
     public static IReadOnlyList<Assembly> FeatureImplAssemblies(string feature) =>

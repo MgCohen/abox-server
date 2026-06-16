@@ -35,7 +35,7 @@ internal static class SourceTree
             .ToList();
 
     // The csproj shape of one feature folder: every implementation project (anywhere but under a Contracts/
-    // folder) and every Contracts-leaf project. The canonical slice (ADR 0010 D2) is exactly one of each.
+    // folder) and every Contracts-leaf project. The canonical slice (ADR 0011 D2) is exactly one of each.
     public static FeatureProjects ProjectsOf(string feature)
     {
         var root = Path.Combine(FeaturesRoot, feature);

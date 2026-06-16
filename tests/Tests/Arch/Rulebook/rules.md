@@ -43,7 +43,7 @@ A named visibility rule, not a dependency edge — `BeInternal()` on each named 
 or a primitive renamed, this fails. Add a primitive to the rule's name list as the agent runtime grows.
 
 ### Feature endpoints are internal sealed
-- **Why:** The canonical slice (ADR 0010 D3) forfeits verb↔verb compile isolation — a feature's verbs share one
+- **Why:** The canonical slice (ADR 0011 D3) forfeits verb↔verb compile isolation — a feature's verbs share one
   assembly — and recovers the blast-radius mitigation by declaring every endpoint `internal sealed`. Same-feature
   verbs may still collaborate (Projects' `Send.CreatedAtAsync<GetProjectEndpoint>` routing reference), yet no
   assembly *outside* the feature can name a verb type. A `public` endpoint reopens that wall across the solution.
@@ -60,7 +60,7 @@ instead of rotting. A per-feature non-vacuity guard rejects a conformant feature
   Host-facing anchor that hands the feature's assembly to FastEndpoints (`AddFastEndpoints(o => o.Assemblies)`),
   so a missing Module is a silent dead route. Requiring the impl assembly to export *exactly* its `<F>Module`
   catches three regressions in one assertion: the missing Module (dead route), any accidentally-`public` endpoint
-  or helper (the ADR-0010 D3 wall, enforced at assembly granularity rather than per type), and a missing
+  or helper (the ADR-0011 D3 wall, enforced at assembly granularity rather than per type), and a missing
   `EndpointsAssembly` anchor — the per-assembly public symbol Host references without naming any verb type.
 
 Reflects over the loaded impl assembly's `ExportedTypes` (`EndpointConformance.ExportsOnlyItsModule`): exactly

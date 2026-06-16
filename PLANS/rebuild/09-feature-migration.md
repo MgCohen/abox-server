@@ -12,7 +12,7 @@ capability — internals only.
 
 The rebuild's prime directive is **"the user can't tell the difference in what the
 system does."** This is a framework migration ([ADR 0009](../../design/adr/0009-fastendpoints-http-boundary.md))
-plus a project consolidation ([ADR 0010](../../design/adr/0010-canonical-feature-slice-shape.md)),
+plus a project consolidation ([ADR 0011](../../design/adr/0011-canonical-feature-slice-shape.md)),
 not a behavior change. Every route, status code, header, and response body stays
 **byte-identical** across the port.
 

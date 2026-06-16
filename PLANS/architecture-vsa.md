@@ -246,7 +246,7 @@ firewall — it's what lets the inside refactor freely while the wire stays stab
 > `internal sealed : Endpoint<Req,Res>` class with `Configure()` + `HandleAsync()`,
 > discovered via `Module.EndpointsAssembly`). The Contracts-leaf / domain-mapping
 > firewall this example teaches still holds; only the handler+routing seam changed.
-> The canonical shape is [`structure.md`](structure.md) + ADR 0009/0010.
+> The canonical shape is [`structure.md`](structure.md) + ADR 0009/0011.
 
 `Flows.Contracts` (leaf):
 ```csharp
@@ -422,7 +422,7 @@ A new feature = two nested templates:
 > **Superseded — handler mechanism only (ADR 0009).** A use-case slice is now an
 > `internal sealed : Endpoint<Req,Res>` class (FastEndpoints) — no `IApiHandler<,>`,
 > no per-query `Map`, no Host endpoint. Host discovers it via `Module.EndpointsAssembly`.
-> Canonical shape: [`structure.md`](structure.md) + ADR 0009/0010.
+> Canonical shape: [`structure.md`](structure.md) + ADR 0009/0011.
 
 ---
 

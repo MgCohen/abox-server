@@ -4,7 +4,7 @@ date: 2026-06-15
 amends: 0009
 ---
 
-# ADR 0010 — Canonical vertical-slice shape: FastEndpoints, per-feature assembly, internal-sealed endpoints
+# ADR 0011 — Canonical vertical-slice shape: FastEndpoints, per-feature assembly, internal-sealed endpoints
 
 ## Context
 

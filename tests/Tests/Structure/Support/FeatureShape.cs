@@ -1,6 +1,6 @@
 namespace ABox.Tests.Structure.Support;
 
-// The canonical feature-folder shape on disk (ADR 0010 D2): every feature under src/Features is exactly ONE
+// The canonical feature-folder shape on disk (ADR 0011 D2): every feature under src/Features is exactly ONE
 // implementation project + ONE Contracts leaf — no per-verb, per-Module, or Shared sub-assemblies. A placement
 // concern, so it lives on the Structure side beside HomeFolders rather than in the Arch reference-graph model.
 internal static class FeatureShape

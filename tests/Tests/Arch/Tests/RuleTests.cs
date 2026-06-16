@@ -52,7 +52,7 @@ public class RuleTests
             .BeInternal()
             .Check(Architecture);
 
-    // The canonical slice (ADR 0010 D3) declares every endpoint `internal sealed`: same-feature verbs may
+    // The canonical slice (ADR 0011 D3) declares every endpoint `internal sealed`: same-feature verbs may
     // collaborate (Projects' Send.CreatedAtAsync<GetProjectEndpoint>), yet no outside assembly can name a verb
     // type. Asserted positively over the conformant features; the laggards (still Minimal-API `public static`)
     // sit in a shrinking allow-list whose staleness check fails once one actually migrates.
@@ -87,7 +87,7 @@ public class RuleTests
             """);
     }
 
-    // The Module anchor (ADR 0010 D2/Gate-1): a feature's impl assembly must export exactly one public type — its
+    // The Module anchor (ADR 0011 D2/Gate-1): a feature's impl assembly must export exactly one public type — its
     // <F>Module — and that Module must expose `public static Assembly EndpointsAssembly`. Without it a feature can
     // compile with internal endpoints and never be served (the dead-route failure), or leak a public verb type past
     // the assembly wall. Asserted positively over Projects (sole export ProjectsModule, anchor present); laggards
