@@ -23,6 +23,9 @@ jobs:
   policy-guard:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -49,6 +52,23 @@ jobs:
           done || true
           echo "::notice::This PR changes protected paths; merging requires code-owner review (CODEOWNERS). This check is advisory and does not block."
           exit 0
+      - name: Label critical-path PRs (reconcile)
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          hits=
+          if [ -s changed.txt ]; then
+            hits=$(xargs -a changed.txt -r governance/protected-paths-check.sh --tier critical || true)
+          fi
+          if [ -n "$hits" ]; then
+            echo "Critical paths changed — labelling PR #$PR 'critical-path'."
+            gh pr edit "$PR" --repo "${{ github.repository }}" --add-label "critical-path" || echo "label add failed (non-blocking)"
+          else
+            echo "No critical paths — ensuring 'critical-path' label is absent."
+            gh pr edit "$PR" --repo "${{ github.repository }}" --remove-label "critical-path" || true
+          fi
       - name: Alert on critical-path changes (non-blocking)
         if: always()
         env:
