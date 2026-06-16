@@ -1,0 +1,12 @@
+# Apprise channels for critical-path alerts (ADR 0012 — fail-safe convenience).
+# Secret-free: ${VAR} placeholders are filled from CI secrets at runtime by
+# governance/notify-critical.sh (envsubst). Add a channel = add a URL line here
+# plus its secret in GitHub Actions secrets. Apprise URL syntax:
+#   https://github.com/caronc/apprise/wiki
+#
+# ntfy public topic (default below): ntfy://<topic> — the topic name is the only
+#   secret, so pick something unguessable: public ntfy.sh topics are world-readable.
+# ntfy reserved/private topic: ntfy://${NTFY_TOKEN}@ntfy.sh/${NTFY_TOPIC}
+version: 1
+urls:
+  - "ntfy://${NTFY_TOPIC}?priority=max&tags=rotating_light,warning&format=markdown"

@@ -49,3 +49,21 @@ jobs:
           done || true
           echo "::notice::This PR changes protected paths; merging requires code-owner review (CODEOWNERS). This check is advisory and does not block."
           exit 0
+      - name: Alert on critical-path changes (non-blocking)
+        if: always()
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          NTFY_TOKEN: ${{ secrets.NTFY_TOKEN }}
+        run: |
+          [ -s changed.txt ] || { echo "No files changed."; exit 0; }
+          hits=$(xargs -a changed.txt -r governance/protected-paths-check.sh --tier critical || true)
+          if [ -z "$hits" ]; then echo "No critical-path changes."; exit 0; fi
+          echo "Critical-path changes detected:"; printf '%s\n' "$hits" | sed 's/^/  - /'
+          if [ -z "${NTFY_TOPIC:-}" ]; then
+            echo "::warning::Critical path changed but no alert channel configured (set the NTFY_TOPIC secret; see governance/notify.yml)."
+            exit 0
+          fi
+          pipx install apprise >/dev/null 2>&1 || python3 -m pip install --quiet apprise || { echo "apprise unavailable (non-blocking)"; exit 0; }
+          xargs -a changed.txt -r governance/notify-critical.sh || echo "notify step failed (non-blocking)"
+          exit 0
