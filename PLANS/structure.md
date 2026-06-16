@@ -2,14 +2,18 @@
 type: reference
 status: settled
 tags: [#structure, #assemblies, #reference-graph, #rules]
-related: [[architecture-proposal]]
+related: [[architecture-vsa]]
+adr: [0009, 0011]
 ---
 
 # Structure & rules — the concise filter
 
-> Distilled from `architecture-proposal.md` (converged). Folder layout, assembly
-> placement, and the rules that matter. No rationale here — the proposal carries
-> the *why*; this is the *what*. Candidate source for ADRs.
+> The single canonical description of the vertical-slice feature shape. Folder
+> layout, assembly placement, and the rules that matter. No rationale here — the
+> ADRs carry the *why*; this is the *what*. Reflects ADR 0009 (FastEndpoints HTTP
+> boundary) + ADR 0011 (per-feature assembly, internal-sealed endpoints), derived
+> from `src/Features/Projects` as the worked example. The per-use-case stance this
+> doc once held is retired — see those ADRs.
 
 ---
 
@@ -17,17 +21,17 @@ related: [[architecture-proposal]]
 
 ```
 src/
-  Host/                 composition root.  refs *.Module (+ Infrastructure).
-  Web/                  Blazor UI.         refs *.Contracts LEAVES only.
+  Host/                 composition root.  refs *.Module (+ Infrastructure); composes
+                          AddFastEndpoints(o.Assemblies) from each Module.EndpointsAssembly.
+  Web/                  Blazor UI (separate client repo).  refs *.Contracts LEAVES only.
 
   Features/
-    Agents/             PURE CONTAINER folder — no csproj.
-      Run/              ASSEMBLY — one use case (handler only).
-      List/             ASSEMBLY — one use case.
-      Shared/           ASSEMBLY when present — non-domain code shared by this
-                          feature's use cases. Optional folder; on probation.
+    Projects/           ONE IMPLEMENTATION ASSEMBLY — the whole feature.
+      Add/              FOLDER — one use case. AddProjectEndpoint : Endpoint<,> (internal sealed).
+      List/             FOLDER — one use case. ListProjectsEndpoint : EndpointWithoutRequest<> (internal sealed).
+      Get/ Update/ Delete/   FOLDER each — one endpoint per verb.
+      Module/           FOLDER (folded in) — ProjectsModule exposes EndpointsAssembly (+ AddX() DI seam).
       Contracts/        LEAF ASSEMBLY — one per feature. request/response/DTO/events.
-      Module/           ASSEMBLY (thin) — refs Run/List/Shared/Contracts; exposes AddAgents().
     Flows/ Validation/ Evaluation/ BuildLoop/ Notifications/ …   (same template)
 
   Domain/               shared RULES only; starts ~empty.
@@ -72,12 +76,11 @@ valid. **Assembly?** = is a `.csproj` (vs. a plain container folder).
 | Folder | Required? | Assembly? | Holds | Notes |
 |---|---|---|---|---|
 | `src/Host/` | Y | Y | composition root + service registration | refs `*.Module` (+ `Infrastructure`) only |
-| `src/Web/` | Y | Y | Blazor UI | refs `*.Contracts` leaves only |
-| `Features/<F>/` | Y | **N** | — | pure container folder, no csproj |
-| `Features/<F>/<UseCase>/` | Y | Y | one handler, end-to-end | one per use case; can't reach a sibling use case |
-| `Features/<F>/Shared/` | **N** | Y | non-domain code shared across the feature's use cases | optional folder — **if present, it's an assembly**; on probation |
-| `Features/<F>/Contracts/` | Y | Y | request/response/DTO/events | leaf, one per feature; WASM-safe |
-| `Features/<F>/Module/` | Y | Y | `AddX()` registration | thin; refs the feature's own assemblies |
+| `src/Web/` | Y | Y | Blazor UI (separate client repo) | refs `*.Contracts` leaves only |
+| `Features/<F>/` | Y | **Y** | the whole feature — verbs as folders | the ONE implementation assembly; `Module` folded in |
+| `Features/<F>/<Verb>/` | Y | **N** | one `internal sealed : Endpoint<,>` endpoint | a FOLDER, not an assembly; one per use case |
+| `Features/<F>/Module/` | Y | **N** | `<F>Module` — `EndpointsAssembly` (+ `AddX()` DI) | a FOLDER inside the feature assembly; the ONE public type |
+| `Features/<F>/Contracts/` | Y | Y | request/response/DTO/events | leaf, one per feature; WASM-safe; `DefaultItemExcludes` keeps it out of the impl assembly |
 | `Domain/` | Y | **N** | — | container band; shared RULES only, starts ~empty |
 | `Domain/<Aggregate>/` | **N** | Y | aggregate state + invariants, or a domain service | one per aggregate; only on a shared-invariant case; peers by Id |
 | `Domain/Kernel/` | **N** | Y | primitives only (`Id<T>`, value types) | optional folder — **if present, it's a leaf**; ZERO entities |
@@ -94,13 +97,16 @@ valid. **Assembly?** = is a `.csproj` (vs. a plain container folder).
 | Assembly | references |
 |---|---|
 | `Web` | every feature's `*.Contracts` — **nothing else** |
-| `Host` | every feature's `*.Module` (+ `Infrastructure`) |
-| `<F>.Module` | its own use cases + `Contracts` |
-| `<F>.<UseCase>` | own `Contracts`, own `Shared`, the `Domain.<Aggregate>` it needs, `Infrastructure` |
+| `Host` | every feature's `*.Module` (+ `Infrastructure`); composes the FastEndpoints assembly list from each `Module.EndpointsAssembly` |
+| `<F>` (one impl assembly; verbs + `Module` inside) | own `Contracts`, the `Domain.<Aggregate>` it needs, `Infrastructure`, `FastEndpoints` |
 | `<F>.Contracts` | **nothing** (leaf) — or `Domain.Kernel` only, if WASM-safe |
 | `Domain.<Aggregate>` | `Infrastructure`, `Domain.Kernel`; peers **by Id only** |
 | `Infrastructure` | nothing (third-party only) |
 | `<Area>.Tests` | the source assembly under test (+ `Support`) — **nothing references a test project** |
+
+`Host` holds a `ProjectReference` to each `<F>` assembly so FastEndpoints can scan it,
+yet — with every endpoint `internal` — the feature's only exported type is its `Module`,
+so Host can *load* but never *name* a verb. The Host→`*.Module`-only edge survives.
 
 ---
 
@@ -110,11 +116,15 @@ valid. **Assembly?** = is a `.csproj` (vs. a plain container folder).
    reference graph *is* the architecture.
 2. **Slice = use case, not entity.** `RunFlow` is a slice; `Flow` is an aggregate
    it orchestrates, never a slice.
-3. **One use case = one assembly.** Things that change together live together;
-   `Run` cannot reach into `List` — share via `Shared/`.
-4. **Feature ↔ Feature is impossible by construction.** No use-case assembly
-   references another feature's. Siblings that must react talk via **events**
-   (subscribe through the peer's `*.Contracts`).
+3. **One feature = one implementation assembly** (verbs as folders, `Module` folded
+   in) **+ one `Contracts` leaf.** Verbs share the assembly and *may* collaborate —
+   the sanctioned case is FastEndpoints routing (`Send.CreatedAtAsync<GetProjectEndpoint>`).
+   Verb↔verb compile isolation is deliberately forfeited (ADR 0011 D3) and recovered
+   in practice by `internal sealed` endpoints: nothing outside the feature can name a
+   verb. No per-verb, per-`Module`, or `Shared` sub-assemblies.
+4. **Feature ↔ Feature is impossible by construction.** No feature assembly
+   references another's. Siblings that must react talk via **events** (subscribe
+   through the peer's `*.Contracts`).
 5. **Sharing ladder — cheapest first:**
    1. Trigger / read a projection from a peer → its `*.Contracts` (op + flat DTO),
       or react via an event. Model stays owned and internal.
@@ -137,9 +147,9 @@ valid. **Assembly?** = is a `.csproj` (vs. a plain container folder).
    handlers call it → substrate (`Domain`/`Infrastructure`), not a feature.
 10. **Contracts stay leaves.** `<F>.Contracts` references nothing (or `Kernel` if
     WASM-safe). Web binds to it directly — typed C# calls, no codegen.
-11. **Promote on the second use, not the first.** Feature-internal engines live in
-    that feature's `Shared/`; they move to `Domain/` only when a second feature needs
-    them. Same for plumbing → `Infrastructure`.
+11. **Promote on the second use, not the first.** Feature-internal engines live as a
+    folder inside that feature's implementation assembly; they move to `Domain/` only
+    when a second feature needs them. Same for plumbing → `Infrastructure`.
 12. **Make the wrong thing not compile.** Agent-first repo: walls fire in the agent's
     own compile loop and are tamper-evident (a `<ProjectReference>` diff, not a
     suppressible `#pragma`). `PtySession` is `internal` to `Domain.Agents`; only
@@ -167,18 +177,36 @@ valid. **Assembly?** = is a `.csproj` (vs. a plain container folder).
 
 ## Slice anatomy & composition
 
-One feature slice, end to end:
+One feature slice, end to end (the whole feature is ONE implementation assembly):
 
 ```
 Features/<F>/
-  <UseCase>/   handler        refs own Contracts + the Domain.<Aggregate> it needs + Infrastructure
-  Shared/      (if present)    non-domain code shared by this feature's use cases
-  Contracts/   leaf            request/response/DTO/events — what the outside binds to
-  Module/      AddX()          registers the above; the ONLY public registration seam
+  <Verb>/      endpoint       internal sealed : Endpoint<Req,Res> (or EndpointWithoutRequest<Res>);
+                                Configure() sets route+verb, HandleAsync() injects collaborators by ctor.
+  Contracts/   leaf           request/response/DTO/events — what the outside binds to
+  Module/      EndpointsAssembly  exposes the assembly to scan (+ AddX() DI seam); the ONLY public type
 ```
+
+A verb's request/validation is **provisionally** guarded inline in `HandleAsync`
+(`AddError` → `Send.ErrorsAsync(400)`, as in `AddProjectEndpoint`); that validation
+moves to a **Step** (R-SPINE) — FastEndpoints is the transport boundary only, no
+`Validator<T>` (ADR 0009).
 
 Composition (deliberately revertable):
 
-- `Host` references `*.Module` only; each `Module` exposes `AddX()`.
-- Swapping the seam later (root `Application` assembly, assembly scan, Host-refs-each)
-  touches the Add wiring only — never the use-case assemblies or the reference graph.
+- `Host` references `*.Module` only; each `Module` exposes `EndpointsAssembly`. Host
+  composes `AddFastEndpoints(o => o.Assemblies = [..each Module.EndpointsAssembly])`
+  from the `*.Module` refs it already holds — no Host→verb edge.
+- Swapping the seam later (root `Application` assembly, blanket scan, Host-refs-each)
+  touches the Add wiring only — never the feature assemblies or the reference graph.
+
+## Enforcement (Gate-3 conformance Rules)
+
+The shape above is not prose-only — two Rulebook Rules pin it in the agent's compile/test loop:
+
+- **`Each feature is one implementation project plus one Contracts leaf`** (Structure
+  rulebook) — reads `src/Features/<F>` on disk; fails on a per-verb, per-`Module`, or
+  `Shared` sub-project. Enforces Rule 3 / ADR 0011 D2.
+- **`Feature endpoints are internal sealed`** (Arch rulebook) — asserts every endpoint
+  type `BeInternal().AndShould().BeSealed()`, so no assembly outside the feature can
+  name a verb. Enforces ADR 0011 D3.
