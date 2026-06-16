@@ -1,0 +1,18 @@
+#!/bin/sh
+# Secondary local catch: block pushes whose range touches protected paths.
+# CI policy-guard remains the backstop. Enable: git config core.hooksPath .githooks
+set -eu
+
+root=$(git rev-parse --show-toplevel)
+zero=0000000000000000000000000000000000000000
+
+while read -r _local_ref local_sha _remote_ref remote_sha; do
+  [ "$local_sha" = "$zero" ] && continue
+  if [ "$remote_sha" = "$zero" ]; then
+    base=$(git merge-base origin/main "$local_sha" 2>/dev/null || echo "${local_sha}^")
+  else
+    base=$remote_sha
+  fi
+  git diff --name-only "$base" "$local_sha" -z \
+    | xargs -0 -r "$root/governance/protected-paths-check.sh" || exit 1
+done

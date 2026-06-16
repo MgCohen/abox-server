@@ -1,0 +1,9 @@
+#!/bin/sh
+# Fast local catch: block commits that touch protected paths. The CI policy-guard
+# job is the non-bypassable backstop (this hook can be skipped with --no-verify).
+# Enable once per clone:  git config core.hooksPath .githooks
+set -eu
+
+root=$(git rev-parse --show-toplevel)
+git diff --cached --name-only --diff-filter=ACMR -z \
+  | xargs -0 -r "$root/governance/protected-paths-check.sh"
