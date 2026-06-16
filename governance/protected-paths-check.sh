@@ -46,6 +46,9 @@ else
   paths=$(cat)
 fi
 
+# Disable pathname expansion: paths are data, never globs to expand here.
+set -f
+
 match_one() {
   _path=$1
   printf '%s\n' "$rules" | while IFS='|' read -r _glob _owner _tier _reason; do
@@ -61,25 +64,29 @@ match_one() {
 
 # List mode: emit paths whose matched rule is in the requested tier; never gate.
 if [ -n "$tier_filter" ]; then
-  for p in $paths; do
+  while IFS= read -r p; do
     [ -z "$p" ] && continue
     hit=$(match_one "$p")
     [ -n "$hit" ] || continue
     htier=$(printf '%s' "$hit" | cut -f3)
-    [ "$htier" = "$tier_filter" ] && printf '%s\n' "$p"
-  done
+    if [ "$htier" = "$tier_filter" ]; then printf '%s\n' "$p"; fi
+  done <<EOF
+$paths
+EOF
   exit 0
 fi
 
 found=""
-for p in $paths; do
+while IFS= read -r p; do
   [ -z "$p" ] && continue
   hit=$(match_one "$p")
   if [ -n "$hit" ]; then
     found="${found}${hit}
 "
   fi
-done
+done <<EOF
+$paths
+EOF
 
 [ -z "$found" ] && exit 0
 

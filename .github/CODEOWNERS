@@ -6,12 +6,14 @@
 tests/Harness/** @MgCohen
 tests/Meta/** @MgCohen
 tests/**/Rulebook/** @MgCohen
+tests/Tests/Arch/** @MgCohen
+tests/Tests/Structure/** @MgCohen
 .github/** @MgCohen
 .githooks/** @MgCohen
 governance/** @MgCohen
 design/adr/** @MgCohen
-.claude/settings.json @MgCohen
 CLAUDE.md @MgCohen
 Directory.Build.props @MgCohen
 .editorconfig @MgCohen
+.gitattributes @MgCohen
 ABox.slnx @MgCohen
