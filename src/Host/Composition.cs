@@ -44,6 +44,6 @@ internal static class Composition
         services.AddSingleton<IAgentFactory, AgentFactory>();
 
         services.AddFlows(flows);
-        services.AddGit();
+        services.AddGit(builder.Configuration);
     }
 }
