@@ -1,23 +1,20 @@
+using System.Text.Json.Serialization;
+using ABox.Infrastructure.Storage;
+
 namespace ABox.Domain.Inbox;
 
-public abstract class InboxItem
+[JsonPolymorphic]
+[JsonDerivedType(typeof(NoteInboxItem), "note")]
+public abstract record InboxItem : IEntity
 {
-    protected InboxItem(string title, IReadOnlyList<string> tags)
-    {
-        Id = Guid.NewGuid();
-        Title = title;
-        Tags = tags;
-        CreatedAt = DateTimeOffset.UtcNow;
-    }
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public required string Title { get; init; }
+    public IReadOnlyList<string> Tags { get; init; } = [];
+    public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? SeenAt { get; init; }
+    public DateTimeOffset? CompletedAt { get; init; }
 
-    public Guid Id { get; }
-    public string Title { get; }
-    public IReadOnlyList<string> Tags { get; }
-    public DateTimeOffset CreatedAt { get; }
-    public DateTimeOffset? SeenAt { get; private set; }
-    public DateTimeOffset? CompletedAt { get; private set; }
+    internal InboxItem MarkSeen() => SeenAt is null ? this with { SeenAt = DateTimeOffset.UtcNow } : this;
 
-    public void MarkSeen() => SeenAt ??= DateTimeOffset.UtcNow;
-
-    public void Complete() => CompletedAt ??= DateTimeOffset.UtcNow;
+    internal InboxItem Complete() => CompletedAt is null ? this with { CompletedAt = DateTimeOffset.UtcNow } : this;
 }

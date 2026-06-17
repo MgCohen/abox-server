@@ -23,8 +23,8 @@ internal sealed class AddNoteEndpoint(IInbox inbox) : Endpoint<AddNoteRequest, I
             return;
         }
 
-        var item = new NoteInboxItem(title, req.Tags ?? []);
-        inbox.Add(item);
+        var item = new NoteInboxItem { Title = title, Tags = req.Tags ?? [] };
+        await inbox.Add(item, ct);
         await Send.CreatedAtAsync<GetInboxItemEndpoint>(
             new { id = item.Id },
             new InboxItemView(item.Id, item.Title, item.Tags, item.CreatedAt, item.SeenAt, item.CompletedAt),

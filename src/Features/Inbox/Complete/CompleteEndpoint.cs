@@ -14,13 +14,12 @@ internal sealed class CompleteEndpoint(IInbox inbox) : EndpointWithoutRequest<In
 
     public override async Task HandleAsync(CancellationToken ct)
     {
-        if (inbox.Get(Route<Guid>("id")) is not { } item)
+        if (await inbox.Complete(Route<Guid>("id"), ct) is not { } item)
         {
             await Send.NotFoundAsync(ct);
             return;
         }
 
-        item.Complete();
         await Send.OkAsync(
             new InboxItemView(item.Id, item.Title, item.Tags, item.CreatedAt, item.SeenAt, item.CompletedAt), ct);
     }

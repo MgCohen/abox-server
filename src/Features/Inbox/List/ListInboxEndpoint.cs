@@ -15,7 +15,7 @@ internal sealed class ListInboxEndpoint(IInbox inbox) : EndpointWithoutRequest<I
     public override async Task HandleAsync(CancellationToken ct)
     {
         var tags = Query<List<string>>("tag", isRequired: false) ?? [];
-        var items = inbox.Query(tags);
+        var items = await inbox.Query(tags, ct);
         await Send.OkAsync(
             [.. items.Select(i => new InboxItemView(i.Id, i.Title, i.Tags, i.CreatedAt, i.SeenAt, i.CompletedAt))],
             ct);

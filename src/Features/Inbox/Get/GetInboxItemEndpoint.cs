@@ -14,7 +14,7 @@ internal sealed class GetInboxItemEndpoint(IInbox inbox) : Endpoint<InboxItemByI
 
     public override async Task HandleAsync(InboxItemByIdRequest req, CancellationToken ct)
     {
-        if (inbox.Get(req.Id) is not { } item)
+        if (await inbox.Get(req.Id, ct) is not { } item)
         {
             await Send.NotFoundAsync(ct);
             return;

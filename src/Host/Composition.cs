@@ -37,7 +37,7 @@ internal static class Composition
         services.AddSingleton<IProjectRepository, ProjectRepository>();
         services.AddHostedService<ProjectsJsonImport>();
 
-        services.AddSingleton<IInbox, InMemoryInbox>();
+        services.AddSingleton<IInbox, Inbox>();
 
         services.AddSingleton<PendingDecisions>();
         services.AddSingleton<IDecisionResolver, InteractiveResolver>();

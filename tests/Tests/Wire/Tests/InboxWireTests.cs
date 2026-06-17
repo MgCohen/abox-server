@@ -5,7 +5,7 @@ using ABox.Tests.Wire.Support;
 
 namespace ABox.Tests.Wire.Tests;
 
-// Wire smoke for the Inbox slice over WebApplicationFactory. The IInbox singleton is shared across the
+// Wire smoke for the Inbox slice over WebApplicationFactory. The repository-backed inbox is shared across the
 // fixture, so each test scopes itself by a unique tag / its own created id rather than absolute counts.
 [Collection(WireHostCollection.Name)]
 public class InboxWireTests(WireApp app) : IClassFixture<WireApp>
@@ -56,50 +56,28 @@ public class InboxWireTests(WireApp app) : IClassFixture<WireApp>
         Assert.Equal(minted!.Id, only.Id);
     }
 
-    [Rule("GET /inbox/{id} → the item, or 404 when absent")]
+    [Rule("GET /inbox/{id} → the item marked seen, or 404 when absent")]
     [Fact]
-    public async Task Get_by_id_returns_the_item()
+    public async Task Get_by_id_returns_the_item_and_marks_it_seen()
     {
         var client = app.CreateClient();
         using var created = await client.PostAsJsonAsync("/inbox", new AddNoteRequest("fetch me", ["g"]));
         var dto = await created.Content.ReadFromJsonAsync<InboxItemView>();
+        Assert.Null(dto!.SeenAt);
 
-        using var res = await client.GetAsync($"/inbox/{dto!.Id}");
+        using var res = await client.GetAsync($"/inbox/{dto.Id}");
 
         Assert.Equal(HttpStatusCode.OK, res.StatusCode);
         var fetched = await res.Content.ReadFromJsonAsync<InboxItemView>();
         Assert.Equal(dto.Id, fetched!.Id);
+        Assert.NotNull(fetched.SeenAt);
     }
 
-    [Rule("GET /inbox/{id} → the item, or 404 when absent")]
+    [Rule("GET /inbox/{id} → the item marked seen, or 404 when absent")]
     [Fact]
     public async Task Get_by_id_returns_404_for_an_unknown_id()
     {
         using var res = await app.CreateClient().GetAsync($"/inbox/{Guid.NewGuid()}");
-
-        Assert.Equal(HttpStatusCode.NotFound, res.StatusCode);
-    }
-
-    [Rule("POST /inbox/{id}/seen → the item stamped seen, or 404 when absent")]
-    [Fact]
-    public async Task Mark_seen_stamps_the_item()
-    {
-        var client = app.CreateClient();
-        using var created = await client.PostAsJsonAsync("/inbox", new AddNoteRequest("see me", ["s"]));
-        var dto = await created.Content.ReadFromJsonAsync<InboxItemView>();
-
-        using var res = await client.PostAsync($"/inbox/{dto!.Id}/seen", null);
-
-        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
-        var seen = await res.Content.ReadFromJsonAsync<InboxItemView>();
-        Assert.NotNull(seen!.SeenAt);
-    }
-
-    [Rule("POST /inbox/{id}/seen → the item stamped seen, or 404 when absent")]
-    [Fact]
-    public async Task Mark_seen_returns_404_for_an_unknown_id()
-    {
-        using var res = await app.CreateClient().PostAsync($"/inbox/{Guid.NewGuid()}/seen", null);
 
         Assert.Equal(HttpStatusCode.NotFound, res.StatusCode);
     }

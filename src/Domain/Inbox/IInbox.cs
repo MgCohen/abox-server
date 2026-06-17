@@ -2,9 +2,11 @@ namespace ABox.Domain.Inbox;
 
 public interface IInbox
 {
-    void Add(InboxItem item);
+    Task Add(InboxItem item, CancellationToken ct = default);
 
-    InboxItem? Get(Guid id);
+    Task<InboxItem?> Get(Guid id, CancellationToken ct = default);
 
-    IReadOnlyList<InboxItem> Query(IReadOnlyList<string> tags);
+    Task<IReadOnlyList<InboxItem>> Query(IReadOnlyList<string> tags, CancellationToken ct = default);
+
+    Task<InboxItem?> Complete(Guid id, CancellationToken ct = default);
 }

@@ -409,18 +409,20 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 - **Why:** the `SemaphoreSlim` + atomic temp→`File.Replace` write means concurrent `Add`s all land and the
   on-disk file always parses — no torn write under contention.
 
-### InboxItem.MarkSeen → SeenAt stamped once and stable on repeat
-- **Why:** seen is a one-time interaction stamp; the first mark records when the human saw the item and a
-  later mark must not move it, so an idempotent re-view never rewrites history.
+### Inbox.Get → the item marked seen once and stable on repeat, null when absent
+- **Why:** reading an item is what records that the human saw it — the surface stamps SeenAt on the first read
+  and a re-read must not move it, so "seen" is system-driven (never an explicit caller action) and idempotent;
+  a missing id returns null rather than throwing.
 
-### InboxItem.Complete → CompletedAt stamped once and stable on repeat
-- **Why:** completion is the terminal interaction stamp; the first complete records when the item was resolved
-  and a later call must not move it, keeping the resolved time stable.
+### Inbox.Complete → the item marked complete once and stable on repeat, null when absent
+- **Why:** completion is the terminal interaction stamp the surface drives; the first complete records when the
+  item was resolved and a later call must not move it, with a missing id returning null.
 
-### InMemoryInbox.Get → the added item by id, or null when absent
-- **Why:** the registry is the lookup seam the surface reads; a missing id returns null rather than throwing,
-  so callers branch on absence instead of catching.
-
-### InMemoryInbox.Query → items carrying every requested tag in arrival order, all when no tag given
+### Inbox.Query → items carrying every requested tag in arrival order, all when no tag given
 - **Why:** the inbox is a flat chronological feed with an AND tag filter — no tag returns everything in arrival
   order, and a tag set narrows to items carrying all of them — so the surface can scope without a priority engine.
+
+### InboxItem persisted through the repository → reloads as its concrete subtype
+- **Why:** the inbox holds a polymorphic item hierarchy in the shared JsonRepository, so an item written and read
+  back from a fresh repository must round-trip as its concrete subtype (not the abstract base or a wrong type),
+  proving the type discriminator survives persistence.
