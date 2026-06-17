@@ -91,16 +91,22 @@ The `IStackHost` capability (`design/the-box.md` §13) and a real GitHub adapter
   (later) `Node` id.
 - **Read-as-bot** (`ABox-Agent`); no self-approval, no owner credentials (`design/the-box.md` §5;
   CLAUDE.md).
-- **Force-push lean (grounded, not yet locked):** use `--force-with-lease --force-if-includes`
-  (`research` §6 — lease alone is defeated by background fetches). This is a research lean, not an
-  ADR; **today `Domain/Git/Git.cs` PushOp (line 81) adds only `--force-with-lease`** — S2.1a proves
-  the lease-rejection behavior and S2.3 must add `--force-if-includes` to PushOp when it wires the
-  cascade. Don't treat it as already-true.
+- **Force-push lean (now empirically grounded, S2.1a):** use `--force-with-lease --force-if-includes`
+  (`research` §6/§9 — lease *alone* was clobbered by a background fetch in the spike). Still a lean,
+  not an ADR; **today `Domain/Git/Git.cs` PushOp (line 81) adds only `--force-with-lease`** — S2.3
+  must add `--force-if-includes` when it wires the cascade. Don't treat it as already-true.
 
-## Preconditions (escalate to owner — block S2.1b / S2.2, not S2.1a)
+## Preconditions (escalate to owner — block S2.2; S2.1 is done)
 
-These are owner-only and unspecified today; S2.1a (pure-local) needs none of them.
+These are owner-only and unspecified today; S2.1 needed none of them (S2.1b ran on the
+authenticated GitHub MCP tools, which proved sufficient for create/merge/retarget but **not** for
+ref deletion — see below).
 
+- **Delete-ref capability (surfaced by S2.1b).** Branch/ref deletion is **impossible from this
+  environment**: the `origin` proxy `403`s on delete refspecs, the GitHub MCP server has no
+  delete-ref tool, and there's no `gh`. The real adapter (S2.2b) and any cleanup path need delete
+  rights wired. **Immediate owner action:** delete the leftover spike refs `spike/box-x`,
+  `spike/phase-1`, `spike/phase-2` (PRs #63/#64 already closed; only refs linger).
 - **GitHub authentication.** No credential/auth wiring exists anywhere (`grep` over `src/` for
   `GITHUB_TOKEN`/`Octokit`/`gh auth` → nothing), and the repo remote here is a local proxy, not
   real github.com. Any GitHub API call (S2.1b spike, S2.2 real adapter) needs the bot's auth
@@ -141,13 +147,16 @@ invert the layer direction).
 
 ## Build order
 
-### S2.1 — Spikes *(validate first — gates everything below)*
+### S2.1 — Spikes  ✅ **COMPLETE (2026-06-17)** *(gated everything below)*
 
 Retire the unknowns before building the real adapter. **Throwaway code** in `spikes/git-stack/`
-(matches the existing `spikes/` home); keep it **out of `ABox.slnx`** so it never trips
-warnings-as-errors or the `src/`+`tests/` structure scan. The *kept* artifact is a verified
-call/command transcript + the gotchas that actually bit, appended to `research/stacked-prs.md` §7.
-Two legs, because the risk splits by where it lives.
+(matches the existing `spikes/` home); kept **out of `ABox.slnx`**. The kept artifacts are
+`spikes/git-stack/FINDINGS-local.md` + `FINDINGS-github.md` and the consolidated
+`research/stacked-prs.md` **§9**. Two legs, because the risk splits by where it lives.
+
+> **Result:** both legs proven. The central bet — **merge-commit → clean retarget, no rebase** — is
+> confirmed locally *and* live on the GitHub API (PR #64 diff byte-identical before/after retarget,
+> no phantom). New facts that change downstream tasks are inlined below and in research §9.
 
 #### S2.1a — Git mechanics *(local, no GitHub)*
 
@@ -159,8 +168,11 @@ Two legs, because the risk splits by where it lives.
   (SHAs change); (3) `--force-with-lease --force-if-includes` rejects a clobbering push; (4) what a
   **phantom diff** (stale base) looks like, and how to detect "clean."
 - **How:** a local temp repo — reuse `tests/Tests/Support/TempGitRepo.cs`. No network.
-- **Done-when:** a 2-node local stack demonstrates clean merge-commit ancestry **and** a rebuild
-  cascade-rebase, both asserted by throwaway code; findings written up.
+- ✅ **Done — all 4 proven** (`FINDINGS-local.md`). Two facts to carry into S2.3: (a)
+  **`--force-if-includes` is mandatory** — lease *alone* was empirically clobbered by a background
+  fetch; `Domain/Git/Git.cs` PushOp (line 81, lease-only) must add it. (b) The reliable "clean"
+  oracle is **`merge-base --is-ancestor <base-tip> <head>`**, not a three-dot diff (which leaks a
+  phantom on a *rewritten* base).
 
 #### S2.1b — GitHub-API choreography *(real remote)*
 
@@ -177,9 +189,16 @@ Two legs, because the risk splits by where it lives.
   box-impl plan) vs `spike/`-prefixed branches in this repo; needs owner sign-off either way.
   Delete branches + close PRs after. Drive via the GitHub MCP tools / `gh` (library choice is
   S2.2's, not the spike's).
-- **Done-when:** the full create → retarget → merge-commit → delete sequence runs end-to-end
-  against real GitHub; the (non-)auto-retarget-on-delete and approval-dismissal behaviors are
-  observed and recorded; the ordering that avoids the base-deleted race is confirmed.
+- ✅ **Done — happy path proven live** (`FINDINGS-github.md`, on `MgCohen/abox-server` `spike/`
+  branches, `main` untouched): create-PR-onto-non-`main`-base, `merge_method=merge`, and pointer-only
+  base retarget all confirmed; PR #64's diff stayed clean (no phantom). New facts: `mergeable_state:
+  unstable` = checks *pending*, not a conflict (≠ `dirty`); auto-delete-head-on-merge is **off** here.
+  ❓ **Not testable here** (carry forward, stay verify-don't-rely): auto-retarget/close on base
+  *delete* and approval-dismissal — branch deletion was blocked (proxy `403`, **no MCP ref-delete
+  tool**, no `gh`). Orchestrator must **always explicitly retarget**, never rely on auto-behavior.
+- ⚠️ **Surfaced for S2.2/S2.3:** the current toolset has **no delete-ref capability** — the real
+  adapter and any branch cleanup will need delete rights wired (see Preconditions). It also left 3
+  `spike/*` branches that need **owner** deletion.
 
 > **S2.1 done-when (gate):** both legs proven; findings folded into `research/stacked-prs.md`; any
 > decision they surface (e.g. client library, race-ordering) locked or escalated. Spike code is
