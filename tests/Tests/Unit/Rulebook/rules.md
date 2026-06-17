@@ -287,6 +287,12 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 ### ChangedFiles after a reverting checkout → reports no changes
 - **Why:** a revert that still showed phantom changes would trigger needless commits and mislead the dirty check, so state must reset to truly clean.
 
+### RebaseOnto onto a rebuilt parent → replays the branch's commits onto the new base
+- **Why:** when a parent phase is rebuilt its SHAs change, so each descendant must be replayed onto the new parent — the deterministic core of the box stack's cascade restack.
+
+### Force push to a remote that advanced since the last fetch → refused before it can overwrite
+- **Why:** the cascade force-pushes rebased branches; `--force-with-lease --force-if-includes` must reject a stale overwrite so a collaborator's pushed work is never silently lost (a lease alone is defeated by a background fetch — spike research/stacked-prs.md §9).
+
 ### Agent emitting NEEDS_INPUT → blocks on a pending decision until a human resolves it, then resumes to Completed
 - **Why:** the whole point of interactive resolution is that the run must pause for human input rather than guessing or failing, and must actually carry the human's answer forward to finish the work.
 

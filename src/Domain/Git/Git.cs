@@ -11,6 +11,7 @@ public sealed class Git(string projectDir)
     public Operation<CommitArgs, GitCommitResult> Commit { get; } = new CommitOp(projectDir);
     public Operation<PushArgs, GitPushResult> Push { get; } = new PushOp(projectDir);
     public Operation<PullArgs, GitPullResult> Pull { get; } = new PullOp(projectDir);
+    public Operation<RebaseOntoArgs, RebaseOntoResult> RebaseOnto { get; } = new RebaseOntoOp(projectDir);
 
     private sealed class DirtyOp(string dir) : Operation<DirtyArgs, DirtyResult>
     {
@@ -78,7 +79,9 @@ public sealed class Git(string projectDir)
                 throw new InvalidOperationException($"git push: refusing to force-push to {target}");
 
             var parts = new List<string> { "git push" };
-            if (args.Force) parts.Add("--force-with-lease");
+            // --force-if-includes pairs with the lease: a lease alone is defeated by a background fetch that
+            // advances the tracking ref without integrating it (spike research/stacked-prs.md §9).
+            if (args.Force) { parts.Add("--force-with-lease"); parts.Add("--force-if-includes"); }
             parts.Add(args.Remote);
             parts.Add(target);
             (await RunCommand.RunAsync(string.Join(' ', parts), new RunCommandOptions(Cwd: dir), ct)).EnsureOk("git push");
@@ -98,6 +101,18 @@ public sealed class Git(string projectDir)
                 .EnsureOk("git pull");
             var updated = !res.Stdout.Contains("Already up to date", StringComparison.OrdinalIgnoreCase);
             return new GitPullResult(args.Remote, args.Branch ?? "(current)", updated);
+        }
+    }
+
+    private sealed class RebaseOntoOp(string dir) : Operation<RebaseOntoArgs, RebaseOntoResult>
+    {
+        protected override async Task<RebaseOntoResult> Invoke(RebaseOntoArgs args, CancellationToken ct)
+        {
+            var cmd = $"git rebase --onto {Shell.QuoteArg(args.NewBase)} {Shell.QuoteArg(args.OldBase)} {Shell.QuoteArg(args.Branch)}";
+            (await RunCommand.RunAsync(cmd, new RunCommandOptions(Cwd: dir), ct)).EnsureOk("git rebase --onto");
+            var tip = (await RunCommand.RunAsync("git rev-parse HEAD", new RunCommandOptions(Cwd: dir), ct))
+                .EnsureOk("git rev-parse");
+            return new RebaseOntoResult(args.Branch, tip.Stdout.Trim());
         }
     }
 

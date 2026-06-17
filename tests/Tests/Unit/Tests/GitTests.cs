@@ -1,9 +1,77 @@
 using ABox.Domain.Git;
+using ABox.Infrastructure.CommandLine;
 
 namespace ABox.Tests.Unit.Tests;
 
 public class GitTests
 {
+    [Rule("RebaseOnto onto a rebuilt parent → replays the branch's commits onto the new base")]
+    [Fact]
+    public async Task RebaseOnto_replays_branch_onto_a_rebuilt_parent()
+    {
+        using var repo = await TempGitRepo.CreateAsync();
+        await repo.WriteAsync("base.txt", "base");
+        await repo.CommitAllAsync("base");
+
+        await repo.RunAsync("git checkout -q -b phase1");
+        await repo.WriteAsync("a.txt", "a1");
+        await repo.CommitAllAsync("p1");
+        var oldParent = await RevParse(repo, "phase1");
+
+        await repo.RunAsync("git checkout -q -b phase2");
+        await repo.WriteAsync("b.txt", "b1");
+        await repo.CommitAllAsync("p2");
+
+        await repo.RunAsync("git checkout -q phase1");
+        await repo.WriteAsync("a.txt", "a1-rebuilt");
+        await repo.RunAsync("git commit -aq --amend -m p1b");
+        var newParent = await RevParse(repo, "phase1");
+
+        await Op.Exec(new Git(repo.Path).RebaseOnto, new RebaseOntoArgs(newParent, oldParent, "phase2"));
+
+        Assert.Equal(0, await ExitCode(repo, $"git merge-base --is-ancestor {newParent} phase2"));
+        Assert.NotEqual(0, await ExitCode(repo, $"git merge-base --is-ancestor {oldParent} phase2"));
+        Assert.Equal("b1", await repo.ReadAsync("b.txt"));
+    }
+
+    [Rule("Force push to a remote that advanced since the last fetch → refused before it can overwrite")]
+    [Fact]
+    public async Task Force_push_refuses_to_clobber_an_advanced_remote()
+    {
+        using var repo = await TempGitRepo.CreateWithRemoteAsync();
+        await repo.RunAsync("git checkout -q -b feature");
+        await repo.WriteAsync("f.txt", "v1");
+        await repo.CommitAllAsync("f1");
+        var git = new Git(repo.Path);
+        await Op.Exec(git.Push, new PushArgs(Branch: "feature"));
+
+        var clone = Path.Combine(Path.GetTempPath(), "ra-clone-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            await RunCommand.RunAsync($"git clone -q \"{repo.RemotePath}\" \"{clone}\"", new RunCommandOptions());
+            await RunCommand.RunAsync("git checkout -q feature", new RunCommandOptions(Cwd: clone));
+            await File.WriteAllTextAsync(Path.Combine(clone, "f.txt"), "v2-remote");
+            await RunCommand.RunAsync("git commit -aqm f2-remote", new RunCommandOptions(Cwd: clone));
+            await RunCommand.RunAsync("git push -q origin feature", new RunCommandOptions(Cwd: clone));
+
+            await repo.WriteAsync("f.txt", "v2-local");
+            await repo.CommitAllAsync("f2-local");
+
+            await Assert.ThrowsAnyAsync<Exception>(
+                () => Op.Exec(git.Push, new PushArgs(Branch: "feature", Force: true)));
+        }
+        finally
+        {
+            try { Directory.Delete(clone, recursive: true); } catch { /* best-effort cleanup */ }
+        }
+    }
+
+    private static async Task<string> RevParse(TempGitRepo repo, string rev) =>
+        (await RunCommand.RunAsync($"git rev-parse {rev}", new RunCommandOptions(Cwd: repo.Path))).Stdout.Trim();
+
+    private static async Task<int> ExitCode(TempGitRepo repo, string cmd) =>
+        (await RunCommand.RunAsync(cmd, new RunCommandOptions(Cwd: repo.Path))).ExitCode;
+
     [Rule("ChangedFiles on a dirty tree → returns each modified and untracked path")]
     [Fact]
     public async Task ChangedFiles_reports_modified_and_untracked()
