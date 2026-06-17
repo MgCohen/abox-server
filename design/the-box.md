@@ -395,9 +395,10 @@ Recommendations are leans, not locks:
 - **Persistence store** (§12): concrete choice (embedded SQLite vs. document store) at
   B2.
 - **Reject-intent gestures** (§5/§8): the gesture vocabulary for scope hints.
-- **Inbox/Decision standalone design** (§2.2): the full design of the parallel
-  Inbox/Decision system (non-Box producers, decision routing + persistence) gets **its
-  own doc, authored as the first task of the S1 track** — §2.2/§5 here are only the
-  Box-facing seam.
+- **Inbox/Decision standalone design** (§2.2): authored in its own doc,
+  [`inbox-decision.md`](inbox-decision.md) (the first S1 task). It governs the
+  Inbox/Decision/Notification model — note it models the three as **independent
+  concepts bridged by adapters**, refining §2.2's `InboxItem { Notification | Decision }`
+  sketch (composition, not inheritance). §2.2/§5 here remain only the Box-facing seam.
 - **ICS template** (§4.0): [`ics-template.md`](ics-template.md) is **provisional/minimal**
   — extend on real need.
