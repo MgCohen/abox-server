@@ -9,25 +9,44 @@ public sealed class InboxTests : IDisposable
 
     private Inbox NewInbox() => new(new JsonRepository<InboxItem>(new StorageRoot(_dir)));
 
-    [Rule("Inbox.Get → the item marked seen once and stable on repeat, null when absent")]
+    [Rule("Inbox.Get → the item by id, or null when absent")]
     [Fact]
-    public async Task Get_marks_the_item_seen_and_keeps_the_first_time()
+    public async Task Get_returns_the_item_without_stamping_it()
     {
         var inbox = NewInbox();
         var item = new NoteInboxItem { Title = "phase 3 needs review", Tags = ["box-7"] };
         await inbox.Add(item);
 
-        var first = await inbox.Get(item.Id);
-        Assert.NotNull(first!.SeenAt);
+        var got = await inbox.Get(item.Id);
 
-        var again = await inbox.Get(item.Id);
-        Assert.Equal(first.SeenAt, again!.SeenAt);
+        Assert.Equal(item.Id, got!.Id);
+        Assert.Null(got.SeenAt);
     }
 
-    [Rule("Inbox.Get → the item marked seen once and stable on repeat, null when absent")]
+    [Rule("Inbox.Get → the item by id, or null when absent")]
     [Fact]
     public async Task Get_returns_null_for_an_unknown_id() =>
         Assert.Null(await NewInbox().Get(Guid.NewGuid()));
+
+    [Rule("Inbox.MarkSeen → the item stamped seen once and stable on repeat, null when absent")]
+    [Fact]
+    public async Task MarkSeen_stamps_once_and_keeps_the_first_time()
+    {
+        var inbox = NewInbox();
+        var item = new NoteInboxItem { Title = "see me", Tags = [] };
+        await inbox.Add(item);
+
+        var first = await inbox.MarkSeen(item.Id);
+        Assert.NotNull(first!.SeenAt);
+
+        var again = await inbox.MarkSeen(item.Id);
+        Assert.Equal(first.SeenAt, again!.SeenAt);
+    }
+
+    [Rule("Inbox.MarkSeen → the item stamped seen once and stable on repeat, null when absent")]
+    [Fact]
+    public async Task MarkSeen_returns_null_for_an_unknown_id() =>
+        Assert.Null(await NewInbox().MarkSeen(Guid.NewGuid()));
 
     [Rule("Inbox.Complete → the item marked complete once and stable on repeat, null when absent")]
     [Fact]

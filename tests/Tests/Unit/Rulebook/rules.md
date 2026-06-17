@@ -409,10 +409,13 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 - **Why:** the `SemaphoreSlim` + atomic temp→`File.Replace` write means concurrent `Add`s all land and the
   on-disk file always parses — no torn write under contention.
 
-### Inbox.Get → the item marked seen once and stable on repeat, null when absent
-- **Why:** reading an item is what records that the human saw it — the surface stamps SeenAt on the first read
-  and a re-read must not move it, so "seen" is system-driven (never an explicit caller action) and idempotent;
-  a missing id returns null rather than throwing.
+### Inbox.Get → the item by id, or null when absent
+- **Why:** a read is pure — fetching an item must not change it (seen is an explicit, client-driven signal, not
+  a side effect of a read), so GET stays safe to cache/retry; a missing id returns null rather than throwing.
+
+### Inbox.MarkSeen → the item stamped seen once and stable on repeat, null when absent
+- **Why:** "seen" is reported by the client, the only authority on what a human actually viewed; the surface
+  stamps SeenAt on the first mark and a re-mark must not move it, with a missing id returning null.
 
 ### Inbox.Complete → the item marked complete once and stable on repeat, null when absent
 - **Why:** completion is the terminal interaction stamp the surface drives; the first complete records when the

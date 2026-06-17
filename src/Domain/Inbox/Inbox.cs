@@ -2,19 +2,14 @@ using ABox.Infrastructure.Storage;
 
 namespace ABox.Domain.Inbox;
 
-// The inbox surface over the shared JsonRepository. Reading an item is what marks it seen — the item
-// lifecycle is driven here, by the system, never by an outside caller (MarkSeen/Complete are internal).
+// The inbox surface over the shared JsonRepository. Reads are pure; seen/complete are explicit, system-applied
+// transitions (MarkSeen/Complete are internal to this assembly — never an outside caller, never a side effect
+// of GET). "Seen" is reported by the client, the only authority on what a human actually viewed.
 public sealed class Inbox(IRepository<InboxItem> items) : IInbox
 {
     public Task Add(InboxItem item, CancellationToken ct = default) => items.Add(item, ct);
 
-    public async Task<InboxItem?> Get(Guid id, CancellationToken ct = default)
-    {
-        if (await items.GetById(id, ct) is not { } item) return null;
-        var seen = item.MarkSeen();
-        if (!ReferenceEquals(seen, item)) await items.Update(seen, ct);
-        return seen;
-    }
+    public Task<InboxItem?> Get(Guid id, CancellationToken ct = default) => items.GetById(id, ct);
 
     public async Task<IReadOnlyList<InboxItem>> Query(IReadOnlyList<string> tags, CancellationToken ct = default)
     {
@@ -24,11 +19,15 @@ public sealed class Inbox(IRepository<InboxItem> items) : IInbox
             .OrderBy(item => item.CreatedAt)];
     }
 
-    public async Task<InboxItem?> Complete(Guid id, CancellationToken ct = default)
+    public Task<InboxItem?> MarkSeen(Guid id, CancellationToken ct = default) => Stamp(id, item => item.MarkSeen(), ct);
+
+    public Task<InboxItem?> Complete(Guid id, CancellationToken ct = default) => Stamp(id, item => item.Complete(), ct);
+
+    private async Task<InboxItem?> Stamp(Guid id, Func<InboxItem, InboxItem> stamp, CancellationToken ct)
     {
         if (await items.GetById(id, ct) is not { } item) return null;
-        var done = item.Complete();
-        if (!ReferenceEquals(done, item)) await items.Update(done, ct);
-        return done;
+        var stamped = stamp(item);
+        if (!ReferenceEquals(stamped, item)) await items.Update(stamped, ct);
+        return stamped;
     }
 }

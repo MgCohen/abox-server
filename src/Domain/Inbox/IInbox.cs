@@ -8,5 +8,7 @@ public interface IInbox
 
     Task<IReadOnlyList<InboxItem>> Query(IReadOnlyList<string> tags, CancellationToken ct = default);
 
+    Task<InboxItem?> MarkSeen(Guid id, CancellationToken ct = default);
+
     Task<InboxItem?> Complete(Guid id, CancellationToken ct = default);
 }

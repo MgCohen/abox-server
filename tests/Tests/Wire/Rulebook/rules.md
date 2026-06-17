@@ -43,10 +43,13 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 - **Why:** list must route to `IInbox.Query` and serialize `InboxItemView`; the `?tag=` query narrows the feed
   to items carrying that tag, proving the tag filter on the wire.
 
-### GET /inbox/{id} → the item marked seen, or 404 when absent
-- **Why:** the by-id read must route the `{id}` param to `IInbox.Get`, which stamps `SeenAt` as a side effect of
-  reading (seen is system-driven, not a separate endpoint), and serialize the hit as `InboxItemView`; an unknown
-  id is a 404, not an empty 200.
+### GET /inbox/{id} → the item, or 404 when absent
+- **Why:** the by-id read routes the `{id}` param to `IInbox.Get` and serializes the hit as `InboxItemView`; it
+  is a pure read — no stamping, seen has its own endpoint — so GET stays safe, and an unknown id is a 404.
+
+### POST /inbox/{id}/seen → the item stamped seen, or 404 when absent
+- **Why:** the client reports that the human saw an item — the only authority on "seen" — so this routes `{id}`,
+  stamps `SeenAt`, and returns the updated view; an unknown id is a 404. Kept off GET so reads stay safe.
 
 ### POST /inbox/{id}/complete → the item stamped complete, or 404 when absent
 - **Why:** complete must route `{id}`, stamp `CompletedAt`, and return the updated view; an unknown id is a 404.
