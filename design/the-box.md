@@ -388,16 +388,16 @@ Recommendations are leans, not locks:
 - **Dual-path policy thresholds** (§10): the actual confidence/cost cutoffs — tune
   empirically.
 - **Box abort/discard**: a Box that's abandoned mid-flight — drop the branch + `.box/`,
-  emit a notification. Lifecycle completeness; specify before WS2 (real SCM).
+  emit a notification. Lifecycle completeness; specify before S2 (PR/git stack).
 - **Sibling/DAG merge ordering** (§7): unspecified until non-linear plans are allowed.
 - **Profile defaults** (§11): exact per-project declaration format + per-Box override
   mechanism.
 - **Persistence store** (§12): concrete choice (embedded SQLite vs. document store) at
-  WS2.
+  B2.
 - **Reject-intent gestures** (§5/§8): the gesture vocabulary for scope hints.
 - **Inbox/Decision standalone design** (§2.2): the full design of the parallel
   Inbox/Decision system (non-Box producers, decision routing + persistence) gets **its
-  own doc, authored when the WS4 track starts** — §2.2/§5 here are only the Box-facing
-  seam.
+  own doc, authored as the first task of the S1 track** — §2.2/§5 here are only the
+  Box-facing seam.
 - **ICS template** (§4.0): [`ics-template.md`](ics-template.md) is **provisional/minimal**
   — extend on real need.

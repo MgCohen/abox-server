@@ -4,160 +4,183 @@
 > with the **what/why** in [`design/the-box.md`](../design/the-box.md) — and the **single
 > authoritative build order** (the design doc defers all sequencing here, §15). Built on
 > top of the L1→L12 spine (it consumes the rebuild's Step/Flow + agent Steps) and does
-> not amend the oracle or `PLANS/rebuild/` specs. Ordered **workstreams + tasks**; refine
-> a workstream into concrete tasks when you start it.
+> not amend the oracle or `PLANS/rebuild/` specs. Ordered **builds + tasks**; refine a
+> build into concrete tasks when you start it.
 
-## Strategy — independent-first, ports-and-fakes
+## Strategy — substrate-first, Box composes on top
 
-Build the **loosely-coupled, deterministic** parts first; defer the **agent-coupled**
-parts (doing the work, resolving conflicts, planning) to the end. The seam that makes
-this possible is already in the design: **every capability is a port with a fake**
-(`design/the-box.md` §13), so each piece is built and tested against fakes of its
-neighbors and integrated late.
+The Box is a **composition** over capabilities it does not own — decisions, PR/git,
+workspace, projection, authoring flows (`design/the-box.md` §2). So build those
+**independent capabilities first** (the *substrate*, S1–S6), each a first-class component
+with its own home, then **compose the Box thinly** on top (B1–B3). This retires the
+biggest design risk directly: building the shared systems *through the Box's lens* bakes
+Box-shaped assumptions into things that aren't Box-specific.
 
-This **reconciles with the repo's walking-skeleton ethos** rather than replacing it:
-each workstream still ships standalone, run-not-just-compiled, behind a port; the thin
-end-to-end thread is **WS5**, once the independent pieces are real. The difference is
-*order* — we front-load the parts that don't need an agent.
+**Guardrail — the Box is the forcing function.** Build "the decision / inbox / PR surface
+the Box needs (plus obvious adjacent value)," **not** a speculative general system for all
+futures. Each piece ships standalone, run-not-just-compiled, behind its own seam; the
+Box's requirements drive the contracts even though the components land first (YAGNI /
+least mechanism).
 
-Three principles from the design drive the decomposition:
-- **Wrap determinism in composable units** — lifecycle stages and node data-gathering
-  are Steps you add/remove/swap (`design/the-box.md` §1, §4, §14).
-- **Determinism first, reasoning last** — the deterministic spine (git, projection,
-  lifecycle) is independent of the LLM; the LLM-coupled ports come last.
-- **Box and Inbox are separate systems** (`design/the-box.md` §2). We build the **Box
-  feature** on top of agents + flow; the **Inbox/Decision/Notification** system is a
-  **parallel, independent track**. A Decision does not belong to a Box. For the Box
-  build, the Inbox is only a **high-level seam** (`IInbox`/decision port + fake); the
-  real Inbox system + client is fleshed out on its own track and integrated late.
+Principles carried over:
+- **Wrap determinism in composable units** — lifecycle stages and node data-gathering are
+  Steps you add/remove/swap (`design/the-box.md` §1, §4, §14).
+- **Determinism first, reasoning last** — the deterministic substrate is independent of
+  the LLM; the agent-coupled bits (builder, resolver, planner) trail at the very end.
+- **Box and Inbox are separate systems** (`design/the-box.md` §2) — now expressed
+  *structurally*: the Inbox/Decision is substrate (S1), not a Box component.
 
-## Dependency map
+## Placement (repo pattern)
 
-| Component | Port | Depends on | Coupling | When |
+Box and substrate code follow the repo's existing pattern: **`Domain/<Concept>`** for the
+model + **`Features/<Feature>`** for the vertical slice (endpoints, contracts, module, SSE
+`Watch`) — exactly as `Domain/Flow` + `Features/Flows` and `Domain/Projects` + `Features/Git`
+do today. The Box itself is `Domain/Box/` + `Features/Box/`; each substrate capability gets
+its own `Domain/<Concept>` (+ a `Features/` slice where it exposes endpoints). **No new
+assemblies** — folders in the existing solution (YAGNI / least mechanism).
+
+## Build map
+
+| # | Build | Home / port | Seed to grow | Depends on |
 |---|---|---|---|---|
-| Domain core + composable lifecycle | `Orchestrator` | — | low (pure) | WS0 |
-| Workspace provisioning | `IWorkspaceProvisioner` | WS0 | low | WS1 |
-| PR/Git connection | `IStackHost` | WS0 | low (deterministic, throwaway repo) | WS2 |
-| Node projection (data-gathering) | `INodeProjector` | WS0, WS2 | low (deterministic) | WS3 |
-| **Inbox/Decision system + client** *(parallel track)* | `IInbox` | WS3, [remote-access](../design/remote-access.md) | low–med | WS4 |
-| Integration thread (fakes for agent) | — | WS0–WS4 | med | WS5 |
-| Restack + conflict-tier ladder | `IRestackEngine`, `IConflictClassifier` | WS2, real build/test | med | WS6 |
-| **Agent build** | `IPhaseBuilder` | WS5 | **high** | WS7 |
-| **Conflict resolver** | `IResolver` | WS6 | **high** | WS7 |
-| **Planning flow** | `IPlanner` | WS5 | **high (out of scope today)** | WS7 |
-| Speculative dual-path | — | WS7 builder | **high** | WS7 |
+| **S1** | Decision / Inbox / Notification | `Domain/Inbox` · `IInbox` | `Domain/Flow/Operations`, `Domain/Agents` decision model | — |
+| **S2** | PR / Git stack | `Features/Git` · `IStackHost` | `IPullRequests`, `MergeResult`, `StubPullRequests` | — |
+| **S3** | Workspace provisioning | `Domain/Workspace` · `IWorkspaceProvisioner` | — | — |
+| **S4** | Node projection | `Domain/Box` · `INodeProjector` | — | S2 |
+| **S5** | Transport + identity (+ client) | `Features/*/Watch` (SSE) | `Features/Flows/Watch/Sse`, `remote-access.md` | S1, S4 |
+| **S6** | ICS authoring flow | `Domain/Flow` (reuse) | Flow/Steps engine | S1 |
+| **B1** | Box domain + state machine | `Domain/Box` · `Orchestrator` | — | (consumes S1) |
+| **B2** | Lifecycle (composed Flow) | `Domain/Box` · `Features/Box` | `Domain/Flow` | B1, S2, S4, S6 |
+| **B3** | Cascade restack + conflict-tier | `IRestackEngine`, `IConflictClassifier` | — | B1, S2 |
+| **—** | Agent frontier (last) | `IPhaseBuilder`, `IResolver`, `IPlanner` | — | B-tier |
+
+**First mover (lean):** **S1**, with **S2 in parallel.** S1/S2/S3 are mutually independent;
+S1 unblocks the most downstream (S5, S6, the whole inbox UX), while S2 carries the highest
+*technical* risk (git mechanics) so it's worth starting early too.
 
 ---
 
-## WS0 — Domain core + composable lifecycle  *(the deterministic spine)*
+## Substrate
 
-**Goal:** the Box/Stack model and its rules as pure, testable code — no GitHub, no
-agent, no UI.
+### S1 — Decision / Inbox / Notification  *(the parallel system)*
 
-- Domain records: `Box`, `Phase`, `Node` (stable id, nullable `parent` edge so the
-  graph is DAG-capable), `Stack`. **Box-only — no Inbox/Decision types here** (those
-  belong to the parallel WS4 system; the Box consumes them through a port).
-- The **pinned input contract** `Plan`/`PlanPhase` (`design/the-box.md` §14) the Box
-  turns into Phase→Node — so `FakePlanner` (WS5) and the real planner (WS7) agree.
-- The **create/author stage** consumes an ICS doc per
-  [`design/ics-template.md`](../design/ics-template.md) (§4.0).
-- Node state machine + the three invariants (merge gate, ground-up backstop, deliberate
-  reopen) as pure logic (`design/the-box.md` §6).
-- **Lifecycle as a composed Flow of Steps** — stages (incl. **create/author** and
-  **interactive close-cleanup**) are add/remove/swap, reusing the rebuild's Step/Flow
-  model (`design/the-box.md` §4). Deterministic stages = code Steps.
-- The **`IInbox`/decision seam** — a high-level port + **in-memory fake** so the
-  lifecycle can raise decisions (plan-approval, close-cleanup) without the real Inbox
-  system existing yet (`design/the-box.md` §2.2, §13).
-- `Persistence` port + an **in-memory fake** (real durable store deferred to WS2/WS4).
-- Fakes for every neighbor port.
+**Goal:** a standalone human-decision + notification system — **its own**, not a Box part
+(`design/the-box.md` §2.2). **Extend the existing decision model**, don't greenfield:
+`Domain/Flow/Operations` (`IDecisionSource`, `DecisionDto`) and `Domain/Agents`
+(`PendingDecision`, `IDecisionResolver`, `DecisionKind`, `Resolution`).
 
-**Independent?** Fully. **Done-when:** state machine + invariants proven by unit tests;
-a lifecycle composed/recomposed from Steps in a test; warning-free, green, one commit.
+- **First task: author its own design doc** (non-Box producers, routing, decision
+  persistence) — `design/the-box.md` §2.2/§5 are only the Box-facing seam (§16).
+- General model: notification + decision items; decision subtypes (PR-approval, binary,
+  choice, critical-confirm); flat-chronological + filters; criticality friction;
+  notification→decision promote-action (`design/the-box.md` §5).
+- Swipe semantics: left=approve / right=deny, **forced note on deny**, gesture scope-hints.
 
-## WS1 — Workspace provisioning  *(infrastructure)*
+**Independent?** Fully — Box-agnostic. **Done-when:** a **test producer** raises
+notifications/decisions; they're queried/filtered; swipes round-trip with the deny-note
+rule enforced. (Delivery + client are S5.)
+
+### S2 — PR / Git stack  *(highest technical risk)*
+
+**Goal:** branch/PR mechanics against a **throwaway GitHub repo** — fully testable without
+any LLM. **Grow `Features/Git`** (`IPullRequests`, `MergeResult`, `StubPullRequests`,
+`PrList`/`PrMerge`) into `IStackHost`.
+
+- Branch/PR CRUD, **base retarget**, **rebase-merge** primitive (`design/the-box.md` §16).
+- The genuine unknowns live here — rebase-merge rewrites SHAs, so descendants must
+  retarget onto the merged parent. **Prove this early** (a throwaway spike is the natural
+  way, if we choose to — not locked).
+- Identity wiring: **read-as-bot** here; approve-as-owner is S5.
+
+**Independent?** Yes (canned branches/diffs, no agent). **Done-when:** a hand-made
+2-branch stack opens, rebase-merges one onto a base, retargets the descendant — all driven
+by test code against a throwaway repo.
+
+### S3 — Workspace provisioning  *(infrastructure)*
 
 **Goal:** materialize a worker's working copy per **profile**, behind a port.
 
 - `IWorkspaceProvisioner` + the profile model (declared per project, override per Box).
-- **Worktree adapter first** (this repo's tier — we run in one today).
-- Stub the `full-clone` (Unity) and `container/VM` (JS) adapters as named, unimplemented
-  profiles so the seam is real (`design/the-box.md` §11).
+- **Worktree adapter first** (this repo's tier). Stub `full-clone` (Unity) and
+  `container/VM` (JS) as named, unimplemented profiles (`design/the-box.md` §11).
 - Map profiles to the control-plane isolation tiers
   ([`agent-controls/control-plane.research.md`](agent-controls/control-plane.research.md)).
 
 **Independent?** Yes. **Done-when:** worktree provisioning works end-to-end; profile
 selection + override tested; other profiles fail loud as "not yet built."
 
-## WS2 — PR / Git connection  *(deterministic, no agent)*
+### S4 — Node projection  *(wrap the determinism)*
 
-**Goal:** all branch/PR mechanics against a **throwaway GitHub repo** — fully testable
-without any LLM.
-
-- `IStackHost` GitHub adapter: branch/PR CRUD, base retarget, **two-level merge**
-  (rebase-merge; PR→box branch, box→main) (`design/the-box.md` §4.2, §16).
-- The **`.box/` strip Step** (deterministic) + final-PR mechanics (`design/the-box.md` §4.3).
-- The durable **persistence store** behind WS0's port (hybrid: GitHub = PR truth, store
-  = orchestrator graph) (`design/the-box.md` §12).
-- Identity wiring: **read-as-bot** here; approve-as-owner deferred to WS4.
-
-**Independent?** Yes (canned branches/diffs, no agent). **Done-when:** a hand-made
-2-node stack opens, merges ground-up into a box branch, closes with `.box/` stripped and
-a final PR — all driven by test code.
-
-## WS3 — Node projection (deterministic data-gathering)  *(wrap the determinism)*
-
-**Goal:** turn a Node into a review-ready `CardPayload` via a **composable gather
-pipeline** (`design/the-box.md` §14) — the core of "wrap determinism in structured
-units."
+**Goal:** turn a PR/Node into a review-ready `CardPayload` via a **composable gather
+pipeline** (`design/the-box.md` §14).
 
 - `INodeProjector` + gather-steps: diff summary, **key classes changed + rendered**,
-  originating Task/Step info, CI status, risk/test-evidence.
-- Each gather-step is add/remove/swap; the payload shape is configuration.
+  originating Task/Step info, CI status, risk/test-evidence. Each step add/remove/swap.
 - Criticality tagging + the structured "file types you'd normally inspect" view.
 
-**Independent?** Yes (depends on WS2 git + WS0 model; no agent). **Done-when:** a real PR
-projects to a complete, deterministic `CardPayload`; pipeline recomposable in a test.
+**Independent?** Depends on S2 git; no agent. **Done-when:** a real PR projects to a
+complete, deterministic `CardPayload`; pipeline recomposable in a test.
 
-## WS4 — Inbox/Decision system + client  *(parallel, independent track)*
+### S5 — Transport + identity (+ client)  *(the surface)*
 
-**Goal:** the standalone human-decision + notification system and its surface. **This is
-its own system, not a box component** (`design/the-box.md` §2.2) — the Box only depends
-on its high-level seam (a fake from WS0). Built independently and integrated at WS5.
+**Goal:** deliver the inbox to a human and let them act with the right identity.
 
-- **First task: author its own design doc** (the standalone Inbox/Decision design —
-  non-Box producers, decision routing + persistence). `design/the-box.md` §2.2/§5 are
-  only the Box-facing seam; this track owns the full design (`design/the-box.md` §16).
+- **SSE delivery** over the existing transport ([remote-access](../design/remote-access.md),
+  reusing `Features/Flows/Watch/Sse`) — no new pipe.
+- The swipe client (contract + thin view) rendering S4 payloads.
+- **Approve-as-owner from the phone** / read-feed-as-bot (`design/the-box.md` §5;
+  [agent-controls](agent-controls/README.md)).
 
-- `IInbox` + the **general Decision/Notification model**: decision subtypes
-  (PR-approval, binary, choice, critical-confirm), notification + promote-to-decision,
-  **flat-chronological + filters**, criticality friction (`design/the-box.md` §5).
-  Box-agnostic — a Box is just one producer.
-- **SSE delivery** over the existing transport ([remote-access](../design/remote-access.md)) —
-  no new pipe.
-- The swipe client (contract + thin view): left=approve / right=deny, **forced note on
-  deny**, gesture scope-hints.
-- **Approve-as-owner from the phone** / read-feed-as-bot
-  (`design/the-box.md` §5; [agent-controls](agent-controls/README.md)).
+**Independent?** Mostly (needs S1 items + S4 payloads). **Done-when:** items stream to a
+client over SSE, swipes round-trip, approve authenticates as **owner** against the S2
+throwaway repo.
 
-**Independent?** Yes — fully standalone; renders WS3 payloads but needs no Box to exist.
-**Done-when:** decisions/notifications stream to a client, swipes round-trip, approve
-authenticates as owner against the WS2 throwaway repo — exercised by a test producer, no
-Box required.
+### S6 — ICS authoring flow  *(guided authoring)*
 
-## WS5 — Integration thread  *(thin vertical, fakes for the agent)*
+**Goal:** a guided back-and-forth that produces an ICS doc ([`ics-template.md`](../design/ics-template.md)
+shape) — Box creation (`design/the-box.md` §4.0) consumes its output.
 
-**Goal:** prove the whole spine end-to-end **before any real agent.**
+- **Composes** `Domain/Flow` (Flow/Steps) + S1 (decision/inbox for the prompts).
+- The **bounded sibling of the planning flow** (fixed template → finite Q&A); building it
+  first de-risks the open-ended `IPlanner` later. Possibly one "guided authoring flow"
+  substrate with two configs.
 
-- Wire WS0–WS4 with `FakePlanner` (canned approved plan) + `FakePhaseBuilder` (canned
-  PRs).
-- Run: plan-approval card → agent-less stacked PRs → ground-up approve → two-level
-  merge → close → final PR.
+**Independent?** Composes S1 + Flow. **Done-when:** a guided flow turns a finite Q&A into a
+valid ICS doc; its steps are recomposable.
 
-**Done-when:** one Box goes plan→landed driven only by swipes + fakes; the §6 invariants
-hold live (run it, not just compiled).
+---
 
-## WS6 — Restack + conflict-tier ladder  *(more coupled, still no LLM)*
+## Box  *(composes the substrate)*
+
+### B1 — Box domain + state machine  *(the novel core)*
+
+**Goal:** the Box graph and its rules as pure, testable code.
+
+- `Domain/Box`: `Box`, `Phase`, `Node`, `Stack` (stable id, nullable `parent` edge →
+  DAG-capable); the **pinned input contract** `Plan`/`PlanPhase` (`design/the-box.md` §14).
+- Node state machine + the three invariants (merge gate, ground-up backstop, deliberate
+  reopen) as pure logic (`design/the-box.md` §6).
+- Consumes the **S1 decision port** + a `Persistence` port (in-memory fake; real store at B2).
+
+**Done-when:** state machine + invariants proven by unit tests; warning-free, green.
+
+### B2 — Lifecycle (composed Flow) + integration thread
+
+**Goal:** compose the substrate into the end-to-end Box lifecycle — **the thin vertical
+thread**, with the agent faked.
+
+- **Lifecycle as a composed Flow of Steps** (reuse `Domain/Flow`), stages add/remove/swap
+  (`design/the-box.md` §4): create/author (**S6**) → plan-gate (decision via **S1**) →
+  building (`FakePhaseBuilder`) → ground-up review (**S4** payloads via **S5**) →
+  **two-level merge** (**S2** primitives; box→main + deterministic `.box/` strip Step) →
+  **interactive close-cleanup** (decision via **S1**).
+- The durable **persistence store** behind B1's port (hybrid: GitHub = PR truth, store =
+  graph) (`design/the-box.md` §12).
+
+**Done-when:** one Box goes create→plan→build(faked)→ground-up approve→two-level
+merge→close→final PR, driven only by swipes + fakes; the §6 invariants hold **live**.
+
+### B3 — Cascade restack + conflict-tier ladder
 
 **Goal:** self-healing cascade on reject/rebuild.
 
@@ -166,46 +189,53 @@ hold live (run it, not just compiled).
 - Reject → classify (quick-update vs rebuild) → cascade (`design/the-box.md` §8).
 - `FakeResolver` returns canned resolutions.
 
-**Done-when:** a denied low node rebuilds and descendants cascade-restack with tiers
-detected; reopen action works. Detection proven; resolution still faked.
-
-## WS7 — Interconnected last  *(the agent-coupled frontier)*
-
-Deferred on purpose — these need the spine above and carry the most coupling/uncertainty.
-
-- **`IPhaseBuilder`** — the agent that *does the work* (phase → code + PR).
-- **`IResolver`** — the agent that resolves Tier 2/3 conflicts (`design/the-box.md` §9, §16).
-- **`IPlanner`** — the conversational planning flow that emits the approved plan file
-  (**currently out of scope**; `design/the-box.md` §3).
-- **Speculative dual-path** — the heuristic hedge-and-prune policy (`design/the-box.md` §10).
-
-**Done-when:** real agents replace the WS5/WS6 fakes; the product runs for real.
+**Done-when:** a denied node rebuilds, descendants cascade-restack with tiers detected,
+reopen works. Detection proven; resolution still faked.
 
 ---
 
-## Why the agent bits are last
+## Agent frontier  *(last — the interconnected, fuzziest bits)*
 
-The agent is the **least deterministic and most coupled** part. Building the git
-mechanics, the deterministic projection, the inbox, and the lifecycle first means: (1)
-each is independently testable without an LLM in the loop; (2) by WS5 we have a working,
-demonstrable system driven by fakes; (3) when the agent lands, it plugs into proven
-seams instead of being debugged simultaneously with everything else. "How to plan" and
-"how to do the work" are the two hardest, fuzziest problems — they benefit most from a
-solid, finished harness underneath.
+Deferred on purpose — these need the substrate + Box above and carry the most
+coupling/uncertainty.
 
-## Done-when bar (every workstream)
+- **`IPhaseBuilder`** — the agent that *does the work* (phase → code + PR).
+- **`IResolver`** — the agent that resolves Tier 2/3 conflicts (`design/the-box.md` §9, §16).
+- **`IPlanner`** — the open-ended conversational planning flow (**out of scope today**;
+  `design/the-box.md` §3). **S6 is its bounded prototype.**
+- **Speculative dual-path** — the heuristic hedge-and-prune policy (`design/the-box.md` §10).
+
+**Done-when:** real agents replace the B2/B3 fakes; the product runs for real.
+
+---
+
+## Why substrate-first
+
+The Box is mostly *composition*; its genuinely novel, owned part is small (the stack state
+machine, two-level merge, cascade restack, conflict-tier ladder). The unknowns it depends
+on — decisions, git mechanics, projection — are **used by** the Box, not **owned by** it.
+Building them first means: (1) each is independently testable and useful on its own (a real
+decision/inbox even helps the current flows UI); (2) the shared systems don't get
+Box-shaped; (3) by B2 the Box is a thin, demonstrable thread over proven components instead
+of plumbing-plus-novelty debugged at once. The agent-coupled bits — the fuzziest problems —
+plug into a finished harness at the very end.
+
+## Done-when bar (every build)
 
 Same as the rebuild: warning-free build, green tests, behavior **run** (not just
-compiled), one coherent commit. Each workstream ships behind its port with a fake so the
-next can start.
+compiled), one coherent commit. Each build ships behind its seam with a fake so the next
+can start.
 
 ## Open sequencing risks
 
-- **WS4 before a real builder** assumes `FakePhaseBuilder` payloads are representative —
-  keep the fake's `CardPayload` shape honest against WS3.
-- **WS6 needs real code to conflict on** — it can run against the WS2 throwaway repo with
-  scripted diffs; doesn't need WS7.
-- **Persistence choice** (embedded SQLite vs document store) lands in WS2 — decide then,
-  not now (`design/the-box.md` §16).
-- **`IPlanner` out-of-scope** means WS7 may pull in the separate planning-flow design;
-  treat that as its own track, not a blocker for WS0–WS6.
+- **Speculative generality on S1 / S6.** The biggest trap of substrate-first: over-build a
+  "general" inbox/authoring flow. Keep the Box as the forcing function — scope to its needs
+  plus obvious adjacent value, nothing more.
+- **S2 git unknowns are the top technical risk** — rebase-merge + retarget + cascade. Start
+  early; a throwaway spike is the natural way to retire it (not locked).
+- **Persistence store choice** (embedded SQLite vs document store) lands in **B2** — decide
+  then (`design/the-box.md` §16).
+- **Tier-3 detection is bounded by test coverage** (B3) — thin tests let semantic conflicts
+  pass as green (`design/the-box.md` §9).
+- **`IPlanner` out-of-scope** — the agent frontier may pull in the separate planning-flow
+  design; treat it as its own track, with **S6 as the bounded prototype**, not a blocker.
