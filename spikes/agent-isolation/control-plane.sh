@@ -26,7 +26,11 @@ PWNED="$RUNTIME/PWNED-hook-ran"       # a planted hook would write here if it ra
 log() { printf '  [cp] %s\n' "$*" >&2; }
 
 cp_setup() {
-  id -u "$WORKER" >/dev/null 2>&1 || useradd -m -s /bin/bash "$WORKER"
+  # Fresh, ephemeral worker every run: a reused home (/home/worker) survives
+  # `rm -rf $RUNTIME` and is a cross-run foothold (red-team F-4). Recreate it.
+  pkill -KILL -u "$WORKER" 2>/dev/null || true
+  userdel -rf "$WORKER" 2>/dev/null || true
+  useradd -m -s /bin/bash "$WORKER"
   rm -rf "$RUNTIME"
   mkdir -p "$CP_HOME"
   chmod 700 "$CP_HOME"
@@ -102,13 +106,18 @@ cp_seed() {
 # So: prune every .git, copy with --no-dereference (the link, never its target),
 # then strip any symlink that reached the staged tree before committing.
 
-# The per-file copy primitive, shared by harvest and the R3 regression test so the
-# test exercises the real code path. --no-dereference is the load-bearing flag:
-# even if the path is a symlink (raced in after find enumerated it as regular),
-# copy the LINK, never root-read its target.
+# The per-file copy primitive, shared by harvest and the R3/R4 regression tests so
+# the tests exercise the real code path. Defenses, layered against the find->cp
+# TOCTOU window (a surviving worker swaps a file type after `find` enumerated it):
+#   - skip anything that is a symlink or not a regular file (FIFO/socket/device) —
+#     a FIFO would otherwise block `cp` forever and hang the whole harvest;
+#   - --no-dereference so a symlink raced in after the check is copied as a link,
+#     never root-read at its target;
+#   - timeout so even a FIFO raced in after the check cannot block harvest.
 cp_ingest_one() {
+  if [ -L "$2/$1" ] || [ ! -f "$2/$1" ]; then return 0; fi
   mkdir -p "$3/$(dirname "$1")"
-  cp --no-preserve=all --no-dereference -- "$2/$1" "$3/$1" 2>/dev/null || true
+  timeout 10 cp --no-preserve=all --no-dereference -- "$2/$1" "$3/$1" 2>/dev/null || true
 }
 
 cp_strip_symlinks() {
@@ -177,6 +186,24 @@ cp_test_toctou() {
   rm -rf "$d" "$dst"
 }
 
+# R4 — same find->cp TOCTOU window, but the file is swapped for a FIFO instead of
+# a symlink. --no-dereference does nothing for a FIFO: a vulnerable copy open()s it
+# and blocks on read() forever, hanging the harvest so teardown (secret cleanup,
+# worker reap) never runs. Deterministic, drives the real primitive under a guard.
+cp_test_fifo() {
+  local out="$1" d="$RUNTIME/fifo-src" dst="$RUNTIME/fifo-dst"
+  rm -rf "$d" "$dst"; mkdir -p "$d" "$dst"
+  printf 'data\n' > "$d/race.txt"
+  find "$d" -type f >/dev/null                 # find sees a regular file
+  rm -f "$d/race.txt"; mkfifo "$d/race.txt"    # ...now it is a FIFO
+  if timeout 12 bash -c "source '$SPIKE_DIR/control-plane.sh'; cp_ingest_one race.txt '$d' '$dst'" >/dev/null 2>&1; then
+    printf 'R4|FIFO swapped in after find blocks the harvest|PASS|non-regular skipped/bounded, no hang\n' >> "$out"
+  else
+    printf 'R4|FIFO swapped in after find blocks the harvest|FAIL|copy hung on the FIFO\n' >> "$out"
+  fi
+  rm -rf "$d" "$dst"
+}
+
 # Anti-zombie teardown: kill every worker-owned process. Rung 1 has no pid
 # namespace, so a backgrounded worker process (the TOCTOU flipper) outlives the
 # agent unless the control plane reaps it (red-team R3 enabler).
@@ -212,8 +239,8 @@ spawn_agent() {
   esac
 }
 
-declare -A REQ1=( [A1]=PASS [A2]=PASS [A3]=REACHED [A4]=PASS [A5]=PARTIAL [A6]=PASS [A7]=PASS [R1]=PASS [R2]=PASS [R3]=PASS )
-declare -A REQ2=( [A1]=PASS [A2]=PASS [A3]=PASS    [A4]=PASS [A5]=PASS    [A6]=PASS [A7]=PASS [R1]=PASS [R2]=PASS [R3]=PASS )
+declare -A REQ1=( [A1]=PASS [A2]=PASS [A3]=REACHED [A4]=PASS [A5]=PARTIAL [A6]=PASS [A7]=PASS [R1]=PASS [R2]=PASS [R3]=PASS [R4]=PASS )
+declare -A REQ2=( [A1]=PASS [A2]=PASS [A3]=PASS    [A4]=PASS [A5]=PASS    [A6]=PASS [A7]=PASS [R1]=PASS [R2]=PASS [R3]=PASS [R4]=PASS )
 
 evaluate() {
   local rung="$1" out="$2" id req act desc detail all_met=0
@@ -250,9 +277,11 @@ cp_run_rung() {
   log "spawning adversarial agent (rung $rung)"
   rm -f "$PWNED"
   spawn_agent "$rung" >> "$out" 2>/dev/null || true
+  pkill -KILL -u "$WORKER" 2>/dev/null || true   # freeze the tree: reap any survivor BEFORE harvest reads $WORK (red-team F-1)
   cp_harvest "$rung" "$out"
   cp_check_seam "$out"
   cp_test_toctou "$out"
+  cp_test_fifo "$out"
   cp_stop_process
   local rc=0; evaluate "$rung" "$out" || rc=$?
   cp_teardown

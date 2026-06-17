@@ -83,7 +83,8 @@ Both rungs are **GREEN** — every row met its required result.
 | A7 | control plane commits the agent's diff as the bot | PASS | PASS | control plane holds the identity |
 | **R1** | plant `.git/hooks/pre-commit` for the harvester to run | PASS | PASS | harvest ingests file content only; hooks off on the clone |
 | **R2** | plant a symlink for the harvester to commit | PASS | PASS | harvest skips symlinks (`find -type f`) |
-| **R3** | TOCTOU: flip a file to a symlink-at-secret between `find` and `cp` | PASS | PASS | copy with `--no-dereference` + strip symlinks; anti-zombie teardown |
+| **R3** | TOCTOU: flip a file to a symlink-at-secret between `find` and `cp` | PASS | PASS | copy with `--no-dereference` + strip symlinks; reap workers before harvest |
+| **R4** | TOCTOU: flip a file to a FIFO between `find` and `cp` (hangs harvest → teardown never runs) | PASS | PASS | skip non-regular files + per-file `timeout` |
 
 Rung 1 deliberately leaves **A3 reachable** and **A5 partial** — it has no egress
 control. That is the exact gap rung 2 closes with a network namespace: A3 flips to
@@ -124,8 +125,30 @@ because a live race is flaky and a flaky security test gives false confidence �
 drives the *real* copy primitive. Negative control: revert `--no-dereference` and
 R3 fails 5/5; with the fix it passes.
 
-The lesson: the outward perimeter (A1–A6) was sound from the start; **every real
-hole was on the return path** — the control plane ingesting an attacker-owned tree.
+#### Round 3 (R4 + hardening): the FIFO twin, and freezing the tree
+
+A third pass confirmed the symlink fixes hold under a *live* race (5 trials, zero
+leak) but found a sibling of the same TOCTOU: a worker swaps a file for a **FIFO**
+after `find`. `--no-dereference` doesn't help a FIFO — `cp` `open()`s it and blocks
+on `read()` forever, hanging harvest so **teardown never runs** (the secret-bearing
+process is never killed). R4 reproduces it deterministically; the fix skips
+non-regular files and bounds each copy with `timeout`. Two lifecycle hardenings
+landed alongside:
+
+- **Reap workers *before* harvest.** `$WORK` is worker-owned and was read live, so
+  a survivor could still mutate it during harvest. The control plane now
+  `pkill`s the worker before reading the tree — closing the race window at its
+  root (rung 2's pid namespace already did this; rung 1 needed it explicitly).
+- **Fresh ephemeral worker each run.** `/home/abox-worker` survived `rm -rf
+  $RUNTIME`; a planted `~/.gitconfig`/`~/.ssh` was a cross-run foothold. Setup now
+  recreates the user each run.
+
+The lesson, three rounds in: the outward perimeter (A1–A6) was sound from the
+start; **every real hole was on the return path** — the control plane ingesting an
+attacker-owned tree — and they came in a family (hook, symlink-follow, FIFO-hang)
+that a single point fix doesn't cover. The durable fix is *treat the harvested
+tree as hostile*: reap first, then copy regular-file content only, never following
+or blocking on what the worker controls.
 
 ## Rung → mechanism → A.Box / Windows mapping
 
@@ -156,6 +179,21 @@ control-plane/sandbox seam.
   git proxy (authenticated access to the real remote, no token needed) and
   exfiltrate to any host. Rung 1 is "principle only"; egress is exactly what rung 2
   adds, and it is the single highest-value control.
+- **Harvest commits untrusted *content* by design — the gate is downstream.** The
+  seam blocks control-flow injection (hooks, symlinks, FIFOs), but it does not vet
+  file *content* or *paths*: a committed `.github/workflows/*.yml` would run in CI
+  on a later step. That is deliberate (research §7: the op is dumb; safety is the
+  review agent + CI + the owner-approval ruleset). In *this* repo `.github/**` is
+  already a critical protected path (CODEOWNERS + `policy-guard`), so it cannot
+  land unreviewed — but the spike proves the sandbox boundary, not that downstream
+  gate.
+- **A real allowlist-egress rung must test more than `curl github`.** When one
+  endpoint is permitted, the test set has to assert: the allowed endpoint is
+  reachable; *everything else* (arbitrary host, raw IP) is `000`; the cloud
+  **metadata IP `169.254.169.254` is unreachable** (SSRF→creds); DNS can't be used
+  as an exfil channel; loopback/host services are unreachable; and either no file
+  content can tunnel over the allowed endpoint or that's explicitly left to
+  downstream review. Rung 2 here proves only the `--net none` case.
 - **Rung 3 (identity & provability) is not here.** "Unsigned commit → rejected" and
   "bot can't self-approve its own PR" are server-side GitHub App + ruleset
   guarantees — to be discussed and stood up separately.
