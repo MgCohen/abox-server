@@ -164,6 +164,10 @@ The §9 conflict-tier ladder, validated against prior art:
 
 ## 7. Low-confidence / verify-before-relying
 
+> **Update (2026-06-17):** the §2 / §8-Leg-A happy path is now **empirically confirmed live** —
+> see §9. The auto-cascade / auto-retarget-on-base-delete claim below is **still unverified**
+> (branch deletion was blocked in the spike environment).
+
 - **"GitHub native stacked-PR support" (`gh-stack`, an InfoQ 2026 article).** Several findings
   trace to `github.github.com/gh-stack` and a 2026 InfoQ piece describing first-party stacked
   PRs with auto-cascade. Treat as **unverified** — possibly an experiment, a third-party
@@ -193,6 +197,46 @@ Minimum sequence to prove against a throwaway repo, end to end — both legs:
 Output of the spike = a verified call/command transcript + the gotchas that actually bit, fed
 into **S2.2 (base git unify + real adapter)** and **S2.3 (`IStackHost` stack ops)**. The spike
 is throwaway; the transcript is the kept artifact.
+
+## 9. Spike results — S2.1a/b verified live (2026-06-17)
+
+Both S2.1 legs ran (`spikes/git-stack/FINDINGS-local.md`, `FINDINGS-github.md`). The happy path
+and rebuild cascade are **empirically confirmed**; the auto-retarget-on-base-delete question
+remains **unverified** (branch deletion blocked in this environment).
+
+**Confirmed — S2.1a (local, bare-repo remote):**
+- **Merge-commit preserves descendant ancestry.** After `git merge --no-ff`,
+  `merge-base --is-ancestor <parent-tip> <box>` exits 0; the descendant diff is clean →
+  retarget-not-rebase holds.
+- **Rebuild cascade.** `git rebase --onto <new-parent> <old-parent> <descendant>` replays cleanly.
+- **Force-push.** `--force-with-lease` *alone* was **defeated by a background `git fetch`** (it
+  clobbered un-integrated work); `--force-with-lease --force-if-includes` rejected that exact race.
+  **`--force-if-includes` is mandatory** for an automated cascade — `Domain/Git/Git.cs` PushOp is
+  lease-only today (line 81) and must add it (S2.3).
+- **New "clean" oracle.** Three-dot diff (`base...head`) is **not** sufficient alone — robust to a
+  fast-forwarded base but leaks a phantom on a *rewritten* base. The reliable check is
+  `merge-base --is-ancestor <base-tip> <head>`, which the merge-commit happy path satisfies for free.
+
+**Confirmed — S2.1b (live GitHub API, `MgCohen/abox-server`, `spike/` branches):**
+- Create-PR-onto-non-`main`-base works (`base=spike/box-x` and `base=spike/phase-1` both accepted).
+- `merge_pull_request` with `merge_method=merge` returns the merge-commit sha = new box-branch tip.
+- Retarget is a **pointer-only** PATCH (`update_pull_request base=…`); **PR #64's diff was
+  byte-identical before and after retarget — only the descendant's one file, no phantom.** §1/§8
+  Leg-A is now proven end-to-end on the real API.
+- **New:** `mergeable_state:unstable` = checks *pending*, NOT a conflict (distinct from `dirty`) —
+  adapters must not treat `unstable` as unmergeable.
+- **New:** auto-delete-head-on-merge is **OFF** for this repo; a merged head branch survives —
+  don't assume merged heads vanish.
+
+**Still unverified (carry forward):** GitHub's auto-retarget vs auto-close on base-branch *delete*,
+and approval-dismissal-on-push — both untestable here (branch deletion blocked; no branch protection).
+Per §6/§7 they stay **verify-don't-rely**; the orchestrator must **explicitly retarget** descendants
+and never depend on auto-behavior.
+
+**Environment constraints (matter for S2.2/S2.3 tooling):** the authenticated `origin` proxy permits
+create/push but **403s on ref deletion**; the GitHub MCP server has **no ref-delete tool**; no `gh`
+CLI. Branch cleanup needs owner rights, and the real adapter (S2.2b) needs a delete-ref capability the
+current toolset lacks.
 
 ## Sources
 
