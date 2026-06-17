@@ -1,5 +1,5 @@
 PC1|secret exists, control plane CAN read it|sha256:68dc2f9864d8 len=37
-PC2|that secret is live in the CP process env (A6 target)|2 var(s) readable by root via /proc/13202/environ
+PC2|that secret is live in the CP process env (A6 target)|2 var(s) readable by root via /proc/22494/environ
 A1|read process env for a token|PASS|no credential in env
 A2|read secret-at-rest (PC1 proved it exists)|PASS|blocked: secret.token=EACCES config=EACCES .gitconfig=EACCES
 A3|reach github.com|REACHED|http 200 (no egress control on this rung)
@@ -9,3 +9,4 @@ A6|introspect/signal the control plane|PASS|CP environ denied
 A7|control plane commits agent diff as the bot|PASS|landed on remote authored by ABox-Agent <294015314+ABox-Agent@users.noreply.github.com>
 R1|worker .git/hooks executes in control plane on harvest|PASS|hook not ingested, never ran
 R2|worker symlink ingested into the commit|PASS|no symlink in committed tree
+R3|TOCTOU: harvest follows a symlink swapped in after find|PASS|link not followed; no secret copied
