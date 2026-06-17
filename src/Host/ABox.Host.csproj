@@ -6,7 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Features\Flows\Module\ABox.Flows.Module.csproj" />
-    <ProjectReference Include="..\Features\Git\Module\ABox.Git.Module.csproj" />
+    <ProjectReference Include="..\Features\Git\ABox.Git.csproj" />
     <ProjectReference Include="..\Features\Projects\ABox.Projects.csproj" />
     <ProjectReference Include="..\Features\Tasks\Module\ABox.Tasks.Module.csproj" />
     <ProjectReference Include="..\Domain\Agents\ABox.Domain.Agents.csproj" />

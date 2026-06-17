@@ -26,7 +26,7 @@ internal static class Composition
 
         services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
-        services.AddFastEndpoints(o => o.Assemblies = [ProjectsModule.EndpointsAssembly]);
+        services.AddFastEndpoints(o => o.Assemblies = [ProjectsModule.EndpointsAssembly, GitModule.EndpointsAssembly]);
 
         services.AddSingleton<IOrchestratorPaths, OrchestratorPaths>();
 

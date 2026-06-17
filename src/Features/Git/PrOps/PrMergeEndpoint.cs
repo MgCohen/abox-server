@@ -1,18 +1,27 @@
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Routing;
+using FastEndpoints;
 using ABox.Features.Git.Contracts;
 
 namespace ABox.Features.Git.PrOps;
 
-public static class PrMergeEndpoint
+internal sealed class PrMergeEndpoint(IPullRequests pullRequests) : EndpointWithoutRequest<MergeResult>
 {
-    public static void Map(IEndpointRouteBuilder prs) =>
-        prs.MapPost("/{number:int}/merge", (int number, IPullRequests pullRequests) =>
+    public override void Configure()
+    {
+        Post("/git/prs/{number}/merge");
+        AllowAnonymous();
+    }
+
+    public override async Task HandleAsync(CancellationToken ct)
+    {
+        var number = Route<int>("number");
+        if (pullRequests.List(".").Any(p => p.Number == number))
         {
-            var pr = pullRequests.List(".").FirstOrDefault(p => p.Number == number);
-            return pr is null
-                ? Results.NotFound(new { error = $"PR #{number} not found." })
-                : Results.Ok(new MergeResult(number, "merged"));
-        });
+            await Send.OkAsync(new MergeResult(number, "merged"), ct);
+            return;
+        }
+
+        // The 404 body is a custom {error} shape, not the endpoint's MergeResult, so it goes out the
+        // arbitrary-object door rather than Send.ResponseAsync (which is typed to TResponse).
+        await HttpContext.Response.SendAsync(new PrNotFound($"PR #{number} not found."), 404, cancellation: ct);
+    }
 }
