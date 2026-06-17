@@ -86,15 +86,18 @@ rule enforced. (Delivery + client are S5.)
 any LLM. **Grow `Features/Git`** (`IPullRequests`, `MergeResult`, `StubPullRequests`,
 `PrList`/`PrMerge`) into `IStackHost`.
 
-- Branch/PR CRUD, **base retarget**, **rebase-merge** primitive (`design/the-box.md` §16).
-- The genuine unknowns live here — rebase-merge rewrites SHAs, so descendants must
-  retarget onto the merged parent. **Prove this early** (a throwaway spike is the natural
-  way, if we choose to — not locked).
+- Branch/PR CRUD, **base retarget**, **merge-commit** + cascade-**rebase** primitives
+  (`design/the-box.md` §16; `research/stacked-prs.md`).
+- The genuine unknowns live here — a clean **merge commit** keeps the merged phase an
+  ancestor (descendant just retargets, no rebase); only **rebuild** rewrites SHAs and
+  forces a cascade-rebase (`rebase --onto` + force-push). **Prove both early** (a throwaway
+  spike is the natural way, if we choose to — not locked).
 - Identity wiring: **read-as-bot** here; approve-as-owner is S5.
 
 **Independent?** Yes (canned branches/diffs, no agent). **Done-when:** a hand-made
-2-branch stack opens, rebase-merges one onto a base, retargets the descendant — all driven
-by test code against a throwaway repo.
+2-branch stack opens, **merge-commits** one into the box branch and retargets the descendant
+(no rebase), then a **rebuild** leg cascade-rebases the descendant onto the rewritten parent —
+all driven by test code against a throwaway repo.
 
 ### S3 — Workspace provisioning  *(infrastructure)*
 

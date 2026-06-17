@@ -19,9 +19,11 @@ copies a known-good sequence instead of discovering it.
 ## TL;DR for the spike
 
 1. **Merge method is the whole ballgame.** `squash` and `rebase` **rewrite SHAs** and break
-   the stack; only a true **merge commit** preserves descendant ancestry. Our design leans
-   to *lock rebase-merge* (§16) — that's a deliberate choice to **own the cascade**, not
-   avoid it: after each merge we rebase descendants locally and retarget their PR base.
+   the stack; only a true **merge commit** preserves descendant ancestry. **Decision:** Level-1
+   stacked merges use a **merge commit** (`design/the-box.md` §16) — the merged parent stays an
+   ancestor of the box branch, so on the happy path descendants only **retarget** their base
+   (often automatically), no rebase. The local `rebase --onto` cascade is reserved for
+   **reject/rebuild** (§8), where SHAs genuinely change.
 2. **There is no GitHub API that rebases descendants for you.** Auto-retargeting only moves
    the base *pointer*; it never rebases commits. The orchestrator does the rebase locally
    (`git rebase --onto`) and force-pushes with a lease, then `PATCH`es each PR's `base`.
@@ -47,9 +49,11 @@ copies a known-good sequence instead of discovering it.
 - Squash/rebase "destroy the shared commit hashes that git uses to recognize the dependency
   relationship between dependent branches." ([LogRocket — Stacked PRs in GitHub](https://blog.logrocket.com/using-stacked-pull-requests-in-github/))
 
-**Consequence for us:** because we lean rebase-merge, *every* Level-1 merge inside a Box
-triggers a descendant cascade. That's expected and is precisely what B3 automates — the
-spike must prove the single-step version of it.
+**Consequence for us:** we use a **merge commit** at Level 1, so a *clean* merge keeps the
+parent's commits as ancestors of the box branch — descendants only retarget (no rebase). The
+local `rebase --onto` cascade is needed only on **reject/rebuild** (§8), where the rebuilt
+phase's SHAs change. The spike must therefore prove *both* paths: clean merge-commit
+(retarget-only) and rebuild (rebase-onto + force-push).
 
 ## 2. The merge API and the retarget API
 
@@ -170,15 +174,21 @@ The §9 conflict-tier ladder, validated against prior art:
 
 ## 8. What this means for the spike (S2.1)
 
-Minimum sequence to prove against a throwaway repo, end to end:
+Minimum sequence to prove against a throwaway repo, end to end — both legs:
 
+**Leg A — clean merge (merge commit, the happy path):**
 1. Create base branch `box/x`; create `phase-1` and `phase-2` (2-node stack) with PRs:
    `phase-1 → box/x`, `phase-2 → phase-1`.
-2. **Rebase-merge** `phase-1` into `box/x` via the merge API → capture the new base tip SHA.
-3. Locally `git rebase --onto <new-tip> <old-phase-1-tip> phase-2`; force-push with lease.
-4. `PATCH` `phase-2`'s base from `phase-1` → `box/x`; confirm the diff is clean (no phantom
-   commits), PR mergeable.
-5. Delete `phase-1` head branch **after** step 4; confirm no PR auto-closed unexpectedly.
+2. Merge `phase-1` into `box/x` via the merge API with `merge_method=merge` (merge commit).
+3. `PATCH` `phase-2`'s base `phase-1` → `box/x`; delete the `phase-1` head branch **after** the
+   retarget.
+4. Confirm `phase-2`'s diff is clean (no phantom commits — `phase-1`'s commits are now ancestors
+   of `box/x`), PR mergeable, nothing auto-closed.
+
+**Leg B — rebuild cascade (the reject path, where SHAs do change):**
+5. Rebuild/amend `phase-1` (new SHAs); locally `git rebase --onto <new-phase-1-tip>
+   <old-phase-1-tip> phase-2`; force-push with `--force-with-lease --force-if-includes`; confirm
+   `phase-2` is clean against the rebuilt parent.
 
 Output of the spike = a verified call/command transcript + the gotchas that actually bit, fed
 into **S2.2 (base git unify + real adapter)** and **S2.3 (`IStackHost` stack ops)**. The spike

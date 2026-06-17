@@ -147,8 +147,9 @@ into the planning conversation. The Box doesn't open until a plan is approved.
 A Box has **its own integration branch**; stacked PRs target *it*, never `main`.
 
 - **Level 1 (inside the Box):** as each PR is approved **ground-up**, it merges into
-  the box branch (**rebase-merge**, §16). The box branch grows one approved phase at a
-  time; descendants rebase onto the merged parent.
+  the box branch via a **merge commit** (§16) — the merged phase's commits stay
+  ancestors of the box branch, so descendants only **retarget** onto it (often
+  automatically), no rebase. The box branch grows one approved phase at a time.
 - **Level 2 (close):** when the whole stack is approved, the Box closes with **one
   final PR, box branch → `main`** — a `critical-confirm` decision. `main` only ever
   sees a single, fully-reviewed Box.
@@ -381,8 +382,15 @@ that doc owns *how/order*.
 
 Recommendations are leans, not locks:
 
-- **Merge strategy** *(lean: lock)*: force **rebase-merge** for stacked nodes — squash
-  orphans descendants by rewriting the parent's SHAs.
+- **Merge strategy** *(decided: merge commit)*: Level-1 stacked-node merges use a **true
+  merge commit**, not squash or rebase-merge. Merge commit is the only method that keeps
+  the merged parent's commits as **ancestors** of the box branch — squash and rebase-merge
+  both rewrite those SHAs and orphan descendants, forcing a cascade-rebase on *every* clean
+  merge. With merge commits a descendant needs only a **base retarget** on the happy path;
+  the local cascade-rebase (§8) is reserved for **reject/rebuild**, where SHAs genuinely
+  change. Box-branch history goes non-linear, but never reaches `main` cleanly anyway
+  (Level 2 is one final PR + `.box/` strip). Level-2 (box → `main`) merge method is
+  independent and unspecified here. (`research/stacked-prs.md` §1.)
 - **Resolver autonomy bound** *(lean)*: Tier 0–2 resolve silently; **Tier 3 escalates
   to a card** unless coverage + confidence exceed a threshold.
 - **Dual-path policy thresholds** (§10): the actual confidence/cost cutoffs — tune
