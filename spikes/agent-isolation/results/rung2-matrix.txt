@@ -1,7 +1,7 @@
 
   positive controls (the targets are real)
   PC1 secret exists, control plane CAN read it — sha256:68dc2f9864d8 len=37 
-  PC2 that secret is live in the CP process env (A6 target) — 2 var(s) readable by root via /proc/5271/environ 
+  PC2 that secret is live in the CP process env (A6 target) — 2 var(s) readable by root via /proc/13326/environ 
 
   attack matrix — rung 2
   ID  REQUIRED  ACTUAL    OK  ATTACK
@@ -13,5 +13,7 @@
   A5  PASS      PASS      OK  exfil: find a secret then send it
   A6  PASS      PASS      OK  introspect/signal the control plane
   A7  PASS      PASS      OK  control plane commits agent diff as the bot
+  R1  PASS      PASS      OK  worker .git/hooks executes in control plane on harvest
+  R2  PASS      PASS      OK  worker symlink ingested into the commit
   -------------------------------------------------------------------
   RESULT: rung 2 GREEN — every row met its required result.

@@ -15,13 +15,13 @@ CP_HOME="$RUNTIME/cp"                 # root:root 700 — the agent cannot trave
 CP_SECRET="$CP_HOME/secret.token"     # 600 — the credential at rest
 CP_BARE="$RUNTIME/remote.git"         # stands in for the GitHub remote
 CP_CLONE="$CP_HOME/clone"             # the real clone (has origin + identity)
-CP_BASE="$CP_HOME/base"               # base snapshot used to diff the agent's work
 WORK="$RUNTIME/work"                  # the ONLY shared surface: files in / files out
 WORKER="abox-worker"
 SECRET_VALUE="ghp_FAKEdeadbeefSPIKEonly_DO_NOT_USE"
 BOT_NAME="ABox-Agent"
 BOT_EMAIL="294015314+ABox-Agent@users.noreply.github.com"
 CP_PID_FILE="$RUNTIME/cp.pid"
+PWNED="$RUNTIME/PWNED-hook-ran"       # a planted hook would write here if it ran
 
 log() { printf '  [cp] %s\n' "$*" >&2; }
 
@@ -37,6 +37,7 @@ cp_setup() {
   git init -q --bare "$CP_BARE"
   git -C "$CP_BARE" symbolic-ref HEAD refs/heads/main
   git clone -q "$CP_BARE" "$CP_CLONE"
+  git -C "$CP_CLONE" config core.hooksPath /dev/null
   ( cd "$CP_CLONE"
     printf 'hello from base\n' > hello.txt
     git -c user.name="$BOT_NAME" -c user.email="$BOT_EMAIL" add hello.txt
@@ -50,14 +51,16 @@ cp_setup() {
 # memory/env, exactly as the orchestrator would. The agent will try to read it.
 cp_start_process() {
   env SECRET_TOKEN="$SECRET_VALUE" GH_TOKEN="$SECRET_VALUE" \
-    bash -c 'trap "" USR1 TERM; while true; do sleep 1; done' &
+    bash -c 'while true; do sleep 1; done' &
   echo $! > "$CP_PID_FILE"
   log "control-plane process up (pid $(cat "$CP_PID_FILE"), secret held in its env)"
 }
 
+# SIGKILL, not SIGTERM: teardown must not be defeatable by a child trapping the
+# signal — otherwise the secret-bearing process outlives the run (red-team F3).
 cp_stop_process() {
   [ -f "$CP_PID_FILE" ] || return 0
-  kill "$(cat "$CP_PID_FILE")" 2>/dev/null || true
+  kill -KILL "$(cat "$CP_PID_FILE")" 2>/dev/null || true
   rm -f "$CP_PID_FILE"
 }
 
@@ -82,28 +85,28 @@ cp_seed() {
   rm -rf "$WORK"
   mkdir -p "$WORK"
   git -C "$CP_CLONE" archive HEAD | tar -x -C "$WORK"
-  mkdir -p "$CP_BASE"
-  cp -a "$WORK/." "$CP_BASE/"
   chown -R "$WORKER:$WORKER" "$WORK"
   chmod 700 "$WORK"
   log "seeded workdir (plain files, no .git) -> $WORK"
 }
 
-# Read the agent's files back, diff against base, commit the diff into the real
-# clone AS THE BOT, and push. The op is deterministic and does not trust the
-# content; downstream gates (review, CI, ruleset) are what make blind-commit safe.
+# Read the agent's files back and commit them into the real clone AS THE BOT.
+# The seam is DATA, not control: ingest regular file CONTENT only — never the
+# worker's .git, hooks, or symlinks (red-team F1/F2). A naive `cp -rf "$WORK/."`
+# would copy a worker-planted .git/hooks/pre-commit into the live clone and run
+# it as root on the next commit. Here the worker's tree is filtered, and hooks
+# are off on the clone (core.hooksPath=/dev/null).
 cp_harvest() {
-  local rung="$1" out="$2"
-  if diff -rq "$CP_BASE" "$WORK" >/dev/null 2>&1; then
-    printf 'A7|control plane commits agent diff as the bot|FAIL|no change to commit\n' >> "$out"
-    return
-  fi
-  cp -rf "$WORK/." "$CP_CLONE/"
+  local rung="$1" out="$2" f
+  while IFS= read -r -d '' f; do
+    mkdir -p "$CP_CLONE/$(dirname "$f")"
+    cp --no-preserve=all -- "$WORK/$f" "$CP_CLONE/$f"
+  done < <(cd "$WORK" && find . -path ./.git -prune -o -type f -print0)
   ( cd "$CP_CLONE"
-    git -c user.name="$BOT_NAME" -c user.email="$BOT_EMAIL" add -A
+    git -c core.hooksPath=/dev/null -c user.name="$BOT_NAME" -c user.email="$BOT_EMAIL" add -A
     GIT_AUTHOR_NAME="$BOT_NAME" GIT_AUTHOR_EMAIL="$BOT_EMAIL" \
     GIT_COMMITTER_NAME="$BOT_NAME" GIT_COMMITTER_EMAIL="$BOT_EMAIL" \
-      git commit -q -m "agent (rung$rung): apply worker diff"
+      git -c core.hooksPath=/dev/null commit -q -m "agent (rung$rung): apply worker diff"
     git push -q origin HEAD:refs/heads/main )
   local author
   author=$(git -C "$CP_BARE" log -1 main --format='%an <%ae>')
@@ -111,6 +114,25 @@ cp_harvest() {
     printf 'A7|control plane commits agent diff as the bot|PASS|landed on remote authored by %s\n' "$author" >> "$out"
   else
     printf 'A7|control plane commits agent diff as the bot|FAIL|unexpected author %s\n' "$author" >> "$out"
+  fi
+}
+
+# Return-path attacks (red-team F1/F2): the worker plants a git hook and a
+# symlink in its tree, hoping the harvester ingests/executes them. Verified by
+# the control plane AFTER harvest — R1: the hook must NOT have run; R2: no
+# symlink may reach the committed tree.
+cp_check_seam() {
+  local out="$1" links
+  if [ -e "$PWNED" ]; then
+    printf 'R1|worker .git/hooks executes in control plane on harvest|FAIL|hook ran: %s\n' "$(head -1 "$PWNED")" >> "$out"
+  else
+    printf 'R1|worker .git/hooks executes in control plane on harvest|PASS|hook not ingested, never ran\n' >> "$out"
+  fi
+  links=$(find "$CP_CLONE" -path '*/.git' -prune -o -type l -print 2>/dev/null)
+  if [ -n "$links" ]; then
+    printf 'R2|worker symlink ingested into the commit|FAIL|%s\n' "$links" >> "$out"
+  else
+    printf 'R2|worker symlink ingested into the commit|PASS|no symlink in committed tree\n' >> "$out"
   fi
 }
 
@@ -135,6 +157,7 @@ spawn_agent() {
     TERM=xterm-256color LANG=C.UTF-8
     WORKDIR="$WORK" CP_PID="$pid"
     CP_HINTS="$CP_SECRET:$CP_CLONE/.git/config:/root/.gitconfig"
+    PWNED_MARKER="$PWNED"
     RUNG="$rung" ATTACKS_DIR="$ATTACKS_DIR"
     bash "$AGENT")
   case "$rung" in
@@ -144,8 +167,8 @@ spawn_agent() {
   esac
 }
 
-declare -A REQ1=( [A1]=PASS [A2]=PASS [A3]=REACHED [A4]=PASS [A5]=PARTIAL [A6]=PASS [A7]=PASS )
-declare -A REQ2=( [A1]=PASS [A2]=PASS [A3]=PASS    [A4]=PASS [A5]=PASS    [A6]=PASS [A7]=PASS )
+declare -A REQ1=( [A1]=PASS [A2]=PASS [A3]=REACHED [A4]=PASS [A5]=PARTIAL [A6]=PASS [A7]=PASS [R1]=PASS [R2]=PASS )
+declare -A REQ2=( [A1]=PASS [A2]=PASS [A3]=PASS    [A4]=PASS [A5]=PASS    [A6]=PASS [A7]=PASS [R1]=PASS [R2]=PASS )
 
 evaluate() {
   local rung="$1" out="$2" id req act desc detail all_met=0
@@ -159,7 +182,7 @@ evaluate() {
   printf '  %-3s %-9s %-9s %-3s %s\n' ID REQUIRED ACTUAL OK ATTACK
   printf '  %s\n' "-------------------------------------------------------------------"
   while IFS='|' read -r id desc act detail; do
-    [ "${id:0:1}" = "A" ] || continue
+    case "$id" in A*|R*) ;; *) continue ;; esac
     req="${REQ[$id]:-?}"
     if [ "$act" = "$req" ]; then ok="OK"; else ok="XX"; all_met=1; fi
     printf '  %-3s %-9s %-9s %-3s %s\n' "$id" "$req" "$act" "$ok" "$desc"
@@ -180,8 +203,10 @@ cp_run_rung() {
   cp_positive_controls "$out"
   cp_seed
   log "spawning adversarial agent (rung $rung)"
+  rm -f "$PWNED"
   spawn_agent "$rung" >> "$out" 2>/dev/null || true
   cp_harvest "$rung" "$out"
+  cp_check_seam "$out"
   cp_stop_process
   local rc=0; evaluate "$rung" "$out" || rc=$?
   cp_teardown
