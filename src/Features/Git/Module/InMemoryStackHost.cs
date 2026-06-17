@@ -37,7 +37,7 @@ internal sealed class InMemoryStackHost : IStackHost
         return Task.CompletedTask;
     }
 
-    public Task<MergeOutcome> Merge(int number, MergeMethod method, CancellationToken ct)
+    public Task<MergeOutcome> Merge(int number, CancellationToken ct)
     {
         var pull = Require(number);
         var headSha = _branches.TryGetValue(pull.Head, out var existing) ? existing : SyntheticSha(pull.Head);
@@ -50,7 +50,8 @@ internal sealed class InMemoryStackHost : IStackHost
     public Task<PullView> GetPullRequest(int number, CancellationToken ct)
     {
         var pull = Require(number);
-        return Task.FromResult(new PullView(number, pull.BaseRef, pull.State, Mergeable: pull.State == "open"));
+        var mergeable = pull.State == "open" && _branches.ContainsKey(pull.BaseRef);
+        return Task.FromResult(new PullView(number, pull.BaseRef, pull.State, mergeable));
     }
 
     private PullState Require(int number) =>

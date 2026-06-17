@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
@@ -55,9 +56,12 @@ internal sealed class GitHubStackHost : IStackHost
         res.EnsureSuccessStatusCode();
     }
 
-    public async Task<MergeOutcome> Merge(int number, MergeMethod method, CancellationToken ct)
+    public async Task<MergeOutcome> Merge(int number, CancellationToken ct)
     {
-        var res = await Put($"{Repo}/pulls/{number}/merge", new { merge_method = MergeMethodName(method) }, ct);
+        // merge_method is locked to a merge commit for stacked nodes (the-box.md §16); never squash/rebase.
+        var res = await Put($"{Repo}/pulls/{number}/merge", new { merge_method = "merge" }, ct);
+        if (res.StatusCode is HttpStatusCode.MethodNotAllowed or HttpStatusCode.Conflict)
+            return new MergeOutcome("", false);
         var body = await Read<MergeBody>(res, ct);
         return new MergeOutcome(body.Sha, body.Merged);
     }
@@ -76,14 +80,6 @@ internal sealed class GitHubStackHost : IStackHost
         var body = await Read<RefBody>(res, ct);
         return body.Object.Sha;
     }
-
-    private static string MergeMethodName(MergeMethod method) => method switch
-    {
-        MergeMethod.Merge => "merge",
-        MergeMethod.Squash => "squash",
-        MergeMethod.Rebase => "rebase",
-        _ => throw new ArgumentOutOfRangeException(nameof(method), method, "unknown merge method"),
-    };
 
     private Task<HttpResponseMessage> Post(string url, object body, CancellationToken ct) =>
         _http.PostAsJsonAsync(url, body, ct);

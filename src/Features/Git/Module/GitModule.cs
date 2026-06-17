@@ -31,11 +31,17 @@ public static class GitModule
 
     private static GitHubOptions? ReadGitHubOptions(IConfiguration? configuration)
     {
-        var token = configuration?.GetSection("GitHub")["Token"];
+        var section = configuration?.GetSection("GitHub");
+        var token = section?["Token"];
         if (string.IsNullOrWhiteSpace(token))
             return null;
 
-        var section = configuration!.GetSection("GitHub");
-        return new GitHubOptions(section["Owner"] ?? "", section["Repo"] ?? "", token);
+        var owner = section!["Owner"];
+        var repo = section["Repo"];
+        if (string.IsNullOrWhiteSpace(owner) || string.IsNullOrWhiteSpace(repo))
+            throw new InvalidOperationException(
+                "GitHub:Token is set but GitHub:Owner and/or GitHub:Repo are missing. Set both, or unset the token to use the in-memory fake.");
+
+        return new GitHubOptions(owner, repo, token);
     }
 }

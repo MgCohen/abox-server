@@ -19,8 +19,4 @@
     <ProjectReference Include="..\..\Domain\Git\ABox.Domain.Git.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <InternalsVisibleTo Include="ABox.Tests" />
-  </ItemGroup>
-
 </Project>

@@ -266,6 +266,12 @@ spike's proven choreography and the canonical S2.2 base.
   (B3) will drive.
 - Linear stacks first; nothing assumes a single child (DAG-capable), matching `Node.parent`
   (`design/the-box.md` §7) — but **defer** sibling/merge-ordering rules (§7).
+- **Two PR seams, decided (review M1):** `IStackHost` (Domain) is the Box's stack seam — it operates
+  on *one* PR/branch at a time (CRUD, retarget, merge, get). The existing `IPullRequests` (Features,
+  list-only) stays the **UI list seam** for `GET /git/prs`; it is *not* folded into `IStackHost`.
+  They merge only when a **Domain** consumer needs to *list* PRs (none today — YAGNI); until then a
+  list op on a Domain port would be speculative. `PullView` (Domain) and `PullRequestDto` (Features
+  Contracts) stay separate DTOs for the same reason.
 - **Done-when (mirrors S2's done-when):** a hand-made 2-branch stack opens, **merge-commits** one
   node into the box branch and **retargets** the descendant (no rebase), then a **rebuild** leg
   **cascade-rebases** the descendant onto the rewritten parent — all driven by test code against a

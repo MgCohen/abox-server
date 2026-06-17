@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using ABox.Domain.Git;
 using ABox.Features.Git.Module;
 
@@ -5,11 +6,14 @@ namespace ABox.Tests.Unit.Tests;
 
 public sealed class InMemoryStackHostTests
 {
+    private static IStackHost DefaultHost() =>
+        new ServiceCollection().AddGit().BuildServiceProvider().GetRequiredService<IStackHost>();
+
     [Rule("InMemoryStackHost opening a PR onto a non-main base → an open PR targeting that base")]
     [Fact]
     public async Task OpenPullRequest_targets_a_non_main_base()
     {
-        var host = new InMemoryStackHost();
+        var host = DefaultHost();
         await host.CreateBranch("box/x", "main", default);
         await host.CreateBranch("phase-1", "box/x", default);
 
@@ -22,18 +26,18 @@ public sealed class InMemoryStackHostTests
         Assert.True(view.Mergeable);
     }
 
-    [Rule("InMemoryStackHost merging a parent then retargeting its child onto the merged base → parent recorded merged and child rebased clean")]
+    [Rule("InMemoryStackHost merging a parent then retargeting its child onto the merged base → parent recorded merged and the child reported open against the merged base")]
     [Fact]
     public async Task Merge_parent_then_retarget_child_onto_the_merged_base()
     {
-        var host = new InMemoryStackHost();
+        var host = DefaultHost();
         await host.CreateBranch("box/x", "main", default);
         await host.CreateBranch("phase-1", "box/x", default);
         await host.CreateBranch("phase-2", "phase-1", default);
         var parent = await host.OpenPullRequest("phase-1", "box/x", "Phase 1", default);
         var child = await host.OpenPullRequest("phase-2", "phase-1", "Phase 2", default);
 
-        var outcome = await host.Merge(parent.Number, MergeMethod.Merge, default);
+        var outcome = await host.Merge(parent.Number, default);
         await host.RetargetPullRequest(child.Number, "box/x", default);
 
         Assert.True(outcome.Merged);
@@ -49,7 +53,7 @@ public sealed class InMemoryStackHostTests
     [Fact]
     public async Task DeleteBranch_removes_the_branch()
     {
-        var host = new InMemoryStackHost();
+        var host = DefaultHost();
         await host.CreateBranch("box/x", "main", default);
         var created = await host.CreateBranch("phase-1", "box/x", default);
 

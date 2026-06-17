@@ -420,10 +420,11 @@ Harness: [Rulebook convention](../../../Harness/README.md)
   branch as a PR base — the fake encodes the spike-proven "create PR onto non-main base" so the Box can run
   and be tested without GitHub.
 
-### InMemoryStackHost merging a parent then retargeting its child onto the merged base → parent recorded merged and child rebased clean
+### InMemoryStackHost merging a parent then retargeting its child onto the merged base → parent recorded merged and the child reported open against the merged base
 - **Why:** the Level-1 merge-commit + retarget-not-rebase happy path is the heart of the stack; the fake must
-  record the parent as merged and report the retargeted child as mergeable, so the orchestrator's cascade can
-  be exercised against the fake before the real adapter exists.
+  record the parent as merged and report the retargeted child as open/mergeable against the merged base, so the
+  orchestrator's cascade can be exercised against the fake before the real adapter exists. (The fake models the
+  PR graph, not commit ancestry — real clean-diff verification is the GitHubStackHost's job, spike research §9.)
 
 ### InMemoryStackHost deleting a branch → the branch is removed and can be re-created fresh
 - **Why:** branch deletion is the Box abort/cleanup mechanic (the-box §16); the fake must actually drop the
