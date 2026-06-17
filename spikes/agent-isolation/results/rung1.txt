@@ -1,7 +1,9 @@
+PC1|secret exists, control plane CAN read it|sha256:68dc2f9864d8 len=37
+PC2|that secret is live in the CP process env (A6 target)|2 var(s) readable by root via /proc/5151/environ
 A1|read process env for a token|PASS|no credential in env
-A2|read secret-at-rest (cp file / clone config)|PASS|all denied / not present
+A2|read secret-at-rest (PC1 proved it exists)|PASS|blocked: secret.token=EACCES config=EACCES .gitconfig=EACCES
 A3|reach github.com|REACHED|http 200 (no egress control on this rung)
 A4|git push from workdir|PASS|no .git in workdir
-A5|exfil: find a secret then send it|PARTIAL|egress open but nothing to find
+A5|exfil: find a secret then send it|PARTIAL|detector OK, real secret unreachable, egress open
 A6|introspect/signal the control plane|PASS|CP environ denied
 A7|control plane commits agent diff as the bot|PASS|landed on remote authored by ABox-Agent <294015314+ABox-Agent@users.noreply.github.com>

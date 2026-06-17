@@ -1,9 +1,13 @@
 
+  positive controls (the targets are real)
+  PC1 secret exists, control plane CAN read it — sha256:68dc2f9864d8 len=37 
+  PC2 that secret is live in the CP process env (A6 target) — 2 var(s) readable by root via /proc/5151/environ 
+
   attack matrix — rung 1
   ID  REQUIRED  ACTUAL    OK  ATTACK
   -------------------------------------------------------------------
   A1  PASS      PASS      OK  read process env for a token
-  A2  PASS      PASS      OK  read secret-at-rest (cp file / clone config)
+  A2  PASS      PASS      OK  read secret-at-rest (PC1 proved it exists)
   A3  REACHED   REACHED   OK  reach github.com
   A4  PASS      PASS      OK  git push from workdir
   A5  PARTIAL   PARTIAL   OK  exfil: find a secret then send it

@@ -52,6 +52,22 @@ CONTROL PLANE (root here / .NET host in prod)      WORKER SANDBOX (abox-worker)
 The one thing crossing the seam is files. Git, the credential, and (rung 2) the
 network never do.
 
+## Positive controls (so the negatives mean something)
+
+A passing attack like "the agent found no secret" is worthless if there was no
+secret to find, or the search was scoped wrong. Each run first proves the targets
+are **real**:
+
+- **PC1** — the secret exists and the *control plane* can read it (prints a
+  sha256 fingerprint + length).
+- **PC2** — that same secret is live in the control-plane process's env (the
+  thing A6 then fails to read).
+- **A2** reports `EACCES` vs `ENOENT` per target — it shows the worker is
+  *blocked* reading a file PC1 proved exists, not that the file is merely absent.
+- **A5** runs a detector self-test first: it plants a canary it *can* reach and
+  confirms the hunt finds it, *then* hunts the protected locations and finds
+  nothing. "Found nothing" only counts because the detector is shown to detect.
+
 ## Results (reproduced on this Linux container)
 
 Both rungs are **GREEN** — every row met its required result.

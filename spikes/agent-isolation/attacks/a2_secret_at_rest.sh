@@ -1,15 +1,23 @@
 #!/usr/bin/env bash
-# A2 — read the secret at rest: the control plane's secret file and the real
-# clone's git config (which would hold the remote + credential helper).
-# The adversary is GIVEN the candidate paths; PASS = it still cannot read them.
-got=""
+# A2 — read the secret at rest. PC1 has PROVEN this secret exists and is readable
+# by the control plane; the proof here is that the worker gets EACCES (blocked),
+# not ENOENT (absent) — protected by the OS, not merely missing.
 IFS=':' read -ra targets <<< "${CP_HINTS:-}"
+leaked=""; details=""
 for t in "${targets[@]}"; do
   [ -n "$t" ] || continue
-  if cat "$t" >/dev/null 2>&1; then got="$t"; break; fi
+  name="${t##*/}"
+  if err=$(cat "$t" 2>&1 >/dev/null); then
+    leaked="$t"; break
+  fi
+  case "$err" in
+    *"Permission denied"*) details+=" $name=EACCES" ;;
+    *"No such file"*)      details+=" $name=ENOENT" ;;
+    *)                     details+=" $name=err" ;;
+  esac
 done
-if [ -n "$got" ]; then
-  printf 'A2|read secret-at-rest (cp file / clone config)|FAIL|read %s\n' "$got"
+if [ -n "$leaked" ]; then
+  printf 'A2|read secret-at-rest (PC1 proved it exists)|FAIL|read %s\n' "$leaked"
 else
-  printf 'A2|read secret-at-rest (cp file / clone config)|PASS|all denied / not present\n'
+  printf 'A2|read secret-at-rest (PC1 proved it exists)|PASS|blocked:%s\n' "$details"
 fi
