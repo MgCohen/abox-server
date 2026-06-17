@@ -1,10 +1,12 @@
 # Critical-path alerts
 
-When a PR changes a file marked **`critical`** in [`protected-paths`](protected-paths),
-CI raises two **independent, parallel** signals:
+Every protected-path change is labelled by tier (`review` / `attention` /
+`critical-path` — see [`README`](README.md)). On top of that label, a file marked
+**`critical`** in [`protected-paths`](protected-paths) raises one extra, exclusive
+signal:
 
-1. a **`critical-path` label** on the PR (a routing / visibility marker), and
-2. a **push notification** (via Apprise → your channels, e.g. ntfy).
+- a **push notification** (via Apprise → your channels, e.g. ntfy), parallel to and
+  independent of the `critical-path` label.
 
 Detection uses the same single source of truth as the guards. The alert itself is
 **fail-safe**: it can never block a merge or fail CI (ADR 0012). The merge gate is
@@ -18,7 +20,7 @@ on `pull_request`:
 ```
 determine changed files
   → flag protected-path changes (advisory)
-  → label  critical-path  (reconcile: add if critical changed, remove if not)
+  → label  by tier  (reconcile each of review/attention/critical-path)
   → alert  (notify only if critical changed)
 ```
 

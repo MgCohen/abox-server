@@ -25,8 +25,11 @@ local accident-prevention; `policy-guard` is server-side visibility. The
 owner-reviewed change and blocks an unreviewed one, which a CI check can't
 distinguish. That gate is **live** on `main` (see Status below).
 
-The `tier` column adds one thing on top of review: paths tiered **`critical`** also
-raise a push notification and a `critical-path` label when they change. See
+The `tier` column adds severity signal on top of review. Every protected-path change
+projects a PR label naming its tier — **`review`**, **`attention`**, or
+**`critical-path`** — for routing / visibility. All three gate identically (code-owner
+review); the tier escalates on top: **`attention`** marks an elevated change, and
+**`critical`** additionally raises a push notification when it changes. See
 [`notify.md`](notify.md).
 
 ## Working with it
