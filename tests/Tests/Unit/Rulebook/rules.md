@@ -421,9 +421,10 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 - **Why:** completion is the terminal interaction stamp the surface drives; the first complete records when the
   item was resolved and a later call must not move it, with a missing id returning null.
 
-### Inbox.Query → items carrying every requested tag in arrival order, all when no tag given
+### Inbox.Query → items carrying every requested tag (matched case-insensitively) in arrival order, all when no tag given
 - **Why:** the inbox is a flat chronological feed with an AND tag filter — no tag returns everything in arrival
-  order, and a tag set narrows to items carrying all of them — so the surface can scope without a priority engine.
+  order, a tag set narrows to items carrying all of them, and tags are human labels so the match ignores case —
+  so the surface can scope without a priority engine.
 
 ### InboxItem persisted through the repository → reloads as its concrete subtype
 - **Why:** the inbox holds a polymorphic item hierarchy in the shared JsonRepository, so an item written and read

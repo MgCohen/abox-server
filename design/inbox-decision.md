@@ -226,6 +226,13 @@ of this domain. S1 proves the *behavior* in-process so S5 only adds the pipe.
 **Persistence is in-memory** for S1 (as today's `PendingDecisions` is). The durable
 store is B2's decision (`the-box.md` §12) — not made here.
 
+> **Amendment (S1 build).** A read/write **`Features/Inbox` HTTP slice** (add-note, list,
+> get-by-id, mark-seen, complete) over a thin `Inbox` storage surface (`JsonRepository`) was
+> pulled forward into S1 ahead of the full `Decision`/`Swipe` model — a provisional,
+> storage-first spike that exercises the inbox feed end-to-end. The SSE `Watch`,
+> approve-as-owner, identity, and the `Decision`/`Notification` adapters remain S5/T2+ as
+> specified above; this amendment records the divergence so code and design stay honest.
+
 ### Placement (repo pattern)
 
 Three domain concepts, **folders not assemblies** (YAGNI / least mechanism):

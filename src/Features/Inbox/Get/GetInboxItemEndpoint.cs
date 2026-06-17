@@ -4,7 +4,7 @@ using ABox.Features.Inbox.Contracts;
 
 namespace ABox.Features.Inbox.Get;
 
-internal sealed class GetInboxItemEndpoint(IInbox inbox) : Endpoint<InboxItemByIdRequest, InboxItemView>
+internal sealed class GetInboxItemEndpoint(IInbox inbox) : EndpointWithoutRequest<InboxItemView>
 {
     public override void Configure()
     {
@@ -12,9 +12,9 @@ internal sealed class GetInboxItemEndpoint(IInbox inbox) : Endpoint<InboxItemByI
         AllowAnonymous();
     }
 
-    public override async Task HandleAsync(InboxItemByIdRequest req, CancellationToken ct)
+    public override async Task HandleAsync(CancellationToken ct)
     {
-        if (await inbox.Get(req.Id, ct) is not { } item)
+        if (await inbox.Get(Route<Guid>("id"), ct) is not { } item)
         {
             await Send.NotFoundAsync(ct);
             return;

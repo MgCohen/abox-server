@@ -66,7 +66,7 @@ public sealed class InboxTests : IDisposable
     public async Task Complete_returns_null_for_an_unknown_id() =>
         Assert.Null(await NewInbox().Complete(Guid.NewGuid()));
 
-    [Rule("Inbox.Query → items carrying every requested tag in arrival order, all when no tag given")]
+    [Rule("Inbox.Query → items carrying every requested tag (matched case-insensitively) in arrival order, all when no tag given")]
     [Fact]
     public async Task Query_with_no_tags_returns_all_in_arrival_order()
     {
@@ -81,7 +81,7 @@ public sealed class InboxTests : IDisposable
         Assert.Equal([first.Id, second.Id], all.Select(i => i.Id));
     }
 
-    [Rule("Inbox.Query → items carrying every requested tag in arrival order, all when no tag given")]
+    [Rule("Inbox.Query → items carrying every requested tag (matched case-insensitively) in arrival order, all when no tag given")]
     [Fact]
     public async Task Query_narrows_to_items_carrying_every_requested_tag()
     {
@@ -94,6 +94,19 @@ public sealed class InboxTests : IDisposable
         var matched = await inbox.Query(["box-7", "review"]);
 
         Assert.Equal([both.Id], matched.Select(i => i.Id));
+    }
+
+    [Rule("Inbox.Query → items carrying every requested tag (matched case-insensitively) in arrival order, all when no tag given")]
+    [Fact]
+    public async Task Query_matches_tags_ignoring_case()
+    {
+        var inbox = NewInbox();
+        var item = new NoteInboxItem { Title = "labelled", Tags = ["Box-7"] };
+        await inbox.Add(item);
+
+        var matched = await inbox.Query(["box-7"]);
+
+        Assert.Equal([item.Id], matched.Select(i => i.Id));
     }
 
     [Rule("InboxItem persisted through the repository → reloads as its concrete subtype")]

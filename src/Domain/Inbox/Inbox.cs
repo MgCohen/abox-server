@@ -2,9 +2,6 @@ using ABox.Infrastructure.Storage;
 
 namespace ABox.Domain.Inbox;
 
-// The inbox surface over the shared JsonRepository. Reads are pure; seen/complete are explicit, system-applied
-// transitions (MarkSeen/Complete are internal to this assembly — never an outside caller, never a side effect
-// of GET). "Seen" is reported by the client, the only authority on what a human actually viewed.
 public sealed class Inbox(IRepository<InboxItem> items) : IInbox
 {
     public Task Add(InboxItem item, CancellationToken ct = default) => items.Add(item, ct);
@@ -15,8 +12,9 @@ public sealed class Inbox(IRepository<InboxItem> items) : IInbox
     {
         var all = await items.GetAll(ct);
         return [.. all
-            .Where(item => tags.Count == 0 || tags.All(item.Tags.Contains))
-            .OrderBy(item => item.CreatedAt)];
+            .Where(item => tags.Count == 0 || tags.All(tag => item.Tags.Contains(tag, StringComparer.OrdinalIgnoreCase)))
+            .OrderBy(item => item.CreatedAt)
+            .ThenBy(item => item.Id)];
     }
 
     public Task<InboxItem?> MarkSeen(Guid id, CancellationToken ct = default) => Stamp(id, item => item.MarkSeen(), ct);
