@@ -1,11 +1,12 @@
 # Governance Relocation — Proposal
 
-> **Status: proposal / iterating — not yet decided.** Captures the design for
-> consolidating the repo's agent-first surface under one root and extracting a
-> portable enforcement engine. Produced 2026-06-17. If accepted it lands as an ADR
-> amending **[ADR 0010](../../design/adr/0010-agent-repo-controls.md) D2** (which
-> currently scopes `governance/` to *controls only*). Until then nothing moves —
-> this is the shape we're agreeing on first.
+> **Status: proposal — design decisions resolved 2026-06-17; ready to promote to an
+> ADR.** Captures the design for consolidating the repo's agent-first surface under
+> one root and extracting a portable enforcement engine. The three prior open
+> questions (specs/plans tiering, distribution, research/spikes) are now decided —
+> see *Decisions* below. Next step is promoting this to an ADR amending
+> **[ADR 0010](../../design/adr/0010-agent-repo-controls.md) D2** (which currently
+> scopes `governance/` to *controls only*); until that lands, nothing moves.
 
 ## Summary
 
@@ -14,7 +15,7 @@ Today the repo's **agent-first material** is scattered: control machinery in
 `design/`, operating instructions in `CLAUDE.md`. This proposes to **consolidate the
 relocatable parts under `governance/`** and, inside it, **split a portable
 *enforcement engine* (`governance/harness/`) from the repo-specific *instance***
-(this repo's policy rows, decisions, plans, design). Tool-pinned surfaces that
+(this repo's policy rows, specs, decisions, plans, design). Tool-pinned surfaces that
 *can't* move (`CLAUDE.md`, `.claude/`, `.github/`, `tests/Harness/**`) stay where
 their tools require and are governed in place. The payoff: a new repo adopts the
 whole apparatus by copying one folder.
@@ -127,10 +128,13 @@ abox-server/
 │   │   └── README.md          ← how the engine works + "adopt in a new repo" steps
 │   │
 │   ├── policy/
-│   │   └── protected-paths    ← INSTANCE: globs for THIS tree
-│   ├── decisions/             ← INSTANCE: was design/adr/
-│   ├── plans/                 ← INSTANCE: was PLANS/
-│   └── design/                ← INSTANCE: was design/ minus adr (oracle, research)
+│   │   └── protected-paths    ← INSTANCE: globs for THIS tree            [critical]
+│   ├── specs/                 ← INSTANCE: authoritative contracts        [attention]
+│   │                            (PRD, feature-map, impl-plan, behavioral-oracle)
+│   ├── decisions/             ← INSTANCE: was design/adr/                [review]
+│   ├── plans/                 ← INSTANCE: working plans (was PLANS/)     [ungoverned]
+│   ├── design/                ← INSTANCE: research + design notes        [review]
+│   └── spikes/                ← INSTANCE: throwaway experiments (code)   [ungoverned]
 │
 ├── tests/                     ← PINNED (compiled). Governed BY REFERENCE, not relocated.
 │   ├── Harness/  Meta/  …
@@ -146,9 +150,12 @@ abox-server/
 | `.githooks/pre-*` | `governance/harness/hooks/` (repoint `core.hooksPath`) | engine |
 | portable half of `CLAUDE.md` | `governance/harness/conventions/*.md` | engine |
 | `governance/protected-paths` | `governance/policy/protected-paths` | instance |
+| `PLANS/rebuild/{01-feature-map,02-prd,03-implementation-plan}.md` | `governance/specs/` | instance |
+| `design/behavioral-oracle.md` | `governance/specs/` | instance |
 | `design/adr/` | `governance/decisions/` | instance |
-| `PLANS/` | `governance/plans/` | instance |
-| `design/{behavioral-oracle,remote-access,…,research}` | `governance/design/` | instance |
+| `PLANS/` (remaining working docs) | `governance/plans/` | instance |
+| `design/{remote-access,stacked-review,research}` + top-level `research/` | `governance/design/` (research under `design/research/`) | instance |
+| `spikes/` | `governance/spikes/` | instance |
 | `.github/workflows/ci.yml` | stays — now references `harness/` | pinned |
 | `.github/CODEOWNERS` | stays (regenerated) | pinned |
 | `.claude/`, `tests/Harness/**` | stay | pinned, governed by reference |
@@ -165,7 +172,7 @@ explicit:
 ```
 tests/                          governance/
 ├── Harness/   ← engine         ├── harness/   ← engine   (SAME ROLE)
-├── Tests/  Meta/  Rulebooks    ├── policy/  decisions/  plans/  design/
+├── Tests/  Meta/  Rulebooks    ├── policy/ specs/ decisions/ plans/ design/ spikes/
 └──   ↑ instance                └──   ↑ instance
 ```
 
@@ -199,10 +206,11 @@ below):
 ```
 governance/harness/**   | @owner | critical  | Portable engine — machinery + conventions.
 governance/policy/**    | @owner | critical  | The policy itself.
+governance/specs/**     | @owner | attention | Authoritative contracts — PRD, feature-map, impl-plan, oracle.
 governance/decisions/** | @owner | review    | ADRs — frozen history.
-governance/plans/**     | @owner | attention | Living plans. (tier = open question)
-governance/design/**    | @owner | review    | Oracle + research.
+governance/design/**    | @owner | review    | Research + design notes.
 .github/**  tests/Harness/** …  ← unchanged, governed in place
+# governance/plans/** and governance/spikes/** — intentionally ungoverned (working docs / throwaway code).
 ```
 
 **Adopting in a new repo** becomes: `cp -r governance/harness new-repo/governance/`
@@ -210,21 +218,28 @@ governance/design/**    | @owner | review    | Oracle + research.
 write fresh `policy/protected-paths` rows → run `generate-codeowners.sh`. The
 instance folders start empty. That one-folder copy is the whole point of the split.
 
-## Open questions (still iterating)
+## Decisions (resolved 2026-06-17)
 
-1. **`plans/` tier.** With the current three tiers, `attention` still *hard-gates*
-   via code-owner review — fine for stable specs (oracle, PRD), but every working-
-   plan edit would then need owner approval. Options: leave volatile plans
-   ungoverned, govern only the stable specs, or revisit an advisory (non-gating)
-   tier. Resolve before assigning rows.
-2. **Distribution mechanism.** Copy-paste template (simplest, divergence over time)
-   vs git subtree/submodule (one source of truth, more ceremony) vs published
-   setup-script/reusable Action (most automated). Thin multi-repo use leans toward
-   copy-or-subtree; not required to decide now, but it sets how *clean* the
-   engine/instance boundary must be.
-3. **`research/` and `spikes/`.** Top-level `research/` overlaps `design/research/`;
-   `spikes/` is throwaway code, not docs. Fold doc-research under
-   `governance/design/research/`; leave code `spikes/` where it is — confirm.
+1. **Specs vs plans — split by folder.** Authoritative contracts (the PRD,
+   feature-map, implementation-plan, and the behavioral-oracle) move to a new
+   `governance/specs/` tiered **`attention`** — a contract change is gated *and*
+   loudly labelled, but does not page. Working/iterating documents stay in
+   `governance/plans/`, **ungoverned**, so the agent iterates without a review gate
+   on every edit. This also fixes the `attention` tier's standing meaning:
+   *critical* = enforcement machinery touched (page); *attention* = the
+   spec/contract is changing (label); *review* = routine protected change (sign-off).
+   *(Open sub-call: the oracle could be `critical` instead of `attention` if its
+   constitution status warrants paging — left at `attention` for now.)*
+2. **Distribution — deferred, design for extraction.** The harness is still
+   maturing and the downstream repos are parked, so there are no live consumers to
+   keep in sync yet. Commit only to a **clean, self-contained `governance/harness/`**
+   (no path into the instance; README with adoption steps). Choose the mechanism
+   when the first parked repo starts — defaulting to **git subtree** unless plain
+   copy proves sufficient. No template/Action infra is built now.
+3. **`research/` and `spikes/` — both under `governance/`.** Top-level `research/`
+   and `design/research/` consolidate into `governance/design/research/`; `spikes/`
+   (throwaway experiments) moves to `governance/spikes/`, ungoverned. Everything
+   agent-first lands under the one root.
 
 ## Out of scope / non-goals
 
@@ -237,9 +252,11 @@ instance folders start empty. That one-folder copy is the whole point of the spl
 
 ## Next steps
 
-1. Settle the open questions (tier for `plans/`, distribution intent).
+1. ~~Settle the open questions~~ — done (see *Decisions*).
 2. Promote this to an ADR amending ADR 0010-D2, citing the `tests/Harness` parallel
-   as the naming precedent.
-3. Execute the move behind that ADR: `git mv` (preserve history), rewrite policy
-   globs + regenerate CODEOWNERS, rewrite cross-doc links (~30 files reference
-   `PLANS/`/`design/`), split `CLAUDE.md`, repoint `core.hooksPath` and the CI job.
+   as the naming precedent and recording the specs/plans split + deferred
+   distribution.
+3. Execute the move behind that ADR: `git mv` (preserve history), carve `specs/` out
+   of `PLANS/rebuild` + move the oracle, rewrite policy globs + regenerate
+   CODEOWNERS, rewrite cross-doc links (~30 files reference `PLANS/`/`design/`),
+   split `CLAUDE.md`, repoint `core.hooksPath` and the CI job.
