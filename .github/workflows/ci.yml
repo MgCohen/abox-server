@@ -61,27 +61,30 @@ jobs:
           done || true
           echo "::notice::This PR changes protected paths; merging requires code-owner review (CODEOWNERS). This check is advisory and does not block."
           exit 0
-      # The 'critical-path' label is a projection of protected-paths(critical) ∩ diff,
-      # recomputed here for routing/UI only. It is NOT the authority: any downstream
-      # flow that gates on criticality MUST recompute via protected-paths-check.sh
-      # (fail-closed), never trust the label alone.
-      - name: Label critical-path PRs (reconcile)
+      # Each protected-path change projects a PR label naming the tier it touched
+      # (review/attention/critical) — recomputed here for routing/UI only. The label
+      # is NOT the authority: any downstream flow that gates on tier MUST recompute
+      # via protected-paths-check.sh (fail-closed), never trust the label alone.
+      - name: Label protected-path PRs by tier (reconcile)
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
         run: |
-          hits=
-          if [ -s changed.txt ]; then
-            hits=$(governance/protected-paths-check.sh --tier critical < changed.txt || true)
-          fi
-          if [ -n "$hits" ]; then
-            echo "Critical paths changed — labelling PR #$PR 'critical-path'."
-            gh pr edit "$PR" --repo "${{ github.repository }}" --add-label "critical-path" || echo "label add failed (non-blocking)"
-          else
-            echo "No critical paths — ensuring 'critical-path' label is absent."
-            gh pr edit "$PR" --repo "${{ github.repository }}" --remove-label "critical-path" || true
-          fi
+          [ -n "$PR" ] || { echo "No PR number; skipping labels."; exit 0; }
+          for tier in review attention critical; do
+            case "$tier" in critical) label="critical-path" ;; *) label="$tier" ;; esac
+            hits=
+            if [ -s changed.txt ]; then
+              hits=$(governance/protected-paths-check.sh --tier "$tier" < changed.txt || true)
+            fi
+            if [ -n "$hits" ]; then
+              echo "Tier '$tier' changed — labelling PR #$PR '$label'."
+              gh pr edit "$PR" --repo "${{ github.repository }}" --add-label "$label" || echo "label add failed (non-blocking)"
+            else
+              gh pr edit "$PR" --repo "${{ github.repository }}" --remove-label "$label" || true
+            fi
+          done
       # C2 (ADR 0012): this step runs on PR-triggered builds, where a bot-authored
       # PR could exfiltrate any secret it can read. Only the low-value NTFY_TOPIC
       # (an unguessable string, not a credential) belongs here. Do NOT add a

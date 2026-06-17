@@ -7,8 +7,11 @@
 # Format, one rule per line:   <glob>  |  <owner>  |  <tier>  |  <reason>
 #   - glob: gitignore-style; `**` spans directories, `*` stays within a segment.
 #   - owner: GitHub handle that must review changes (flows into CODEOWNERS).
-#   - tier: `critical` also fires a loud alert when the path changes (ADR 0012);
-#           `review` is gated by code-owner review only. Blank/unknown = review.
+#   - tier: severity, surfaced as a PR label naming the tier (review/attention/
+#           critical-path). All three gate identically via code-owner review; the
+#           tier adds signal on top: `attention` marks an elevated change, and
+#           `critical` additionally fires a push alert (ADR 0012). Blank/unknown =
+#           review.
 #   - reason: why this is load-bearing.
 # Blank lines and lines starting with `#` are ignored.
 #
