@@ -34,3 +34,22 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 - **Why:** the core streaming contract — POST /flows starts a run and returns its id; GET /flows/{id}/events
   streams snapshots as Server-Sent Events through to the terminal phase. Proves routing + the start
   request/response DTOs + the SSE wire, end to end, with a CLI-free flow behind it.
+
+### POST /inbox → a created item echoing title and tags with timestamps null, rejecting a blank title
+- **Why:** add must mint + register an inbox item (201 + a `Location` to the new id) and echo title/tags with
+  `seenAt`/`completedAt` null on a fresh item; a blank title is a 400 so an empty card can't reach the feed.
+
+### GET /inbox → the inbox items as wire DTOs, filtered by tag
+- **Why:** list must route to `IInbox.Query` and serialize `InboxItemView`; the `?tag=` query narrows the feed
+  to items carrying that tag, proving the tag filter on the wire.
+
+### GET /inbox/{id} → the item, or 404 when absent
+- **Why:** the by-id read must route the `{id}` param to `IInbox.Get` and serialize the hit as `InboxItemView`;
+  an unknown id is a 404, not an empty 200.
+
+### POST /inbox/{id}/seen → the item stamped seen, or 404 when absent
+- **Why:** seen must route `{id}`, stamp `SeenAt`, and return the updated view; an unknown id is a 404 so a
+  stray interaction can't silently succeed against nothing.
+
+### POST /inbox/{id}/complete → the item stamped complete, or 404 when absent
+- **Why:** complete must route `{id}`, stamp `CompletedAt`, and return the updated view; an unknown id is a 404.
