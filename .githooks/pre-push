@@ -1,6 +1,7 @@
 #!/bin/sh
-# Secondary local catch: block pushes whose range touches protected paths.
-# CI policy-guard remains the backstop. Enable: git config core.hooksPath .githooks
+# Secondary local catch: block pushes whose range touches protected paths. The
+# merge gate of record is CODEOWNERS required review; CI policy-guard is advisory.
+# Enable: git config core.hooksPath .githooks
 set -eu
 
 root=$(git rev-parse --show-toplevel)

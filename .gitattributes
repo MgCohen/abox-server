@@ -1,0 +1,10 @@
+# Enforcer files MUST stay LF. They run as POSIX sh on Linux CI runners; a CRLF
+# byte breaks shebang parsing and line matching. Pinning eol=lf here stops a
+# Windows checkout (autocrlf) from committing CRLF and silently breaking a guard.
+# See governance/protected-paths (ADR 0010 / 0012).
+*.sh                         text eol=lf
+*.yml                        text eol=lf
+*.yaml                       text eol=lf
+governance/protected-paths   text eol=lf
+.github/CODEOWNERS           text eol=lf
+.githooks/*                  text eol=lf

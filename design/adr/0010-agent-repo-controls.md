@@ -67,8 +67,9 @@ lefthook (hook ergonomics) and OPA/conftest (content-level rules) are documented
 upgrade paths for a real second need — not adopted on the first use.
 
 **D4 — Interim posture for `main`: lock down now, checks-only, upgrade later.**
-When the ruleset is applied it starts with no-direct-push, the required check
-(`build-test`, which also proves the harness intact), blocked force-push and
+When the ruleset is applied it starts with no-direct-push, the required checks
+(`build-test (ubuntu-latest)` / `build-test (windows-latest)`, which also prove
+the harness intact), blocked force-push and
 deletion, and an **empty
 bypass list**, but **required approvals = 0** — because approvals = 1 with no
 second identity would deadlock every agent PR (the solo paradox). When the D1
@@ -79,13 +80,14 @@ hard anti-self-merge. The deferred upgrade steps are tracked in
 ## Consequences
 
 - Touching the harness, ADRs, CI, build config, or the policy itself is now a
-  deliberate, reviewed act: the git hook and `policy-guard` flag it, and the
-  Claude `PreToolUse` adapter denies it at write time. Routine `src/` work is
+  deliberate, reviewed act: the git hook and `policy-guard` flag it. (The
+  per-agent pre-write layer of the model is not implemented — the live enforcers
+  plus CODEOWNERS required review carry the guarantee.) Routine `src/` work is
   unaffected. **This is the feature working — do not "fix" the block; route the
   change through a reviewed PR**, or set `ABOX_ALLOW_PROTECTED=1` for a logged,
   deliberate local override (CI re-checks regardless).
-- The guard cannot disable itself: the policy file and `.claude/settings.json`
-  are themselves protected paths and explicit `deny` targets.
+- The policy cannot quietly weaken itself: `governance/**` (the policy file and
+  its enforcers) is itself a protected, code-owner-reviewed path.
 - The merge gate for protected paths is **CODEOWNERS required review** (D1/Phase 3),
   not the CI job: a check can't tell an owner-reviewed change from a snuck-in one, so
   `policy-guard` is **advisory** — it annotates protected-path changes for visibility
