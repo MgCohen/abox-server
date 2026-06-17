@@ -414,18 +414,3 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 ### JsonRepository under concurrent writers → no torn store
 - **Why:** the `SemaphoreSlim` + atomic temp→`File.Replace` write means concurrent `Add`s all land and the
   on-disk file always parses — no torn write under contention.
-
-### InMemoryStackHost opening a PR onto a non-main base → an open PR targeting that base
-- **Why:** a Box's phases stack onto the box/parent branch, never `main`, so the stack host must accept any
-  branch as a PR base — the fake encodes the spike-proven "create PR onto non-main base" so the Box can run
-  and be tested without GitHub.
-
-### InMemoryStackHost merging a parent then retargeting its child onto the merged base → parent recorded merged and the child reported open against the merged base
-- **Why:** the Level-1 merge-commit + retarget-not-rebase happy path is the heart of the stack; the fake must
-  record the parent as merged and report the retargeted child as open/mergeable against the merged base, so the
-  orchestrator's cascade can be exercised against the fake before the real adapter exists. (The fake models the
-  PR graph, not commit ancestry — real clean-diff verification is the GitHubStackHost's job, spike research §9.)
-
-### InMemoryStackHost deleting a branch → the branch is removed and can be re-created fresh
-- **Why:** branch deletion is the Box abort/cleanup mechanic (the-box §16); the fake must actually drop the
-  branch so a later create starts clean rather than colliding with stale state.

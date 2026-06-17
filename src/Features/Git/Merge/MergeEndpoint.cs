@@ -1,9 +1,9 @@
 using FastEndpoints;
 using ABox.Features.Git.Contracts;
 
-namespace ABox.Features.Git.PrOps;
+namespace ABox.Features.Git.Merge;
 
-internal sealed class PrMergeEndpoint(IPullRequests pullRequests) : EndpointWithoutRequest<MergeResult>
+internal sealed class MergeEndpoint(IPullRequests pullRequests) : EndpointWithoutRequest<MergeResult>
 {
     public override void Configure()
     {

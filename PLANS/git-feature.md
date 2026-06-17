@@ -43,9 +43,9 @@ Git already exists in the repo, in two bands, **stubbed at the remote seam**:
   only** — no remote / branch / PR notion.
 - **`Features/Git/`** *(Features band — non-canonical)* — the PR slice, almost entirely
   **stubbed**, on **Minimal API**: `PrListEndpoint` (`GET /git/prs`, `IPullRequests.List()`) and
-  `PrMergeEndpoint` (`POST /git/prs/{number}/merge` → a stub `MergeResult`), both backed by
+  `MergeEndpoint` (`POST /git/prs/{number}/merge` → a stub `MergeResult`), both backed by
   `StubPullRequests` (three canned PRs: 101/102/99); `MergeResult` / `PullRequestDto` DTOs.
-  **4 assemblies** (`ABox.Git.Contracts`, `ABox.Git.Module`, `ABox.Git.PrList`, `ABox.Git.PrOps`)
+  **4 assemblies** (`ABox.Git.Contracts`, `ABox.Git.Module`, `ABox.Git.PrList`, `ABox.Git.Merge`)
   — ADR 0011 says this must become 2. Note: `Features/Git/Contracts` is *already* a correctly
   shaped Contracts leaf (Arch rules.md calls it "the first per-feature leaf"); only the impl side
   needs the 4→1 consolidation + framework port.
@@ -252,6 +252,13 @@ Retire the unknowns before building the real adapter. **Throwaway code** in `spi
 
 **Goal:** the stack primitives the Box consumes (`design/the-box.md` §13), built for real on the
 spike's proven choreography and the canonical S2.2 base.
+
+> **Note (cleanup):** an early `IStackHost` port + `InMemoryStackHost` fake + value types
+> (`BranchRef`/`PullRef`/`PullView`/`MergeOutcome`) were added ahead of this step and reverted —
+> consumerless (no `Domain/Box` yet), single-backend (GitHub only), and the fake's test only
+> exercised the fake. YAGNI: the seam is introduced here, with the Box as its first real consumer,
+> and faked at the `HttpClient` boundary rather than via a hand-written behavioral double. The spike
+> choreography lives in git history + `research/stacked-prs.md`.
 
 - **Precondition — port placement (settle before writing `IStackHost`, review M4):** the Box
   Orchestrator lives in `Domain/Box` and will consume `IStackHost`, and `Domain ↛ Features` is
