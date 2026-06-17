@@ -42,12 +42,17 @@ Git already exists in the repo, in two bands, **stubbed at the remote seam**:
   with guardrails (refuses force-push to `main`/`master`, requires explicit file lists). **Local
   only** — no remote / branch / PR notion.
 - **`Features/Git/`** *(Features band — non-canonical)* — the PR slice, almost entirely
-  **stubbed**: `IPullRequests.List()` only, backed by `StubPullRequests` (three canned PRs);
-  `MergeResult` / `PullRequestDto` DTOs; `PrList` / `PrOps` endpoints on **Minimal API**.
-  **4 assemblies** (`Contracts`, `Module`, `PrList`, `PrOps`) — ADR 0011 says this must become 2.
+  **stubbed**, on **Minimal API**: `PrListEndpoint` (`GET /git/prs`, `IPullRequests.List()`) and
+  `PrMergeEndpoint` (`POST /git/prs/{number}/merge` → a stub `MergeResult`), both backed by
+  `StubPullRequests` (three canned PRs: 101/102/99); `MergeResult` / `PullRequestDto` DTOs.
+  **4 assemblies** (`ABox.Git.Contracts`, `ABox.Git.Module`, `ABox.Git.PrList`, `ABox.Git.PrOps`)
+  — ADR 0011 says this must become 2. Note: `Features/Git/Contracts` is *already* a correctly
+  shaped Contracts leaf (Arch rules.md calls it "the first per-feature leaf"); only the impl side
+  needs the 4→1 consolidation + framework port.
 
-**The gap:** no real GitHub adapter, no branch/PR CRUD, no base retarget, no merge primitive, no
-stack notion — and the Features slice doesn't yet match the canonical shape.
+**The gap:** no real GitHub adapter (the merge endpoint is a stub, not a real git merge), no
+branch/PR CRUD, no base retarget, no stack notion — and the Features impl doesn't yet match the
+canonical shape.
 
 ## Scope — what S2 builds
 
@@ -84,9 +89,36 @@ The `IStackHost` capability (`design/the-box.md` §13) and a real GitHub adapter
   is reject/rebuild-only.
 - **Never key state on a SHA** (`research` §1). Stable identity = PR number / branch name /
   (later) `Node` id.
-- **All force-push uses `--force-with-lease --force-if-includes`** (`research` §6).
 - **Read-as-bot** (`ABox-Agent`); no self-approval, no owner credentials (`design/the-box.md` §5;
   CLAUDE.md).
+- **Force-push lean (grounded, not yet locked):** use `--force-with-lease --force-if-includes`
+  (`research` §6 — lease alone is defeated by background fetches). This is a research lean, not an
+  ADR; **today `Domain/Git/Git.cs` PushOp (line 81) adds only `--force-with-lease`** — S2.1a proves
+  the lease-rejection behavior and S2.3 must add `--force-if-includes` to PushOp when it wires the
+  cascade. Don't treat it as already-true.
+
+## Preconditions (escalate to owner — block S2.1b / S2.2, not S2.1a)
+
+These are owner-only and unspecified today; S2.1a (pure-local) needs none of them.
+
+- **GitHub authentication.** No credential/auth wiring exists anywhere (`grep` over `src/` for
+  `GITHUB_TOKEN`/`Octokit`/`gh auth` → nothing), and the repo remote here is a local proxy, not
+  real github.com. Any GitHub API call (S2.1b spike, S2.2 real adapter) needs the bot's auth
+  established first: token/App, scope, where it's stored, and the **owner/repo target**. Identity
+  is load-bearing (`design/the-box.md` §5); credential provisioning is **owner-only** — escalate.
+- **Protected-path edits for the canonical migration.** Making Git conformant trips two
+  *critical* protected-path files that carry staleness checks (fail the build if Git is conformant
+  *and* still listed): `tests/Tests/Arch/Support/EndpointConformance.cs`
+  (`PendingFastEndpointsMigration`) and `tests/Tests/Structure/Support/FeatureShape.cs`
+  (`PendingConsolidation`) — both list `{ "Flows", "Git", "Tasks" }`, both under `critical |
+  @MgCohen` in `governance/protected-paths`. Removing `Git` from them is a **reviewed PR to the
+  owner**, not a self-merge (CLAUDE.md: stop at the permission wall, ask the owner). S2.2 cannot
+  reach green without it.
+- **Box abort/discard mechanic.** `the-box.md` §16 says "specify **before S2**." It is a
+  branch-delete-of-the-box-branch + `.box/` drop — the *mechanic* falls inside S2's branch/PR CRUD
+  (S2.3); the *lifecycle trigger* is B-tier. **Deferral (reasoned):** S2.3's branch-delete CRUD
+  covers the mechanic; the trigger waits for the Box lifecycle. Confirm with owner that this
+  satisfies the §16 "specify before S2" obligation.
 
 ## The canonical shape we build toward (ADR 0011)
 
@@ -112,9 +144,10 @@ invert the layer direction).
 ### S2.1 — Spikes *(validate first — gates everything below)*
 
 Retire the unknowns before building the real adapter. **Throwaway code** in `spikes/git-stack/`
-(matches the existing `spikes/` home — like the Gate-1 spike ADR 0011 cites); the *kept* artifact
-is a verified call/command transcript + the gotchas that actually bit, appended to
-`research/stacked-prs.md` §7. Two legs, because the risk splits by where it lives.
+(matches the existing `spikes/` home); keep it **out of `ABox.slnx`** so it never trips
+warnings-as-errors or the `src/`+`tests/` structure scan. The *kept* artifact is a verified
+call/command transcript + the gotchas that actually bit, appended to `research/stacked-prs.md` §7.
+Two legs, because the risk splits by where it lives.
 
 #### S2.1a — Git mechanics *(local, no GitHub)*
 
@@ -133,48 +166,78 @@ is a verified call/command transcript + the gotchas that actually bit, appended 
 
 **Goal:** prove the GitHub-side behaviors that can't be reproduced locally.
 
+- **Blocked on:** the GitHub-auth precondition above (no credentials wired today).
 - **Prove the call sequence (`research` §2):** `POST /pulls` with `base=<non-main>`;
   `PATCH /pulls/{n}` base retarget; `PUT /pulls/{n}/merge` with `merge_method=merge`; force-update
-  a ref. **Observe** GitHub's auto-retarget/auto-close behavior when a merged head branch is
-  deleted, and whether/when a force-push dismisses approvals.
-- **How:** `spike/`-prefixed branches **in this repo** (no separate throwaway repo needed — see
-  Open decisions); delete branches + close PRs after. Accept the CI-noise cost on junk branches.
-  Drive via the GitHub MCP tools / `gh` to move fast (library choice is S2.2's, not the spike's).
+  a ref. **Verify-don't-rely** on GitHub's auto-retarget/auto-close behavior on head-branch delete
+  (`research` §7 flags native auto-cascade as *unverified* — drive the retarget explicitly via
+  `PATCH` regardless of what auto-behavior is observed); record whether/when a force-push dismisses
+  approvals.
+- **How:** *target repo is an Open decision below* — a sandbox repo (per the authoritative
+  box-impl plan) vs `spike/`-prefixed branches in this repo; needs owner sign-off either way.
+  Delete branches + close PRs after. Drive via the GitHub MCP tools / `gh` (library choice is
+  S2.2's, not the spike's).
 - **Done-when:** the full create → retarget → merge-commit → delete sequence runs end-to-end
-  against real GitHub; the auto-retarget-on-delete and approval-dismissal behaviors are observed
-  and recorded; the ordering that avoids the base-deleted race is confirmed.
+  against real GitHub; the (non-)auto-retarget-on-delete and approval-dismissal behaviors are
+  observed and recorded; the ordering that avoids the base-deleted race is confirmed.
 
 > **S2.1 done-when (gate):** both legs proven; findings folded into `research/stacked-prs.md`; any
 > decision they surface (e.g. client library, race-ordering) locked or escalated. Spike code is
 > deleted or left clearly under `spikes/` — never mistaken for the real adapter.
 
-### S2.2 — Base git *(canonical shape + real adapter)*
+### S2.2 — Base git *(two sub-steps: framework port, THEN real adapter)*
 
-**Goal:** bring `Features/Git` to the canonical ADR 0011 shape **and** replace the stub with a
-real GitHub adapter. This *is* the Git slot of the doc-08 Gate-5 migration — do them together so
-Git is ported once, not twice.
+> **Why split (review C1):** a behavior-parity *port* and a stub→real *behavior change* are
+> mutually exclusive — you cannot prove "HTTP behavior unchanged" in the same commit that swaps
+> canned PRs for real ones. So the canonical migration (parity-gated, over the stub) and the real
+> adapter (a deliberate behavior change, Live-tested) are **separate steps**.
 
-- **Migrate to canonical shape:** Minimal API → FastEndpoints `Endpoint<,>` classes;
-  consolidate 4 assemblies → 2 (impl + `Contracts` leaf); endpoints `internal sealed`; `GitModule`
-  exposes `EndpointsAssembly`. Copy the `Features/Projects` template verbatim.
-- **Real adapter:** replace `StubPullRequests` with a real GitHub reader behind the existing
-  `IPullRequests` seam; grow that seam past list-only toward the `IStackHost` operations.
-- **Behavior-parity gate (required by doc 08):** a **Wire** test (`WebApplicationFactory` booting
-  real `Program`) proves the existing HTTP behavior is unchanged across the framework port — the
-  rebuild's prime directive is "the user can't tell the difference."
-- **Done-when:** the feature lists/reads real PRs from a real repo (no canned data); the slice
-  matches the canonical shape; build warning-free; tests green as Rulebooks (use the
-  **`test-rulebook`** skill — GitHub-touching tests are **Live**, the parity test is **Wire**);
-  one coherent commit.
+> **Ordering vs doc-08 (review M3):** doc-08 Gate 5 says "**Flows first**" — because Flows is the
+> representative spike (SSE + `Shared/FlowMapping` + a `Module` with real catalog-build logic; the
+> canonical shape has "no Module-with-logic slot"). Git's `GitModule` is logic-light (DI only, no
+> catalog build), so Git-before-Flows forfeits none of that de-risking — **but** confirm with the
+> owner before reordering, since doc-08's stated order is Flows→Git→Tasks.
+
+#### S2.2a — Canonical framework port *(parity-gated, stub stays)*
+
+- **Migrate to canonical shape:** Minimal API → FastEndpoints `Endpoint<,>` classes for **both**
+  `PrListEndpoint` and `PrMergeEndpoint`; consolidate 4 assemblies → 2 (impl + `Contracts` leaf);
+  endpoints `internal sealed`; `GitModule` exposes `EndpointsAssembly`; wire it into
+  `Composition.cs`'s `o.Assemblies` list. Copy the `Features/Projects` template verbatim. **Keep
+  `StubPullRequests`** — behavior must not change here.
+- **Behavior-parity gate (required by doc-08; baseline does not exist yet):** there is **no**
+  existing Wire test of the Git PR endpoints — so **first** write a **Wire** characterization test
+  (`WebApplicationFactory` booting real `Program`) capturing the *current* stub behavior
+  (`GET /git/prs` → the 3 canned PRs; `POST /git/prs/{n}/merge` → `{number,"merged"}` / 404),
+  then port, and prove the response is byte-identical before/after.
+- **Protected-path gate:** removing `Git` from `EndpointConformance.PendingFastEndpointsMigration`
+  and `FeatureShape.PendingConsolidation` is the **owner-PR precondition** above — it lands *with*
+  this step but as a reviewed change.
+- **Done-when:** Wire parity green; slice matches the canonical shape; warning-free; one commit.
+
+#### S2.2b — Real GitHub adapter *(deliberate behavior change, Live-tested)*
+
+- Replace `StubPullRequests` with a real GitHub reader behind the `IPullRequests` seam (lib per
+  Open decisions; auth per Preconditions); grow the seam toward `IStackHost` operations.
+- **Done-when:** the feature lists/reads **real** PRs from the target repo (no canned data); new
+  behavior covered by **Live** tests as Rulebooks (`test-rulebook` skill); warning-free; one commit.
 
 ### S2.3 — Stack system *(`IStackHost` — the novel part, on top)*
 
 **Goal:** the stack primitives the Box consumes (`design/the-box.md` §13), built for real on the
 spike's proven choreography and the canonical S2.2 base.
 
+- **Precondition — port placement (settle before writing `IStackHost`, review M4):** the Box
+  Orchestrator lives in `Domain/Box` and will consume `IStackHost`, and `Domain ↛ Features` is
+  arch-enforced (`ArchitectureModel.cs`). So `IStackHost` **must land in the Domain band (or a
+  Domain-side Contracts leaf) from the start** — *not* alongside today's `IPullRequests` in
+  `Features/Git/Contracts` (which would force a move the moment B1's Domain orchestrator references
+  it). The GitHub *adapter* stays in Features. This likely means `IPullRequests` itself migrates to
+  Domain as it grows into `IStackHost`. Decide the home before, not during.
 - `IStackHost`: branch/PR CRUD, **base retarget**, **two-level merge** (L1 merge-commit into the
   box branch; L2 box → `main`), and the **cascade-rebase** primitive (`rebase --onto` +
-  lease-force-push) the restack engine (B3) will drive.
+  lease-force-push, with `--force-if-includes` added to `Domain/Git` PushOp) the restack engine
+  (B3) will drive.
 - Linear stacks first; nothing assumes a single child (DAG-capable), matching `Node.parent`
   (`design/the-box.md` §7) — but **defer** sibling/merge-ordering rules (§7).
 - **Done-when (mirrors S2's done-when):** a hand-made 2-branch stack opens, **merge-commits** one
@@ -197,15 +260,13 @@ land as Rulebooks (`test-rulebook` skill). Spike code is exempt — throwaway un
   0012's zero-dependency rule does not apply (that rule governs fail-open *guards*, not product
   dependencies) — but flag the new dependency for the owner. Decide at S2.2; the spike (S2.1b) may
   use `gh` / MCP regardless.
-- **`IStackHost` port placement (S2.3):** the Box **Orchestrator lives in `Domain/Box`** and will
-  consume `IStackHost`, so the *port* must sit in the Domain band (or a contracts leaf) to keep
-  the **Features → Domain** direction the ArchTests enforce — while the GitHub *adapter* is the
-  Features/Infrastructure implementation. Today `IPullRequests` lives in `Features/Git/Contracts`
-  because only endpoints consume it; confirm the right home when the Orchestrator becomes a
-  consumer. (Not a blocker for S2.1/S2.2.)
-- **Throwaway repo vs `spike/` branches (S2.1b):** *Decided — `spike/` branches in this repo +
-  local for S2.1a.* A separate sandbox repo would need the owner (the bot is scoped to this repo);
-  revisit only if CI noise on junk branches becomes annoying.
+- **S2.1b target repo — sandbox vs in-repo `spike/` (OWNER call, not self-decidable):** the
+  authoritative build-order doc specifies S2 runs **"against a throwaway GitHub repo"**
+  (`the-box-implementation.md` §S2). In-repo `spike/` branches are the cheaper alternative (the bot
+  is scoped to this repo) but would open/close junk PRs and may trip the protected `.github/**` CI
+  workflows / branch protection in the production repo — unconfirmed. **Do not self-decide against
+  the governing doc:** the owner either provisions a sandbox repo (matching box-impl) or ratifies
+  the in-repo deviation and confirms `spike/*` won't fire required checks. Open until then.
 - **Level-2 merge method (S2.3):** squash vs merge-commit for box → `main` is **independent** of
   the L1 decision; `main` sees one reviewed Box either way. Defer until S2.3 / B2.
 - **`rerere` / Mergiraf wiring:** deferred to **B3** (conflict resolution); S2 provides only the
