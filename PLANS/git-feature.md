@@ -217,7 +217,14 @@ Retire the unknowns before building the real adapter. **Throwaway code** in `spi
 > catalog build), so Git-before-Flows forfeits none of that de-risking — **but** confirm with the
 > owner before reordering, since doc-08's stated order is Flows→Git→Tasks.
 
-#### S2.2a — Canonical framework port *(parity-gated, stub stays)*
+#### S2.2a — Canonical framework port *(parity-gated, stub stays)*  ✅ **DONE (2026-06-17, pending owner review)**
+
+> **Result:** Git ported to FastEndpoints `internal sealed` endpoints, 4 assemblies → 2; behavior
+> unchanged, proven by a byte-level Wire characterization test (`GitPrsWireTests`). Independently
+> verified: `dotnet build` warning-free, `ABox.Tests` 209✓/12 skip, Meta parity 6✓. Touches 4
+> protected files (ABox.slnx + Wire rules.md + the 2 guard lists) — **awaiting owner CODEOWNERS
+> review to merge to `main`**. The 415-on-typed-request gotcha was solved with
+> `EndpointWithoutRequest` + `Route<int>`; the custom `{error}` 404 uses the arbitrary-object send.
 
 - **Migrate to canonical shape:** Minimal API → FastEndpoints `Endpoint<,>` classes for **both**
   `PrListEndpoint` and `PrMergeEndpoint`; consolidate 4 assemblies → 2 (impl + `Contracts` leaf);
