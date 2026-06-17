@@ -297,6 +297,125 @@ enters the context window* — our governed flow, or the agent's own judgment.
 
 ---
 
+## 8. The other side — context-codec / compression (standalone)
+
+The mirror exercise to the memory adapter, for the Headroom-class. It comes out
+**differently**, and the difference is the headline.
+
+### The structural twist: we don't own the agent's context window
+
+Memory adapted cleanly because the orchestrator owns the injection point. Compression's
+natural seam is **between the agent and the model** — and in a subscription-CLI
+architecture that wire lives *inside* the `claude`/`codex` process, which we drive over
+ConPTY and do not proxy. So Headroom's *primary* modes don't fit:
+
+- **Transparent proxy on the API wire** — ❌ we don't make the LLM call; can't sit in
+  the CLI's subscription connection (we scrub keys, not MITM them).
+- **Library `compress(messages)`** — ❌ there's no messages array we own.
+- **SDK middleware** — ❌ not our call path.
+
+Everything the agent fetches itself (its own grep, file reads, tool calls) lands in a
+window **we never see**; Claude Code's own context editing / microcompact / prompt
+caching manages that, by design out of reach. So the symmetry is **partial**: memory
+adapts at a wide seam we own; compression only adapts at the *narrow* seams where **we**
+hand bytes to the agent.
+
+### Where compression can actually sit (narrowest → widest)
+
+1. **Compress our own outputs to the agent** — ✅ the clean fit. Validator logs we loop
+   back, diffs from our git ops, context we inject. We control these; shrink before they
+   enter the prompt.
+2. **MCP tool** — ✅ agent-driven. Expose `headroom_compress`/`headroom_retrieve`/
+   `headroom_stats`; the agent calls them on big tool outputs if it chooses. Same
+   governed-vs-autonomous fork as memory.
+3. **Provider-native** — ✅ free, already on. Anthropic prompt caching + context editing
+   are the CLI's built-ins; most of the win for zero code.
+
+### What it compares to (landscape)
+
+Axes: **lossy-vs-reversible** and **structural-vs-LLM-based**.
+
+| Family | Examples | How | Fits subscription-CLI? |
+|---|---|---|---|
+| LLM-based token dropping | **LLMLingua / -2 / LongLLMLingua**, **Selective Context** | small LM scores token info-content, drops low-perplexity | ✅ needs a model → sidecar |
+| RAG-chunk compressors | **RECOMP**, **Provence** | abstractive/extractive compression of retrieved context | ✅ at our retrieval seam |
+| Soft-prompt / gist | **Gist tokens**, **ICAE**, **AutoCompressor**, **xRAG** | compress context into learned embeddings | ❌ model-modifying — impossible over a CLI |
+| Structural / heuristic | **Headroom** (AST/JSON-stats/diff-hunks/log-dedup) | type-aware deterministic shrinking | ✅ cheap, in-process |
+| Semantic cache | **GPTCache** | cache responses by similarity | adjacent (cost, not compression) |
+| Provider-native | Anthropic/OpenAI/Gemini caching + context editing | reuse stable prefixes / evict old tool results | ✅ already active |
+| Toolkit | **PCToolkit** (Selective Context + LLMLingua family + SCRL + KiS) | pre-built pluggable compressor | ✅ — literally the adapter, in Python |
+
+Headroom's closest comparison: **LLMLingua-2 + a bag of structural codecs**, and
+**PCToolkit is the pre-built pluggable version** of the adapter below.
+
+### Adapter shape — simpler than memory (it's stateless)
+
+No gate, no store, no scope, no governance. One verb + one optional reverse.
+
+```csharp
+public interface ICompressor
+{
+    Task<Compressed> CompressAsync(Payload content, int tokenBudget, CancellationToken ct);
+}
+public interface IReversible          // optional capability — only CCR engines (Headroom) implement
+{
+    Task<Payload> RetrieveAsync(string handle, CancellationToken ct);
+}
+public sealed record Payload(string Kind, string Body);    // "diff" | "log" | "json" | "text"
+public sealed record Compressed(string Body, string? Handle, int TokensBefore, int TokensAfter);
+```
+
+Two tiers, same as memory: *structural* (in-proc, free, deterministic) vs *LLM-based*
+(LLMLingua/PCToolkit/Headroom — needs a model → sidecar).
+
+### How usage looks (illustrative / paper)
+
+```csharp
+// #1 — shrink our own output before it hits the agent (the main one)
+var validation = await Run(ctx, validator.Check, new CheckArgs(), ct);
+if (!validation.Ok)
+{
+    var brief = await Run(ctx, codec.Compress,                 // 40k tok of build spew → ~2k of failures
+        new CompressArgs(new Payload("log", validation.Log), tokenBudget: 2000), ct);
+    await Run(ctx, implementer.Fix, new FixArgs(errors: brief.Body), ct);
+}
+
+// #2 — reversible (CCR): summary now, original on demand
+var packed = await Run(ctx, codec.Compress,
+    new CompressArgs(new Payload("diff", diff.Text), tokenBudget: 1500), ct);
+await Run(ctx, reviewer.Review, new ReviewArgs(summary: packed.Body, original: packed.Handle), ct);
+if (codec is IReversible ccr)
+    _ = await ccr.RetrieveAsync(packed.Handle!, ct);           // losslessly back to the full hunks
+
+// #3 — MCP mode: let the agent compress itself (Headroom's native shape)
+var agent = new ClaudeConfig
+{
+    McpServers = { ["headroom"] = new StdioMcpServer("headroom", args: ["mcp"]) },
+};
+```
+
+Engine side, for reference: `from headroom import compress; compress(messages, budget=2000)`,
+or zero-code `headroom wrap claude|codex`, or the proxy `headroom serve --port 8787`
+(the mode that does *not* fit our wire).
+
+### The unifying insight
+
+Compression isn't a rival to memory — it's **the codec the prompt-assembler reaches for
+when it's over budget.** Oracle's memory manager already lists "decide what enters the
+context window / enforce the token budget / compact rather than truncate" as one of its
+jobs; `ICompressor` is that job's implementation. Memory decides *what* to inject;
+compression decides *how densely*. Same pipeline, two knobs.
+
+### Recommendation
+
+Lower priority than memory, mostly already solved: (1) lean on provider-native caching
+first; (2) when building the memory assembler, give it a one-line structural compressor
+for the context *we* inject; (3) hold LLMLingua/PCToolkit/Headroom-as-MCP behind
+`ICompressor` as the upgrade slot. Do **not** build a general compression proxy — there's
+no wire for it in a subscription-CLI setup, and the CLI already compacts its own window.
+
+---
+
 ## Sources
 
 - Oracle, "From RAG to Memory Systems: Building Stateful AI Architecture" (Jeremy
@@ -304,6 +423,9 @@ enters the context window* — our governed flow, or the agent's own judgment.
   (`apps/rag-to-memory-systems-demo`).
 - Graphiti — `github.com/getzep/graphiti` (README).
 - Headroom — `github.com/chopratejas/headroom` + `headroom-docs.vercel.app`.
+- Compression — `github.com/microsoft/LLMLingua` (LLMLingua / LongLLMLingua /
+  LLMLingua-2); PCToolkit (arXiv 2403.17411); Selective Context (ACL 2023); RECOMP;
+  Provence; GPTCache; Morph "Prompt Compression" 2026 guide.
 - Landscape surveys (2026, treat as partly marketing): Cognee, Atlan, Vectorize,
   Graphlit, Particula, Dev Genius comparison posts.
 
