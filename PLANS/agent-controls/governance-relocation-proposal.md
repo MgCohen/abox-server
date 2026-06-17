@@ -253,9 +253,10 @@ instance folders start empty. That one-folder copy is the whole point of the spl
 ## Next steps
 
 1. ~~Settle the open questions~~ — done (see *Decisions*).
-2. Promote this to an ADR amending ADR 0010-D2, citing the `tests/Harness` parallel
-   as the naming precedent and recording the specs/plans split + deferred
-   distribution.
+2. ~~Promote this to an ADR amending ADR 0010-D2~~ — done:
+   [`ADR 0013`](../../design/adr/0013-agent-surface-root-and-portable-harness.md)
+   records the decision (engine/instance seam, specs/plans split, deferred
+   distribution); this doc remains the living *how*.
 3. Execute the move behind that ADR: `git mv` (preserve history), carve `specs/` out
    of `PLANS/rebuild` + move the oracle, rewrite policy globs + regenerate
    CODEOWNERS, rewrite cross-doc links (~30 files reference `PLANS/`/`design/`),
