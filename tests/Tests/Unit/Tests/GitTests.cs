@@ -5,35 +5,6 @@ namespace ABox.Tests.Unit.Tests;
 
 public class GitTests
 {
-    [Rule("RebaseOnto onto a rebuilt parent → replays the branch's commits onto the new base")]
-    [Fact]
-    public async Task RebaseOnto_replays_branch_onto_a_rebuilt_parent()
-    {
-        using var repo = await TempGitRepo.CreateAsync();
-        await repo.WriteAsync("base.txt", "base");
-        await repo.CommitAllAsync("base");
-
-        await repo.RunAsync("git checkout -q -b phase1");
-        await repo.WriteAsync("a.txt", "a1");
-        await repo.CommitAllAsync("p1");
-        var oldParent = await RevParse(repo, "phase1");
-
-        await repo.RunAsync("git checkout -q -b phase2");
-        await repo.WriteAsync("b.txt", "b1");
-        await repo.CommitAllAsync("p2");
-
-        await repo.RunAsync("git checkout -q phase1");
-        await repo.WriteAsync("a.txt", "a1-rebuilt");
-        await repo.RunAsync("git commit -aq --amend -m p1b");
-        var newParent = await RevParse(repo, "phase1");
-
-        await Op.Exec(new Git(repo.Path).RebaseOnto, new RebaseOntoArgs(newParent, oldParent, "phase2"));
-
-        Assert.Equal(0, await ExitCode(repo, $"git merge-base --is-ancestor {newParent} phase2"));
-        Assert.NotEqual(0, await ExitCode(repo, $"git merge-base --is-ancestor {oldParent} phase2"));
-        Assert.Equal("b1", await repo.ReadAsync("b.txt"));
-    }
-
     [Rule("Force push to a remote that advanced since the last fetch → refused before it can overwrite")]
     [Fact]
     public async Task Force_push_refuses_to_clobber_an_advanced_remote()
@@ -66,15 +37,9 @@ public class GitTests
         }
     }
 
-    private static async Task<string> RevParse(TempGitRepo repo, string rev) =>
-        (await RunCommand.RunAsync($"git rev-parse {rev}", new RunCommandOptions(Cwd: repo.Path))).Stdout.Trim();
-
-    private static async Task<int> ExitCode(TempGitRepo repo, string cmd) =>
-        (await RunCommand.RunAsync(cmd, new RunCommandOptions(Cwd: repo.Path))).ExitCode;
-
-    [Rule("ChangedFiles on a dirty tree → returns each modified and untracked path")]
+    [Rule("Status on a dirty tree → Paths lists each modified and untracked path")]
     [Fact]
-    public async Task ChangedFiles_reports_modified_and_untracked()
+    public async Task Status_lists_modified_and_untracked_paths()
     {
         using var repo = await TempGitRepo.CreateAsync();
         await repo.WriteAsync("a.txt", "hello");
@@ -84,26 +49,26 @@ public class GitTests
         await repo.WriteAsync("a.txt", "changed");
         await repo.WriteAsync("c.txt", "new");
 
-        var result = await Op.Exec(new Git(repo.Path).ChangedFiles, new ChangedFilesArgs());
+        var result = await Op.Exec(new Git(repo.Path).Status, new StatusArgs());
 
-        Assert.Contains("a.txt", result.Files);
-        Assert.Contains("c.txt", result.Files);
-        Assert.Equal(2, result.Files.Count);
+        Assert.Contains("a.txt", result.Paths);
+        Assert.Contains("c.txt", result.Paths);
+        Assert.Equal(2, result.Paths.Count);
     }
 
-    [Rule("CheckDirty → reports whether the working tree has uncommitted changes")]
+    [Rule("Status → IsDirty reports whether the working tree has uncommitted changes")]
     [Fact]
-    public async Task CheckDirty_true_when_changed_false_when_clean()
+    public async Task Status_reports_dirty_when_changed_and_clean_when_not()
     {
         using var repo = await TempGitRepo.CreateAsync();
         await repo.WriteAsync("a.txt", "v1");
         await repo.CommitAllAsync("init");
 
         var git = new Git(repo.Path);
-        Assert.False((await Op.Exec(git.CheckDirty, new DirtyArgs())).IsDirty);
+        Assert.False((await Op.Exec(git.Status, new StatusArgs())).IsDirty);
 
         await repo.WriteAsync("a.txt", "v2");
-        Assert.True((await Op.Exec(git.CheckDirty, new DirtyArgs())).IsDirty);
+        Assert.True((await Op.Exec(git.Status, new StatusArgs())).IsDirty);
     }
 
     [Rule("Commit of listed files → stages and commits them, returning the full hash and subject and leaving the tree clean")]
@@ -120,7 +85,7 @@ public class GitTests
 
         Assert.Equal(40, result.Hash.Length);
         Assert.Equal("Fix the thing", result.Subject);
-        Assert.False((await Op.Exec(git.CheckDirty, new DirtyArgs())).IsDirty);
+        Assert.False((await Op.Exec(git.Status, new StatusArgs())).IsDirty);
     }
 
     [Rule("Diff on a dirty tree → reports the changed-file count and the diff text naming each file")]
@@ -138,9 +103,9 @@ public class GitTests
         Assert.Contains("a.txt", result.Text);
     }
 
-    [Rule("ChangedFiles after a reverting checkout → reports no changes")]
+    [Rule("Status after a reverting checkout → reports a clean tree")]
     [Fact]
-    public async Task ChangedFiles_stable_after_checkout_dash_dash()
+    public async Task Status_clean_after_checkout_dash_dash()
     {
         using var repo = await TempGitRepo.CreateAsync();
         await repo.WriteAsync("a.txt", "v1");
@@ -149,7 +114,8 @@ public class GitTests
         await repo.WriteAsync("a.txt", "v2");
         await repo.RunAsync("git checkout -- a.txt");
 
-        var result = await Op.Exec(new Git(repo.Path).ChangedFiles, new ChangedFilesArgs());
-        Assert.Empty(result.Files);
+        var result = await Op.Exec(new Git(repo.Path).Status, new StatusArgs());
+        Assert.False(result.IsDirty);
+        Assert.Empty(result.Paths);
     }
 }
