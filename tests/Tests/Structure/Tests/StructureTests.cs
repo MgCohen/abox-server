@@ -73,6 +73,47 @@ public class StructureTests
             """);
     }
 
+    [Rule("Each verb folder declares its endpoint")]
+    [Fact]
+    public void EachVerbFolderDeclaresItsEndpoint()
+    {
+        var canonical = SourceTree.FeatureFolders().Where(f => !IsPendingConsolidation(f)).ToList();
+        Assert.Contains("Projects", canonical);
+
+        var strays = canonical
+            .Select(f => (Feature: f, Folders: SourceTree.VerbFoldersWithoutEndpoint(f)))
+            .Where(x => x.Folders.Count > 0)
+            .Select(x => $"{x.Feature}: {string.Join(", ", x.Folders)}")
+            .OrderBy(s => s, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.True(strays.Count == 0,
+            $"""
+            These verb folders carry no '*Endpoint.cs' — the canonical slice is one endpoint per verb folder, so a
+            folder with none is a stray (e.g. a 'Shared' helper bucket) or a verb whose endpoint is misplaced/misnamed:
+            {Bullets(strays)}
+            Give the verb folder its '<Verb>Endpoint', or move the helper to the Module/Domain/Infrastructure.
+            """);
+    }
+
+    [Rule("Requests, responses, and DTOs live in the Contracts leaf")]
+    [Fact]
+    public void ContractTypesLiveInContracts()
+    {
+        // Non-vacuity: the naming convention is live — the Contracts leaves do hold these types, so the rule below
+        // is policing a real population, not passing because no contract types exist anywhere.
+        Assert.NotEmpty(SourceTree.ContractTypeFilesInContracts());
+
+        var strays = SourceTree.ContractTypeFilesOutsideContracts();
+        Assert.True(strays.Count == 0,
+            $"""
+            These request/response/DTO/view types live outside a Contracts/ folder — the client and peer slices bind
+            the Contracts leaf, so a wire type stranded in a verb folder is unbindable:
+            {Bullets(strays)}
+            Move each into the feature's Contracts/ leaf.
+            """);
+    }
+
     [Rule("No build output lives under src or tests")]
     [Fact]
     public void NoBuildOutputUnderSource()

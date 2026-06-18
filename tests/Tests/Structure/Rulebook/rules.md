@@ -23,6 +23,29 @@ one project under a `Contracts/` folder. Projects satisfies it positively, so th
 Flows, per-verb Git/Tasks awaiting Gate 5); the guard still rejects any new non-canonical feature, and a staleness
 check fails once a listed feature consolidates to the canonical two, so the list shrinks instead of rotting.
 
+### Each verb folder declares its endpoint
+- **Why:** The canonical slice is one endpoint per verb folder (ADR 0011); the only legal non-verb folders are the
+  published `Contracts/` leaf and the folded-in `Module/`. A verb folder with no `*Endpoint.cs` is either a stray
+  helper bucket (the `Shared/` sub-assembly the shape forbids) or a verb whose endpoint was misnamed or misplaced —
+  the exact "feature doesn't follow the pattern" drift. Read on disk so the empty/odd folder is caught before it compiles.
+
+Checked over the canonical features (`SourceTree.VerbFoldersWithoutEndpoint`): every immediate folder except
+`Contracts`/`Module` must hold a `*Endpoint.cs`. Projects and Inbox satisfy it positively, so it is non-vacuous from
+day one. The not-yet-migrated features (Flows/Git/Tasks, with `Shared/` and non-endpoint helpers awaiting Gate 5) share
+the same `FeatureShape.PendingConsolidation` allow-list as the one-impl-plus-Contracts rule; consolidating a feature
+to the canonical shape removes its exemption, and the guard then requires every one of its verb folders to conform.
+
+### Requests, responses, and DTOs live in the Contracts leaf
+- **Why:** The client and peer slices bind a feature's `Contracts/` leaf — that is the only place the outside may
+  name. A `*Request`/`*Response`/`*Dto`/`*View` type stranded in a verb folder is unbindable from outside the slice,
+  the "what goes in Contracts vs the feature" mix-up. Read on disk by the type-naming convention the repo already uses
+  (`CreateProjectRequest`, `ProjectDto`, `StartRunResponse`, `FlowView`), so a misplaced wire type is caught before it compiles.
+
+Decided from file names under `src/Features` (`SourceTree.ContractTypeFilesOutsideContracts`): any type whose name ends
+`Request`/`Response`/`Dto`/`View` must sit under a `Contracts/` folder. The companion `…InContracts` query asserts the
+convention is live (the leaves do hold such types), so the rule polices a real population rather than passing
+vacuously. It holds for every feature today, laggards included — even mid-migration, wire types already live in Contracts.
+
 ### No build output lives under src or tests
 - **Why:** `UseArtifactsOutput` + a pinned `ArtifactsPath` centralize every project's bin/obj into the repo-root
   `/artifacts`. A `bin`, `obj`, or `artifacts` folder under `src/` or `tests/` means a project escaped the root
