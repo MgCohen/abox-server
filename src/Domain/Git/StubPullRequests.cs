@@ -1,9 +1,9 @@
 using ABox.Features.Git.Contracts;
 
-namespace ABox.Features.Git.Module;
+namespace ABox.Domain.Git;
 
 // Provisional adapter: a fixed PR list standing in for a real GitHub/forge reader until that lands.
-internal sealed class StubPullRequests : IPullRequests
+public sealed class StubPullRequests : IPullRequests
 {
     public IReadOnlyList<PullRequestDto> List(string project) =>
     [

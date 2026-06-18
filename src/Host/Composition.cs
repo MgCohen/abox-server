@@ -4,8 +4,10 @@ using Microsoft.Extensions.DependencyInjection;
 using ABox.Domain.Agents;
 using ABox.Domain.Agents.Claude;
 using ABox.Domain.Flow;
+using ABox.Domain.Git;
 using ABox.Domain.Projects;
 using ABox.Features.Flows.Module;
+using ABox.Features.Git.Contracts;
 using ABox.Features.Git.Module;
 using ABox.Features.Projects.Module;
 using ABox.Infrastructure.Paths;
@@ -44,6 +46,6 @@ internal static class Composition
         services.AddSingleton<IAgentFactory, AgentFactory>();
 
         services.AddFlows(flows);
-        services.AddGit();
+        services.AddSingleton<IPullRequests, StubPullRequests>();
     }
 }
