@@ -69,8 +69,9 @@ S1 unblocks the most downstream (S5, S6, the whole inbox UX), while S2 carries t
 `Domain/Flow/Operations` (`IDecisionSource`, `DecisionDto`) and `Domain/Agents`
 (`PendingDecision`, `IDecisionResolver`, `DecisionKind`, `Resolution`).
 
-- **First task: author its own design doc** (non-Box producers, routing, decision
-  persistence) — `design/the-box.md` §2.2/§5 are only the Box-facing seam (§16).
+- **First task: author its own design doc** — done:
+  [`design/inbox-decision.md`](../design/inbox-decision.md) (three concepts bridged by
+  adapters, in-process; `design/the-box.md` §2.2/§5 are only the Box-facing seam, §16).
 - General model: notification + decision items; decision subtypes (PR-approval, binary,
   choice, critical-confirm); flat-chronological + filters; criticality friction;
   notification→decision promote-action (`design/the-box.md` §5).

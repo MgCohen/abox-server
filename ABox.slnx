@@ -5,6 +5,7 @@
     <Project Path="src/Domain/Agents/ABox.Domain.Agents.csproj" />
     <Project Path="src/Domain/Git/ABox.Domain.Git.csproj" />
     <Project Path="src/Domain/Projects/ABox.Domain.Projects.csproj" />
+    <Project Path="src/Domain/Inbox/ABox.Domain.Inbox.csproj" />
     <Project Path="src/Features/Flows/Contracts/ABox.Flows.Contracts.csproj" />
     <Project Path="src/Features/Flows/Shared/ABox.Flows.Shared.csproj" />
     <Project Path="src/Features/Flows/Start/ABox.Flows.Start.csproj" />
@@ -18,6 +19,8 @@
     <Project Path="src/Features/Git/ABox.Git.csproj" />
     <Project Path="src/Features/Projects/Contracts/ABox.Projects.Contracts.csproj" />
     <Project Path="src/Features/Projects/ABox.Projects.csproj" />
+    <Project Path="src/Features/Inbox/Contracts/ABox.Inbox.Contracts.csproj" />
+    <Project Path="src/Features/Inbox/ABox.Inbox.csproj" />
     <Project Path="src/Features/Tasks/Contracts/ABox.Tasks.Contracts.csproj" />
     <Project Path="src/Features/Tasks/Create/ABox.Tasks.Create.csproj" />
     <Project Path="src/Features/Tasks/Module/ABox.Tasks.Module.csproj" />
