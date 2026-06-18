@@ -233,6 +233,26 @@ store is B2's decision (`the-box.md` §12) — not made here.
 > approve-as-owner, identity, and the `Decision`/`Notification` adapters remain S5/T2+ as
 > specified above; this amendment records the divergence so code and design stay honest.
 
+> **Amendment (S1 build · Decision feature).** The Decision slice landed deliberately *smaller* than
+> §2–§6 sketch, and reverses one arrow:
+> - **Decision → Inbox, not the reverse.** The Inbox stays a generic surface that knows nothing of
+>   Decision; the `Decisions` service depends on `IInbox`. On `Raise` it persists a `Decision` and
+>   **projects a plain inbox item** (today's generic note item) sharing the decision's id; on `Answer`
+>   it completes that item by the same id. No `DecisionInboxItem` subtype, no JSON polymorphism
+>   resolver — there is no dynamic registration to justify one (YAGNI).
+> - **No `Swipe`.** A swipe is a client gesture, not a domain concept. A decision records a plain
+>   **yes/no answer** (`bool`) with an optional free-text note.
+> - **One concrete `Decision` (a yes/no question)** rather than the `DecisionSubtype` enum / PR-approval
+>   shape. The subtype hierarchy (and `Decision<TArgs,TResult>`, mirroring `Operation`) returns when a
+>   second decision shape — e.g. a choice whose resolution diverges from yes/no — actually lands.
+> - **Persisted record, no producer-blocking await yet.** A `Decision` is stored with a null answer
+>   until resolved; answering is an update. The park-and-await registry that *gates* a producer waits
+>   for a real producer (the agent/Box bridge, §7).
+> - **HTTP slice pulled forward** (like the Inbox amendment above): `Features/Decisions` —
+>   `POST /decisions`, `GET /decisions`, `GET /decisions/{id}`, `POST /decisions/{id}/answer`.
+> The deny-must-carry-a-reason invariant (§3/§5) was PR-shaped; it returns with the richer decision
+> types, not here.
+
 ### Placement (repo pattern)
 
 Three domain concepts, **folders not assemblies** (YAGNI / least mechanism):
