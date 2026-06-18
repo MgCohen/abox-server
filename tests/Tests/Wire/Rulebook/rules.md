@@ -70,3 +70,7 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 ### POST /decisions/{id}/answer → the decision stamped with its answer, or 404 when absent
 - **Why:** answering routes `{id}` and the yes/no body to `IDecisions.Answer`, records the answer (with optional
   note), and returns the updated view; an unknown id is a 404.
+
+### POST /decisions/{id}/answer with no answer → 400 so a missing answer can't record a default no
+- **Why:** the answer is required — a body that omits it must be a 400, not a silent default `false`, so an
+  absent yes/no can never lock a decision into a "no" the human never gave.

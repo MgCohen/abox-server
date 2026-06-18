@@ -80,6 +80,20 @@ public sealed class DecisionsTests : IDisposable
 
     [Rule("Decisions.Answer → the decision recorded with its yes/no answer once and stable on repeat, null when absent")]
     [Fact]
+    public async Task Answer_records_a_no()
+    {
+        var decisions = NewDecisions(NewInbox());
+        var decision = await decisions.Raise("approve?", []);
+
+        var answered = await decisions.Answer(decision.Id, answer: false, note: "not yet");
+
+        Assert.False(answered!.Answer);
+        Assert.Equal("not yet", answered.Note);
+        Assert.NotNull(answered.AnsweredAt);
+    }
+
+    [Rule("Decisions.Answer → the decision recorded with its yes/no answer once and stable on repeat, null when absent")]
+    [Fact]
     public async Task Answer_keeps_the_first_answer_on_repeat()
     {
         var decisions = NewDecisions(NewInbox());

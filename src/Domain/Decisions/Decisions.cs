@@ -25,11 +25,8 @@ public sealed class Decisions(IRepository<Decision> decisions, IInbox inbox) : I
     {
         if (await decisions.GetById(id, ct) is not { } decision) return null;
         var resolved = decision.Resolve(answer, note);
-        if (!ReferenceEquals(resolved, decision))
-        {
-            await decisions.Update(resolved, ct);
-            await inbox.Complete(id, ct);
-        }
+        if (!ReferenceEquals(resolved, decision)) await decisions.Update(resolved, ct);
+        await inbox.Complete(id, ct);
         return resolved;
     }
 }

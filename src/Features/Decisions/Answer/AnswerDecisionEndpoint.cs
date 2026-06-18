@@ -14,7 +14,14 @@ internal sealed class AnswerDecisionEndpoint(IDecisions decisions) : Endpoint<An
 
     public override async Task HandleAsync(AnswerDecisionRequest req, CancellationToken ct)
     {
-        if (await decisions.Answer(Route<Guid>("id"), req.Answer, req.Note, ct) is not { } d)
+        if (req.Answer is not { } answer)
+        {
+            AddError(r => r.Answer, "An answer must be yes or no.");
+            await Send.ErrorsAsync(400, ct);
+            return;
+        }
+
+        if (await decisions.Answer(Route<Guid>("id"), answer, req.Note, ct) is not { } d)
         {
             await Send.NotFoundAsync(ct);
             return;

@@ -250,6 +250,10 @@ store is B2's decision (`the-box.md` §12) — not made here.
 >   for a real producer (the agent/Box bridge, §7).
 > - **HTTP slice pulled forward** (like the Inbox amendment above): `Features/Decisions` —
 >   `POST /decisions`, `GET /decisions`, `GET /decisions/{id}`, `POST /decisions/{id}/answer`.
+> - **Non-transactional across the two stores.** `Raise` writes the decision then the inbox item, and
+>   `Answer` writes the decision then completes the item — completion is idempotent and unconditional,
+>   so a retry after a crash between the two writes self-heals. The two JSON stores are still not
+>   updated atomically; a durable transactional store is a later (B2) concern.
 > The deny-must-carry-a-reason invariant (§3/§5) was PR-shaped; it returns with the richer decision
 > types, not here.
 

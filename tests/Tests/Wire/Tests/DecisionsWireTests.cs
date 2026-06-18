@@ -100,11 +100,43 @@ public class DecisionsWireTests(WireApp app) : IClassFixture<WireApp>
 
     [Rule("POST /decisions/{id}/answer → the decision stamped with its answer, or 404 when absent")]
     [Fact]
+    public async Task Answer_records_a_no_over_the_wire()
+    {
+        var client = app.CreateClient();
+        using var created = await client.PostAsJsonAsync("/decisions", new RaiseDecisionRequest("approve?", ["n"]));
+        var dto = await created.Content.ReadFromJsonAsync<DecisionView>();
+
+        using var res = await client.PostAsJsonAsync(
+            $"/decisions/{dto!.Id}/answer", new AnswerDecisionRequest(Answer: false, Note: null));
+
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        var answered = await res.Content.ReadFromJsonAsync<DecisionView>();
+        Assert.False(answered!.Answer);
+        Assert.NotNull(answered.AnsweredAt);
+    }
+
+    [Rule("POST /decisions/{id}/answer → the decision stamped with its answer, or 404 when absent")]
+    [Fact]
     public async Task Answer_returns_404_for_an_unknown_id()
     {
         using var res = await app.CreateClient().PostAsJsonAsync(
             $"/decisions/{Guid.NewGuid()}/answer", new AnswerDecisionRequest(Answer: true, Note: null));
 
         Assert.Equal(HttpStatusCode.NotFound, res.StatusCode);
+    }
+
+    [Rule("POST /decisions/{id}/answer with no answer → 400 so a missing answer can't record a default no")]
+    [Fact]
+    public async Task Answer_rejects_a_missing_answer()
+    {
+        var client = app.CreateClient();
+        using var created = await client.PostAsJsonAsync("/decisions", new RaiseDecisionRequest("approve?", ["m"]));
+        var dto = await created.Content.ReadFromJsonAsync<DecisionView>();
+
+        using var res = await client.PostAsync(
+            $"/decisions/{dto!.Id}/answer",
+            new StringContent("{\"note\":\"no answer field\"}", System.Text.Encoding.UTF8, "application/json"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
     }
 }
