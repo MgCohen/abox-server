@@ -19,11 +19,16 @@ public class GitTests
         var clone = Path.Combine(Path.GetTempPath(), "ra-clone-" + Guid.NewGuid().ToString("N"));
         try
         {
-            await RunCommand.RunAsync($"git clone -q \"{repo.RemotePath}\" \"{clone}\"", new RunCommandOptions());
-            await RunCommand.RunAsync("git checkout -q feature", new RunCommandOptions(Cwd: clone));
+            var inClone = new RunCommandOptions(Cwd: clone);
+            (await RunCommand.RunAsync($"git clone -q \"{repo.RemotePath}\" \"{clone}\"", new RunCommandOptions())).EnsureOk("git clone");
+            // A fresh clone has no committer identity, and CI runners set none globally; configure it here or the
+            // advancing commit fails silently and the remote never moves, leaving the force push a harmless fast-forward.
+            (await RunCommand.RunAsync("git config user.email advancer@example.com", inClone)).EnsureOk("git config email");
+            (await RunCommand.RunAsync("git config user.name advancer", inClone)).EnsureOk("git config name");
+            (await RunCommand.RunAsync("git checkout -q feature", inClone)).EnsureOk("git checkout");
             await File.WriteAllTextAsync(Path.Combine(clone, "f.txt"), "v2-remote");
-            await RunCommand.RunAsync("git commit -aqm f2-remote", new RunCommandOptions(Cwd: clone));
-            await RunCommand.RunAsync("git push -q origin feature", new RunCommandOptions(Cwd: clone));
+            (await RunCommand.RunAsync("git commit -aqm f2-remote", inClone)).EnsureOk("git commit");
+            (await RunCommand.RunAsync("git push -q origin feature", inClone)).EnsureOk("git push");
 
             await repo.WriteAsync("f.txt", "v2-local");
             await repo.CommitAllAsync("f2-local");
