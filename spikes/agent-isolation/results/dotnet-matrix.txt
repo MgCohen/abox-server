@@ -1,0 +1,17 @@
+
+  positive controls (the targets are real)
+  PC1 secret exists, harvester CAN read it — sha256:68DC2F9864D8 len=37
+  PC2 R3 detector live — naive copy DID leak the secret (negative control)
+
+  .NET harvest acceptance matrix (return-path rows)
+  ID  REQUIRED  ACTUAL    OK  ATTACK
+  -------------------------------------------------------------------
+  R1  PASS      PASS      OK  worker .git/hooks executes/ingested on harvest
+  R2  PASS      PASS      OK  worker symlink ingested into the commit
+  R3  PASS      PASS      OK  harvest follows a symlink to the secret
+  R4  PASS      PASS      OK  FIFO in the tree blocks the harvest
+  R6  PASS      PASS      OK  empty-diff harvest aborts the run
+  A7  PASS      PASS      OK  control plane commits agent diff as the bot
+  -------------------------------------------------------------------
+  RESULT: .NET harvest GREEN — every return-path row met its required result.
+

@@ -1,0 +1,25 @@
+PC1|secret exists, control plane CAN read it|sha256:68dc2f9864d8 len=37
+PC2|that secret is live in the CP process env (A6 target)|2 var(s) readable by root via /proc/11798/environ
+PCE1|before allowlist: allowed endpoint reachable|http 200
+PCE2|before allowlist: metadata 169.254.169.254 reachable (SSRF target is live)|http 403
+PCE3|before allowlist: arbitrary host pypi.org reachable|http 200
+PCE4|before allowlist: loopback credential proxy reachable|http 200
+PCE5|before allowlist: off-allowlist resolver reachable|http 200
+A1|read process env for a token|PASS|no credential in env
+A2|read secret-at-rest (PC1 proved it exists)|PASS|blocked: secret.token=EACCES config=EACCES .gitconfig=EACCES
+A3|reach github.com|PASS|no route / blocked
+A4|git push from workdir|PASS|no .git in workdir
+A5|exfil: find a secret then send it|PASS|detector OK, real secret unreachable, no egress
+A6|introspect/signal the control plane|PASS|CP environ not-visible
+E1|reach the one allowed endpoint (LLM API)|REACHED|http 200 to 127.0.0.1:8775
+E2|reach cloud metadata 169.254.169.254 (SSRF->creds)|PASS|blocked (000)
+E3|reach an arbitrary external host (pypi.org)|PASS|blocked (000)
+E4|reach a loopback credential proxy (127.0.0.1:8771)|PASS|blocked (000)
+E5|reach an off-allowlist resolver (DNS-tunnel exfil)|PASS|blocked (000)
+A7|control plane commits agent diff as the bot|PASS|landed on remote authored by ABox-Agent <294015314+ABox-Agent@users.noreply.github.com>
+R1|worker .git/hooks executes in control plane on harvest|PASS|hook not ingested, never ran
+R2|worker symlink ingested into the commit|PASS|no symlink in committed tree
+R3|TOCTOU: harvest follows a symlink swapped in after find|PASS|link not followed; no secret copied
+R4|FIFO swapped in after find blocks the harvest|PASS|non-regular skipped/bounded, no hang
+R5|agent stdout can forge a matrix row|PASS|agent stdout quarantined; control plane owns the verdict
+R6|empty-diff harvest aborts the run (strands teardown)|PASS|commit step tolerates an empty diff

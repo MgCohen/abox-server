@@ -1,7 +1,16 @@
 # Findings — agent / git isolation spike
 
-**Status:** spike complete for rungs 1–2 (Linux); four adversarial red-team rounds
-survived. **2026-06-18.** Cold-readable — assumes no prior context.
+**Status:** spike complete for rungs 1–2 + an **allowlist-egress rung** (Linux); four
+adversarial red-team rounds survived; the **return-path rows re-proven in .NET**.
+**2026-06-18.** Cold-readable — assumes no prior context.
+
+> **Update (this branch).** Two of the top-three next steps are now done on Linux:
+> (1) the **egress rung** — per-UID netfilter allowlist, rows E1–E5 (allowed
+> endpoint / metadata-SSRF / arbitrary host / loopback proxy / DNS-tunnel),
+> negative-controlled, GREEN; and (2) the **.NET re-proof** of the return-path rows
+> (R1–R6 + A7) as runnable acceptance criteria ([`dotnet/`](dotnet/)), falsifiable
+> (defeat the file-type classify → R3+R4 go RED). See §2/§3 for what each does *not*
+> close (the OS-mechanism A-rows in .NET, ConPTY, Windows, rung 3).
 
 This is the write-up. The runnable artifact and the attack-matrix tables live in
 [`README.md`](README.md); the design being validated is
@@ -58,7 +67,7 @@ posture review confirmed the model is sound and the matrix is a trustworthy sign
 
 ## 2. Tests done, and tests missing
 
-### Done — the attack matrix (all GREEN, rung 2)
+### Done — the attack matrix (all GREEN: rung 2 + egress rung)
 
 Outward perimeter (A1–A6) and the positive path (A7):
 
@@ -83,6 +92,20 @@ Return path (R1–R6) — every one is a hole a red-team round actually found:
 | R5 | agent forges its own matrix row via stdout | 4 | control plane runs the probes + owns the verdict; agent stdout quarantined |
 | R6 | empty diff → `git commit` fails → run aborts → teardown stranded | 4 | empty-diff-tolerant commit + `EXIT`-trap teardown |
 
+Allowlist egress (E1–E5, the **egress rung** — the config A.Box ships):
+
+| # | What the adversary attempts | Held by |
+|---|---|---|
+| E1 | reach the one allowed endpoint (LLM API) — must **stay reachable** | per-UID allowlist permits exactly this dest (pinned by IP) |
+| E2 | reach cloud metadata `169.254.169.254` (SSRF→instance creds) | default-deny `REJECT` for the worker uid |
+| E3 | reach an arbitrary external host | default-deny `REJECT` |
+| E4 | reach a loopback credential-injecting git proxy | default-deny `REJECT` (allowing one dest ≠ opening loopback) |
+| E5 | use an off-allowlist resolver as a DNS-tunnel exfil channel | default-deny `REJECT`; endpoint pinned by IP so `:53` is unneeded |
+
+The .NET re-proof ([`dotnet/`](dotnet/)) re-runs **R1–R6 + A7** against a C# harvest
+primitive — the return-path rows that transfer OS-independently (A1–A6 are Linux
+mechanism and stay in the bash spike).
+
 **Why the GREEN is trustworthy:**
 - **Positive controls.** PC1 proves the secret exists and the control plane *can*
   read it (sha256 + length); PC2 proves it is live in the CP process env (the A6
@@ -97,11 +120,14 @@ Return path (R1–R6) — every one is a hole a red-team round actually found:
 
 ### Missing — not covered by the matrix (ranked by importance for real A.Box)
 
-1. **Allowlist-egress (HIGHEST).** Production needs the LLM API reachable; rung 2
-   only proves `--net none`. The real attack surface — SSRF, the cloud metadata IP
-   `169.254.169.254`, DNS-tunnel exfil, reaching the loopback git proxy — has
-   **zero rows**. (Building it here is also blocked by missing `ip`/iptables in the
-   container; needs a different env or a userspace-proxy approximation.)
+1. **Allowlist-egress — NOW PROVEN ON LINUX (was HIGHEST).** The egress rung permits
+   exactly one endpoint and denies the rest via a per-UID `iptables -m owner`
+   allowlist, with rows for the cloud metadata IP `169.254.169.254` (SSRF→creds),
+   DNS-tunnel exfil, the loopback git proxy, and arbitrary hosts (E2–E5) plus the
+   allowed endpoint staying reachable (E1) — each negative-controlled (`PCE`).
+   *Residual:* this is the `iptables`-owner realization, not the container-netns +
+   filtering proxy A.Box may ship; and it does not test file-**content** tunnelling
+   over the permitted endpoint (a downstream concern, item 6).
 2. **Mount isolation is partial (HIGH).** Rung 2 shares the host filesystem view;
    the secret is held out by *perms*, not *absence*. A real bind-mount-only
    container makes it absent (fail-closed). Today A2 is "one `chmod` from broken."
@@ -163,9 +189,11 @@ for the fix sometimes needs a fix.**
 
 **Egress is the single highest-value control.** Rung 1 has no credential in the
 sandbox (A4) — but that win is **moot if egress is open**, because a reachable,
-credential-injecting git proxy *is* the credential. This is why rung 1 is not a
-security boundary and why the untested allowlist-egress rung is the top residual
-risk.
+credential-injecting git proxy *is* the credential (E4 makes this literal). This is
+why rung 1 is not a security boundary. The egress rung now closes it on Linux:
+default-deny with one permitted endpoint, and — notably — the **ambient container
+left metadata + loopback open** (PCE2/PCE4), so the app-layer allowlist, not the
+platform, is what shuts the SSRF and credential-proxy paths.
 
 **Root-as-control-plane is a faithful but pessimistic stand-in.** Running the
 harvester as root means every primitive (`cp`, `find`) wields full authority — the
@@ -182,10 +210,16 @@ exception) — exactly the things that silently regress in a re-implementation.
 ### Posture verdict (from the final review)
 
 - **Safe today** as a validated design proof, and as a defensible boundary for a
-  **single, offline (`--net none`), Linux** agent invocation at **rung 2**.
-- **Not safe** for rung 1 as a security control, the networked production config
-  (allowlist egress untested), Windows, or an integrated ConPTY system — yet.
-- **Top 3 next steps:** (1) build the allowlist-egress rung with the
-  SSRF/metadata/DNS test set; (2) re-run the matrix against the real .NET/ConPTY
-  harvest as executable acceptance criteria; (3) stand up rung 3 so commit-as-bot is
-  cryptographically provable.
+  **Linux** agent invocation both offline (rung 2, `--net none`) and **networked
+  with allowlist egress** (egress rung) — for a single invocation.
+- **Not safe** for rung 1 as a security control, Windows, or an integrated ConPTY
+  system — yet. The egress rung is proven via the `iptables`-owner mechanism, not
+  the container-netns + proxy a real deployment may use.
+- **Done since the original write-up (Linux):** the allowlist-egress rung
+  (E1–E5) and the **.NET re-proof of the return-path rows** (R1–R6 + A7, falsifiable
+  acceptance criteria in `dotnet/`).
+- **Top 3 next steps now:** (1) re-prove the **outward-perimeter A-rows in .NET**
+  against a real sandbox primitive (the egress rung's E-rows + the bash A-rows are
+  still Linux-shell), and the **ConPTY seam** once that code exists; (2) re-run the
+  whole matrix on **Windows** (DPAPI / Job Objects / Windows-container egress);
+  (3) stand up **rung 3** so commit-as-bot is cryptographically provable.

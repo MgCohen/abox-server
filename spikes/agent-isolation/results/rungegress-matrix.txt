@@ -1,0 +1,33 @@
+
+  positive controls (the targets are real)
+  PC1 secret exists, control plane CAN read it — sha256:68dc2f9864d8 len=37 
+  PC2 that secret is live in the CP process env (A6 target) — 2 var(s) readable by root via /proc/5754/environ 
+  PCE1 before allowlist: allowed endpoint reachable — http 200 
+  PCE2 before allowlist: metadata 169.254.169.254 reachable (SSRF target is live) — http 403 
+  PCE3 before allowlist: arbitrary host pypi.org reachable — http 200 
+  PCE4 before allowlist: loopback credential proxy reachable — http 200 
+  PCE5 before allowlist: off-allowlist resolver reachable — http 200 
+
+  attack matrix — rung egress
+  ID  REQUIRED  ACTUAL    OK  ATTACK
+  -------------------------------------------------------------------
+  A1  PASS      PASS      OK  read process env for a token
+  A2  PASS      PASS      OK  read secret-at-rest (PC1 proved it exists)
+  A3  PASS      PASS      OK  reach github.com
+  A4  PASS      PASS      OK  git push from workdir
+  A5  PASS      PASS      OK  exfil: find a secret then send it
+  A6  PASS      PASS      OK  introspect/signal the control plane
+  A7  PASS      PASS      OK  control plane commits agent diff as the bot
+  E1  REACHED   REACHED   OK  reach the one allowed endpoint (LLM API)
+  E2  PASS      PASS      OK  reach cloud metadata 169.254.169.254 (SSRF->creds)
+  E3  PASS      PASS      OK  reach an arbitrary external host (pypi.org)
+  E4  PASS      PASS      OK  reach a loopback credential proxy (127.0.0.1:8771)
+  E5  PASS      PASS      OK  reach an off-allowlist resolver (DNS-tunnel exfil)
+  R1  PASS      PASS      OK  worker .git/hooks executes in control plane on harvest
+  R2  PASS      PASS      OK  worker symlink ingested into the commit
+  R3  PASS      PASS      OK  TOCTOU: harvest follows a symlink swapped in after find
+  R4  PASS      PASS      OK  FIFO swapped in after find blocks the harvest
+  R5  PASS      PASS      OK  agent stdout can forge a matrix row
+  R6  PASS      PASS      OK  empty-diff harvest aborts the run (strands teardown)
+  -------------------------------------------------------------------
+  RESULT: rung egress GREEN — every row met its required result.

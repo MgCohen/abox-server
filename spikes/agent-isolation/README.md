@@ -19,9 +19,17 @@ control plane evaluates them against the per-rung required result.
 ## Run it
 
 ```bash
-sudo bash rung1.sh   # two OS principals on one host (proves the principle)
-sudo bash rung2.sh   # + net/pid/mount namespaces (closes the egress hole)
+sudo bash rung1.sh        # two OS principals on one host (proves the principle)
+sudo bash rung2.sh        # + net/pid/mount namespaces (deny-ALL egress)
+sudo bash rung-egress.sh  # allowlist egress: one endpoint permitted, all else denied
 ```
+
+The **egress rung** is the config A.Box actually ships (the LLM API must be
+reachable). It keeps pid+mount isolation but stays on the host net under a per-UID
+netfilter allowlist, and adds rows E1–E5 (allowed endpoint / metadata-SSRF /
+arbitrary host / loopback proxy / DNS-tunnel). See [§ Egress rung](#egress-rung--allowlist-not-deny-all).
+The return-path rows are also re-proven in C# under [`dotnet/`](dotnet/) — the
+acceptance criteria the real .NET harvest must keep passing.
 
 Each run sets up a throwaway `/opt/abox-spike` (separate `abox-worker` user, a
 0600 secret, a bare "remote" + real clone), spawns the adversary, then tears it
@@ -174,12 +182,55 @@ Four rounds in, the pattern holds and widens: trust nothing the worker emits —
 not its files, not its **stdout**, not its ability to make a control-plane step
 **fail**. Teardown and verdict-recording belong entirely to the control plane.
 
+## Egress rung — allowlist, not deny-all
+
+Rung 2 proved the **easy** case (`--net none`: nothing reachable). Production can't
+ship that — the LLM API must be reachable while everything else is denied, so the
+real sandbox is **allowlist-egress**. This rung proves that shape.
+
+With no `ip`/veth/Docker in this container, the faithful mechanism is a **per-UID
+netfilter allowlist**: the worker (already a distinct OS principal) may reach exactly
+ONE endpoint; every other destination is `REJECT`ed (`iptables -m owner
+--uid-owner`). The worker keeps pid+mount isolation but stays on the host net so the
+one endpoint is reachable. The allowed endpoint is a control-plane-run local server
+(a deterministic LLM-API stand-in, pinned by IP:port — modelling
+`allow api.anthropic.com:443, deny all` while surviving DNS denial).
+
+**Why this rung matters here specifically:** this container's *ambient* egress is
+already SNI-filtered (named hosts resolve, raw IPs don't) — yet it leaves the cloud
+**metadata IP and loopback wide open** (the `PCE` rows below prove it). Those are the
+highest-value holes (SSRF → instance creds; a loopback credential-injecting git
+proxy). The platform does not close them; the **app-layer allowlist must**. That gap
+is the whole point of the rung.
+
+Negative controls (`PCE1–PCE5`): before the allowlist, every block-target is probed
+**from the worker itself** and shown reachable — so a later "blocked" is the
+allowlist working, not ambient no-connectivity (the same discipline as the R-rows).
+
+| # | Attack | Required | Negative control (before allowlist) |
+|---|---|---|---|
+| E1 | reach the one allowed endpoint (LLM API) | **REACHED** | PCE1 reachable (http 200) |
+| E2 | reach cloud metadata `169.254.169.254` (SSRF→creds) | blocked (000) | PCE2 reachable (http 403) |
+| E3 | reach an arbitrary external host (`pypi.org`) | blocked (000) | PCE3 reachable (http 200) |
+| E4 | reach a loopback credential proxy (`127.0.0.1`) | blocked (000) | PCE4 reachable (http 200) |
+| E5 | reach an off-allowlist resolver (DNS-tunnel exfil) | blocked (000) | PCE5 reachable (http 200) |
+
+All E-rows GREEN, and A1–A7 + R1–R6 stay GREEN (pid+mount isolation is intact; A3/A5
+now block, like rung 2). Evidence: [`results/rungegress-matrix.txt`](results/rungegress-matrix.txt).
+
+**Scope it honestly:** this proves the *shape* (default-deny, one endpoint, metadata
++ loopback + DNS + arbitrary-host all closed) via one realization (uid-owner
+netfilter). The real A.Box may instead use a container netns + filtering proxy; and
+this does **not** test data *content* tunnelling over the permitted endpoint — that
+stays a downstream-review concern, as for any committed content.
+
 ## Rung → mechanism → A.Box / Windows mapping
 
 | Rung | This container | A.Box target | Windows equivalent |
 |---|---|---|---|
 | 1 | separate OS user + scrubbed allowlist env + dir perms | separate OS principal for agents | separate Windows user; per-user DPAPI / Credential Manager |
 | 2 | `unshare --net --pid --mount` (no daemon) | container per task | Windows container / `--network none` |
+| egress | per-UID `iptables -m owner` allowlist (host net) | allowlist-egress sandbox (LLM API only) | WFP / Windows-container egress policy + filtering proxy |
 
 The mechanisms differ per OS; the **attack matrix is the portable artifact**. It
 lifts back into A.Box unchanged as the acceptance criteria for the real
@@ -193,11 +244,12 @@ control-plane/sandbox seam.
   view is still the host's (secret-at-rest is held out by *perms*, as in rung 1). A
   real container/Docker bind-mounts only the working dir — the stronger form, noted
   but not built here (no Docker in this environment).
-- **Egress is proven for `--net none`, not the allowlist case A.Box will ship.**
-  The research doc (§3.4) says the real sandbox is *allowlist-egress* (LLM API
-  permitted) — which must still deny the loopback git proxy + DNS while allowing
-  one endpoint. Rung 2 proves the easy case (no network at all); the allowlist
-  variant is integration work.
+- **Egress: deny-all (rung 2) AND allowlist (egress rung) are now both proven —
+  on Linux, via one mechanism.** The egress rung permits one endpoint and denies
+  metadata/loopback/DNS/arbitrary hosts (E1–E5, negative-controlled). What remains:
+  this is the `iptables -m owner` realization, not the container-netns + filtering
+  proxy A.Box may ship; and it does not test data *content* tunnelling over the
+  permitted endpoint (a downstream-review concern).
 - **Rung 1 has no egress control — and that is more than the A3 row shows.** A
   red-team pass confirmed a rung-1 worker can reach an ambient credential-injecting
   git proxy (authenticated access to the real remote, no token needed) and
