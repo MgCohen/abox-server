@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- The Contracts leaf is its own assembly (the UI references it alone); exclude its folder so this
+         project does not double-compile it. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);Contracts/**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FastEndpoints" Version="8.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="Contracts\ABox.Git.Contracts.csproj" />
+    <ProjectReference Include="..\..\Domain\Git\ABox.Domain.Git.csproj" />
+  </ItemGroup>
+
+</Project>

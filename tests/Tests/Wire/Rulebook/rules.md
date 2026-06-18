@@ -30,6 +30,15 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 - **Why:** the canonical store replaces the file-backed registry, so existing projects.json entries must survive
   the cutover — on first boot (empty store) each entry is imported as a Project and appears via GET /projects.
 
+### GET /git/prs → the stub pull requests as wire DTOs
+- **Why:** GET /git/prs must route to IPullRequests.List and serialize the PR list to PullRequestDto JSON
+  ({number, title, state}); the canonical-shape port must keep this body byte-identical to the stub.
+
+### POST /git/prs/{number}/merge → merged for a known PR, 404 for an unknown one
+- **Why:** merge must route the `{number}` param to IPullRequests, return MergeResult ({number, state:"merged"})
+  for a known PR (200), and a custom `{error}` body (404) for an unknown one — the exact status + body shape the
+  port must preserve.
+
 ### POST /flows then GET /flows/{id}/events → snapshots stream over SSE to completion
 - **Why:** the core streaming contract — POST /flows starts a run and returns its id; GET /flows/{id}/events
   streams snapshots as Server-Sent Events through to the terminal phase. Proves routing + the start
