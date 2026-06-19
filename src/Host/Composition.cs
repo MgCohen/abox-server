@@ -5,10 +5,12 @@ using ABox.Domain.Agents;
 using ABox.Domain.Agents.Claude;
 using ABox.Domain.Decisions;
 using ABox.Domain.Flow;
+using ABox.Domain.Git;
 using ABox.Domain.Inbox;
 using ABox.Domain.Projects;
 using ABox.Features.Decisions.Module;
 using ABox.Features.Flows.Module;
+using ABox.Features.Git.Contracts;
 using ABox.Features.Git.Module;
 using ABox.Features.Inbox.Module;
 using ABox.Features.Projects.Module;
@@ -31,7 +33,7 @@ internal static class Composition
         services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
         services.AddFastEndpoints(o => o.Assemblies =
-            [ProjectsModule.EndpointsAssembly, InboxModule.EndpointsAssembly, DecisionsModule.EndpointsAssembly]);
+            [ProjectsModule.EndpointsAssembly, GitModule.EndpointsAssembly, InboxModule.EndpointsAssembly, DecisionsModule.EndpointsAssembly]);
 
         services.AddSingleton<IOrchestratorPaths, OrchestratorPaths>();
 
@@ -52,6 +54,6 @@ internal static class Composition
         services.AddSingleton<IAgentFactory, AgentFactory>();
 
         services.AddFlows(flows);
-        services.AddGit();
+        services.AddSingleton<IPullRequests, StubPullRequests>();
     }
 }

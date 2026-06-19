@@ -1,6 +1,6 @@
 namespace ABox.Domain.Git;
 
-public sealed record GitCommitResult(string Hash, string Subject)
+public sealed record CommitResult(string Hash, string Subject)
 {
     public override string ToString() => $"committed {Short(Hash)}: {Subject}";
 
