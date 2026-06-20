@@ -2,7 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Infrastructure\ABox.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\Features\Git\Contracts\ABox.Git.Contracts.csproj" />
+    <ProjectReference Include="..\Inbox\ABox.Domain.Inbox.csproj" />
   </ItemGroup>
 
 </Project>

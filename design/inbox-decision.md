@@ -233,6 +233,30 @@ store is B2's decision (`the-box.md` §12) — not made here.
 > approve-as-owner, identity, and the `Decision`/`Notification` adapters remain S5/T2+ as
 > specified above; this amendment records the divergence so code and design stay honest.
 
+> **Amendment (S1 build · Decision feature).** The Decision slice landed deliberately *smaller* than
+> §2–§6 sketch, and reverses one arrow:
+> - **Decision → Inbox, not the reverse.** The Inbox stays a generic surface that knows nothing of
+>   Decision; the `Decisions` service depends on `IInbox`. On `Raise` it persists a `Decision` and
+>   **projects a plain inbox item** (today's generic note item) sharing the decision's id; on `Answer`
+>   it completes that item by the same id. No `DecisionInboxItem` subtype, no JSON polymorphism
+>   resolver — there is no dynamic registration to justify one (YAGNI).
+> - **No `Swipe`.** A swipe is a client gesture, not a domain concept. A decision records a plain
+>   **yes/no answer** (`bool`) with an optional free-text note.
+> - **One concrete `Decision` (a yes/no question)** rather than the `DecisionSubtype` enum / PR-approval
+>   shape. The subtype hierarchy (and `Decision<TArgs,TResult>`, mirroring `Operation`) returns when a
+>   second decision shape — e.g. a choice whose resolution diverges from yes/no — actually lands.
+> - **Persisted record, no producer-blocking await yet.** A `Decision` is stored with a null answer
+>   until resolved; answering is an update. The park-and-await registry that *gates* a producer waits
+>   for a real producer (the agent/Box bridge, §7).
+> - **HTTP slice pulled forward** (like the Inbox amendment above): `Features/Decisions` —
+>   `POST /decisions`, `GET /decisions`, `GET /decisions/{id}`, `POST /decisions/{id}/answer`.
+> - **Non-transactional across the two stores.** `Raise` writes the decision then the inbox item, and
+>   `Answer` writes the decision then completes the item — completion is idempotent and unconditional,
+>   so a retry after a crash between the two writes self-heals. The two JSON stores are still not
+>   updated atomically; a durable transactional store is a later (B2) concern.
+> The deny-must-carry-a-reason invariant (§3/§5) was PR-shaped; it returns with the richer decision
+> types, not here.
+
 ### Placement (repo pattern)
 
 Three domain concepts, **folders not assemblies** (YAGNI / least mechanism):
@@ -286,3 +310,58 @@ Leans, not locks:
 - **Critical-confirm friction** (§3): the structured "file types you'd normally
   inspect" view is an `INodeProjector` (S4) concern; Decision only carries the
   `Critical` flag and subtype here.
+
+## 12. Pattern grounding (literature)
+
+Web research into how mature systems model this exact shape. The unifying frame:
+**the Inbox is a worklist, a worklist is a CQRS read-model, and a Decision is a
+human task.** This is rationale, not new scope — it confirms the §8-amendment
+direction and names the patterns so future work cites them instead of re-deriving.
+
+- **The Inbox is a projection / materialized view — not an "adapter" layer.** It is a
+  denormalized, query-optimized surface that consolidates multiple producer domains and
+  is rebuildable from them. `Decisions` calling `inbox.Add(...)` *is* a hand-rolled
+  projection write — correct at this scale. An **anti-corruption layer / Adapter** is
+  boundary translation to defend against a foreign model you don't control; we own both
+  sides and the mapping is trivial, so an ACL is unwarranted. Keep the dependency
+  **producer → generic feed** (Decision → Inbox); the feed stays unaware of its
+  producers, which is *why* it scales to N producers (CQRS read-model rule).
+- **Rich vs pure, split by role.** Types that own an invariant stay rich — `Decision.Resolve`
+  (answer-once-then-frozen) and `InboxItem.MarkSeen/Complete` as record-returning methods are
+  tell-don't-ask, not anemic. Projection writes and boundary DTOs (`InboxItemView`,
+  `DecisionView`) stay pure data (Fowler explicitly exempts DTOs); behavior there would
+  re-couple the read surface to domain rules.
+- **Multiple item types = common envelope + a `type` discriminator the client dispatches on**,
+  ignoring unknown types rather than erroring (ActivityStreams 2.0). In .NET the idiomatic
+  realization is what `InboxItem` already is — a sealed/abstract-record union consumed by
+  exhaustive `switch` (a discriminated union), giving compile-time "handled every variant."
+  Avoid the `Kind`-enum + wide-nullable-record trap (re-admits illegal states) and Visitor
+  (isomorphic but more verbose). Add variants on the second real use. *Open item:* a feed item
+  should carry a producer-set kind marker so a client can tell an actionable decision from an
+  informational note (gap #1 — a `"decision"` tag now; a typed `DecisionInboxItem` only when the
+  item must carry decision-specific payload for rendering).
+- **Decision is a human task; the Inbox is its worklist.** Lifecycle Pending → Answered ≈
+  WS-HumanTask CREATED/READY → COMPLETED; the answering update is the *Complete* operation.
+  "Show me open decisions" is the canonical worklist query (gap #3 — an explicit Pending/Answered
+  state both the inbox query and the future gate read from).
+- **Deferred gating (when a real producer must block):** a `TaskCompletionSource` registry
+  layered *over the persisted record as source of truth* — **not** a workflow engine (Temporal/
+  Zeebe is far more mechanism than a yes/no gate needs; YAGNI). Correlate by the stable
+  `DecisionId` (Correlation Identifier / Temporal workflow id — the shared id we already use);
+  **reconstruct the wait from the persisted record on restart** (a bare TCS is lost on restart and
+  strands callers); **race a timeout against the answer** so an unanswered decision escalates
+  rather than hangs. This is the shape of today's agent `PendingDecisions`, so the §7 bridge aligns.
+
+Sources: Fowler, [*CQRS*](https://martinfowler.com/bliki/CQRS.html) and
+[*AnemicDomainModel*](https://martinfowler.com/bliki/AnemicDomainModel.html);
+[microservices.io *CQRS*](https://microservices.io/patterns/data/cqrs.html) and
+[*Anti-corruption layer*](https://microservices.io/patterns/refactoring/anti-corruption-layer.html);
+[Azure *Materialized View*](https://learn.microsoft.com/en-us/azure/architecture/patterns/materialized-view);
+[W3C *Activity Streams 2.0 Core*](https://www.w3.org/TR/activitystreams-core/);
+[getstream.io *Activity streams / W3C spec*](https://getstream.io/blog/designing-activity-stream-newsfeed-w3c-spec/);
+Wlaschin, [*Making illegal states unrepresentable*](https://fsharpforfunandprofit.com/posts/designing-with-types-making-illegal-states-unrepresentable/);
+Seemann, [*Visitor as a sum type*](https://blog.ploeh.dk/2018/06/25/visitor-as-a-sum-type/);
+[OASIS *WS-HumanTask 1.1*](https://docs.oasis-open.org/bpel4people/ws-humantask-1.1-spec-cs-01.html);
+[Camunda *User tasks*](https://docs.camunda.io/docs/components/modeler/bpmn/user-tasks/);
+[Temporal *Human-in-the-loop*](https://learn.temporal.io/tutorials/ai/building-durable-ai-applications/human-in-the-loop/);
+[EIP *Correlation Identifier*](https://www.enterpriseintegrationpatterns.com/patterns/messaging/CorrelationIdentifier.html).

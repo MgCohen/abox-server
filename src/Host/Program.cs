@@ -1,7 +1,6 @@
 using System.Text.Json.Serialization;
 using FastEndpoints;
 using ABox.Features.Flows.Module;
-using ABox.Features.Git.Module;
 using ABox.Features.Tasks.Module;
 using ABox.Host;
 
@@ -15,7 +14,6 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
 app.UseFastEndpoints(c => c.Serializer.Options.Converters.Add(new JsonStringEnumConverter()));
 app.MapFlows();
-app.MapGit();
 app.MapTasks();
 
 app.Run();

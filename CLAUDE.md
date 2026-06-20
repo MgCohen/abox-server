@@ -3,6 +3,13 @@
 Index for agents working in this repo. Keep it short — it routes to the
 canonical docs rather than restating them.
 
+## Talking to the owner
+
+- Direct and instructional. No prose padding, no preamble/postamble.
+- Prefer tables and diagrams over paragraphs.
+- Don't close turns with CI / policy-guard / `send_later` / PR-watching
+  boilerplate. Raise those only when asked or when actively watching a PR.
+
 ## What we're doing
 
 Re-authoring the **spine** of a .NET 10 Unity-agent orchestrator (Host + Blazor
