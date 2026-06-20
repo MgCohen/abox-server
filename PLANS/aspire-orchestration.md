@@ -9,9 +9,10 @@ usable in the current cloud session.
 > **One-line verdict.** Aspire is a good fit for *one layer* — provisioning,
 > wiring, and observing backing infra + dev processes — and **not** a replacement
 > for our own ports (`IRepository<T>`, `IProvider`, …). Adopt it **with the first
-> real backing service**, not before. It runs **partially** in this cloud session
-> (build/run a project-only graph: yes; provision a Postgres container: no — no
-> docker daemon). Full value lands on a proper local machine.
+> real backing service**, not before. It runs in this cloud session: a project-only
+> graph builds/runs out of the box, and a Postgres container provisions too once a
+> daemon is bootstrapped (two lines, §5) — the only dev-only catches are
+> ephemerality and the headless dashboard.
 
 ---
 
@@ -206,7 +207,21 @@ Probed the running container directly:
 | .NET 10 SDK | ✅ | `10.0.109`, RID `ubuntu.24.04-x64` |
 | NuGet reachable | ✅ | `api.nuget.org` HTTP 200; `Aspire.Hosting.AppHost` resolvable |
 | Aspire CLI / templates / workload | ❌ installed | not needed — modern Aspire is the `Aspire.AppHost.Sdk` + NuGet packages; hand-author the csproj (§2.4) |
-| **Docker daemon** | ❌ **absent** | `unix:///var/run/docker.sock` — "no such file or directory"; `docker run hello-world` fails |
+| **Docker daemon** | ⚠️ **not running by default, but bootstrappable** | the socket is absent at session start, but the session can start its own daemon (see below) — `docker run hello-world` and `docker pull postgres:17-alpine` both succeed once it's up |
+
+**Bringing up a daemon (verified 2026-06-20).** The session is `root` with
+passwordless `sudo`; `dockerd`/`containerd` are preinstalled; user namespaces +
+`/dev/fuse` + `overlay` are present; Docker Hub is reachable. The only missing
+piece is cgroup delegation, which one mount fixes. Two lines bootstrap it:
+
+```bash
+sudo mount -t cgroup2 none /sys/fs/cgroup    # delegate cgroup v2 (starts as tmpfs, no controllers)
+sudo dockerd >/tmp/dockerd.log 2>&1 &        # → Docker 29.3.1 on /var/run/docker.sock
+```
+
+Verified after bootstrap: daemon up (overlayfs, cgroup v2), `hello-world` runs,
+`postgres:17-alpine` pulls clean. So `AddPostgres`/`AddContainer` **do work in a
+web session** once the daemon is started.
 
 **What this means for Aspire here:**
 
@@ -215,18 +230,21 @@ Probed the running container directly:
 | Build/run the AppHost (it's just a .NET exe) | ✅ | NuGet reachable; no daemon needed |
 | Orchestrate **project/executable** resources (server + client) | ✅ | `AddProject`/`AddExecutable` spawn processes, not containers |
 | Point at an **external/managed** Postgres via connection string | ✅ | `AddConnectionString(...)` — no local provisioning |
-| **Provision a local Postgres/Redis/container** (`AddPostgres`, `AddContainer`) | ❌ | needs a container runtime; **no docker daemon in this session** |
+| **Provision a local Postgres/Redis/container** (`AddPostgres`, `AddContainer`) | ✅ **after bootstrap** | needs a container runtime; not running by default, but the two-line bootstrap above brings up a working daemon |
 | Dashboard *process* launches | ⚠️ | starts, but viewing it needs a browser / port-forward — impractical headless |
-| Full "F5 → everything up + browser" inner loop | ❌ here | a proper-local-machine experience |
+| Full "F5 → everything up + browser" inner loop | ⚠️ | the *processes + containers* run; only the dashboard's browser view is awkward headless |
 
 **Verdict for the cloud session.** Usable for **scaffolding and compile/run
-verification** of a *project-only* graph (and against an external DB by
-connection string), but **not** for the headline local-dev value (container
-provisioning + dashboard-in-browser). Treat this session as where we *write and
-build* the Aspire wiring; do the real `dotnet run` orchestration loop on a local
-machine (or any host with a docker daemon). If we ever want the full loop in a
-cloud session, the environment needs a docker daemon (or we use an external
-managed Postgres instead of `AddPostgres`).
+verification** out of the box, and — once the daemon is bootstrapped — for the
+**full container-provisioning loop** (`AddPostgres` + server + client) too. Two
+caveats keep it dev-only: it's **ephemeral** (daemon, pulled images, and any
+Postgres volume die with the session — no durable data, re-bootstrap each
+session), and the **dashboard's browser view** is impractical headless (the
+orchestration itself still runs). To make web sessions docker-ready
+automatically, run the two-line bootstrap from a **SessionStart hook** (see the
+`session-start-hook` skill) rather than by hand. Where durable data matters,
+prefer an **external/managed Postgres via `AddConnectionString`** over the
+ephemeral local container.
 
 ---
 
@@ -235,9 +253,10 @@ managed Postgres instead of `AddPostgres`).
 1. **Now (optional, here):** land `PostgresRepository<T>` + the `Storage:Provider`
    switch + `AboxResources` behind the unchanged port, with **Json still the
    default** so nothing breaks. Build-verifiable in this session.
-2. **First backing service / local machine:** add `src/AppHost`, provision
-   Postgres, flip `Storage:Provider=Postgres` via the AppHost. Real `dotnet run`
-   loop validated on a docker-capable host.
+2. **First backing service:** add `src/AppHost`, provision Postgres, flip
+   `Storage:Provider=Postgres` via the AppHost. Real `dotnet run` loop validated
+   on any docker-capable host — including a web session once the §5 daemon
+   bootstrap has run.
 3. **Second process (executor/Unity worker):** add `ABox.ServiceDefaults` (OTel +
    health), revisit the minimal-observability stance, wire the worker into the
    graph + dashboard.
