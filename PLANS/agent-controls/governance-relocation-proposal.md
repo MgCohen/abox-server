@@ -7,6 +7,11 @@
 > see *Decisions* below. Next step is promoting this to an ADR amending
 > **[ADR 0010](../../design/adr/0010-agent-repo-controls.md) D2** (which currently
 > scopes `governance/` to *controls only*); until that lands, nothing moves.
+>
+> **Stacked on the [ADR-harness plan](adr-harness.md) (PR #65).** The relocation
+> absorbs that plan's template/validator/generator into the portable engine and its
+> generated artifacts into `governance/decisions/` (ungoverned) — see *ADR-harness
+> integration* below.
 
 ## Summary
 
@@ -132,6 +137,8 @@ abox-server/
 │   ├── specs/                 ← INSTANCE: authoritative contracts        [attention]
 │   │                            (PRD, feature-map, impl-plan, behavioral-oracle)
 │   ├── decisions/             ← INSTANCE: was design/adr/                [review]
+│   │                            (ADR records [review]; generated
+│   │                             adr-index.md / adr-digest.md [ungoverned])
 │   ├── plans/                 ← INSTANCE: working plans (was PLANS/)     [ungoverned]
 │   ├── design/                ← INSTANCE: research + design notes        [review]
 │   └── spikes/                ← INSTANCE: throwaway experiments (code)   [ungoverned]
@@ -147,18 +154,54 @@ abox-server/
 | Today | → Target | Class |
 |---|---|---|
 | `governance/*.sh`, `notify.*` | `governance/harness/` | engine |
+| `governance/adr-check.sh`, `adr-digest.sh` (ADR-harness plan) | `governance/harness/` | engine |
+| `design/adr/template.md` (ADR-harness plan) | `governance/harness/templates/adr.md` | engine |
 | `.githooks/pre-*` | `governance/harness/hooks/` (repoint `core.hooksPath`) | engine |
 | portable half of `CLAUDE.md` | `governance/harness/conventions/*.md` | engine |
 | `governance/protected-paths` | `governance/policy/protected-paths` | instance |
 | `PLANS/rebuild/{01-feature-map,02-prd,03-implementation-plan}.md` | `governance/specs/` | instance |
 | `design/behavioral-oracle.md` | `governance/specs/` | instance |
 | `design/adr/` | `governance/decisions/` | instance |
+| `design/adr-index.md`, `adr-digest.md` (generated, ADR-harness plan) | `governance/decisions/adr-index.md`, `adr-digest.md` (ungoverned — see *ADR-harness integration*) | generated |
+| `PLANS/adr-harness.md` | `governance/plans/` | instance |
 | `PLANS/` (remaining working docs) | `governance/plans/` | instance |
 | `design/{remote-access,stacked-review,research}` + top-level `research/` | `governance/design/` (research under `design/research/`) | instance |
 | `spikes/` | `governance/spikes/` | instance |
 | `.github/workflows/ci.yml` | stays — now references `harness/` | pinned |
 | `.github/CODEOWNERS` | stays (regenerated) | pinned |
 | `.claude/`, `tests/Harness/**` | stay | pinned, governed by reference |
+
+### ADR-harness integration
+
+This relocation sits **on top of** the
+[ADR-harness plan](adr-harness.md) (PR #65), which adds an enforced ADR shape:
+a `template.md`, a zero-dependency `adr-check.sh` validator, an `adr-digest.sh`
+generator, and generated `adr-index.md` / `adr-digest.md`. Those pieces sort the
+same way everything else does — **engine vs. instance** — so the relocation absorbs
+them without inventing new structure:
+
+- **The template + validator + generator are *engine*.** They are exactly the
+  "enforcer scripts + ADR templates" the portable harness is made of, so they land
+  in `governance/harness/` (`templates/adr.md`, `adr-check.sh`, `adr-digest.sh`) and
+  ride the existing **`governance/harness/** | critical`** row. The ADR-harness
+  plan's separate ask — *"add `design/adr/template.md` and `governance/adr-*.sh` to
+  `protected-paths`"* — is therefore **subsumed**: post-move the harness umbrella
+  already covers them, and no extra rows are written.
+- **The ADR records stay *instance*** under `governance/decisions/` (`review`),
+  unchanged.
+- **The generated `adr-index.md` / `adr-digest.md` must stay ungoverned** so CI can
+  regenerate-and-diff them without tripping owner review on every ADR add. The
+  ADR-harness plan parks them *outside* the protected tree (`design/adr-index.md`,
+  a sibling of `design/adr/`); that escape hatch disappears here, since
+  `design/adr/` becomes the `review`-tier `governance/decisions/`. We keep them
+  **co-located in `governance/decisions/` and exempt them in policy instead.** The
+  matcher is first-match-wins with **no negation syntax** (a matched row always
+  gates), so the exemption is expressed by **narrowing the record glob, not by a
+  `!` rule**: protect the ADR record pattern
+  `governance/decisions/[0-9][0-9][0-9][0-9]-*.md` rather than
+  `governance/decisions/**`, leaving the generated `adr-index.md` / `adr-digest.md`
+  siblings matching no row. CODEOWNERS regenerates from the same narrowed glob, so
+  the gate and the review owner stay in agreement.
 
 ## Naming — why `harness`, and the `tests/Harness` parallel
 
@@ -207,10 +250,12 @@ below):
 governance/harness/**   | @owner | critical  | Portable engine — machinery + conventions.
 governance/policy/**    | @owner | critical  | The policy itself.
 governance/specs/**     | @owner | attention | Authoritative contracts — PRD, feature-map, impl-plan, oracle.
-governance/decisions/** | @owner | review    | ADRs — frozen history.
+governance/decisions/[0-9][0-9][0-9][0-9]-*.md | @owner | review | ADR records — frozen history.
 governance/design/**    | @owner | review    | Research + design notes.
 .github/**  tests/Harness/** …  ← unchanged, governed in place
 # governance/plans/** and governance/spikes/** — intentionally ungoverned (working docs / throwaway code).
+# governance/decisions/adr-index.md, adr-digest.md — generated, intentionally ungoverned (the record glob above
+#   is narrowed to NNNN-*.md so these machine-written siblings match no row; CI regenerates-and-diffs them).
 ```
 
 **Adopting in a new repo** becomes: `cp -r governance/harness new-repo/governance/`
@@ -258,6 +303,9 @@ instance folders start empty. That one-folder copy is the whole point of the spl
    records the decision (engine/instance seam, specs/plans split, deferred
    distribution); this doc remains the living *how*.
 3. Execute the move behind that ADR: `git mv` (preserve history), carve `specs/` out
-   of `PLANS/rebuild` + move the oracle, rewrite policy globs + regenerate
-   CODEOWNERS, rewrite cross-doc links (~30 files reference `PLANS/`/`design/`),
-   split `CLAUDE.md`, repoint `core.hooksPath` and the CI job.
+   of `PLANS/rebuild` + move the oracle, fold the ADR-harness pieces into the engine
+   (`template.md` → `harness/templates/adr.md`; `adr-check.sh` / `adr-digest.sh` →
+   `harness/`) and narrow the `decisions/` record glob so the generated index/digest
+   stay ungoverned, rewrite policy globs + regenerate CODEOWNERS, rewrite cross-doc
+   links (~30 files reference `PLANS/`/`design/`), split `CLAUDE.md`, repoint
+   `core.hooksPath` and the CI job.

@@ -44,8 +44,9 @@ explicit engine/instance seam**:
   0010-D2's "controls only."
 - **D2 — Extract the portable engine into `governance/harness/`.** The enforcement
   machinery (policy reader, CODEOWNERS generator, notifier, git hooks, CI job
-  source, ADR/plan templates, the portable operating conventions) is the unit a new
-  repo copies. It MUST be self-contained — no path reaching into the instance — so
+  source, ADR/plan templates, the ADR structural validator + digest generator from
+  the ADR-harness plan, the portable operating conventions) is the unit a new repo
+  copies. It MUST be self-contained — no path reaching into the instance — so
   adoption is a folder copy. The name is deliberate: `tests/Harness/` is already
   the repo's "reusable enforcement engine," and `governance/harness/` is the same
   role for the repo's controls (lowercase to match its shell/docs world; the parity
@@ -101,8 +102,9 @@ explicit engine/instance seam**:
   reproduces `.github/CODEOWNERS` with no diff.
 - [det] The policy has `critical` rows for `governance/harness/**` and
   `governance/policy/**`, an `attention` row for `governance/specs/**`, a `review`
-  row for `governance/decisions/**`, and **no** row matching `governance/plans/**`
-  or `governance/spikes/**`.
+  row for the ADR record glob `governance/decisions/[0-9][0-9][0-9][0-9]-*.md`, and
+  **no** row matching `governance/plans/**`, `governance/spikes/**`, or the generated
+  `governance/decisions/adr-index.md` / `adr-digest.md`.
 - [llm] The root `CLAUDE.md` holds only repo-specific "what we're doing" prose plus
   `@`-imports of `governance/harness/conventions/*`; the portable conventions are
   not duplicated inline.
@@ -137,5 +139,7 @@ explicit engine/instance seam**:
   [`0012`](0012-dependency-budget-by-failure-mode.md).
 - The *how* — target tree, migration map, mechanisms, resolved decisions:
   [`PLANS/agent-controls/governance-relocation-proposal.md`](../../PLANS/agent-controls/governance-relocation-proposal.md).
+- The harness this stacks on — the enforced ADR shape (template, validator, digest)
+  the engine absorbs: [`PLANS/adr-harness.md`](../../PLANS/adr-harness.md).
 - Control surface how-to: [`governance/README.md`](../../governance/README.md).
 - Naming precedent — the test enforcement engine: [`tests/README.md`](../../tests/README.md).
