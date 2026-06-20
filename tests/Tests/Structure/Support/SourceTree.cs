@@ -51,6 +51,54 @@ internal static class SourceTree
         Path.GetRelativePath(FeaturesRoot, csproj).Split(Separators)
             .Any(seg => string.Equals(seg, "Contracts", StringComparison.Ordinal));
 
+    // The folders inside a feature that are NOT verbs: the published Contracts leaf and the folded-in Module. Every
+    // other immediate folder is a verb and must carry its endpoint (the canonical slice has one endpoint per verb).
+    private static readonly string[] NonVerbFolders = { "Contracts", "Module" };
+
+    // Verb folders of one feature that declare no endpoint: every immediate subfolder except Contracts/Module that
+    // holds no `*Endpoint.cs`. A folder with no endpoint is either a stray (Flows' Shared) or a verb whose endpoint
+    // is misnamed/misplaced — both break the "every verb folder looks the same" guarantee.
+    public static IReadOnlyList<string> VerbFoldersWithoutEndpoint(string feature)
+    {
+        var root = Path.Combine(FeaturesRoot, feature);
+        return Directory.EnumerateDirectories(root)
+            .Where(dir => !NonVerbFolders.Contains(Path.GetFileName(dir), StringComparer.Ordinal))
+            .Where(dir => !RepoTree.BuildOutputDirs.Contains(Path.GetFileName(dir)!, StringComparer.OrdinalIgnoreCase))
+            .Where(dir => !Directory.EnumerateFiles(dir, "*Endpoint.cs", SearchOption.AllDirectories).Any())
+            .Select(dir => Path.GetFileName(dir)!)
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    // A type whose name carries a wire role — request, response, DTO, or projection view — that the client or a peer
+    // slice binds. The canonical slice keeps every one of these in the Contracts leaf; the suffixes match the repo's
+    // own naming (CreateProjectRequest, ProjectDto, StartRunResponse, FlowView).
+    private static readonly string[] ContractSuffixes = { "Request", "Response", "Dto", "View" };
+
+    public static IReadOnlyList<string> ContractTypeFilesOutsideContracts() => ContractTypeFiles(underContracts: false);
+
+    public static IReadOnlyList<string> ContractTypeFilesInContracts() => ContractTypeFiles(underContracts: true);
+
+    private static IReadOnlyList<string> ContractTypeFiles(bool underContracts) =>
+        Directory.EnumerateFiles(FeaturesRoot, "*.cs", SearchOption.AllDirectories)
+            .Where(NotIgnoredUnder(FeaturesRoot))
+            .Where(IsContractTypeFile)
+            .Where(f => UnderContractsFolderRel(f) == underContracts)
+            .Select(f => Path.GetRelativePath(SrcRoot, f))
+            .OrderBy(f => f, StringComparer.Ordinal)
+            .ToList();
+
+    private static bool IsContractTypeFile(string csproj) =>
+        ContractSuffixes.Any(s => Path.GetFileNameWithoutExtension(csproj).EndsWith(s, StringComparison.Ordinal));
+
+    private static bool UnderContractsFolderRel(string file) =>
+        Path.GetRelativePath(FeaturesRoot, file).Split(Separators)
+            .Any(seg => string.Equals(seg, "Contracts", StringComparison.Ordinal));
+
+    private static Func<string, bool> NotIgnoredUnder(string root) =>
+        path => !Path.GetRelativePath(root, path).Split(Separators)
+            .Any(seg => RepoTree.BuildOutputDirs.Contains(seg, StringComparer.OrdinalIgnoreCase));
+
     // The top-most bin/obj/artifacts folders found under src/ or tests/. The only legal artifacts home is the
     // repo-root /artifacts; any here means a project escaped the root props.
     public static IReadOnlyList<string> StrayBuildOutput() =>
