@@ -16,8 +16,14 @@ API). Those deferrals are this spike's subject.
 
 ## 1. The model under test
 
-Synthesised from the design thread. The sandbox is the unit of a **flow**, not
-of an agent run.
+The security model traces to
+[`control-plane.research.md`](control-plane.research.md); this spike takes it as
+given and adds lifecycle on top. The sandbox is the unit of a **flow**, not of an
+agent run.
+
+**Threat model (load-bearing):** guard against a *wandering long-running agent
+grabbing keys* — **not** against a deliberate malicious VM escape. Every "a
+container is probably enough" call below rests on this line.
 
 - **One box per flow, not per run.** Spun up at flow start, reused across every
   agent run and loop in the flow, torn down at flow end. The shared working
@@ -33,12 +39,13 @@ of an agent run.
   merge happen on the trusted side, between sessions — never mid-session, never
   by the agent.
 - **Asymmetric trust.** Orchestrator → box: broad (lifecycle + exec + read
-  results). Box → orchestrator: none, or one razor-thin authed callback. Box
-  egress: **Anthropic only**.
+  results). Box → orchestrator: **none** — the orchestrator drives one-way (a
+  box-initiated callback is out of scope for this spike). Box egress:
+  **Anthropic only**.
 
 The single claim:
 
-> A flow can run **N agent turns over one persistent shared worktree** at
+> A flow can run **M agent turns over one persistent shared worktree** at
 > **near-zero per-run overhead** (one spin-up amortised across the flow), deliver
 > the repo **in** and the changes **out** through a mechanism that is exact and
 > auditable, and the box never holds a credential or a git remote.
@@ -49,7 +56,7 @@ are assumed proven there and are **not** re-litigated here. This spike adds the
 
 ## 2. Two open questions this spike answers
 
-The design thread surfaced exactly two worries. Each becomes a measured result.
+Two worries decide feasibility. Each becomes a measured result.
 
 ### Q1 — Can we spin boxes many / cheap / fast?
 
@@ -60,8 +67,13 @@ because fast isolation is commodity. To verify, not assume:
 |---|---|---|---|
 | Container (Docker/Podman) | sub-second–~2s | namespace | Sandcastle/Codex-web baseline |
 | Container, pooled/warm | < ~500ms | namespace | pre-pulled image, reused base layer |
-| MicroVM (Firecracker/gVisor) | ~125–250ms | VM | "VM speed of a container"; e2b/Fly/Daytona use it |
+| MicroVM (Firecracker) | ~125–250ms | hardware VM | own kernel; e2b/Fly use it |
+| gVisor | ~low-hundreds ms | userspace kernel | a sandboxed runtime, *not* a true microVM — different isolation/spin profile |
 | Full VM (cloud instance) | tens of seconds | VM | only if a microVM can't do it — it can |
+
+These figures are *expected* values (vendor-claimed for the managed rows — see
+[`substrate-abstraction.md`](substrate-abstraction.md) §6); the spike's job is to
+replace them with measured numbers, not to trust them.
 
 **Measure:** cold + warm spin time for the chosen substrate, and the *amortised*
 per-run overhead across an M-run flow (target: spin / M ≈ negligible). The
@@ -93,8 +105,8 @@ allowlist-egress to Anthropic only (the deferral `SPIKE.md` named).
 
 **Out / still deferred:** the separation attack matrix itself (proven in
 `SPIKE.md` — reuse it as a gate, don't rebuild it); real ConPTY interactive I/O
-across the boundary; identity/provability (rung 3 there); the actual A.Box
-Flow/Step wiring. A green spike proves a **flow-shaped** workload is cheap and
+across the boundary; identity/provability (the signed-commit / can't-self-approve
+proof in `SPIKE.md`'s rung 3); the actual A.Box Flow/Step wiring. A green spike proves a **flow-shaped** workload is cheap and
 the seam is exact — it does **not** wire the orchestrator.
 
 ---
@@ -111,8 +123,10 @@ the seam is exact — it does **not** wire the orchestrator.
 | F6 | `git bundle` survives a moved base | trusted base advanced meanwhile → still applies | advance trusted branch, then unbundle/fetch |
 | F7 | Box reaches Anthropic, nothing else | allowlist egress: api.anthropic.com ok, github.com blocked | `curl` both; reuses `SPIKE.md` A3 shape |
 
-F4 and F7 lean on the `SPIKE.md` matrix — cite it, don't duplicate it. F1–F3,
-F5, F6 are the new surface.
+F4 and F7 lean on the `SPIKE.md` matrix — cite it, don't duplicate it. The borrowed
+rows, glossed so this table reads on its own: **A1** = no token in the box's `env`;
+**A3** = egress blocked; **A4** = no git remote/creds in the working dir (all defined
+in [`SPIKE.md`](SPIKE.md) §4). F1–F3, F5, F6 are the new surface.
 
 **Pass:** every row observed at its required result, captured as logged output in
 `results/` (demonstrated, not asserted), for the chosen substrate.
@@ -177,7 +191,7 @@ bundle** (microVM). No shared env, no credential, no remote in the box.
 - §4 table **all-green for the chosen rung set**, with captured `results/`
   (including the Q1 timing table and the Q2 round-trip checksums).
 - A one-paragraph verdict: **container+mount** vs **microVM+bundle** for A.Box,
-  with the measured spin numbers behind the call.
+  with the measured numbers for whichever substrates were run behind the call.
 - The rows lifted into A.Box as acceptance criteria for the per-flow
   sandbox/orchestrator seam — joining the `SPIKE.md` matrix (separation) so the
   integrated criteria are *separation + lifecycle + seam* together.

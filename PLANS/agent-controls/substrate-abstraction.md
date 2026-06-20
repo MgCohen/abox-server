@@ -21,7 +21,13 @@ swaps substrates).
 
 The orchestrator's flow logic — clone → stage in → run agent turns → read out →
 commit — is **substrate-agnostic**. Only the thing that *creates and runs the box*
-differs per platform. Funnel that through one narrow seam:
+differs per platform. Funnel that through one narrow seam.
+
+The security model these substrates enforce lives in
+[`control-plane.research.md`](control-plane.research.md); the **threat model** is the
+one the spikes use — *guard against a wandering long-running agent grabbing keys, not
+a malicious VM escape* — which is why "a container is enough" holds for v1 and the
+microVM/snapshot options stay optional.
 
 ```csharp
 public interface IProvisioner
@@ -30,16 +36,15 @@ public interface IProvisioner
 }
 
 public sealed record SandboxSpec(
-    SandboxTarget Target,        // Linux | Windows | MacOS
-    string Image,                // container image, or VM template id
-    DirectoryInfo Worktree,      // staged in at provision time
-    EgressPolicy Egress);        // Anthropic-only, etc.
+    SandboxTarget Target,        // Linux | Windows | MacOS — selects the provider
+    ImageRef Image,              // provider-owned: a Docker image OR a VM template;
+                                 // only the chosen provider interprets it
+    DirectoryInfo Worktree,      // mounted in at provision time
+    EgressPolicy Egress);        // allowlist of permitted egress domains (Anthropic only)
 
 public interface ISandbox : IAsyncDisposable
 {
     Task<ExecResult> ExecAsync(string command, CancellationToken ct);
-    Task<string>     ReadFileAsync(string path, CancellationToken ct);
-    Task             ExportAsync(DirectoryInfo dest, CancellationToken ct);
 }
 ```
 
@@ -49,9 +54,17 @@ Design rules baked into the shape:
   box is a container or a VM*. Naming it `IContainer` re-leaks that — and for
   Mac/Windows it isn't a container. Name it for what it is to the orchestrator: an
   isolated box.
-- **Files go in at provision time**, not via a method. The box is *born* with the
-  worktree staged (mount for Docker, copy for a VM). `ISandbox`'s operations are the
-  runtime ones: exec, read, export, dispose.
+- **`ImageRef` is provider-owned.** A Docker image and a `tart` VM template are not
+  the same thing; rather than smuggle both through one `string`, the orchestrator
+  treats `ImageRef` as opaque and only the matching provider interprets it. The
+  container-vs-VM detail stays *inside* the provider — exactly where the seam means
+  to keep it.
+- **Files cross only at the edges, never via a file API.** The box is *born* with the
+  worktree mounted in (`SandboxSpec.Worktree`); changes come back out because the
+  orchestrator reads that same mount. So `ISandbox` carries **no read/write/export
+  method** — its only runtime operation is `ExecAsync`, plus `DisposeAsync`. (A
+  no-shared-FS VM provider handles export at the seam via `git bundle` — a provider
+  concern, not an interface method, and out of scope until that provider lands.)
 - **`DisposeAsync` is guaranteed anti-zombie teardown**, not best-effort — the box
   dies even if a run hung or threw (same teardown discipline the PTY path already
   honors). Orchestrator wraps the lifecycle in `finally`.
@@ -122,22 +135,28 @@ argument *for* a managed service, when warm-start latency is critical.
 The substrate **mechanics** are solved; the **policy** is ours. Don't hand-roll the
 Docker API.
 
-**v1 — self-hosted, .NET, Linux: wrap [Testcontainers.NET].** It maps 1:1 onto
-`ISandbox`: `WithResourceMapping`/`WithBindMount` (files in), `ExecAsync` (exec),
-file copy-out (export), `WithNetwork` (egress), and the **Ryuk resource reaper**
-gives guaranteed teardown for free — i.e. §1's anti-zombie rule, solved. Make
-`DockerProvisioner` a thin adapter over it, not raw `docker` calls. (`Docker.DotNet`
-is the lower-level fallback if its test ergonomics chafe.)
+**v1 — self-hosted, .NET, Linux: wrap [Testcontainers.NET].** It covers the seam's
+mechanics: `WithBindMount` (worktree in *and* out via the mount), `ExecAsync`
+(exec), `WithNetwork` (egress), and the **Ryuk resource reaper** gives guaranteed
+teardown for free — i.e. §1's anti-zombie rule, solved. Make `DockerProvisioner` a
+thin adapter over it, not raw `docker` calls. **Caveat:** Testcontainers is a
+*test-harness* library; §2's hold-the-box-open-across-N-execs flow is not its default
+usage pattern, so confirm the long-lived-container + repeated-`ExecAsync` path in the
+spike before betting on it. (`Docker.DotNet` is the lower-level fallback if its test
+ergonomics chafe.)
 
 **Extension menu (only when a real need lands):**
 
 | Option | Gives | Costs you |
 |---|---|---|
-| **e2b** | Firecracker microVMs, ~150ms boot, **templates + snapshots** (layer 3) | cloud + per-second; Python/JS SDK; Linux-only |
-| **Daytona** | Docker, sub-90ms, OSS self-host, snapshots | mostly Python/JS; Linux-only |
+| **e2b** | Firecracker microVMs, ~150ms boot¹, **templates + snapshots** (layer 3) | cloud + per-second; Python/JS SDK; Linux-only |
+| **Daytona** | Docker, sub-90ms boot¹, OSS self-host, snapshots | mostly Python/JS; Linux-only |
 | **Fly Machines / Sprites** | API microVMs, persistent volumes | cloud + per-second |
 | **`tart` / Anka** | macOS VMs on Apple hardware | self-host Macs; the *only* macOS option |
 | **Vagrant** | the multi-provider `provision→box` pattern, prior art | Ruby/CLI, heavier |
+
+¹ Vendor-claimed boot times; treat as marketing until the `flow-sandbox` spike
+measures real numbers.
 
 The SaaS players collide with three of our constraints at once (self-hosted,
 .NET, **and** they're Linux-only so they don't touch the Mac/iOS problem that forced
@@ -162,8 +181,9 @@ router. Libraries give mechanics; we supply policy.
 
 ## 8. How this informs the spikes
 
-- `flow-sandbox.SPIKE.md` Rung 0 becomes "wire **Testcontainers.NET** behind
-  `ISandbox`," not "learn the Docker API."
+- `flow-sandbox.SPIKE.md` Rung 0 *should become* "wire **Testcontainers.NET** behind
+  `ISandbox`," rather than its current raw-`docker` framing — a proposed change to
+  that spike, not a description of it.
 - Add a warm-start probe to that spike: measure cold (install+clone) vs layer-1
   (baked image) vs layer-2 (pooled, pre-cloned) start, on a Unity image — the
   numbers decide how far up the warm-start stack we need to go.
