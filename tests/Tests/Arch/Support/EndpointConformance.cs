@@ -17,7 +17,7 @@ internal static class EndpointConformance
     // endpoint or extra public export in a conformant feature, and each rule's staleness check forces this list to
     // shrink as a feature migrates. Projects is absent — it satisfies both positively, so neither is vacuous.
     // Empties as Flows/Git/Tasks port off Minimal API and consolidate (ADR 0011 D1/D2).
-    public static readonly string[] PendingFastEndpointsMigration = { "Flows", "Git", "Tasks" };
+    public static readonly string[] PendingFastEndpointsMigration = { "Flows", "Tasks" };
 
     public static bool IsPendingMigration(string feature) =>
         PendingFastEndpointsMigration.Contains(feature, StringComparer.Ordinal);
