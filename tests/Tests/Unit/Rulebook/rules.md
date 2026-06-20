@@ -272,10 +272,10 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 ### Commit with an invalid input (no files or blank message) → refused with ArgumentException
 - **Why:** an empty file set or whitespace-only message yields a meaningless or empty commit, so the call must be rejected at the boundary rather than producing junk history.
 
-### ChangedFiles on a dirty tree → returns each modified and untracked path
+### Status on a dirty tree → Paths lists each modified and untracked path
 - **Why:** callers decide what to stage/commit from this list, so both already-tracked edits and brand-new files must surface or work silently gets dropped.
 
-### CheckDirty → reports whether the working tree has uncommitted changes
+### Status → IsDirty reports whether the working tree has uncommitted changes
 - **Why:** the dirty flag gates whether a commit step runs at all, so a false negative would skip persisting real work and a false positive would commit nothing.
 
 ### Commit of listed files → stages and commits them, returning the full hash and subject and leaving the tree clean
@@ -284,8 +284,11 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 ### Diff on a dirty tree → reports the changed-file count and the diff text naming each file
 - **Why:** the diff is what gets shown to the model/user for review, so the count and per-file text must reflect the real edits, not a stale or empty snapshot.
 
-### ChangedFiles after a reverting checkout → reports no changes
+### Status after a reverting checkout → reports a clean tree
 - **Why:** a revert that still showed phantom changes would trigger needless commits and mislead the dirty check, so state must reset to truly clean.
+
+### Force push to a remote that advanced since the last fetch → refused before it can overwrite
+- **Why:** the cascade force-pushes rebased branches; `--force-with-lease --force-if-includes` must reject a stale overwrite so a collaborator's pushed work is never silently lost (a lease alone is defeated by a background fetch — spike research/stacked-prs.md §9).
 
 ### Agent emitting NEEDS_INPUT → blocks on a pending decision until a human resolves it, then resumes to Completed
 - **Why:** the whole point of interactive resolution is that the run must pause for human input rather than guessing or failing, and must actually carry the human's answer forward to finish the work.
@@ -430,3 +433,23 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 - **Why:** the inbox holds a polymorphic item hierarchy in the shared JsonRepository, so an item written and read
   back from a fresh repository must round-trip as its concrete subtype (not the abstract base or a wrong type),
   proving the type discriminator survives persistence.
+
+### Decisions.Raise → stores the question and pushes a matching inbox item sharing its id
+- **Why:** a raised decision must both persist and surface in the inbox under the same id, so the human sees it
+  in the feed and the answer can close both sides through one identifier — the dependency points Decision → Inbox.
+
+### Decisions.Get → the decision by id, or null when absent
+- **Why:** a read is pure — fetching a decision must not change it — so it stays safe to retry; a missing id
+  returns null rather than throwing.
+
+### Decisions.List → every decision in arrival order
+- **Why:** the decision feed is flat and chronological like the inbox, so listing returns all decisions ordered by
+  creation (id as a stable tiebreaker), giving the client a deterministic order without a priority engine.
+
+### Decisions.Answer → the decision recorded with its yes/no answer once and stable on repeat, null when absent
+- **Why:** answering records the human's yes/no (with an optional note) the first time and a re-answer must not
+  move the recorded answer or its timestamp; a missing id returns null rather than minting one.
+
+### Decisions.Answer → completes the inbox item it raised
+- **Why:** resolving a decision must complete the inbox item raised under the same id, so the feed reflects the
+  decision is handled without the client reconciling two surfaces by hand.
