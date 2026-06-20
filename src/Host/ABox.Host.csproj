@@ -9,6 +9,7 @@
     <ProjectReference Include="..\Features\Git\ABox.Git.csproj" />
     <ProjectReference Include="..\Features\Projects\ABox.Projects.csproj" />
     <ProjectReference Include="..\Features\Inbox\ABox.Inbox.csproj" />
+    <ProjectReference Include="..\Features\Decisions\ABox.Decisions.csproj" />
     <ProjectReference Include="..\Features\Tasks\Module\ABox.Tasks.Module.csproj" />
     <ProjectReference Include="..\Domain\Agents\ABox.Domain.Agents.csproj" />
     <ProjectReference Include="..\Infrastructure\ABox.Infrastructure.csproj" />

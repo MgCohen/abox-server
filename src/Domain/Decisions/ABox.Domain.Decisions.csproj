@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Infrastructure\ABox.Infrastructure.csproj" />
+    <ProjectReference Include="..\Inbox\ABox.Domain.Inbox.csproj" />
+  </ItemGroup>
+
+</Project>
