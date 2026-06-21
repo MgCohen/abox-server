@@ -1,7 +1,16 @@
 # Design note: sandbox substrate abstraction (provider layer)
 
-Status: **design note**, not built. Cold-readable. **Stacks with** the two spikes
-in this folder — it does not replace them:
+> **⚠️ Superseded — read [`sandbox.md`](sandbox.md) first; that is the build target.**
+> We committed to the simpler spike-#81 model: Unity stays on the host and the box
+> just shares the DLLs, behind one collapsed `ISandbox` (open · exec · close). The
+> **multi-OS provider/router/`SandboxTarget`/`ImageRef`/`tty`-flag/warm-start/snapshot**
+> machinery below is dropped as YAGNI for v1. The **security model** (threat model,
+> egress denylist/allowlist, no-creds-in-box, file-only mount seam, anti-zombie
+> teardown) still holds and is carried forward into `sandbox.md`. Kept for history and
+> for the day a second OS forces a router back; **not** the current design.
+
+Status: ~~**design note**, not built~~ **superseded — see banner above.** Cold-readable.
+**Stacks with** the two spikes in this folder — it does not replace them:
 
 - [`SPIKE.md`](SPIKE.md) — proves the *security boundary* (env scrub, egress, file
   seam) for one agent invocation.

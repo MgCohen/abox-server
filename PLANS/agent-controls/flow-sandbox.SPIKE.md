@@ -1,6 +1,15 @@
 # Spike: per-flow sandbox lifecycle + file seam (standalone)
 
-Status: **spike plan**, not built. Cold-readable. Sibling to
+> **⚠️ Superseded — read [`sandbox.md`](sandbox.md) first; that is the build target.**
+> The lifecycle/seam *shape* here is still right — one box per flow, mount in/out,
+> session persistence — but the seam has since collapsed (no `IProvisioner`, no `tty`
+> flag) and the **microVM + `git bundle` rung (Rung 3)** and the **Unity-in-the-box
+> warm-start timing** are dropped (Unity runs on the host, the box just shares the
+> DLLs). The remaining rungs — prove the container+mount seam, timing, egress denylist/
+> allowlist, session resume — fold into `sandbox.md`'s "Next steps." Kept for history.
+
+Status: ~~**spike plan**, not built~~ **superseded — see banner above.** Cold-readable.
+Sibling to
 [`SPIKE.md`](SPIKE.md), which proves the *security boundary* for **one** agent
 invocation (the §4 attack matrix). This spike proves the boundary holds for a
 **whole flow** — many agent runs looping over one shared filesystem — **without
