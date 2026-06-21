@@ -1,11 +1,25 @@
 ---
-status: proposed
+status: accepted
 date: 2026-06-21
 supersedes:
 amends: R-SPINE-1
 ---
 
 # ADR 0013 — Agent turns execute in an ephemeral per-turn sandbox
+
+## Amendment (2026-06-21) — transport: host PTY wraps `docker exec`, no in-box driver
+
+Decision 3 originally moved the PTY choreography into an **in-box driver**. Implementing
+it against the real `ClaudeProvider` showed that was the wrong cut: `ClaudeProvider`
+already owns a complete, tested PTY drive (dialog dismissal, prompt-ready detection,
+submit, `ClaudeProtocol`). Re-implementing it as an in-box script in another language
+duplicates the protocol logic and invites drift. Instead the host keeps the PTY
+choreography and launches the in-box `claude` through **`docker exec -it`**: the `-t`
+allocates a TTY inside the box (so `isatty`/billing holds) and the TUI is forwarded to
+the host's PTY. The box runs only `claude` + its sh hooks. This **revises decision 3**
+(and its `Confirmation` item) as restated above; everything else in the ADR stands. The
+"brain on host / hooks cross the mount" intent is unchanged — strengthened, even, since
+*more* logic stays host-side.
 
 ## Context
 
@@ -45,11 +59,15 @@ as a host subprocess.** Concretely:
    hook signal, and permission files resolve to a host-mounted directory. Resume reads
    that mount, so a box dying after each turn loses nothing — this is what makes
    per-turn lifetime cheap and correct.
-3. **The decision brain stays on the host; only the hands move into the box.** The
-   resolver, `AutoPolicy`, JSONL parsing, and the pump/resolve loop stay in the
-   host-side provider. Only the PTY choreography moves into an **in-box driver**. The
-   existing **file-polling hook IPC crosses the bind mount unchanged** — this is the
-   load-bearing reason the seam is cheap (ADR 0006/0007 mechanisms are boundary-transparent).
+3. **The brain *and* the PTY choreography stay on the host; only `claude` + its sh
+   hooks run in the box.** The resolver, `AutoPolicy`, JSONL parsing, the pump/resolve
+   loop, *and* the PTY drive (dialog dismissal, prompt-ready, submit) stay in the
+   host-side provider. The host drives the in-box `claude` over `docker exec -it` — the
+   `-t` allocates a TTY *inside* the box, so `isatty`/subscription billing holds, while
+   the rendered TUI is forwarded to the host PTY. The existing **file-polling hook IPC
+   crosses the bind mount unchanged** — this is the load-bearing reason the seam is cheap
+   (ADR 0006/0007 mechanisms are boundary-transparent). See the same-day amendment below
+   for why this replaced an in-box driver.
 4. **The box holds the model credential, delivered ephemerally and brokered; egress is
    the security boundary.** The owner's subscription token is injected per turn (not
    baked into an image, not a box-wide env var) and the box's only network egress is a
@@ -83,8 +101,8 @@ as a host subprocess.** Concretely:
   on the provider/agent across calls.
 - [det] The box attaches to a network with no default route out; its only egress is the
   allowlist proxy (no `--network` default bridge in the run path).
-- [llm] The resolver, `AutoPolicy`, and JSONL parsing run on the host side of the seam,
-  not inside the box; only PTY choreography is in the in-box driver.
+- [llm] The resolver, `AutoPolicy`, JSONL parsing, *and* the PTY choreography run on the
+  host side of the seam; the box runs only `claude` + its sh hooks (no in-box driver).
 - [llm] The model credential reaches the box ephemerally (tmpfs/fd-injection) and is
   never baked into an image or set as a box-wide environment variable.
 
