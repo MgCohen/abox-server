@@ -78,7 +78,31 @@ are first-class inputs; fd-injection is Anthropic-dogfooded (`"injected by the C
   already absorbs rotation at turn boundaries.
 
 **Three conditions (none optional):**
-1. **Egress is the security boundary** and is **unproven** (#81 used `--network none`) —
-   validate it adversarially before trusting the in-box token.
+1. **Egress is the security boundary** — ✅ **now validated** (allowlist form, below).
 2. **Single subscription owner only** — serving other users off one token is ToS resale.
 3. **Rate-limit backoff** — 5-hr window + weekly caps, 429s, no API fallback.
+
+## Egress — validated, allowlist form (condition 1)
+
+Run on docker-in-the-sandbox. Log: [`results/egress.log`](results/egress.log). Pure
+docker, no in-container iptables: the box sits on an `--internal` network (no route
+out); its only egress is a host-controlled CONNECT proxy permitting **only**
+`api.anthropic.com`. Ports `SPIKE.md` A3/A5 into the box. **All green:**
+
+| # | Attempt | Required | Result |
+|---|---|---|---|
+| E1 | direct → cloud-metadata `169.254.169.254` | blocked | ✅ no route |
+| E2 | direct → RFC1918 `10.255.255.1` | blocked | ✅ no route |
+| E3 | direct → public `1.1.1.1` (bypass proxy) | blocked | ✅ no route |
+| E4 | via proxy → `api.anthropic.com:443` | allowed | ✅ 200 |
+| E5 | via proxy → `example.com:443` (not allowlisted) | blocked | ✅ 403 |
+
+This is the posture that makes the fd-injected in-box token safe: there is **no exfil
+channel** — the only reachable destination is Anthropic. Notes/limits:
+- This is the **allowlist** form (strongest). The **denylist** default (block only
+  host/RFC1918/metadata, allow the public internet) needs host-level packet filtering —
+  not done here; a real-host track.
+- The proxy allowlists the **exact** CONNECT host and resolves it itself (client can't
+  DNS-rebind it). For full rigor, pin by resolved IP / endpoint, not just hostname.
+- Real product: the proxy is a **host sidecar**; the box's `HTTPS_PROXY` points at it.
+  This is also the natural place the auth broker could inject Anthropic credentials.

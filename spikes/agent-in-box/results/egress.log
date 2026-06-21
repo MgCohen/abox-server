@@ -1,0 +1,9 @@
+PASS  E1 direct cloud-metadata 169.254.169.254  [blocked (no route)]
+PASS  E2 direct RFC1918 10.255.255.1  [blocked (no route)]
+PASS  E3 direct public 1.1.1.1 (bypass proxy)  [blocked (no route)]
+PASS  E4 proxy -> api.anthropic.com (allowlisted)  [HTTP/1.1 200 Connection established]
+PASS  E5 proxy -> example.com (NOT allowlisted)  [HTTP/1.1 403 Forbidden]
+--- proxy decisions ---
+[proxy] listening :8888 allow=['api.anthropic.com']
+[proxy] ALLOW api.anthropic.com:443
+[proxy] DENY example.com:443
