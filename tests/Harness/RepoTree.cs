@@ -1,7 +1,8 @@
 namespace ABox.Tests.Harness;
 
 // The repo layout on disk that the Meta self-suite reads: the repo root (located by the ABox.slnx marker), the
-// product test tree under tests/Tests/, and Meta's own home under tests/Meta/. Source-tree queries (src/
+// product test tree under tests/Tests/, Meta's own home under tests/Meta/, and the Test artifact's Rulebook
+// definitions under governance/registry/Test/. Source-tree queries (src/
 // projects, build output) live with the Structure type, which owns source placement; this owns the test
 // system's layout. Root is the shared locator both sides build on. Throws on a missing root/tree so a broken
 // scan can't go vacuously green.
@@ -34,11 +35,13 @@ public static class RepoTree
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToList();
 
-    // Every Rulebook the format guard must keep well-formed: each Test sub-type's definition under
-    // governance/registry/Test/<Type>/ (each holds a template.md). Relocated from tests/; parity bridges back.
+    // Every Rulebook the format guard must keep well-formed: each registered Test sub-type plus Meta, under
+    // governance/registry/Test/<Type>/. Derived from the registry of types (not disk-discovered) and each
+    // RequireDir'd, so a registered type missing its definition fails loudly — it can never silently shrink the
+    // validated set (and a missing template.md/rules.md then throws when the format guard reads it).
     public static IReadOnlyList<string> RulebookFolders() =>
-        Directory.EnumerateDirectories(TestArtifactRoot)
-            .Where(d => File.Exists(Path.Combine(d, "template.md")))
+        TestTypes.Registered.Append("Meta")
+            .Select(t => RequireDir($"the {t} Rulebook definition", "governance", "registry", "Test", t))
             .OrderBy(d => d, StringComparer.Ordinal)
             .ToList();
 

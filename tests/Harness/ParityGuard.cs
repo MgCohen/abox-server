@@ -2,7 +2,7 @@ using System.Reflection;
 
 namespace ABox.Tests.Harness;
 
-// The parity engine: it keeps one test type's Rulebook (Rulebook/rules.md) and the [Rule]-cited tests that
+// The parity engine: it keeps one test type's Rulebook (governance/registry/Test/<Type>/rules.md) and the [Rule]-cited tests that
 // enforce it in lockstep, scoped to a single namespace so types sharing an assembly don't bleed into each
 // other's parity. The Meta self-suite drives this over every product type (For) and over itself (ForRulebook).
 public sealed class ParityGuard

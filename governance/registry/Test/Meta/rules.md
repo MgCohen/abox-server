@@ -66,4 +66,5 @@ fails. Presence only — whether the line truly guides selection is the judge's 
   family, and a gate — or a type is registered that an agent can neither select nor the harness validate.
 
 `Artifacts.All` reads each `governance/registry/*/artifact.yml`; the guard checks purpose/home/family/gate are
-present and valid. Template and criteria stay the per-type Rulebook guards' job; this owns the registry floor.
+present and valid, and that `parity` is consistent with `family` (code-first binds a target, nl-first doesn't).
+Template and criteria stay the per-type Rulebook guards' job; this owns the registry floor.
