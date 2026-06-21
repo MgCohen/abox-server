@@ -23,3 +23,15 @@ B2 (subscription billing path): CANNOT VALIDATE HERE.
   DESIGN FINDING: the box must hold the AGENT'S OWN model credential (unlike git
   creds, which stay on the host). This env demonstrates the clean pattern — broker
   the auth via a proxy + ephemeral token so the box never holds a reusable key.
+
+=== Broker-validation attempt (authorized) — outcome: token not extractable here ===
+Tried to forward this session's ephemeral token into the container (the broker's job).
+Result: no forwardable credential is reachable in this managed environment —
+  - ANTHROPIC_BASE_URL is the real api.anthropic.com (not a cred-injecting proxy)
+  - the model OAuth token came via fd 4, was consumed at startup, fd now closed (pid 535: no fd 4)
+  - no persisted credentials file (~/.claude/.credentials.json absent everywhere)
+  - no apiKeyHelper configured (launcher-settings.json is hooks only)
+  => the ephemeral token lives only in the parent process memory; not forwardable.
+This REINFORCES the design: the ephemeral-token model isolates the credential well.
+B1/B2 completion requires a host with a forwardable credential (a 'claude login' host
+with persisted ~/.claude, or a host-side apiKeyHelper/broker).
