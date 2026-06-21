@@ -1,0 +1,10 @@
+# The Research artifact — the registry's second member, and its first nl-first type.
+# A Research report is a natural-language deliverable (no code second-representation), so it declares no
+# parity target and gates by advice, not block: it informs a decision or a later ADR/plan, never fails a
+# build. Read by the harness (ABox.Tests.Harness/Artifacts); the floor meta-guard checks this declares the
+# agent-first floor. home points at the existing reports; it moves with them under the relocation ADR.
+
+purpose: ground a decision in multi-source, adversarially-verified evidence — a cited report that outlives the question
+home: research
+family: nl-first
+gate: advise
