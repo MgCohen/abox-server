@@ -1,0 +1,10 @@
+# The Test artifact — the repo's first registered agent-first artifact type.
+# Read by the harness (ABox.Tests.Harness/Artifacts); the floor meta-guard checks this declares
+# the agent-first floor. Sub-type definitions (Arch, Unit, …) live under tests/Tests/<Type>/Rulebook/
+# for now; the home below is where the instances (the tests) live.
+
+purpose: lock a behavior or invariant with an executable check so it cannot silently regress
+home: tests/Tests
+family: code-first
+parity: ABox.Tests
+gate: block

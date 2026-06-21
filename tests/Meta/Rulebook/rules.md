@@ -59,3 +59,11 @@ a template with none fails. Mechanical shape stays the other guards' job, so cri
 
 `RulebookFormat.Purpose` reads the first line under each `template.md`'s `## Purpose`; a template with none
 fails. Presence only — whether the line truly guides selection is the judge's call, not the guard's.
+
+### Every artifact declares the floor
+- **Why:** The artifact registry (`governance/registry/<Name>/artifact.yml`) is the single source of which
+  agent-first types exist; each must declare the floor — a purpose (when to use it), an existing home, a known
+  family, and a gate — or a type is registered that an agent can neither select nor the harness validate.
+
+`Artifacts.All` reads each `governance/registry/*/artifact.yml`; the guard checks purpose/home/family/gate are
+present and valid. Template and criteria stay the per-type Rulebook guards' job; this owns the registry floor.

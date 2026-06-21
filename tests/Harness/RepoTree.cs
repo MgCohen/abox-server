@@ -19,6 +19,10 @@ public static class RepoTree
     public static readonly string TestsRoot = RequireDir("the product test tree", "tests", "Tests");
     public static readonly string MetaRoot = RequireDir("the Meta self-suite", "tests", "Meta");
 
+    // The artifact registry root. Not RequireDir: it may not exist yet (no artifacts registered), and the
+    // floor guard reads it leniently — an absent registry is "no artifacts", not a broken scan.
+    public static readonly string RegistryRoot = Path.Combine(Root, "governance", "registry");
+
     public static IReadOnlyList<string> TestTypeFolders() =>
         Directory.EnumerateDirectories(TestsRoot)
             .Select(Path.GetFileName)
