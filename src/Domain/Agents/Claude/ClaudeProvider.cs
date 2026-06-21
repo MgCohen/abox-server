@@ -1,9 +1,10 @@
 using Porta.Pty;
 using ABox.Infrastructure.CommandLine;
+using ABox.Infrastructure.Sandbox;
 
 namespace ABox.Domain.Agents.Claude;
 
-public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolver, AutoPolicy autoPolicy) : IProvider
+public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolver, AutoPolicy autoPolicy, SandboxSettings sandbox) : IProvider
 {
     private const int Cols = 120;
     private const int Rows = 40;
@@ -23,19 +24,38 @@ public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolv
 
         var isResume = request.SessionId is not null;
         var sessionId = request.SessionId ?? Guid.NewGuid().ToString();
-        var systemPromptFile = WriteSystemPromptFile(AgentDirective.ComposeSystemPrompt(config.SystemPrompt, config.Resolution));
-        using var hook = ClaudeHooks.Create(gatePermissions: config.Policy != PermissionPolicy.Bypass);
+
+        using var hook = ClaudeHooks.Create(gatePermissions: config.Policy != PermissionPolicy.Bypass, boxDir: DockerSandbox.SessionMount);
+
+        // The system prompt travels as a file on the /session mount (oracle A-Win: a
+        // multiline prompt can't be an inline arg), referenced by its in-box path.
+        var sysPromptName = $"sysprompt-{Guid.NewGuid():N}.txt";
+        File.WriteAllText(Path.Combine(hook.HostDir, sysPromptName),
+            AgentDirective.ComposeSystemPrompt(config.SystemPrompt, config.Resolution));
+        var sysPromptInBox = $"{DockerSandbox.SessionMount}/{sysPromptName}";
+
+        var home = PrepareHome();
         try
         {
             var permissionMode = ClaudeProtocol.PermissionMode(config.Policy);
-            var args = ClaudeProtocol.BuildArgs(sessionId, isResume, permissionMode, config.Model, systemPromptFile, hook.SettingsFile);
-            var launchLine = "claude " + string.Join(' ', args.Select(Shell.QuoteArg));
+            var args = ClaudeProtocol.BuildArgs(sessionId, isResume, permissionMode, config.Model, sysPromptInBox, hook.SettingsPathInBox);
+            var claudeLine = "claude " + string.Join(' ', args.Select(Shell.QuoteArg));
 
             using var deadlineCts = new CancellationTokenSource(MaxOverallMs);
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, deadlineCts.Token);
             var dct = linkedCts.Token;
 
-            var pty = await PtyProvider.SpawnAsync(BuildPtyOptions(request.ProjectDir, hook), dct);
+            var options = new SandboxOptions(
+                Worktree: new DirectoryInfo(request.ProjectDir),
+                SessionDir: new DirectoryInfo(hook.HostDir),
+                Home: home,
+                Image: sandbox.Image,
+                Network: sandbox.Network);
+            await using var box = await DockerSandbox.OpenAsync(options, dct);
+
+            var launchLine = box.InteractiveExecLine(claudeLine, BoxEnv(hook));
+
+            var pty = await PtyProvider.SpawnAsync(BuildPtyOptions(), dct);
             await using var session = new PtySession(pty, dct);
 
             await session.WriteLineAsync(launchLine, dct);
@@ -48,35 +68,61 @@ public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolv
             await session.SubmitAsync(request.Prompt, SubmitSettleMs, dct);
             await PumpUntilStopAsync(hook, dct);
 
-            // The Stop hook fired: the final message and JSONL transcript are
-            // already on disk. Read them, then let `await using` dispose kill the
-            // PTY tree (Job Object cascade, oracle A10) — no graceful /exit needed,
-            // and the cmd exit code was never the turn outcome anyway.
+            // The Stop hook fired across the /session mount: the final message and the
+            // JSONL (under the mounted HOME) are on disk. Read them, then let dispose
+            // tear down the box (docker rm -f, oracle A10) and kill the host PTY.
+            var projectsRoot = Path.Combine(home.FullName, ".claude", "projects");
             var text = hook.ReadFinalMessage();
             if (string.IsNullOrWhiteSpace(text))
-                text = await ResolveTextFallbackAsync(sessionId, request.Prompt, dct);
-            var transcript = ClaudeJsonl.TryReadLastTurnTranscript(sessionId, request.Prompt) ?? [];
+                text = await ResolveTextFallbackAsync(sessionId, request.Prompt, projectsRoot, dct);
+            var transcript = ClaudeJsonl.TryReadLastTurnTranscript(sessionId, request.Prompt, projectsRoot) ?? [];
             var exitCode = hook.HasFired || !string.IsNullOrWhiteSpace(text) ? 0 : 1;
             return new DriveResult(text ?? "", sessionId, exitCode, session.Buffer, transcript);
         }
         finally
         {
-            TryDelete(systemPromptFile);
+            TryDeleteDir(home);
         }
     }
 
-    // The launch line is typed into cmd.exe through the PTY, so the (multiline)
-    // system prompt must travel as a file path, not an inline arg (oracle A-Win).
-    private static string WriteSystemPromptFile(string content)
+    // Provisional: the credential + onboarding state come from the pre-onboarded
+    // template HOME. Until the owner provisions a setup-token home, the box has no
+    // credential and a real turn can't authenticate — the deferred validation step.
+    private DirectoryInfo PrepareHome()
     {
-        var path = Path.Combine(Path.GetTempPath(), $"claude-sysprompt-{Guid.NewGuid():N}.txt");
-        File.WriteAllText(path, content);
-        return path;
+        var home = Directory.CreateTempSubdirectory("ra-claude-home-");
+        if (sandbox.TemplateHome is { Exists: true } template)
+            CopyDir(template, home);
+        return home;
     }
 
-    private static void TryDelete(string path)
+    private static void CopyDir(DirectoryInfo src, DirectoryInfo dst)
     {
-        try { File.Delete(path); }
+        dst.Create();
+        foreach (var dir in src.GetDirectories())
+            CopyDir(dir, dst.CreateSubdirectory(dir.Name));
+        foreach (var file in src.GetFiles())
+            file.CopyTo(Path.Combine(dst.FullName, file.Name), overwrite: true);
+    }
+
+    // Env for the in-box claude, injected via `docker exec -e`. No API key is present
+    // (docker doesn't inherit the host env), so claude takes the subscription path
+    // (oracle A1); HOME points at the mounted box home so the JSONL is host-readable.
+    private static Dictionary<string, string> BoxEnv(ClaudeHooks hook)
+    {
+        var env = new Dictionary<string, string>
+        {
+            ["HOME"] = DockerSandbox.HomeMount,
+            [ClaudeHooks.SignalEnvVar] = hook.SignalPathInBox,
+        };
+        if (hook.PermissionDirInBox is not null)
+            env[ClaudeHooks.PermissionEnvVar] = hook.PermissionDirInBox;
+        return env;
+    }
+
+    private static void TryDeleteDir(DirectoryInfo dir)
+    {
+        try { dir.Delete(recursive: true); }
         catch { /* best-effort: temp cleanup is non-fatal */ }
     }
 
@@ -139,11 +185,11 @@ public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolv
 
     // Fallback only: if the Stop hook never delivered the final text, recover it
     // from the per-session JSONL (oracle A6), polling briefly for the flush lag.
-    private static async Task<string> ResolveTextFallbackAsync(string sessionId, string prompt, CancellationToken ct)
+    private static async Task<string> ResolveTextFallbackAsync(string sessionId, string prompt, string projectsRoot, CancellationToken ct)
     {
         for (var waited = 0; waited <= ResolveTimeoutMs; waited += ResolvePollMs)
         {
-            var text = ClaudeJsonl.TryReadLastAssistantText(sessionId, prompt);
+            var text = ClaudeJsonl.TryReadLastAssistantText(sessionId, prompt, projectsRoot);
             if (!string.IsNullOrWhiteSpace(text)) return text;
             try { await Task.Delay(ResolvePollMs, ct); }
             catch (OperationCanceledException) { break; }
@@ -151,21 +197,21 @@ public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolv
         return "";
     }
 
-    private static PtyOptions BuildPtyOptions(string projectDir, ClaudeHooks hook)
+    // The host PTY runs a shell that types the `docker exec -it` launch line; the
+    // box env (HOME, RA_* hooks, credential) is injected via -e, not here, so the
+    // host shell env stays a plain passthrough.
+    private static PtyOptions BuildPtyOptions()
     {
         var env = new Dictionary<string, string>();
         foreach (System.Collections.DictionaryEntry kv in Environment.GetEnvironmentVariables())
             if (kv.Key is string k && kv.Value is string v) env[k] = v;
-        foreach (var key in EnvScrub.SubscriptionKeys) env[key] = "";
-        env[ClaudeHooks.SignalEnvVar] = hook.SignalFile;
-        if (hook.PermissionDir is not null) env[ClaudeHooks.PermissionEnvVar] = hook.PermissionDir;
 
         return new PtyOptions
         {
             Name = "claude-agent",
             Cols = Cols,
             Rows = Rows,
-            Cwd = projectDir,
+            Cwd = Environment.CurrentDirectory,
             App = Shell.Executable,
             Environment = env,
         };

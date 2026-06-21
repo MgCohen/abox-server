@@ -51,6 +51,10 @@ internal static class Composition
         services.AddSingleton<DenyResolver>();
         services.AddSingleton<AutoPolicy>();
         services.AddSingleton<ResolverSelector>();
+        // Provisional box config (ADR 0013): the egress network and the pre-onboarded
+        // credential home are wired as those land; TemplateHome null means a real billed
+        // turn can't authenticate yet — the deferred validation step.
+        services.AddSingleton(new SandboxSettings(Image: "abox-claude:latest"));
         services.AddSingleton<IAgentFactory, AgentFactory>();
 
         services.AddFlows(flows);

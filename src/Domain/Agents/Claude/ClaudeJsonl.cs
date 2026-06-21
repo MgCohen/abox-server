@@ -6,26 +6,28 @@ namespace ABox.Domain.Agents.Claude;
 
 public static class ClaudeJsonl
 {
-    private static string ProjectsRoot => Path.Combine(
+    public static string DefaultProjectsRoot => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "projects");
 
     // Resolve by sessionId (a unique GUID we own) rather than by encoding the
     // cwd: Claude's projects/ folder encoding collapses more than the '\/:' that
-    // oracle A6 documents (e.g. '.'), so a computed path is unreliable.
-    public static string? ResolveSessionFile(string sessionId)
+    // oracle A6 documents (e.g. '.'), so a computed path is unreliable. The root is
+    // the box's mounted HOME/.claude/projects in a real turn (ADR 0013).
+    public static string? ResolveSessionFile(string sessionId, string? projectsRoot = null)
     {
-        if (!Directory.Exists(ProjectsRoot)) return null;
+        var root = projectsRoot ?? DefaultProjectsRoot;
+        if (!Directory.Exists(root)) return null;
         try
         {
-            return Directory.EnumerateFiles(ProjectsRoot, sessionId + ".jsonl", SearchOption.AllDirectories)
+            return Directory.EnumerateFiles(root, sessionId + ".jsonl", SearchOption.AllDirectories)
                 .FirstOrDefault();
         }
         catch { return null; }
     }
 
-    public static string? TryReadLastAssistantText(string sessionId, string? promptHint = null)
+    public static string? TryReadLastAssistantText(string sessionId, string? promptHint = null, string? projectsRoot = null)
     {
-        var lines = TryLoadLines(sessionId);
+        var lines = TryLoadLines(sessionId, projectsRoot);
         if (lines is null) return null;
 
         var anchor = FindUserAnchor(lines, promptHint);
@@ -44,9 +46,9 @@ public static class ClaudeJsonl
         return sb.ToString();
     }
 
-    public static AgentTurn[]? TryReadLastTurnTranscript(string sessionId, string? promptHint = null)
+    public static AgentTurn[]? TryReadLastTurnTranscript(string sessionId, string? promptHint = null, string? projectsRoot = null)
     {
-        var lines = TryLoadLines(sessionId);
+        var lines = TryLoadLines(sessionId, projectsRoot);
         if (lines is null) return null;
 
         var anchor = FindUserAnchor(lines, promptHint);
@@ -71,9 +73,9 @@ public static class ClaudeJsonl
         return [.. turns];
     }
 
-    private static List<string>? TryLoadLines(string sessionId)
+    private static List<string>? TryLoadLines(string sessionId, string? projectsRoot)
     {
-        var path = ResolveSessionFile(sessionId);
+        var path = ResolveSessionFile(sessionId, projectsRoot);
         if (path is null) return null;
         // Re-read (not seek): Windows FileStream caches EOF on a growing file (A6).
         try { return [.. File.ReadAllLines(path)]; }

@@ -80,7 +80,7 @@ public class ClaudeAskSmokeTests(ITestOutputHelper output)
     private async Task DriveAsync(PermissionPolicy policy, IDecisionResolver resolver, string projectDir, string prompt)
     {
         var config = new ClaudeConfig("asker", "Asks before acting.", "", "You implement.", policy);
-        var provider = new ClaudeProvider(config, resolver, new AutoPolicy());
+        var provider = new ClaudeProvider(config, resolver, new AutoPolicy(), new SandboxSettings("abox-claude:latest"));
 
         using var cts = new CancellationTokenSource(Timeout);
         var drive = await provider.DriveAsync(new AgentRunRequest(prompt, projectDir), cts.Token);

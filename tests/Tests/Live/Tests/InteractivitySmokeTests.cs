@@ -72,7 +72,7 @@ public class InteractivitySmokeTests(ITestOutputHelper output)
             {
                 Resolution = resolution,
             };
-            var provider = new ClaudeProvider(config, resolver, new AutoPolicy());
+            var provider = new ClaudeProvider(config, resolver, new AutoPolicy(), new SandboxSettings("abox-claude:latest"));
             var cap = resolution == Resolution.Auto ? config.ResolveCap : (int?)null;
             var agent = new Agent(provider, resolver, cap, projectDir);
 
