@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using ABox.Infrastructure.CommandLine;
 
 namespace ABox.Infrastructure.Sandbox;
@@ -8,6 +9,14 @@ public sealed class DockerSandbox : ISandbox
     public const string SessionMount = "/session";
     public const string HomeMount = "/home/box";
 
+    [DllImport("libc")] private static extern uint getuid();
+    [DllImport("libc")] private static extern uint getgid();
+
+    // Run the box as the orchestrator's own uid:gid so the bind mounts are writable
+    // and files the box creates (the JSONL, hook handshake) come back host-owned. A
+    // non-root orchestrator also keeps the box non-root, which bypassPermissions needs.
+    private static string UserFlag => $"--user {getuid()}:{getgid()} ";
+
     private readonly string _containerId;
     private bool _disposed;
 
@@ -17,7 +26,7 @@ public sealed class DockerSandbox : ISandbox
     {
         var network = options.Network is null ? "" : $"--network {Shell.QuoteArg(options.Network)} ";
         var runLine =
-            $"docker run -d -w {WorkMount} " +
+            $"docker run -d {UserFlag}-w {WorkMount} " +
             $"-v {Shell.QuoteArg(options.Worktree.FullName)}:{WorkMount} " +
             $"-v {Shell.QuoteArg(options.SessionDir.FullName)}:{SessionMount} " +
             $"-v {Shell.QuoteArg(options.Home.FullName)}:{HomeMount} " +
@@ -45,7 +54,7 @@ public sealed class DockerSandbox : ISandbox
         var envFlags = env is null
             ? ""
             : string.Concat(env.Select(kv => $"-e {Shell.QuoteArg($"{kv.Key}={kv.Value}")} "));
-        return $"docker exec -it {envFlags}-w {WorkMount} {_containerId} {command}";
+        return $"docker exec -it {UserFlag}{envFlags}-w {WorkMount} {_containerId} {command}";
     }
 
     public async ValueTask DisposeAsync()

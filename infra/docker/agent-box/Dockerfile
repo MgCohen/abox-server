@@ -14,9 +14,10 @@ RUN apt-get update \
 # in-box `claude --version` during the deferred credential validation (B1/B2).
 RUN npm install -g @anthropic-ai/claude-code
 
-# Non-root: bypassPermissions is refused as root (spike pty finding #3), and the box
-# should never run the agent privileged. HOME is the mounted /home/box at run time.
-RUN useradd --create-home --uid 1000 box
-USER box
+# Non-root: bypassPermissions is refused as root (spike pty finding #3). `app` is the
+# base image's stock non-root user; the orchestrator additionally runs the box under
+# its own uid:gid (docker --user) so the bind mounts are writable. HOME is the mounted
+# /home/box at run time.
+USER app
 WORKDIR /work
 ENTRYPOINT ["/bin/sh"]
