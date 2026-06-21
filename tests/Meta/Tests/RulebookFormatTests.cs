@@ -84,5 +84,26 @@ public class RulebookFormatTests
             """);
     }
 
+    [Rule("Every template declares a purpose")]
+    [Fact]
+    public void EveryTemplateDeclaresPurpose()
+    {
+        var violations = new List<string>();
+        foreach (var folder in RepoTree.RulebookFolders())
+        {
+            var templatePath = Path.Combine(folder, "template.md");
+            if (RulebookFormat.Purpose(File.ReadAllLines(templatePath)).Length == 0)
+                violations.Add($"{Rel(templatePath)} :: no '## Purpose' with a when-to-use line — " +
+                    "an agent can't tell when to reach for this type");
+        }
+
+        Assert.True(violations.Count == 0,
+            $"""
+            template.md files are missing their purpose:
+            {Bullets(violations)}
+            Add a '## Purpose' section with a one-line "when to reach for this type" — the selection signal an agent reads.
+            """);
+    }
+
     private static string Rel(string path) => Path.GetRelativePath(RepoTree.Root, path);
 }

@@ -1,5 +1,9 @@
 # Unit Rulebook
 
+## Purpose
+
+Reach for Unit to pin one behavioral guarantee about a single type or small cluster, tested with local fakes.
+
 Each Unit Rule is one behavioral guarantee about a single type or small cluster tested with local fakes.
 Add one as new behavioral tests land; enforce it in `Unit/Tests/`. Every test must cite a Rule.
 

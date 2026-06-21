@@ -58,6 +58,25 @@ public static class RulebookFormat
         return labels;
     }
 
+    // The when-to-use line under a template's '## Purpose' heading — what an agent reads to SELECT this type.
+    // Empty when the template declares none.
+    public static string Purpose(IReadOnlyList<string> lines)
+    {
+        var inPurpose = false;
+        foreach (var line in lines)
+        {
+            var level = HeadingLevel(line);
+            if (level > 0)
+            {
+                inPurpose = level == 2 && line[(level + 1)..].Trim().StartsWith("Purpose", StringComparison.Ordinal);
+                continue;
+            }
+            if (inPurpose && line.Trim().Length > 0)
+                return line.Trim();
+        }
+        return "";
+    }
+
     public static IReadOnlyList<RuleBlock> Rules(IReadOnlyList<string> lines)
     {
         var rules = new List<RuleBlock>();

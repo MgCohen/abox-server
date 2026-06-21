@@ -1,5 +1,9 @@
 # Live Rulebook
 
+## Purpose
+
+Reach for Live to pin one real-CLI guarantee no scripted provider can prove — gated behind `RUN_LIVE=1`.
+
 Each Live Rule is one real-CLI guarantee — a flow or agent against the real `claude`/`codex` CLI and
 subscription, gated behind `[LiveFact]` / `RUN_LIVE=1`. Add one as smoke tests convert; enforce it in `Live/Tests/`.
 

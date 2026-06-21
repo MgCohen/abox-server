@@ -1,5 +1,9 @@
 # Wire Rulebook
 
+## Purpose
+
+Reach for Wire to pin one HTTP endpoint contract, proven with a real `HttpClient` against the Host.
+
 Each Wire Rule is one endpoint contract, proven with a real `HttpClient` against the Host over
 `WebApplicationFactory<Program>`, backed by a CLI-free flow. Add one Rule per endpoint behavior; enforce it
 with a `[Rule]` fact in `Wire/Tests/`.

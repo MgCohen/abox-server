@@ -1,5 +1,9 @@
 # E2E Rulebook
 
+## Purpose
+
+Reach for E2E to prove one whole-flow guarantee end to end through the real composition with a scripted provider.
+
 Each E2E Rule is one whole-flow guarantee, driven end to end through the real composition (real Steps, Flow
 engine, snapshot stream) with a scripted (non-CLI) provider or a real local tool. Add one when a new flow path
 needs proving; enforce it in `E2E/Tests/`.

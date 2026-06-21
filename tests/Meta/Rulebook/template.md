@@ -1,5 +1,9 @@
 # Meta Rulebook
 
+## Purpose
+
+Reach for Meta to pin one invariant about the test system itself — taxonomy, Rulebook format, or parity.
+
 Each Meta Rule is one invariant about the test system itself — the taxonomy, the Rulebooks, and their parity
 with the tests. These guard the harness, not the product. Enforce it in `Meta/Tests/`.
 
