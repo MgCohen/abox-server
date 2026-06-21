@@ -1,0 +1,25 @@
+=== claude binary runs in the container? ===
+2.1.185 (Claude Code)
+=== attempt a minimal real turn (auth test) ===
+exit fd present? ls /proc/self/fd:
+0 1 2 3 
+Authentication error · This may be a temporary network issue, please try again
+[exit=0]
+
+=== VERDICT (Stage B, this environment) ===
+B1 (claude runs in a Linux container): PARTIAL — the CLI executes in-box (v2.1.185).
+B2 (subscription billing path): CANNOT VALIDATE HERE.
+  Why: this is a managed remote session. claude authenticates via an inherited
+  file descriptor (CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR=4) + a managed proxy
+  (ANTHROPIC_BASE_URL). fd 4 does NOT cross into a separate container (only 0-3
+  present), so the turn fails with 'Authentication error'. No ANTHROPIC_API_KEY/
+  CLAUDE_API_KEY is set, so it is NOT the API-billing path — there is simply no
+  portable credential to carry in.
+
+  On a real Docker host where a dev has run 'claude login', the OAuth credential is
+  a mountable file (~/.claude/.credentials.json) and the in-box claude WOULD auth.
+  B1/B2 must be run there, not in this managed sandbox.
+
+  DESIGN FINDING: the box must hold the AGENT'S OWN model credential (unlike git
+  creds, which stay on the host). This env demonstrates the clean pattern — broker
+  the auth via a proxy + ephemeral token so the box never holds a reusable key.

@@ -135,6 +135,13 @@ is where the risk now lives — not in the container plumbing.
 | DLL **bake** path (Linux host, no Unity) + the **EULA** question | low (eng) / blocker (legal) | #81 *mounted* them |
 | Spin-up timing (cold / warm / amortised) | low | — |
 
+> **Credential delivery (finding from `spikes/agent-in-box`):** the box must hold the
+> **agent's own model credential** — unlike git/repo creds, which never enter the box
+> (`SPIKE.md` A1/A4). The agent runs in the box, so its *model* auth lives there. Deliver
+> it **brokered** — a proxy + an **ephemeral** token (the way Claude Code's own managed
+> remote sessions do it) — so the box never holds a reusable key. Mounting a long-lived
+> credential file is the thing to avoid.
+
 ## Next steps (build order)
 
 1. **Spike the real agent turn in a box** — `docker run` one *real* `claude` turn over
