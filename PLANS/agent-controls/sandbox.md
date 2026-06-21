@@ -100,7 +100,8 @@ malicious VM escape. On that model a container is enough:
 - **File-only seam** — the box is born with the worktree + session dir mounted; the
   host reads everything back off those mounts. No file API on `ISandbox`.
 - **Guaranteed teardown** — `DisposeAsync` kills the box even on a hung turn
-  (Testcontainers' Ryuk reaper provides it).
+  (Testcontainers' Ryuk reaper would provide it; the container library is still
+  provisional — see Open unknowns).
 
 ## Deliberately dropped (YAGNI for v1)
 
@@ -117,13 +118,34 @@ malicious VM escape. On that model a container is enough:
 Each returns only when a *second real use* forces it (e.g. an iOS build needs a
 macOS VM → then, and only then, a target + router).
 
+## Open unknowns — what's still unvalidated
+
+Spike #81 proved the **Unity/compile half** thoroughly, but its "agent" was a
+stand-in (`docker run alpine sh run-turn.sh` — a script that *writes a file*). It
+never ran a real `claude` turn. So the **agent-runtime half is untouched**, and that
+is where the risk now lives — not in the container plumbing.
+
+| Unknown | Risk | #81 |
+|---|---|---|
+| Real `claude` turn in-box: **subscription billing** (`isatty()` under the in-box pty, not API billing) + the TUI choreography under a **Linux** pty (≠ Windows ConPTY) | **high** | stand-in only |
+| Permission handshake over the mount — bidirectional file-visibility latency for the mid-turn request/response | med | — |
+| Session dir / JSONL — does `claude` write where we mount it, readable on the host? | med | — |
+| Container library — does **Testcontainers** (a *test-harness* lib) hold a box open across N execs as a **runtime** pattern, with sane teardown? Else `Docker.DotNet` | med | — |
+| Egress in real form (denylist/allowlist, not `--network none`) | med | — |
+| DLL **bake** path (Linux host, no Unity) + the **EULA** question | low (eng) / blocker (legal) | #81 *mounted* them |
+| Spin-up timing (cold / warm / amortised) | low | — |
+
 ## Next steps (build order)
 
-1. **Spike the seam, standalone** — `DockerSandbox` over Testcontainers.NET; prove
-   the **hold-open-across-N-`ExecAsync`** pattern (the one real unknown), the
-   bind-mount round-trip byte-exact to host, and no creds/remote in the box. Emit a
-   cold/warm/amortised **timing table** — turns the "expected ~1–2s" above into a
-   measured number.
+1. **Spike the real agent turn in a box** — `docker run` one *real* `claude` turn over
+   a mounted project. Confirm **subscription billing holds** (`isatty()` true under the
+   in-box pty), the turn drives cleanly under a Linux pty, and hooks/JSONL are written
+   to the mounted session dir and **read back on the host**. This is the load-bearing
+   unknown #81 skipped — prove it before anything else. The container-library choice
+   (**Testcontainers vs `Docker.DotNet`**, the hold-open-across-N-`ExecAsync` pattern)
+   and the cold/warm/amortised **timing table** fall out of this rung as byproducts.
+   *Testcontainers is the first thing to try, not a settled choice — drop to
+   `Docker.DotNet` if its test-harness ergonomics fight the runtime hot path.*
 2. **In-box agent driver** — extract the PTY drive choreography from
    `src/Domain/Agents/Claude/ClaudeProvider.cs` into a headless in-box program that
    spawns `claude` under a Linux pty and writes hooks/JSONL to the mounted session dir.
@@ -132,3 +154,6 @@ macOS VM → then, and only then, a target + router).
 4. **Egress + flow lifecycle** — denylist/allowlist on `OpenAsync`; provision at flow
    start, `DisposeAsync` in `finally`; route turns + build/test through `ExecAsync`;
    git stays on host.
+
+Independent tracks (not blocking 1–3): **egress** in its real form, and the **DLL
+bake + EULA** question.
