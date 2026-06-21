@@ -56,8 +56,8 @@ brokered), not by mounting a long-lived credential file.
 |---|---|
 | Container seam mechanics (mount, hold-open, teardown, pty/isatty, sh hooks over mount) | ✅ green (Stage A) |
 | `claude` executes in a Linux container | ✅ (Stage B, runs) |
-| A **real** claude turn completes (Stop hook + JSONL) | ✅ validated via `-p` (below) |
-| Same, inside a *fresh isolated container* | ⏳ blocked by auth-forwarding + onboarding (below) |
+| Turn **mechanism** (Stop hook + JSONL read-back) vs real claude | ✅ validated via `-p` (below) |
+| **Standalone auth + billing path** (no managed session) | ⏳ **NOT proven here** — this env's auth is managed host-state, not portable (below) |
 | Credential delivery for the in-box agent | ✅ path validated (below) — building it |
 
 ## Auth path — validated (4-agent review)
@@ -135,3 +135,23 @@ driving and no onboarding**. If that billing behavior holds, the in-box driver c
 collapse from "port the ConPTY choreography" to `claude -p --settings <hooks>`. Tier-A
 oracle A1/A2 locked the pty path on an older claude; this warrants a fresh explicit
 decision against `design/behavioral-oracle.md` before adopting.
+
+### Correction — the `-p` auth was environment-contaminated (owner's challenge)
+
+Follow-up probing (log: [`results/auth-source-probe.log`](results/auth-source-probe.log))
+showed the `-p` turn above authenticated from **this managed environment's host-state**,
+not a portable credential:
+- Stripping the entire chat env (`env -i`) still authed on the host → the chat **env vars**
+  are not the source.
+- But the same credential copied into a **clean container** gave `Not logged in` → auth
+  lives in host-specific **managed-session state** (`~/.claude/session-env`, `sessions`),
+  not a portable file (no `.credentials.json`, no keyring; `.claude.json` holds only
+  `oauthAccount` metadata).
+
+**Therefore:** the `-p` run validates the **mechanism** (Stop hook + JSONL) only. It does
+**not** prove A.Box-standalone auth, and does **not** de-risk the "`-p` replaces the pty"
+idea — that stays open. Standalone auth must come from a **portable** credential the owner
+creates (`claude setup-token` → `CLAUDE_CODE_OAUTH_TOKEN`, or `claude login` →
+`~/.claude/.credentials.json`), delivered into the box (the broker design, unchanged).
+This managed sandbox cannot stand in for that test — B1/B2 (standalone auth + billing)
+must run on a `setup-token`/`claude login` host.
