@@ -51,3 +51,11 @@ preamble must carry the Template and Harness links. Plain prose under a rule sta
 
 `RulebookFormat.Criteria` reads each `template.md` for `- **<id>:** <description>` bullets under `## Criteria`;
 a template with none fails. Mechanical shape stays the other guards' job, so criteria carry only judgment.
+
+### Every template declares a purpose
+- **Why:** Each `template.md` opens with a `## Purpose` line — the when-to-use an agent reads to *select* the
+  type. Without it a type is discoverable but not selectable: an agent can see it exists yet cannot tell when to
+  reach for it over another, so the artifact floor's selection guarantee silently goes unmet.
+
+`RulebookFormat.Purpose` reads the first line under each `template.md`'s `## Purpose`; a template with none
+fails. Presence only — whether the line truly guides selection is the judge's call, not the guard's.

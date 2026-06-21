@@ -1,5 +1,9 @@
 # Structure Rulebook
 
+## Purpose
+
+Reach for Structure to pin one source-placement invariant decidable from the file tree before compile.
+
 Each Structure Rule is one source-placement invariant over `src/` and `tests/`, read straight from disk so it
 holds before code compiles. Add one when a new placement rule is worth pinning; enforce it in `Structure/Tests/`.
 

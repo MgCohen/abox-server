@@ -1,5 +1,9 @@
 # Arch Rulebook
 
+## Purpose
+
+Reach for Arch to pin one dependency / visibility invariant over the loaded assemblies — what may reference what.
+
 Each Arch Rule is one dependency invariant over the loaded assemblies (ArchUnitNET) — what may reference what.
 Add one when a new layer or boundary needs pinning; enforce it with ArchUnitNET in `Arch/Tests/`. Prefer
 deriving the assertion from one allow-graph over hand-listed denylists, so adding a band updates every rule.
