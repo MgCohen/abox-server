@@ -1,0 +1,30 @@
+=== M1: bind-mount round-trip byte-exact (host <-> container) ===
+06ffb6dae721db77b062586f5fe1e4c02948d44b3e2d73e3136c28e68419aa00  /project/from-box.txt
+host sees:
+06ffb6dae721db77b062586f5fe1e4c02948d44b3e2d73e3136c28e68419aa00  /tmp/tmp.wTQwpAYopL/from-box.txt
+=== M2: hold-open across N execs over one box (the Testcontainers unknown) ===
+step-1
+step-2
+step-3
+step-4
+step-5
+step 1's write visible in step 5? ->
+step-1
+=== M5: guaranteed teardown (anti-zombie) ===
+PASS: container gone
+=== M3: isatty() true under a pty in the box (the billing precondition) ===
+[host-side] child ran under a pty
+=== M4: sh stop-hook writes the Stop payload across the mount ===
+host reads signal off the mount:
+{"last_assistant_message":"hi from the box"}
+=== M6: perm-hook req/resp handshake across the mount ===
+host sees request on the mount: req-d6c6eabd-7591-4cf0-86ab-433bc50039f9.json
+hook echoed the host's response:
+{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}
+=== Stage A complete ===
+
+=== M3 (corrected) — actual isatty value captured ===
+child: isatty(0)=True isatty(1)=True   (pty.fork inside the container)
+docker -t path also yields a tty on stdout.
+Environment: dockerd 29.3.1 (overlayfs) running inside the remote sandbox; python:3.12-slim.
+NOTE: Stage A = mechanics only, no model invoked. B1/B2 (a real claude turn + billing path) = Stage B.

@@ -32,4 +32,10 @@ public static class Shell
         if (arg.IndexOfAny(QuoteTriggers) < 0) return arg;
         return "\"" + arg.Replace("\"", "\\\"") + "\"";
     }
+
+    // Single-quote quoting for a POSIX shell: inside '…' nothing is special, so $, `,
+    // \, ;, whitespace etc. are all inert. The only escape needed is ' itself. Use this
+    // (not QuoteArg, which is cmd.exe-shaped) for anything that lands in `bash -c`.
+    public static string QuotePosix(string arg) =>
+        arg.Length == 0 ? "''" : "'" + arg.Replace("'", "'\\''") + "'";
 }
