@@ -135,12 +135,27 @@ is where the risk now lives — not in the container plumbing.
 | DLL **bake** path (Linux host, no Unity) + the **EULA** question | low (eng) / blocker (legal) | #81 *mounted* them |
 | Spin-up timing (cold / warm / amortised) | low | — |
 
-> **Credential delivery (finding from `spikes/agent-in-box`):** the box must hold the
-> **agent's own model credential** — unlike git/repo creds, which never enter the box
-> (`SPIKE.md` A1/A4). The agent runs in the box, so its *model* auth lives there. Deliver
-> it **brokered** — a proxy + an **ephemeral** token (the way Claude Code's own managed
-> remote sessions do it) — so the box never holds a reusable key. Mounting a long-lived
-> credential file is the thing to avoid.
+> **Credential delivery (validated, `spikes/agent-in-box` + 4-agent review):** the box
+> must hold the **agent's own model credential** — unlike git/repo creds, which never
+> enter the box (`SPIKE.md` A1/A4). Mechanism (mirrors how Claude Code's own remote env
+> authenticates, confirmed in the claude binary):
+> - **Source:** owner's `claude setup-token` (a 1-yr subscription OAuth token), held on
+>   the host, never persisted in the box. The `ANTHROPIC_API_KEY` scrub is load-bearing —
+>   it's what selects subscription billing over metered API.
+> - **Host → box:** the token via a **tmpfs file** (not a box-wide env var — that leaks
+>   into every gated-tool hook child; not a raw fd — fds don't cross the docker boundary).
+> - **Box-internal:** the in-box driver **fd-injects** to its `claude` child
+>   (`CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR`), keeping the token out of `environ`.
+>
+> Three conditions make this safe/correct (none optional):
+> 1. **Egress is the real security boundary** — the ephemeral-in-box token is only safe
+>    because the allowlist blocks exfil. **This is still unproven** (#81 used `--network
+>    none`) — validate it adversarially before trusting the auth (see Next steps).
+> 2. **Single subscription owner only** — using one `setup-token` to serve *other* users'
+>    turns is credential-sharing/resale (ToS violation). A.Box must stay single-tenant on
+>    this path; multi-user needs per-user accounts or API billing.
+> 3. **Rate-limit backoff** — subscription has a 5-hr rolling window + weekly caps, 429s
+>    on hit, and **no API fallback**. A long-running orchestrator needs queueing/backoff.
 
 ## Next steps (build order)
 
@@ -162,5 +177,8 @@ is where the risk now lives — not in the container plumbing.
    start, `DisposeAsync` in `finally`; route turns + build/test through `ExecAsync`;
    git stays on host.
 
-Independent tracks (not blocking 1–3): **egress** in its real form, and the **DLL
-bake + EULA** question.
+Independent tracks: the **DLL bake + EULA** question, and — now elevated by the auth
+review — **egress in its real form** is the **gating security dependency for credential
+delivery** (the in-box token is only safe behind a tested allowlist). Port `SPIKE.md`
+A3/A5 into the box (block host gateway / RFC1918 / `169.254.169.254` / arbitrary hosts;
+match by resolved IP, not wildcard host) before trusting the fd-injected token.

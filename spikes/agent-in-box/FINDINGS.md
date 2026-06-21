@@ -57,4 +57,28 @@ brokered), not by mounting a long-lived credential file.
 | Container seam mechanics (mount, hold-open, teardown, pty/isatty, sh hooks over mount) | ✅ green (Stage A) |
 | `claude` executes in a Linux container | ✅ (Stage B, runs) |
 | A real subscription turn completes in-box + its billing path | ⏳ run on a `claude login`'d Docker host |
-| Credential delivery for the in-box agent | 🔎 finding: broker it (proxy + ephemeral token) |
+| Credential delivery for the in-box agent | ✅ path validated (below) — building it |
+
+## Auth path — validated (4-agent review)
+
+The proposed auth — replicate how Claude Code's own remote env authenticates — was
+reviewed from four independent angles (mechanism, security, architecture, billing/ToS).
+**All four: viable.** Confirmed against the shipped claude binary's auth-source enum:
+`CLAUDE_CODE_OAUTH_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR`, and `apiKeyHelper`
+are first-class inputs; fd-injection is Anthropic-dogfooded (`"injected by the CCR host"`).
+
+**Chosen mechanism (least-mechanism that's still leak-safe):**
+- Source: owner's `claude setup-token` (1-yr subscription OAuth token), host-held, never
+  persisted in the box. `ANTHROPIC_API_KEY` scrub stays — it selects subscription billing.
+- Host → box: token via a **tmpfs file** (not a box-wide env var — that leaks into every
+  gated-tool hook child; not a raw fd — fds don't cross the docker boundary).
+- Box-internal: the driver **fd-injects** to its `claude` child
+  (`CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR`), keeping the token out of `environ`.
+- `apiKeyHelper` deferred — only needed for mid-turn rotation; per-turn re-injection
+  already absorbs rotation at turn boundaries.
+
+**Three conditions (none optional):**
+1. **Egress is the security boundary** and is **unproven** (#81 used `--network none`) —
+   validate it adversarially before trusting the in-box token.
+2. **Single subscription owner only** — serving other users off one token is ToS resale.
+3. **Rate-limit backoff** — 5-hr window + weekly caps, 429s, no API fallback.

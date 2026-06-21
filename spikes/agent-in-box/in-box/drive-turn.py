@@ -57,8 +57,27 @@ def main() -> int:
 
     print(f"[drive] user={os.getuid()} session={session_id} mode={perm_mode}", flush=True)
 
+    # Subscription auth, fd-injection (mirrors the CCR host). The token arrives via a
+    # tmpfs file the host mounts in — never a box-wide env var, so the gated-tool hook
+    # children don't inherit it. We open it, mark the fd inheritable, and hand claude
+    # CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR so the token stays out of environ.
+    tok_path = os.environ.get("RA_OAUTH_TOKEN_FILE")
+    tok_fd = None
+    if tok_path and os.path.exists(tok_path):
+        tok_fd = os.open(tok_path, os.O_RDONLY)
+        os.set_inheritable(tok_fd, True)
+        print(f"[drive] fd-injecting OAuth token from {tok_path} as fd {tok_fd}", flush=True)
+    else:
+        print("[drive] WARN: no RA_OAUTH_TOKEN_FILE — claude will hit Authentication error", flush=True)
+
     pid, fd = pty.fork()
     if pid == 0:
+        if tok_fd is not None:
+            os.environ["CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR"] = str(tok_fd)
+        # Oracle A1: never leave an API key in the child env, or claude bills the API
+        # instead of the subscription.
+        os.environ.pop("ANTHROPIC_API_KEY", None)
+        os.environ.pop("CLAUDE_API_KEY", None)
         os.execvp(args[0], args)
         os._exit(127)
 
