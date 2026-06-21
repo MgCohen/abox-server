@@ -74,6 +74,17 @@ namespaces stay. (Verified: csprojs never reference the `.md` — the move is bu
 
 ## Phases (strategy A)
 
+> **Defer to type #2 (ADR):** the generated `INDEX.md` (pointless at one entry) and the
+> reflexive meta-type *packaging* (keep the meta-guard *function*; skip the
+> "`ArtifactType` governs itself" framing until a second definition makes it real). See
+> [`artifact-standard.md`](artifact-standard.md) § Build order.
+
+**Phase 0 — Cheap, in-`tests/`, reversible (do first).** Add the floor's **purpose /
+when-to-use** check to the existing Meta format guard (a real gap today), and
+**consolidate** the three Rulebook-path derivations (`RepoTree` / `TestTypes` /
+`ParityGuard`) into one source. No relocation, no protected-path move beyond the harness
+itself; useful even if nothing else ships. **Gate:** green.
+
 **Phase 1 — Infra + pilot (`Structure`).** Stand up `governance/artifacts/Test/` with
 `artifact.yml` + `conventions.md`; move `Structure`'s `{template.md, rules.md}` into
 `Test/Structure/`; build the register-reader + generic structural validator + meta-guard

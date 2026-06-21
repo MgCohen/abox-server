@@ -125,3 +125,27 @@ The floor unblocked four design questions; all now locked:
 
 **Floor: LOCKED 2026-06-17** — { register(home + purpose + profile) · template ·
 criteria · structural-validation } required; parity + custom optional.
+
+## Build order — earn each step, defer the N≥2 niceties
+
+The next artifact types (ADR, plan, research) are committed, so the shared infra is
+justified — but two pieces are *trivial or meaningless at one type* and arrive for free
+*with* type #2. Sequence accordingly (an over-engineering review flagged this):
+
+1. **Cheap, in-`tests/`, reversible first** — add the floor's **purpose / when-to-use**
+   check to the existing Meta guard, and **consolidate the three Rulebook-path
+   derivations** (`RepoTree` / `TestTypes` / `ParityGuard`) into one. Useful on their
+   own merits; they *are* the seam repointed later.
+2. **Build the real shared infra with the test migration** — the per-folder registry
+   read, generic structural validation, and the floor **meta-guard** (the *function*
+   that checks every type declares home + purpose + template + criteria — `tests/Meta`
+   lightly generalized).
+3. **Defer to type #2 (ADR):**
+   - the generated **`INDEX.md`** — a one-row matrix is pointless; it earns its keep at
+     3–4 entries.
+   - the **reflexive meta-type *packaging*** (`ArtifactType` "governs itself"). Keep the
+     meta-guard *function*; add the self-application framing only when a second
+     definition makes it non-trivial.
+4. **The physical `tests/ → governance/artifacts/` move is the irreversible step**
+   (protected-paths, CODEOWNERS, judges, skills, READMEs at once) — sequence it **last**,
+   pilot-then-sweep.
