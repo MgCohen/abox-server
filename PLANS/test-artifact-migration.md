@@ -1,5 +1,12 @@
 # Test Rulebooks → Artifacts — Migration Plan
 
+> **⚠️ DEPRECATED (2026-06-17).** Superseded by
+> [`artifact-standard.md`](artifact-standard.md), which resets the framing: artifact
+> types are governed by an enforced *agent-first floor* (free in format), and the
+> test→artifact migration will be **re-derived from that floor** rather than from this
+> plan's per-type assumptions. Kept for its coupling inventory + feature contract,
+> which the re-derived plan will reuse. Do not execute as-is.
+
 > **Scope: tests only.** Reorganize the *test* system into the Artifact model, to
 > prove the shape before scaling it to ADRs/plans/research. **Hard invariant: a
 > warning-free build + green `dotnet test ABox.slnx` at the end of every phase, and
