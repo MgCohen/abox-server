@@ -104,18 +104,24 @@ in format. None of them is privileged; tests are just where we prove the machine
 - **Orthogonal to the governance relocation** (where things physically live): the
   standard says *what every type must provide*, not *which folder it sits in*.
 
-## Deliberately deferred — the next decisions, once the floor is locked
+## Decisions (locked 2026-06-17)
 
-1. **Registry encoding + home** — the concrete file shape and where the registry lives.
-   *(Current direction, not load-bearing: an `Artifact` registry in YAML under
-   `governance/artifacts/`, discovered per-entry.)*
-2. **Per-family enforcer mechanism** — code-first types need parity (reflection over a
-   compiled assembly); nl-first types need one-directional schema validation. The floor
-   requires *that* a type is validated, not *how*; the how is a per-family choice.
-3. **Single-vs-split for tests** — *(current direction: one `Test` artifact with
-   per-type sub-folders, since all test types share one profile.)*
-4. **The migration** — re-derive the test→artifact execution plan from this floor.
+The floor unblocked four design questions; all now locked:
 
-**Floor: LOCKED 2026-06-17** — `{ register(home + purpose + profile) · template ·
-criteria · structural-validation }` required; parity + custom optional. The deferred
-decisions above are now unblocked and derive from this floor.
+1. **Registry — per-folder + generated index (Q1 = C).** Each type is a folder
+   `governance/artifacts/<Type>/` carrying a YAML `artifact.yml` (the profile) +
+   `template.md` (shape + `## Criteria`); the harness discovers them; a generated
+   `INDEX.md` gives the matrix view without a second source of truth.
+2. **Enforcer — generic core + adapters (Q2 = C).** Structural validation is the
+   generic core (every instance matches its type's template). **`parity` is the first
+   adapter** (code-first), *not* core — promoted to a generic adapter mechanism only on
+   a second real case.
+3. **Tests — one `Test` artifact (Q3 = A).** The seven test types share one profile, so
+   they are **one** artifact with per-type sub-folders; the per-type variation lives
+   inside the code-first adapter, not in a generic registry sub-type concept.
+4. **Migration — pilot then sweep (Q4 = A).** Re-derive the test→artifact move from this
+   floor; pilot one sub-type through the engine repoint, then sweep the rest. See
+   [`test-artifact-migration.md`](test-artifact-migration.md).
+
+**Floor: LOCKED 2026-06-17** — { register(home + purpose + profile) · template ·
+criteria · structural-validation } required; parity + custom optional.

@@ -1,113 +1,101 @@
-# Test Rulebooks → Artifacts — Migration Plan
+# Test → Artifact Migration (re-derived)
 
-> **⚠️ DEPRECATED (2026-06-17).** Superseded by
-> [`artifact-standard.md`](artifact-standard.md), which resets the framing: artifact
-> types are governed by an enforced *agent-first floor* (free in format), and the
-> test→artifact migration will be **re-derived from that floor** rather than from this
-> plan's per-type assumptions. Kept for its coupling inventory + feature contract,
-> which the re-derived plan will reuse. Do not execute as-is.
+> **Execution plan, grounded in [`artifact-standard.md`](artifact-standard.md)** (floor
+> + Q1–Q4 locked 2026-06-17). Makes the test system the **first instance** of the
+> Artifact Standard. **Hard invariant:** warning-free build + green `dotnet test
+> ABox.slnx` at the end of every phase, and **zero loss of any current testing
+> feature.** Strategy **A** — pilot one sub-type through the engine repoint, then sweep
+> the rest. Each phase is one coherent commit, independently revertible.
 
-> **Scope: tests only.** Reorganize the *test* system into the Artifact model, to
-> prove the shape before scaling it to ADRs/plans/research. **Hard invariant: a
-> warning-free build + green `dotnet test ABox.slnx` at the end of every phase, and
-> zero loss of any current testing feature.** Each phase is one coherent commit and
-> is independently revertible. Produced 2026-06-17.
+## What the locks fix
 
-## Goal
-
-Move each test type's **definition** (`template.md` + `rules.md`) out of
-`tests/Tests/<Type>/Rulebook/` into a per-artifact folder
-`governance/artifacts/<Type>/`, while the test **code** stays in `tests/`. The
-shared **engine** (`tests/Harness`) and **Meta** self-suite stay where they are for
-now. Parity then bridges the new gap — definition in `governance/artifacts/`, proof
-in `tests/` — which is exactly what a parity guard is for.
-
-**Out of scope (later):** ADR/Plan/Research artifacts; relocating the engine to
-`governance/harness/` (that rides with ADR 0013). This plan only reshapes tests.
+- **One `Test` artifact** (Q3), sub-types as sub-folders; the seven share one profile.
+- **Registry = per-folder + generated `INDEX.md`** (Q1); profile in YAML `artifact.yml`.
+- **Generic structural core + `ParityGuard` as the first (code-first) adapter** (Q2).
+- **Pilot then sweep** (Q4).
 
 ## Target shape
 
 ```
 governance/artifacts/
-├── README.md              # what an Artifact is + the artifact.yml schema (the "main folder")
-├── Arch/  { artifact.yml, template.md, rules.md }
-├── Structure/  { … }
-├── Unit/ E2E/ Wire/ Live/  { … }
-└── Meta/  { artifact.yml, template.md, rules.md }
+├── INDEX.md                  # generated matrix of all artifacts (never hand-edited)
+└── Test/
+    ├── artifact.yml          # the ONE Test profile (home: tests/Tests, family: code-first,
+    │                         #   parity: ABox.Tests, gate: block, purpose: …)
+    ├── conventions.md        # generic test stuff (parity discipline, authoring craft)
+    ├── Arch/      { template.md, rules.md }
+    ├── Structure/ { template.md, rules.md }
+    ├── Unit/ E2E/ Wire/ Live/ { … }
+    └── Meta/      { template.md, rules.md }
 
-tests/
-├── Harness/   ← UNCHANGED (the shared engine; relocates later, not here)
-├── Meta/      ← keeps its Tests/ ; its Rulebook/ moves to governance/artifacts/Meta/
-└── Tests/<Type>/
-    ├── Tests/    ← UNCHANGED (the [Rule] facts — namespaces ABox.Tests.<Type>.Tests)
-    └── Support/  ← UNCHANGED
-    (Rulebook/ folder removed — its two files moved out)
+tests/                        # CODE ONLY after the move
+├── Harness/                  # the engine — unchanged in place (ADR 0013-D3 tool-pinned)
+├── Meta/Tests/               # the self-suite tests (Rulebook/ gone)
+└── Tests/<Type>/{Tests,Support}/   # the [Rule] facts (Rulebook/ gone)
 ```
 
-Definitions flatten (no `Rulebook/` subfolder): the artifact folder *is* the rulebook.
+Only the **14 Rulebook markdown files** leave `tests/`; all `.cs`, `.csproj`, and
+namespaces stay. (Verified: csprojs never reference the `.md` — the move is build-safe.)
 
-## Features that must survive (the contract this plan is graded against)
+## Features that must survive (the contract)
 
 | # | Feature today | Preserved by |
 |---|---|---|
-| F1 | **Parity 1:N** — every `### ` Rule has ≥1 `[Rule]` test; a bare test fails | repoint `ParityGuard.ProductRulebook` + the Meta self-rulebook path |
-| F2 | **Rulebook format** — every Rule matches `template.md`; `rules.md` holds only pointers + Rules; every `template.md` has `## Criteria` | `RepoTree.RulebookFolders()` repointed; filenames unchanged |
+| F1 | **Parity 1:N** — every Rule has ≥1 `[Rule]` test; bare test fails | the code-first **adapter** (`ParityGuard`) repointed to `Test/<Type>/rules.md` + the Meta self-rulebook |
+| F2 | **Structural format** — every Rule matches its template; `rules.md` = pointers + Rules; every template has `## Criteria` | the **generic structural core**, reading templates from the new home |
 | F3 | **Taxonomy** — every `tests/Tests/` folder is a registered type; every test lives in one | unchanged (code tree untouched) |
-| F4 | **namespace = folder** (IDE0130 error) for test code | unchanged (code stays) |
-| F5 | **Judges** — `/judge`, `/judge-rulebook`, `/judge-authoring` read on-disk paths | repoint the command/skill paths |
-| F6 | **Protected-path coverage** of the definitions | `governance/**` already critical → continuous; add explicit `governance/artifacts/**` row |
-| F7 | **`rules.md` = Template/Harness pointers + Rules only** | update the relative links in each `rules.md` preamble |
-| F8 | **Derive-don't-hardcode / failure messages as fix instructions** | no behavior change; keep error text accurate to new paths |
+| F4 | **namespace = folder** (IDE0130 error) | unchanged |
+| F5 | **Judges** — `/judge`, `/judge-rulebook`, `/judge-authoring` | repoint command/skill paths to `governance/artifacts/Test/` |
+| F6 | **Protected-path coverage** of the definitions | `governance/**` already critical; add explicit `governance/artifacts/**` row |
+| F7 | **`rules.md` = pointers + Rules only** | update the relative links in each `rules.md` preamble |
+| F8 | **Floor (new)** — each artifact declares home + purpose + template + criteria | the **meta-guard** enforces it on the `Test` definition |
 
-## Coupling inventory (everything that hardcodes the old layout)
+## Coupling inventory (what hardcodes the old layout)
 
-| Location | Assumes | Change |
-|---|---|---|
-| `Harness/RepoTree.cs` | `RulebookFolders()` = `tests/Tests/*/Rulebook` + `tests/Meta/Rulebook` | add `ArtifactsRoot = governance/artifacts`; `RulebookFolders()` enumerates `ArtifactsRoot/*` |
-| `Harness/TestTypes.cs` | `RulebookPath(t)` = `"<t>/Rulebook/rules.md"` under `TestsRoot` | → `governance/artifacts/<t>/rules.md` (relative to `Root`). `Namespace()`/`Registered`/`ContainsTest()` **unchanged** |
-| `Harness/ParityGuard.cs` | `ProductRulebook` = `TestsRoot/<t>/Rulebook/rules.md` | → `ArtifactsRoot/<t>/rules.md` |
-| `Meta/Tests/ParityTests.cs` | Meta self-rulebook at `MetaRoot/Rulebook/rules.md` | → `ArtifactsRoot/Meta/rules.md` |
-| `Meta/Tests/RulebookFormatTests.cs` | iterates `RepoTree.RulebookFolders()`, reads `template.md`/`rules.md` | **free** once `RulebookFolders()` repointed |
-| `Meta/Tests/TaxonomyTests.cs` | `tests/Tests/` subdirs vs `Registered` | **free** (code tree unchanged) |
-| `governance/protected-paths` | `tests/**/Rulebook/**` critical | drop that row; add `governance/artifacts/**`; keep `tests/Tests/{Arch,Structure}/**`, `tests/Harness/**`, `tests/Meta/**`; regenerate CODEOWNERS |
-| `.claude/commands/judge*.md`, `.claude/skills/test-rulebook/SKILL.md` | `tests/Tests/<T>/Rulebook/...` paths | repoint to `governance/artifacts/<T>/...` |
-| `tests/{README,Tests/README,Harness/README,Meta/README}.md`, `CLAUDE.md`, `PLANS/test-structure.md` | describe the Rulebook location | update prose + pointers |
-| **csprojs** | — | **none** — `.md` are never referenced/compiled (verified); the move is build-safe |
+| Location | Change |
+|---|---|
+| `Harness/RepoTree.cs` | `RulebookFolders()` → enumerate `governance/artifacts/Test/*` (the sub-types) |
+| `Harness/TestTypes.cs` | `RulebookPath(t)` → `governance/artifacts/Test/<t>/rules.md`; `Namespace`/`Registered` unchanged |
+| `Harness/ParityGuard.cs` | `ProductRulebook` → the new home (the adapter's path) |
+| `Meta/Tests/ParityTests.cs` | Meta self-rulebook → `governance/artifacts/Test/Meta/rules.md` |
+| `Meta/Tests/RulebookFormatTests.cs`, `TaxonomyTests.cs` | free once `RepoTree` repointed |
+| `governance/protected-paths` | drop `tests/**/Rulebook/**`; add `governance/artifacts/**`; regenerate CODEOWNERS |
+| `.claude/commands/judge*.md`, `.claude/skills/test-rulebook/SKILL.md` | repoint paths |
+| `tests/**/README.md`, `CLAUDE.md` | update prose + pointers |
+| **csprojs** | **none** — `.md` never referenced (build-safe) |
 
-## Phases
+## New infra to build (the generic core, per Q1/Q2)
 
-### Phase 1 — Move the definitions + repoint the engine (the core)
-1. `git mv` each `tests/Tests/<T>/Rulebook/{template.md,rules.md}` → `governance/artifacts/<T>/` (Arch, Structure, Unit, E2E, Wire, Live), and `tests/Meta/Rulebook/*` → `governance/artifacts/Meta/`. Remove the empty `Rulebook/` dirs.
-2. `RepoTree`: add `ArtifactsRoot`; rewrite `RulebookFolders()` to enumerate `ArtifactsRoot/*` (folders containing a `template.md`). Drop `MetaRoot` only if it falls unused, else keep as an existence assertion.
-3. `TestTypes.RulebookPath` + `ParityGuard.ProductRulebook` + `ParityTests` Meta path → the new locations.
-4. Fix the `rules.md` preamble links (the `template.md` sibling link stays; the Harness link still contains the substring `Harness/README.md` the guard checks). Update stale `tests/Tests/...` mentions in code comments.
-5. **Gate:** build warning-free; `dotnet test` green; all Meta guards still run over the moved files.
+- **register-reader** — discover `governance/artifacts/*/artifact.yml` (per-folder, YAML).
+- **structural validator** — generic: every instance matches its type's template schema (generalize "every Rule matches its template").
+- **code-first adapter** — the existing `ParityGuard`, *registered as the first adapter* (reflection-parity), iterating the `Test` sub-types.
+- **meta-guard** — enforce the floor on each artifact definition: has home + purpose + template + `## Criteria`.
+- **INDEX generator** — compile `governance/artifacts/INDEX.md` from the folders.
 
-### Phase 2 — Generalize the registry (additive)
-1. Add `governance/artifacts/<T>/artifact.yml` per type (`home: tests/Tests/<T>`, `family: code-first`, `det/judge: true`, `parity: ABox.Tests` — `ABox.Tests.Meta` for Meta, `gate: block`).
-2. Add `governance/artifacts/README.md`: what an Artifact is + the `artifact.yml` schema + how to add one.
-3. Add `Harness/Artifacts.cs` — read the flat `artifact.yml` (hand-parse key:value; no new dependency, per the lean ethos) + a Meta guard **"every artifact folder is well-formed"**: has a valid `artifact.yml`, a `template.md` with `## Criteria`, a `rules.md` iff `family: code-first`, unique name, existing `home`. (Optional: derive `TestTypes.Registered` from the code-first artifacts to kill the duplication — defer if risky.)
-4. **Gate:** build + test green; deliberately add a malformed `artifact.yml` and confirm the new guard goes red, then remove.
+## Phases (strategy A)
 
-### Phase 3 — Repoint the surfaces
-1. `governance/protected-paths`: drop `tests/**/Rulebook/**`; add `governance/artifacts/** | @MgCohen | critical`; run `generate-codeowners.sh`. (Protection is continuous — `governance/**` already covers the new home.)
-2. Update `.claude/commands/judge*.md` + `.claude/skills/test-rulebook/SKILL.md` paths (rename the skill to artifact-oriented later — not now).
-3. Update the four `tests/**/README.md`, the `CLAUDE.md` "Tests are Rulebooks" pointer, and note `PLANS/test-structure.md` as updated by this migration.
+**Phase 1 — Infra + pilot (`Structure`).** Stand up `governance/artifacts/Test/` with
+`artifact.yml` + `conventions.md`; move `Structure`'s `{template.md, rules.md}` into
+`Test/Structure/`; build the register-reader + generic structural validator + meta-guard
++ INDEX; repoint `RepoTree`/`ParityGuard` for the migrated sub-type, with the other six
+still read from their current path during the pilot. **Gate:** green; the generic engine
+is proven end-to-end on one sub-type.
 
-### Phase 4 — Verify zero feature loss (negative tests)
-Run each guard *to red* and back, to prove nothing went vacuously green:
-- delete a `[Rule]` test → **F1** parity red; restore.
-- add a stray `##` to a `rules.md` → **F2** format red; restore.
-- strip `## Criteria` from a `template.md` → **F2** red; restore.
-- drop a junk folder in `governance/artifacts/` → **F4/registry** guard red; remove.
-- `/judge-rulebook` a moved rulebook → resolves at the new path (**F5**).
-- `protected-paths-check.sh` on a `governance/artifacts/**` edit → flagged critical (**F6**).
-- final `dotnet build` + `dotnet test` green.
+**Phase 2 — Sweep.** Move the remaining six + `Meta` into `Test/<Type>/`; drop the pilot
+dual-read; the code-first adapter now iterates all sub-types from the one home. **Gate:**
+green; old `Rulebook/` folders gone.
+
+**Phase 3 — Surfaces.** `protected-paths` (+ regenerate CODEOWNERS), judges, the
+`test-rulebook` skill, the `tests/**` READMEs and `CLAUDE.md` pointers.
+
+**Phase 4 — Verify zero loss (negative tests).** Drive each guard to red and back:
+delete a `[Rule]` test → F1; stray `##` in a `rules.md` → F2; strip `## Criteria` → F2;
+a `Test/` sub-folder missing its template → meta-guard/F8; `/judge-rulebook` resolves at
+the new path → F5; `protected-paths-check.sh` flags a `governance/artifacts/**` edit → F6.
+Final `dotnet build` + `dotnet test` green.
 
 ## Rollback
 
-Each phase is one commit. Phase 1 is the only risky one (engine repoint); if any guard can't be repointed cleanly, revert that single commit — the move and the path changes are in it together, so there's never a split-brain state where the engine looks in the wrong place.
-
-## Why this de-risks the ADR scale-up
-
-After this lands, `governance/artifacts/` exists, the engine reads definitions from it, and the well-formedness guard runs over it. Adding the **ADR** artifact is then purely additive: a new `governance/artifacts/ADR/` folder (`artifact.yml family: nl-first, parity: null`, `template.md` with `## Criteria`) — no `rules.md`, no test code, and the existing guards cover it the moment it lands. The hard part (reshaping the engine's path assumptions) is paid once, here, on the system we understand best.
+Each phase is one commit. Phase 1 (the engine repoint) is the only risky one and is
+scoped to a single sub-type; if a guard can't be repointed cleanly, revert that commit —
+the move and the path change live together, so there is never a split-brain state.
