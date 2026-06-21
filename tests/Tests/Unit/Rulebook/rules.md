@@ -206,6 +206,24 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 ### DetectStartupDialog given dialog text split by ANSI escapes → still classifies it
 - **Why:** the terminal interleaves color/style escape codes through the prompt text, so detection must see past the noise or it would miss real dialogs on a styled terminal.
 
+### BuildBoxEnv with a setup token → injects it as CLAUDE_CODE_OAUTH_TOKEN and never an API key
+- **Why:** the box must bill the owner's subscription, so the credential must arrive under the OAuth-token var while no ANTHROPIC_API_KEY is set — an API key would silently switch claude to metered billing (oracle A1).
+
+### BuildBoxEnv with no setup token → carries no credential env
+- **Why:** an unprovisioned box must not fabricate a credential; omitting the token leaves the turn unauthenticated rather than mis-billed, which is the deferred-validation gate (B1/B2).
+
+### BuildBoxEnv with an egress proxy → routes the box out through HTTPS_PROXY and HTTP_PROXY
+- **Why:** the box's only sanctioned route is the allowlist proxy, so both vars must point at it or the box either can't reach Anthropic or slips the egress boundary that keeps the in-box token leak-safe.
+
+### A credentialed box with no confining network or proxy → refused before it opens
+- **Why:** the per-turn token is only safe behind the egress boundary (ADR 0013 decision 4), so a box holding it on docker's default bridge must fail closed rather than expose a silent exfil channel.
+
+### A credentialed box behind the egress network and proxy → permitted to open
+- **Why:** the sanctioned configuration — token plus confining network and proxy — must pass the guard, or every real billed turn would be blocked.
+
+### A box with no credential → permitted to open without egress confinement
+- **Why:** an unbilled turn carries nothing to exfiltrate, so the confinement requirement must apply only when a credential is present, leaving unprovisioned/dev runs workable.
+
 ### BuildArgs with no session id → a fresh exec run that reads the prompt from stdin
 - **Why:** a fresh turn must not silently inherit a prior session, and the CLI only receives the prompt if stdin ("-") is wired as the final arg.
 

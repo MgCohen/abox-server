@@ -5,6 +5,10 @@ namespace ABox.Domain.Agents.Claude;
 
 public static class ClaudeProtocol
 {
+    // The subscription credential reaches the box here (ADR 0013): an OAuth token, not an
+    // API key, so the ANTHROPIC_API_KEY scrub still selects subscription billing (oracle A1).
+    public const string OAuthTokenEnvVar = "CLAUDE_CODE_OAUTH_TOKEN";
+
     // Hints shown only on Claude's live input bar — the positive "ready" signal.
     // "shift+tab" rides the bypass-mode footer; "? for shortcuts" shows in default
     // mode where the permission-cycle hint is absent. Match either.
@@ -47,6 +51,32 @@ public static class ClaudeProtocol
         if (!string.IsNullOrEmpty(systemPromptFile)) { args.Add("--append-system-prompt-file"); args.Add(systemPromptFile); }
         if (!string.IsNullOrEmpty(settingsFile)) { args.Add("--settings"); args.Add(settingsFile); }
         return args;
+    }
+
+    // The env injected per turn via `docker exec -e` (ADR 0013): HOME at the mounted
+    // skeleton, the Stop/permission shim paths as in-box mount paths, the egress proxy,
+    // and — when present — the subscription credential. Per-turn and per-exec: nothing
+    // here is baked into the image. No ANTHROPIC_API_KEY is ever set, so even with a
+    // token claude stays on the subscription path.
+    public static Dictionary<string, string> BuildBoxEnv(
+        string homeMount, string signalPathInBox, string? permissionDirInBox,
+        string? proxyUrl, string? setupToken)
+    {
+        var env = new Dictionary<string, string>
+        {
+            ["HOME"] = homeMount,
+            [ClaudeHooks.SignalEnvVar] = signalPathInBox,
+        };
+        if (permissionDirInBox is not null)
+            env[ClaudeHooks.PermissionEnvVar] = permissionDirInBox;
+        if (proxyUrl is { } proxy)
+        {
+            env["HTTPS_PROXY"] = proxy;
+            env["HTTP_PROXY"] = proxy;
+        }
+        if (!string.IsNullOrEmpty(setupToken))
+            env[OAuthTokenEnvVar] = setupToken;
+        return env;
     }
 
     // Oracle A7: match the dialog wordings (Claude's) against the normalized,

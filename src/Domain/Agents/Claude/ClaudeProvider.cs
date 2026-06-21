@@ -27,6 +27,8 @@ public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolv
                 "Bypass policy needs claude's bypassPermissions mode, which claude refuses as root; " +
                 "run the orchestrator as a non-root user so the box isn't root.");
 
+        sandbox.EnsureCredentialConfined();
+
         var isResume = request.SessionId is not null;
         var sessionId = request.SessionId ?? Guid.NewGuid().ToString();
 
@@ -89,14 +91,16 @@ public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolv
         }
     }
 
-    // Provisional: the credential + onboarding state come from the pre-onboarded
-    // template HOME. Until the owner provisions a setup-token home, the box has no
-    // credential and a real turn can't authenticate — the deferred validation step.
+    // The per-turn HOME: a fresh temp dir (writable mount where claude writes the JSONL)
+    // seeded from the non-secret onboarding skeleton so the first-run theme/onboarding
+    // dialogs don't appear. The credential is NOT here — it rides the box env per turn.
+    // Provisional: until the owner provisions a skeleton, claude hits onboarding and a
+    // real turn stalls — the deferred validation step (B1/B2, owner's setup-token host).
     private DirectoryInfo PrepareHome()
     {
         var home = Directory.CreateTempSubdirectory("ra-claude-home-");
-        if (sandbox.TemplateHome is { Exists: true } template)
-            CopyDir(template, home);
+        if (sandbox.HomeSkeleton is { Exists: true } skeleton)
+            CopyDir(skeleton, home);
         return home;
     }
 
@@ -109,24 +113,10 @@ public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolv
             file.CopyTo(Path.Combine(dst.FullName, file.Name), overwrite: true);
     }
 
-    // No API key in the box env (docker doesn't inherit the host's), so claude takes the
-    // subscription path (oracle A1). Injected via `docker exec -e`.
-    private Dictionary<string, string> BoxEnv(ClaudeHooks hook)
-    {
-        var env = new Dictionary<string, string>
-        {
-            ["HOME"] = DockerSandbox.HomeMount,
-            [ClaudeHooks.SignalEnvVar] = hook.SignalPathInBox,
-        };
-        if (hook.PermissionDirInBox is not null)
-            env[ClaudeHooks.PermissionEnvVar] = hook.PermissionDirInBox;
-        if (sandbox.ProxyUrl is { } proxy)
-        {
-            env["HTTPS_PROXY"] = proxy;
-            env["HTTP_PROXY"] = proxy;
-        }
-        return env;
-    }
+    private Dictionary<string, string> BoxEnv(ClaudeHooks hook) =>
+        ClaudeProtocol.BuildBoxEnv(
+            DockerSandbox.HomeMount, hook.SignalPathInBox, hook.PermissionDirInBox,
+            sandbox.ProxyUrl, sandbox.SetupToken);
 
     private static void TryDeleteDir(DirectoryInfo dir)
     {
