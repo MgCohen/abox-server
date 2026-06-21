@@ -4,7 +4,10 @@ namespace ABox.Infrastructure.Sandbox;
 
 public sealed class DockerSandbox : ISandbox
 {
-    private const string Workdir = "/work";
+    public const string WorkMount = "/work";
+    public const string SessionMount = "/session";
+    public const string HomeMount = "/home/box";
+
     private readonly string _containerId;
     private bool _disposed;
 
@@ -14,9 +17,10 @@ public sealed class DockerSandbox : ISandbox
     {
         var network = options.Network is null ? "" : $"--network {Shell.QuoteArg(options.Network)} ";
         var runLine =
-            $"docker run -d -w {Workdir} " +
-            $"-v {Shell.QuoteArg(options.Worktree.FullName)}:{Workdir} " +
-            $"-v {Shell.QuoteArg(options.SessionDir.FullName)}:/session " +
+            $"docker run -d -w {WorkMount} " +
+            $"-v {Shell.QuoteArg(options.Worktree.FullName)}:{WorkMount} " +
+            $"-v {Shell.QuoteArg(options.SessionDir.FullName)}:{SessionMount} " +
+            $"-v {Shell.QuoteArg(options.Home.FullName)}:{HomeMount} " +
             network +
             $"{Shell.QuoteArg(options.Image)} sleep infinity";
 
@@ -30,9 +34,18 @@ public sealed class DockerSandbox : ISandbox
     public async Task<ExecResult> ExecAsync(string command, CancellationToken ct)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        var line = $"docker exec -w {Workdir} {_containerId} sh -lc {Shell.QuoteArg(command)}";
+        var line = $"docker exec -w {WorkMount} {_containerId} sh -lc {Shell.QuoteArg(command)}";
         var r = await RunCommand.RunAsync(line, ct: ct);
         return new ExecResult(r.ExitCode, r.Stdout, r.Stderr);
+    }
+
+    public string InteractiveExecLine(string command, IReadOnlyDictionary<string, string>? env = null)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        var envFlags = env is null
+            ? ""
+            : string.Concat(env.Select(kv => $"-e {Shell.QuoteArg($"{kv.Key}={kv.Value}")} "));
+        return $"docker exec -it {envFlags}-w {WorkMount} {_containerId} {command}";
     }
 
     public async ValueTask DisposeAsync()
