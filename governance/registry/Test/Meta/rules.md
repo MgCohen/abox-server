@@ -1,5 +1,5 @@
 Template: [template.md](./template.md)
-Harness: [Rulebook convention](../../Harness/README.md)
+Harness: [Rulebook convention](../../../../tests/Harness/README.md)
 
 ### Parity holds for every registered type
 - **Why:** Each type's Rulebook headers and its `[Rule]`-cited tests must stay in lockstep — every Rule

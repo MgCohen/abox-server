@@ -8,7 +8,7 @@ Three pieces:
   `[Rule]` attribute, `ParityGuard`, and the `TestTypes` / `RulebookFormat` / `RepoTree`
   the Meta guards run on. Nothing product-specific lives here.
 - **[`Tests/`](Tests/README.md)** — the product suite (`ABox.Tests`): six **types**, each its
-  own Rulebook with the same folder shape (`<Type>/Rulebook/`, `<Type>/Tests/`, `<Type>/Support/`).
+  own Rulebook — its definition in the registry at `governance/registry/Test/<Type>/`, its tests under `<Type>/Tests/` (+ `<Type>/Support/`).
 - **[`Meta/`](Meta/README.md)** — the **self-suite** (`ABox.Tests.Meta`): the same Rulebook shape,
   but its Rules guard the *test system* — taxonomy, Rulebook format, parity — validating the product
   suite from outside, the way Arch validates `src/`.
@@ -16,7 +16,7 @@ Three pieces:
 ## The discipline in one paragraph
 
 Every test type states its guarantees as natural-language **Rules** — the `### `
-headers in `<Type>/Rulebook/rules.md` — and each Rule is enforced by a
+headers in `governance/registry/Test/<Type>/rules.md` — and each Rule is enforced by a
 `[Rule("<header>")]` xUnit fact under `<Type>/Tests/`. The **Meta** self-suite runs one parity
 check over every product type (and over itself) and fails the build if a Rule has no test, or a test cites no Rule.
 A test therefore never lands alone: it lands **with the Rule it proves**. This is the same

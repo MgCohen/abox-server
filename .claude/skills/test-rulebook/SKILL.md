@@ -10,7 +10,7 @@ description: >-
 
 # Adding a test = adding (or citing) a Rule
 
-Every product test *type* lives under `tests/Tests/` as a **Rulebook**: a `<Type>/Rulebook/` folder
+Every product test *type* is a **Rulebook**: its definition lives in the artifact registry at `governance/registry/Test/<Type>/`
 with `template.md` (the type's Rule shape) and `rules.md` (a preamble + the `### ` Rules), each
 Rule enforced by a `[Rule("<header>")]` xUnit fact in `<Type>/Tests/`. The **Meta** self-suite
 (`tests/Meta`, its own assembly) runs one parity check over every product type — and over itself —
@@ -50,7 +50,7 @@ so CI skips it). Testing the *product* → one of the first six; testing the *te
 
 **Need a whole new *type* (not just a Rule)?** Rare — only when no existing type can host
 the guarantee (don't fork Unit into near-twins). Follow the step-by-step in
-`tests/Harness/README.md` § *Standing up a new test type*: create `<Type>/{Rulebook,Tests,Support}/`,
+`tests/Harness/README.md` § *Standing up a new test type*: create `governance/registry/Test/<Type>/` (definition) + `tests/Tests/<Type>/{Tests,Support}/`,
 fill `template.md` + `rules.md` from the canonical skeleton (don't copy a sibling) — `template.md`
 **must** carry a `## Criteria` block or the Meta *Every template carries judge criteria* guard fails —
 register the type in `Harness/TestTypes.Registered`, and write a `### ` Rule + its `[Rule]` fact for
@@ -60,7 +60,7 @@ Rulebook *shape* — reuse the uniform one.
 
 ## 2. Add the test
 
-1. **Write the `### ` Rule** in that type's `Rulebook/rules.md`, phrased as the
+1. **Write the `### ` Rule** in that type's `governance/registry/Test/<Type>/rules.md`, phrased as the
    guarantee itself and matching the type's `template.md`: Arch/Structure use an invariant
    header (no arrow) — *"Dependencies flow down the layer graph only"*; behavioral types end
    in a `→` result — *"claude-ping with a scripted reply → implementer reaches Completed"*.
@@ -107,7 +107,7 @@ judge-graded (see §6), not parity-enforced.
 - **No new test csproj.** `tests/Tests/ABox.Tests.csproj` globs `src\**\ABox.*.csproj` — a new
   feature/slice is picked up automatically. Don't add a project per type.
 - **Rulebooks are read from the source tree.** The Meta guards locate the repo root (`RepoTree`, via
-  the `ABox.slnx` marker) and read each `<Type>/Rulebook/rules.md` straight from disk — no copy step.
+  the `ABox.slnx` marker) and read each `governance/registry/Test/<Type>/rules.md` straight from disk — no copy step.
   A Rule counts only if it sits in its type's `rules.md` under `tests/Tests/<Type>/` (or `tests/Meta/`).
 - **`rules.md` holds only Rules.** The example `### ` lives in `template.md`, not `rules.md`, so
   every `### ` in `rules.md` counts — there's no fence to skip and nothing to game. Two Meta guards

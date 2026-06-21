@@ -21,7 +21,7 @@
 
 tests/Harness/**          | @MgCohen | critical | Test harness: the enforcement engine (ParityGuard, Rule, TestTypes).
 tests/Meta/**             | @MgCohen | critical | Meta tests that police the test taxonomy and parity.
-tests/**/Rulebook/**      | @MgCohen | critical | Rulebooks: the guarantees each test type proves.
+governance/registry/**    | @MgCohen | critical | Artifact registry: agent-first type definitions (templates, rules) + profiles + the floor.
 tests/Tests/Arch/**       | @MgCohen | critical | Architecture rules: the asserting test code, not just its rulebook.
 tests/Tests/Structure/**  | @MgCohen | critical | Structure/placement rules: the asserting test code, not just its rulebook.
 .github/**                | @MgCohen | critical | CI, CODEOWNERS, and repo workflow config — the server-side backstop.

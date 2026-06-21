@@ -1,7 +1,8 @@
 # Tests — the product suite (six Rulebook types)
 
-The product test assembly (`ABox.Tests`). Every test *type* is a Rulebook with the same folder shape
-(`<Type>/Rulebook/`, `<Type>/Tests/`, `<Type>/Support/`) — see [`../Harness/README.md`](../Harness/README.md)
+The product test assembly (`ABox.Tests`). Every test *type* is a Rulebook: its **definition** (`template.md` +
+`rules.md`) lives in the artifact registry at `governance/registry/Test/<Type>/`, its **tests** here under
+`<Type>/Tests/` (+ `<Type>/Support/`) — see [`../Harness/README.md`](../Harness/README.md)
 for the convention and the parity discipline. The six types coexist in one assembly because parity scopes
 `[Rule]` discovery by namespace, so each type's Rulebook is counted against its own tests only.
 
@@ -35,11 +36,11 @@ enforced at compile time (`/.editorconfig`, scoped to `src/` and `tests/`).
 
 | Want to… | Do this |
 |----------|---------|
-| Add an Arch rule | append a `###` block to `Arch/Rulebook/rules.md` + a `[Rule("<header>")]` test in `Arch/Tests/RuleTests.cs` |
-| Add a Structure rule | append a `###` block to `Structure/Rulebook/rules.md` + a `[Rule("<header>")]` test in `Structure/Tests/StructureTests.cs` (source placement only) |
-| Add a behavioral rule (Unit/E2E/Wire/Live) | append a `###` block to that type's `Rulebook/rules.md` + a `[Rule("<header>")]` test under its `Tests/` (1:N — several cases per Rule allowed) |
-| Add a test-system invariant (Meta) | rare — append a `###` block to [`../Meta/Rulebook/rules.md`](../Meta/Rulebook/rules.md) + a `[Rule("<header>")]` test in `../Meta/Tests/`; these guard the taxonomy/Rulebooks/parity, not the product |
-| Add a whole new test *type* | rare — only when no existing type fits. Follow [`../Harness/README.md`](../Harness/README.md) § *Standing up a new test type*: create `<Type>/{Rulebook,Tests,Support}/`, fill `template.md` + `rules.md` from the canonical skeleton, register it in `Harness/TestTypes`, write ≥1 Rule. No csproj edit, no parity fact (the Meta self-suite runs parity once registered). |
+| Add an Arch rule | append a `###` block to `governance/registry/Test/Arch/rules.md` + a `[Rule("<header>")]` test in `Arch/Tests/RuleTests.cs` |
+| Add a Structure rule | append a `###` block to `governance/registry/Test/Structure/rules.md` + a `[Rule("<header>")]` test in `Structure/Tests/StructureTests.cs` (source placement only) |
+| Add a behavioral rule (Unit/E2E/Wire/Live) | append a `###` block to that type's `governance/registry/Test/<Type>/rules.md` + a `[Rule("<header>")]` test under its `Tests/` (1:N — several cases per Rule allowed) |
+| Add a test-system invariant (Meta) | rare — append a `###` block to [`governance/registry/Test/Meta/rules.md`](../../governance/registry/Test/Meta/rules.md) + a `[Rule("<header>")]` test in `../Meta/Tests/`; these guard the taxonomy/Rulebooks/parity, not the product |
+| Add a whole new test *type* | rare — only when no existing type fits. Follow [`../Harness/README.md`](../Harness/README.md) § *Standing up a new test type*: create `governance/registry/Test/<Type>/` (definition) + `tests/Tests/<Type>/{Tests,Support}/`, fill `template.md` + `rules.md` from the canonical skeleton, register it in `Harness/TestTypes`, write ≥1 Rule. No csproj edit, no parity fact (the Meta self-suite runs parity once registered). |
 | Add a production assembly / feature / slice | **nothing** — the csproj globs `src\**\ABox.*.csproj`, so a new `ABox.*` project is referenced and governed automatically |
 | Add a layer band | add one `IObjectProvider<IType>` band + a `Layer` entry (with its `MayDependOn`) in `Arch/Support/ArchitectureModel`; the down-only rule covers it automatically |
 | Evict a pending folder | drop it from `HomeFolders.PendingEviction`; the staleness check fails once the folder is gone, as the reminder to do so |

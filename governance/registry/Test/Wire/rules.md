@@ -1,5 +1,5 @@
 Template: [template.md](./template.md)
-Harness: [Rulebook convention](../../../Harness/README.md)
+Harness: [Rulebook convention](../../../../tests/Harness/README.md)
 
 ### GET /health → ok
 - **Why:** the liveness probe must route and serialize — the simplest proof the Host composes and answers.

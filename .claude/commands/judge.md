@@ -7,7 +7,7 @@ You are the **test-rulebook adapter** for the generic judge. The target test fil
 Do this:
 
 1. Read the test file at $ARGUMENTS.
-2. Locate its Rulebook: go up from the `Tests/` folder that holds the test to its parent (the test-type directory), then read `rules.md` and `template.md` in that directory's sibling `Rulebook/` — e.g. a test in `tests/Tests/Unit/Tests/` uses `tests/Tests/Unit/Rulebook/`.
+2. Locate its Rulebook: a test type's definition lives in the artifact registry at `governance/registry/Test/<Type>/` (`rules.md` + `template.md`) — e.g. a test in `tests/Tests/Unit/Tests/` uses `governance/registry/Test/Unit/`. (Parity bridges the two: the rules live in the registry, the tests in `tests/`.)
 3. Compose a `context` blob with clearly labeled sections:
    - `## Test under review (<path>)` followed by the full test file content.
    - `## Rulebook — the standard it is graded against` followed by rules.md then template.md.

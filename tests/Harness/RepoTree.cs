@@ -8,7 +8,6 @@ namespace ABox.Tests.Harness;
 public static class RepoTree
 {
     private const string Marker = "ABox.slnx";
-    public const string RulebookDir = "Rulebook";
 
     // The build-output directory names, owned once: the only legal artifacts home is the repo-root /artifacts,
     // so any folder by these names under src/ or tests/ is stray output. Both trees (here + Structure's
@@ -23,6 +22,10 @@ public static class RepoTree
     // floor guard reads it leniently — an absent registry is "no artifacts", not a broken scan.
     public static readonly string RegistryRoot = Path.Combine(Root, "governance", "registry");
 
+    // The Test artifact's sub-type definitions (template.md + rules.md per type), relocated here from
+    // tests/Tests/<Type>/Rulebook/ and tests/Meta/Rulebook/. Required — the definitions must exist.
+    public static readonly string TestArtifactRoot = RequireDir("the Test artifact definitions", "governance", "registry", "Test");
+
     public static IReadOnlyList<string> TestTypeFolders() =>
         Directory.EnumerateDirectories(TestsRoot)
             .Select(Path.GetFileName)
@@ -31,20 +34,18 @@ public static class RepoTree
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToList();
 
-    // Every Rulebook the format guard must keep well-formed: each product type's under tests/Tests/, plus
-    // Meta's own under tests/Meta/. Format applies uniformly, regardless of which assembly owns the type.
+    // Every Rulebook the format guard must keep well-formed: each Test sub-type's definition under
+    // governance/registry/Test/<Type>/ (each holds a template.md). Relocated from tests/; parity bridges back.
     public static IReadOnlyList<string> RulebookFolders() =>
-        Directory.EnumerateDirectories(TestsRoot)
-            .Select(t => Path.Combine(t, RulebookDir))
-            .Append(Path.Combine(MetaRoot, RulebookDir))
-            .Where(Directory.Exists)
+        Directory.EnumerateDirectories(TestArtifactRoot)
+            .Where(d => File.Exists(Path.Combine(d, "template.md")))
             .OrderBy(d => d, StringComparer.Ordinal)
             .ToList();
 
-    // The one owner of where a type's rules.md lives — a product type under tests/Tests/<type>/, the self-suite
-    // under tests/Meta/. ParityGuard (product) and the Meta self-parity both derive their path from here.
-    public static string ProductRulesPath(string type) => Path.Combine(TestsRoot, type, RulebookDir, "rules.md");
-    public static string MetaRulesPath() => Path.Combine(MetaRoot, RulebookDir, "rules.md");
+    // The one owner of where a Test sub-type's rules.md lives, under governance/registry/Test/<Type>/.
+    // ParityGuard (product types) and the Meta self-parity both derive their path from here.
+    public static string ProductRulesPath(string type) => Path.Combine(TestArtifactRoot, type, "rules.md");
+    public static string MetaRulesPath() => Path.Combine(TestArtifactRoot, "Meta", "rules.md");
 
     private static string LocateRoot()
     {

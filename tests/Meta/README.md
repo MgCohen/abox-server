@@ -1,7 +1,7 @@
 # Meta — the test-system self-suite
 
 A separate assembly (`ABox.Tests.Meta`) whose Rules guard the **test system itself**, not the product. Same
-Rulebook shape as every product type (`Rulebook/`, `Tests/`) — see [`../Harness/README.md`](../Harness/README.md)
+Rulebook shape as every product type — its definition in `governance/registry/Test/Meta/`, its tests in `Tests/` — see [`../Harness/README.md`](../Harness/README.md)
 for the convention.
 
 It validates the product suite from **outside**, the way the Arch guards validate `src/`: it reflects over

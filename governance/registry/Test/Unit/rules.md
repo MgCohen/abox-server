@@ -1,5 +1,5 @@
 Template: [template.md](./template.md)
-Harness: [Rulebook convention](../../../Harness/README.md)
+Harness: [Rulebook convention](../../../../tests/Harness/README.md)
 
 ### AutoPolicy on a dangerous Bash command → denied with a guardrail reason
 - **Why:** the autonomous guardrail must refuse destructive shell commands (rm -rf, force push, curl|sh, sudo,

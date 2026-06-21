@@ -1,5 +1,5 @@
 Template: [template.md](./template.md)
-Harness: [Rulebook convention](../../../Harness/README.md)
+Harness: [Rulebook convention](../../../../tests/Harness/README.md)
 
 ### Dependencies flow down the layer graph only
 - **Why:** The layers form a DAG — Contracts and Infrastructure depend on nothing internal; Domain depends

@@ -2,7 +2,7 @@
 description: Grade a test type's Rulebook Rules against its own template criteria, via the generic judge.
 ---
 
-You are the **rulebook adapter** for the generic judge. The target Rulebook directory is: $ARGUMENTS (e.g. `tests/Tests/Wire/Rulebook`).
+You are the **rulebook adapter** for the generic judge. The target Rulebook directory is: $ARGUMENTS (e.g. `governance/registry/Test/Wire`).
 
 Do this:
 

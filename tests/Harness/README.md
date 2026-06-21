@@ -12,7 +12,8 @@ a *good* test" is a semantic judgment, not a structural one.
 
 ## Every test type is a Rulebook
 
-A **Rulebook** is a folder `<Type>/Rulebook/` holding **two files**:
+A **Rulebook** is a folder `governance/registry/Test/<Type>/` holding **two files** — the type's *definition*,
+in the artifact registry. Its tests live separately in `tests/Tests/<Type>/Tests/`, and parity bridges the two:
 
 - **`template.md`** — the type's context home: a one-paragraph description, the Rule *shape* (one example Rule,
   header + `**Why:**` bullet — the schema, in one place), and a `## Criteria` list (the per-type semantic rubric
@@ -56,12 +57,12 @@ itself — so there is no per-type parity fact:
       ParityGuard.For(product, type).Assert();
 
   ParityGuard.ForRulebook(typeof(ParityTests).Assembly, TestTypes.Namespace("Meta"),
-                          Path.Combine(RepoTree.MetaRoot, "Rulebook", "rules.md"))
+                          RepoTree.MetaRulesPath())
       .Assert();
   ```
 
 `ParityGuard.For` maps a product type to its namespace and Rulebook path through `TestTypes`
-(`<Type>` → `ABox.Tests.<Type>.Tests` + `tests/Tests/<Type>/Rulebook/rules.md`), reads the Rulebook's `### `
+(`<Type>` → `ABox.Tests.<Type>.Tests` + `governance/registry/Test/<Type>/rules.md`), reads the Rulebook's `### `
 headers **from the source tree** (`RepoTree`, not the output dir), and compares them to the `[Rule]`s in that
 namespace — failing the build on any mismatch. `ForRulebook` is the explicit form Meta uses on itself.
 
@@ -101,7 +102,7 @@ different risk levels:
   the same bar as changing the thing the Rule protects. When in doubt, ask — don't quietly edit.
 - **Changing the shape / template / format — most dangerous, and rarely warranted.** The `### `-heading
   scan, the `template.md` / `rules.md` split, the namespace-scoped discovery + path derivation, the
-  universal completeness check (every marked test cites a Rule), the `Rulebook/` + `Tests/` + `Support/` layout, the csproj copy glob,
+  universal completeness check (every marked test cites a Rule), the registry-definition + `Tests/` + `Support/` layout, the csproj copy glob,
   and the Meta guards (*Parity holds for every registered type*, *Every Rule matches its type's template*,
   *Every Rulebook holds only rules*, *Every template carries judge criteria*) — these are the engine's
   load-bearing assumptions, shared by **every**
@@ -131,12 +132,15 @@ with its Rule or the build fails — the ratchet is closed.
 
 ## The uniform per-type layout
 
+The **definition** lives in the artifact registry; the **tests** stay in `tests/`:
+
 ```
-<Type>/
-  Rulebook/  template.md   context home: description + the Rule shape (one example) + a '## Criteria' rubric
-             rules.md      the Template:/Harness: pointer links, then the type's '### ' Rules
-  Tests/                   the [Rule]-tagged facts that enforce them
-  Support/                 optional, type-local: models, doubles, harnesses (no over-sharing)
+governance/registry/Test/<Type>/
+  template.md   context home: description + '## Purpose' + the Rule shape (one example) + a '## Criteria' rubric
+  rules.md      the Template:/Harness: pointer links, then the type's '### ' Rules
+tests/Tests/<Type>/
+  Tests/        the [Rule]-tagged facts that enforce them
+  Support/      optional, type-local: models, doubles, harnesses (no over-sharing)
 ```
 
 There is no per-type parity fact — the Meta self-suite runs parity over every type at once. The Meta guards
@@ -154,8 +158,12 @@ below — don't copy a sibling and edit (that's how two `Why:` stylings and six 
 in). The skeleton is the one owner of the shape:
 
 ```markdown
-<!-- <Type>/Rulebook/template.md -->
+<!-- governance/registry/Test/<Type>/template.md -->
 # <Type> Rulebook
+
+## Purpose
+
+<one line: when to reach for this type — the selection signal an agent reads.>
 
 <one paragraph: what a Rule means for this type, how it's proven, and where it's enforced.>
 
@@ -171,9 +179,9 @@ in). The skeleton is the one owner of the shape:
 ```
 
 ```markdown
-<!-- <Type>/Rulebook/rules.md -->
+<!-- governance/registry/Test/<Type>/rules.md -->
 Template: [template.md](./template.md)
-Harness: [Rulebook convention](../../../Harness/README.md)
+Harness: [Rulebook convention](../../../../tests/Harness/README.md)
 
 ### <first Rule, in the template's header shape>
 - **Why:** <…>
@@ -181,9 +189,10 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 
 Then:
 
-1. **Create `tests/Tests/<Type>/`** with `Rulebook/`, `Tests/`, and (if needed) `Support/`. Namespace mirrors
-   folder — `ABox.Tests.<Type>.Tests` for files in `<Type>/Tests/`; IDE0130 is `severity = error`, so a
-   mismatch is a build error, not a warning.
+1. **Create `governance/registry/Test/<Type>/`** (the definition: `template.md` + `rules.md`) **and
+   `tests/Tests/<Type>/Tests/`** (the tests; add `Support/` if needed). Namespace mirrors the tests folder —
+   `ABox.Tests.<Type>.Tests` for files in `<Type>/Tests/`; IDE0130 is `severity = error`, so a mismatch is a
+   build error, not a warning.
 2. **Fill `template.md` + `rules.md`** from the skeleton above — pick the header shape (invariant or
    behavioral), adapt the description, and write the first Rule. **`template.md` must carry a `## Criteria`
    block** — at least one `- **<id>:** …` bullet of semantic judgment for the judge (as many as the type

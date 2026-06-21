@@ -5,7 +5,7 @@
 
 tests/Harness/** @MgCohen
 tests/Meta/** @MgCohen
-tests/**/Rulebook/** @MgCohen
+governance/registry/** @MgCohen
 tests/Tests/Arch/** @MgCohen
 tests/Tests/Structure/** @MgCohen
 .github/** @MgCohen
