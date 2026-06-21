@@ -18,12 +18,15 @@ IMAGE="${IMAGE:-abox-egress-proxy:latest}"
 docker network inspect "$BOXNET" >/dev/null 2>&1 || docker network create --internal "$BOXNET" >/dev/null
 docker network inspect "$OUTNET" >/dev/null 2>&1 || docker network create "$OUTNET" >/dev/null
 
-# `docker container inspect`, not `docker inspect`: the latter also resolves the
-# like-named image, so it would always report the proxy as already up and skip the run.
-if ! docker container inspect "$PROXY" >/dev/null 2>&1; then
+# Heal partial bring-ups: recreate unless the proxy is actually *running* (a created/
+# exited/dead container would otherwise be treated as up). `docker container inspect`,
+# not `docker inspect` — the latter also resolves the like-named image.
+if [ "$(docker container inspect -f '{{.State.Running}}' "$PROXY" 2>/dev/null)" != "true" ]; then
+  docker rm -f "$PROXY" >/dev/null 2>&1 || true
   docker run -d --name "$PROXY" --restart unless-stopped --network "$BOXNET" \
     -e ALLOW="$ALLOW" "$IMAGE" >/dev/null
-  docker network connect "$OUTNET" "$PROXY"
 fi
+# Idempotent: attach to outnet even if the proxy already existed without it.
+docker network connect "$OUTNET" "$PROXY" 2>/dev/null || true
 
 echo "egress sidecar up: boxnet=$BOXNET proxy=$PROXY allow=$ALLOW"

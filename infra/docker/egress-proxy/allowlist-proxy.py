@@ -4,7 +4,7 @@
 # else. The box runs on an --internal docker network with no route out, so this proxy
 # is the single exfil-relevant path; the allowlist is what keeps the in-box credential
 # safe. Ported from spike agent-in-box/egress (validated E1–E5).
-import os, socket, sys, threading
+import ipaddress, os, socket, sys, threading
 
 ALLOW = {h.strip().lower() for h in os.environ.get("ALLOW", "api.anthropic.com").split(",") if h.strip()}
 PORT = int(os.environ.get("PORT", "8888"))
@@ -40,16 +40,33 @@ def handle(c):
         if len(parts) < 2 or parts[0].upper() != "CONNECT":
             c.sendall(b"HTTP/1.1 405 Method Not Allowed\r\n\r\n"); c.close(); return
         hostport = parts[1]
-        host = hostport.rsplit(":", 1)[0].lower()
-        port = int(hostport.rsplit(":", 1)[1]) if ":" in hostport else 443
-        if host not in ALLOW:
+        host, _, rawport = hostport.rpartition(":")
+        if not host:
+            host, port = hostport, 443
+        else:
+            try:
+                port = int(rawport)
+            except ValueError:
+                c.sendall(b"HTTP/1.1 400 Bad Request\r\n\r\n"); c.close(); return
+        host = host.strip("[]").lower()
+        # Allowlist is host + 443 only — no arbitrary ports on an allowed host.
+        if host not in ALLOW or port != 443:
             sys.stderr.write(f"[proxy] DENY {host}:{port}\n"); sys.stderr.flush()
             c.sendall(b"HTTP/1.1 403 Forbidden\r\n\r\n"); c.close(); return
+        # Resolve here (the box can't) and refuse non-public targets, so a poisoned record
+        # for an allowed name can't tunnel into the host's internal/metadata network.
         try:
-            up = socket.create_connection((host, port), timeout=10)
+            addr = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)[0][4][0]
         except OSError:
             c.sendall(b"HTTP/1.1 502 Bad Gateway\r\n\r\n"); c.close(); return
-        sys.stderr.write(f"[proxy] ALLOW {host}:{port}\n"); sys.stderr.flush()
+        if not ipaddress.ip_address(addr).is_global:
+            sys.stderr.write(f"[proxy] DENY {host}:{port} -> {addr} (non-public)\n"); sys.stderr.flush()
+            c.sendall(b"HTTP/1.1 403 Forbidden\r\n\r\n"); c.close(); return
+        try:
+            up = socket.create_connection((addr, port), timeout=10)
+        except OSError:
+            c.sendall(b"HTTP/1.1 502 Bad Gateway\r\n\r\n"); c.close(); return
+        sys.stderr.write(f"[proxy] ALLOW {host}:{port} -> {addr}\n"); sys.stderr.flush()
         c.sendall(b"HTTP/1.1 200 Connection established\r\n\r\n")
         c.settimeout(None)
         threading.Thread(target=pipe, args=(c, up), daemon=True).start()
