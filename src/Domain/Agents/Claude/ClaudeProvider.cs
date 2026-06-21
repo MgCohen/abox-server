@@ -107,8 +107,9 @@ public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolv
 
     // Env for the in-box claude, injected via `docker exec -e`. No API key is present
     // (docker doesn't inherit the host env), so claude takes the subscription path
-    // (oracle A1); HOME points at the mounted box home so the JSONL is host-readable.
-    private static Dictionary<string, string> BoxEnv(ClaudeHooks hook)
+    // (oracle A1); HOME points at the mounted box home so the JSONL is host-readable;
+    // HTTPS_PROXY routes the box through the egress allowlist when one is configured.
+    private Dictionary<string, string> BoxEnv(ClaudeHooks hook)
     {
         var env = new Dictionary<string, string>
         {
@@ -117,6 +118,11 @@ public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolv
         };
         if (hook.PermissionDirInBox is not null)
             env[ClaudeHooks.PermissionEnvVar] = hook.PermissionDirInBox;
+        if (sandbox.ProxyUrl is { } proxy)
+        {
+            env["HTTPS_PROXY"] = proxy;
+            env["HTTP_PROXY"] = proxy;
+        }
         return env;
     }
 
