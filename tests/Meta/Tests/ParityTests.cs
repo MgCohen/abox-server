@@ -17,7 +17,7 @@ public class ParityTests
         ParityGuard.ForRulebook(
                 typeof(ParityTests).Assembly,
                 TestTypes.Namespace("Meta"),
-                Path.Combine(RepoTree.MetaRoot, "Rulebook", "rules.md"))
+                RepoTree.MetaRulesPath())
             .Assert();
     }
 }

@@ -12,11 +12,9 @@ public static class TestTypes
     // Non-type folders legitimately under tests/Tests/: shared doubles promoted on a genuine second consumer.
     public static readonly string[] NonType = { "Support" };
 
-    // The convention, owned once: a type's namespace and the Rulebook path it pairs with. Both directions of the
-    // type ↔ namespace ↔ path triple (ParityGuard's scope, ContainsTest's membership) lean on these.
+    // The convention, owned once: a type's test namespace (ParityGuard's scope, ContainsTest's membership lean
+    // on it). The Rulebook path it pairs with is owned by RepoTree (ProductRulesPath) — one home for the layout.
     public static string Namespace(string type) => $"ABox.Tests.{type}.Tests";
-
-    public static string RulebookPath(string type) => $"{type}/Rulebook/rules.md";
 
     public static bool IsRegistered(string folder) =>
         Registered.Contains(folder, StringComparer.Ordinal);

@@ -20,16 +20,13 @@ public sealed class ParityGuard
         this.rulesPath = rulesPath;
     }
 
+    // Product Rulebooks are read from the source tree (RepoTree owns the path), not the output dir — the same
+    // surface the Meta guards already read, so a separate self-suite needs no copy of them to validate.
     public static ParityGuard For(Assembly assembly, string type) =>
-        new(assembly, TestTypes.Namespace(type), ProductRulebook(type));
+        new(assembly, TestTypes.Namespace(type), RepoTree.ProductRulesPath(type));
 
     public static ParityGuard ForRulebook(Assembly assembly, string scope, string rulesPath) =>
         new(assembly, scope, rulesPath);
-
-    // Product Rulebooks are read from the source tree, not the output dir — the same surface the Meta guards
-    // already read, so a separate self-suite needs no copy of the product's Rulebooks to validate them.
-    private static string ProductRulebook(string type) =>
-        Path.Combine(RepoTree.TestsRoot, TestTypes.RulebookPath(type).Replace('/', Path.DirectorySeparatorChar));
 
     public void Assert()
     {
