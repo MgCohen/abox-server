@@ -10,10 +10,13 @@
 # $RA_STOP_SIGNAL and claude writes the JSONL under $HOME/.claude — both on the
 # mounted session dir, so the host reads them off the mount.
 
+import fcntl
 import os
 import pty
 import re
 import select
+import struct
+import termios
 import sys
 import time
 
@@ -25,6 +28,11 @@ READY = (b"shift+tab", b"forshortcuts")
 # ClaudeProtocol.DetectStartupDialog needles → keys (DialogKeys).
 TRUST = (b"trustthisfolder", b"isthisaprojectyou")
 BYPASS = (b"BypassPermissionsmode", b"Yes,Iaccept")
+# First-run dialogs a FRESH config shows that a configured host never does (spike
+# finding on Linux). Real product should pre-seed config; the driver dismisses them
+# defensively by accepting the highlighted default (Enter).
+THEME = (b"Choosethetextstyle", b"Let'sgetstarted")
+SECURITY_NOTES = (b"Security notes", b"Pressentertocontinue", b"Yes,Itrust")
 
 STARTUP_CAP = 30.0     # StartupCapMs
 READY_SETTLE = 1.2     # ReadySettleMs
@@ -81,6 +89,10 @@ def main() -> int:
         os.execvp(args[0], args)
         os._exit(127)
 
+    # The TUI won't draw its input bar at a 0x0 terminal — give the pty a real size
+    # (ClaudeProvider uses 120x40). Without this the ready marker never appears.
+    fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", 40, 120, 0, 0))
+
     buf = bytearray()
 
     def pump(seconds: float) -> None:
@@ -108,8 +120,14 @@ def main() -> int:
             dismissed.add("bypass"); os.write(fd, b"2\r")
         elif any(k in n for k in TRUST) and "trust" not in dismissed:
             dismissed.add("trust"); os.write(fd, b"\r")
+        elif any(k in n for k in THEME) and "theme" not in dismissed:
+            dismissed.add("theme"); os.write(fd, b"\r")
+        elif any(k in n for k in SECURITY_NOTES) and "secnotes" not in dismissed:
+            dismissed.add("secnotes"); os.write(fd, b"\r")
     else:
         print("[drive] FAIL: input bar never became ready", flush=True)
+        tail = ANSI.sub(b"", bytes(buf)).decode("latin1")[-1500:]
+        print(f"[drive] --- last rendered screen (ansi-stripped, {len(buf)} bytes total) ---\n{tail}\n[drive] --- end ---", flush=True)
         return 1
 
     pump(READY_SETTLE)

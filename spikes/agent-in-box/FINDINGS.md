@@ -56,7 +56,8 @@ brokered), not by mounting a long-lived credential file.
 |---|---|
 | Container seam mechanics (mount, hold-open, teardown, pty/isatty, sh hooks over mount) | ✅ green (Stage A) |
 | `claude` executes in a Linux container | ✅ (Stage B, runs) |
-| A real subscription turn completes in-box + its billing path | ⏳ run on a `claude login`'d Docker host |
+| A **real** claude turn completes (Stop hook + JSONL) | ✅ validated via `-p` (below) |
+| Same, inside a *fresh isolated container* | ⏳ blocked by auth-forwarding + onboarding (below) |
 | Credential delivery for the in-box agent | ✅ path validated (below) — building it |
 
 ## Auth path — validated (4-agent review)
@@ -106,3 +107,31 @@ channel** — the only reachable destination is Anthropic. Notes/limits:
   DNS-rebind it). For full rigor, pin by resolved IP / endpoint, not just hostname.
 - Real product: the proxy is a **host sidecar**; the box's `HTTPS_PROXY` points at it.
   This is also the natural place the auth broker could inject Anthropic credentials.
+
+## Real turn — validated via `-p` (+ pty-drive findings)
+
+A fresh isolated container can't auth (token not forwardable), but this session's
+claude is authenticated, so we validated a real turn as a host subprocess (container
+mechanics are proven separately in Stage A). Log: [`results/rung0-p-turn.log`](results/rung0-p-turn.log).
+
+- ✅ `claude -p "…" --settings <stop-hook>` (no API key → **subscription**) completed a
+  real turn; the **Stop hook fired** and wrote the read-back payload with
+  `last_assistant_message` (exactly what `ClaudeProvider.ReadFinalMessage` parses) +
+  `transcript_path`; JSONL written. The core in-box mechanism, proven against real claude.
+
+Driving the interactive **pty TUI** (`drive-turn.py`) surfaced real Linux findings:
+1. `isatty(pty)=True` under `pty.fork` — billing precondition holds.
+2. The pty needs an explicit **window size** (`TIOCSWINSZ` 120×40) or the TUI never
+   draws its input bar. Fixed in `drive-turn.py`.
+3. **`bypassPermissions` is refused as root** ("cannot be used with root/sudo") → the
+   agent must run **non-root** in the box.
+4. A **fresh config runs onboarding** — theme dialog, then a login-method dialog whose
+   OAuth flow can't complete headlessly → the box must ship a **pre-onboarded,
+   pre-authenticated** config (what the managed env does), or use `-p`.
+
+**Strategic (for the owner — do not overturn the oracle unilaterally):** `-p` with no
+API key billed subscription, fired the Stop hook, and wrote JSONL with **no pty TUI
+driving and no onboarding**. If that billing behavior holds, the in-box driver could
+collapse from "port the ConPTY choreography" to `claude -p --settings <hooks>`. Tier-A
+oracle A1/A2 locked the pty path on an older claude; this warrants a fresh explicit
+decision against `design/behavioral-oracle.md` before adopting.
