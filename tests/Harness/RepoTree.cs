@@ -8,6 +8,7 @@ namespace ABox.Tests.Harness;
 public static class RepoTree
 {
     private const string Marker = "ABox.slnx";
+    public const string RulebookDir = "Rulebook";
 
     // The build-output directory names, owned once: the only legal artifacts home is the repo-root /artifacts,
     // so any folder by these names under src/ or tests/ is stray output. Both trees (here + Structure's
@@ -30,11 +31,16 @@ public static class RepoTree
     // Meta's own under tests/Meta/. Format applies uniformly, regardless of which assembly owns the type.
     public static IReadOnlyList<string> RulebookFolders() =>
         Directory.EnumerateDirectories(TestsRoot)
-            .Select(t => Path.Combine(t, "Rulebook"))
-            .Append(Path.Combine(MetaRoot, "Rulebook"))
+            .Select(t => Path.Combine(t, RulebookDir))
+            .Append(Path.Combine(MetaRoot, RulebookDir))
             .Where(Directory.Exists)
             .OrderBy(d => d, StringComparer.Ordinal)
             .ToList();
+
+    // The one owner of where a type's rules.md lives — a product type under tests/Tests/<type>/, the self-suite
+    // under tests/Meta/. ParityGuard (product) and the Meta self-parity both derive their path from here.
+    public static string ProductRulesPath(string type) => Path.Combine(TestsRoot, type, RulebookDir, "rules.md");
+    public static string MetaRulesPath() => Path.Combine(MetaRoot, RulebookDir, "rules.md");
 
     private static string LocateRoot()
     {
