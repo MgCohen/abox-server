@@ -1,6 +1,6 @@
 # Artifact Standard — agent-first types, free in format, enforced at the floor
 
-> **Status: foundation / proposal (2026-06-17).** Defines the reusable pattern and
+> **Status: foundation (2026-06-17) — floor LOCKED.** Defines the reusable pattern and
 > infrastructure for adding new *artifact types* to this repo. **Deliberately
 > independent of the ADR-harness work** — ADRs are one future *instance* of this
 > standard, not its basis; nothing here depends on that plan. Supersedes the framing
@@ -28,7 +28,8 @@ find, produce, and trust an artifact.* Each need pins one required component:
 
 | An agent must be able to… | …so the type must declare | Required? |
 |---|---|---|
-| **Find** the type and its instances | **registration + home** in the central registry | ✅ required |
+| **Find** the type and its instances | **registration** — home + profile in the central registry | ✅ required |
+| **Select** the right type for a need | a **purpose / when-to-use** line, carried by its registration | ✅ required |
 | **Produce** a conforming instance | a **template** — the owned shape it fills (never copy-a-sibling) | ✅ required |
 | **Judge quality** beyond mere structure | **criteria** — a rubric the template carries | ✅ required |
 | **Verify structure** deterministically | a **validator binding** — the generic structural check, wired to the template | ✅ required |
@@ -36,14 +37,14 @@ find, produce, and trust an artifact.* Each need pins one required component:
 
 ## The agent-first floor (the contract)
 
-Every artifact type **must** clear:
+Every artifact type **must** clear (**locked 2026-06-17**):
 
-> **{ register + home · template · criteria · structural validation }**
+> **{ register (home + purpose + profile) · template · criteria · structural validation }**
 
 and **may** add, by its own nature: **parity** (a second-representation binding) and
 any **custom checks** or generated outputs. A type cannot be registered below this
-floor — that is the whole guarantee. *This floor is the one knob to revisit; tighten
-or loosen it deliberately, because everything else follows from it.*
+floor — that is the whole guarantee. The floor is the load-bearing knob: changing it
+re-scopes everything downstream, so tighten or loosen it only by a deliberate decision.
 
 ## The reusable infrastructure
 
@@ -70,7 +71,7 @@ the meta-guard. Format is the type's; the floor is the infrastructure's.
 | the template's sections, front-matter, prose shape | that a template **exists** and is the single owner of the shape |
 | the criteria's content | that criteria **exist**, so the type is gradeable |
 | which custom checks / parity it adds | that the structural floor is **validated** |
-| generated outputs, conventions docs | that it is **registered** with a real home |
+| the wording of its purpose | that it is **registered** with a real home **and a declared purpose** |
 
 A new type can look nothing like a test — and still be guaranteed agent-first, because
 it cleared the same floor.
@@ -115,6 +116,6 @@ in format. None of them is privileged; tests are just where we prove the machine
    per-type sub-folders, since all test types share one profile.)*
 4. **The migration** — re-derive the test→artifact execution plan from this floor.
 
-The single thing to confirm before any of the above: **is the floor right?** —
-`{ register+home · template · criteria · structural-validation }` required, parity +
-custom optional.
+**Floor: LOCKED 2026-06-17** — `{ register(home + purpose + profile) · template ·
+criteria · structural-validation }` required; parity + custom optional. The deferred
+decisions above are now unblocked and derive from this floor.
