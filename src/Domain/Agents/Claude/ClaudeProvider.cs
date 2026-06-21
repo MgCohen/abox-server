@@ -22,6 +22,11 @@ public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolv
     {
         await SubscriptionGuard.CheckAsync(EnvScrub.SubscriptionKeys, "claude", ct);
 
+        if (config.Policy == PermissionPolicy.Bypass && DockerSandbox.RunsAsRoot)
+            throw new InvalidOperationException(
+                "Bypass policy needs claude's bypassPermissions mode, which claude refuses as root; " +
+                "run the orchestrator as a non-root user so the box isn't root.");
+
         var isResume = request.SessionId is not null;
         var sessionId = request.SessionId ?? Guid.NewGuid().ToString();
 
@@ -39,7 +44,7 @@ public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolv
         {
             var permissionMode = ClaudeProtocol.PermissionMode(config.Policy);
             var args = ClaudeProtocol.BuildArgs(sessionId, isResume, permissionMode, config.Model, sysPromptInBox, hook.SettingsPathInBox);
-            var claudeLine = "claude " + string.Join(' ', args.Select(Shell.QuoteArg));
+            var claudeLine = "claude " + string.Join(' ', args.Select(Shell.QuotePosix));
 
             using var deadlineCts = new CancellationTokenSource(MaxOverallMs);
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, deadlineCts.Token);
@@ -68,9 +73,8 @@ public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolv
             await session.SubmitAsync(request.Prompt, SubmitSettleMs, dct);
             await PumpUntilStopAsync(hook, dct);
 
-            // The Stop hook fired across the /session mount: the final message and the
-            // JSONL (under the mounted HOME) are on disk. Read them, then let dispose
-            // tear down the box (docker rm -f, oracle A10) and kill the host PTY.
+            // Stop fired across the /session mount, so the final message + JSONL are on disk;
+            // read them before dispose tears the box down (docker rm -f, oracle A10).
             var projectsRoot = Path.Combine(home.FullName, ".claude", "projects");
             var text = hook.ReadFinalMessage();
             if (string.IsNullOrWhiteSpace(text))
@@ -105,10 +109,8 @@ public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolv
             file.CopyTo(Path.Combine(dst.FullName, file.Name), overwrite: true);
     }
 
-    // Env for the in-box claude, injected via `docker exec -e`. No API key is present
-    // (docker doesn't inherit the host env), so claude takes the subscription path
-    // (oracle A1); HOME points at the mounted box home so the JSONL is host-readable;
-    // HTTPS_PROXY routes the box through the egress allowlist when one is configured.
+    // No API key in the box env (docker doesn't inherit the host's), so claude takes the
+    // subscription path (oracle A1). Injected via `docker exec -e`.
     private Dictionary<string, string> BoxEnv(ClaudeHooks hook)
     {
         var env = new Dictionary<string, string>
