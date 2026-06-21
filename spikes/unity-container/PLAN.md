@@ -6,27 +6,36 @@ need to run it is in this folder.
 ## The question
 
 Can an AI coding agent run **inside a Docker container** that has a Unity project
-**bind-mounted**, edit the project's C# in place, and **compile-check it with
+**bind-mounted**, edit the project's C# in place, and **compile the solution with
 `dotnet build` — without Unity installed in the container** — while the
-authoritative Unity work (edit-mode tests, builds) runs **on the host** over the
-same shared mount?
+authoritative Unity work (edit-mode tests, player builds) runs **on the host** over
+the same shared mount?
+
+> **"Compile the solution" ≠ "build the game."** The container only runs
+> `dotnet build` on the Unity-generated `.sln`/`.csproj` to **surface compile
+> errors** (type/syntax/reference). It is a fast *does-the-C#-compile?* gate, not a
+> Unity build — it never opens the editor, never produces a player/asset bundle,
+> never touches the asset pipeline. That all stays on the host.
 
 If yes, the agent's box is *just a Linux Docker container* for the whole edit →
-compile-check loop, and Unity (with its install + licensing + platform needs) only
-ever runs on the host. That would collapse a lot of complexity.
+compile loop, and Unity (with its install + licensing + platform needs) only ever
+runs on the host. That would collapse a lot of complexity.
 
 ## The bet
 
-A Unity project is, for the agent's purposes, a **C# project**. The game code
-references `UnityEngine` / `UnityEditor`, but it can be **compiled without opening
-the editor** — you only need the engine's *reference assemblies*, not a running,
-licensed Unity. So:
+A Unity project is, for the agent's purposes, a **C# solution**. The game code
+references `UnityEngine` / `UnityEditor`, but the solution can be **compiled without
+opening the editor** — you only need the engine's *reference assemblies*, not a
+running, licensed Unity. So:
 
-| Loop | Runs where | Needs |
-|---|---|---|
-| Edit + **compile-check** (`dotnet build`) | **container** | .NET SDK + Unity *reference DLLs* (no editor) |
-| Edit-mode / play-mode tests | **host**, signaled over the mount | running Unity (headless ok) |
-| Platform build | **host** | running Unity + platform SDK |
+| Loop | Runs where | Needs | Produces |
+|---|---|---|---|
+| Edit + **compile the solution** (`dotnet build`) | **container** | .NET SDK + Unity *reference DLLs* (no editor) | pass/fail + compile errors |
+| Edit-mode / play-mode tests | **host**, signaled over the mount | running Unity (headless ok) | test results |
+| Player build | **host** | running Unity + platform SDK | the actual game artifact |
+
+The container does the **left row only**: compile the C#, report errors. It never
+produces a game build — the bottom row is the host's job and out of scope here.
 
 The container and the host share **one directory** — the project — so an edit made
 in the box is instantly visible to the host, and a host test run sees exactly what
@@ -57,8 +66,8 @@ the agent wrote.
 |---|---|---|
 | U1 | Agent runs in the box over the mounted project | an agent CLI executes a turn inside the container and writes a file into the mounted project |
 | U2 | Edits are live on the host | the file the agent wrote in-container appears **byte-identical** on the host with no copy step |
-| U3 | C# compiles without Unity installed | `dotnet build` resolves `UnityEngine`/`UnityEditor` and builds the project; **no Unity editor present** in the container |
-| U4 | The compile-check has teeth | inject a real type error → build **fails**; revert → build **passes** |
+| U3 | The solution compiles without Unity installed | `dotnet build` resolves `UnityEngine`/`UnityEditor` and compiles the `.sln`; **no Unity editor present** in the container |
+| U4 | The compile gate has teeth | inject a real type error → build **fails** with the error; revert → build **passes** |
 | U5 | Fidelity gap is characterized | test a Unity-define-dependent / Unity-specific construct; **document** where `dotnet build` diverges from Unity's own compile (known limits, not surprises) |
 | U6 | The host closes the loop | after an in-container edit, the host runs Unity edit-mode tests (`Unity -batchmode -runTests`) over the **same mount** and sees the edit |
 
@@ -89,9 +98,10 @@ Mount the (primed) project into a plain container; run an agent turn that edits 
 C# file; confirm the edit is live on the host. Cheapest — proves the
 agent-in-container-over-mount shape end to end. No compile yet.
 
-### Rung 1 — compile-check without Unity (U3, U4)
-In the same container, `dotnet build` the project against the baked-in reference
-DLLs. Then inject a type error and confirm the build fails; revert and confirm it
+### Rung 1 — compile the solution without Unity (U3, U4)
+In the same container, `dotnet build` the Unity-generated `.sln` against the
+baked-in reference DLLs — a compile-only pass to surface errors, **not** a Unity
+build. Then inject a type error and confirm the build fails; revert and confirm it
 passes. Proves the fast gate works with no editor present.
 
 ### Rung 2 — fidelity gap (U5)

@@ -1,0 +1,484 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="90" result="Passed" total="90" passed="90" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.21785">
+  <test-suite type="TestSuite" id="1151" name="a-random-game" fullname="a-random-game" runstate="Runnable" testcasecount="90" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.217850" total="90" passed="90" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties />
+    <test-suite type="Assembly" id="1159" name="CardMatch.Audio.Tests.dll" fullname="C:/Unity/random-game/Library/ScriptAssemblies/CardMatch.Audio.Tests.dll" runstate="Runnable" testcasecount="6" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.022956" total="6" passed="6" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="41752" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+      </properties>
+      <test-suite type="TestSuite" id="1160" name="CardMatch" fullname="CardMatch" runstate="Runnable" testcasecount="6" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.022596" total="6" passed="6" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1161" name="Audio" fullname="CardMatch.Audio" runstate="Runnable" testcasecount="6" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.022394" total="6" passed="6" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestSuite" id="1162" name="Tests" fullname="CardMatch.Audio.Tests" runstate="Runnable" testcasecount="6" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.022183" total="6" passed="6" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-suite type="TestFixture" id="1152" name="AudioServiceTests" fullname="CardMatch.Audio.Tests.AudioServiceTests" classname="CardMatch.Audio.Tests.AudioServiceTests" runstate="Runnable" testcasecount="6" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.021402" total="6" passed="6" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1153" name="PlaySound_WithNullClip_DoesNotThrow" fullname="CardMatch.Audio.Tests.AudioServiceTests.PlaySound_WithNullClip_DoesNotThrow" methodname="PlaySound_WithNullClip_DoesNotThrow" classname="CardMatch.Audio.Tests.AudioServiceTests" runstate="Runnable" seed="2119658052" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.008158" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1154" name="PlaySound_WithNullSfxSource_DoesNotThrow" fullname="CardMatch.Audio.Tests.AudioServiceTests.PlaySound_WithNullSfxSource_DoesNotThrow" methodname="PlaySound_WithNullSfxSource_DoesNotThrow" classname="CardMatch.Audio.Tests.AudioServiceTests" runstate="Runnable" seed="989653276" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.001418" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1155" name="PlaySound_WithValidClipAndSfxSource_DoesNotThrow" fullname="CardMatch.Audio.Tests.AudioServiceTests.PlaySound_WithValidClipAndSfxSource_DoesNotThrow" methodname="PlaySound_WithValidClipAndSfxSource_DoesNotThrow" classname="CardMatch.Audio.Tests.AudioServiceTests" runstate="Runnable" seed="604791227" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000411" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1158" name="SetMute_False_UnmutesBothSources" fullname="CardMatch.Audio.Tests.AudioServiceTests.SetMute_False_UnmutesBothSources" methodname="SetMute_False_UnmutesBothSources" classname="CardMatch.Audio.Tests.AudioServiceTests" runstate="Runnable" seed="2076741683" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000707" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1157" name="SetMute_True_SetsBothSourcesMute" fullname="CardMatch.Audio.Tests.AudioServiceTests.SetMute_True_SetsBothSourcesMute" methodname="SetMute_True_SetsBothSourcesMute" classname="CardMatch.Audio.Tests.AudioServiceTests" runstate="Runnable" seed="424725199" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000354" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1156" name="SetMute_WithNullSources_DoesNotThrow" fullname="CardMatch.Audio.Tests.AudioServiceTests.SetMute_WithNullSources_DoesNotThrow" methodname="SetMute_WithNullSources_DoesNotThrow" classname="CardMatch.Audio.Tests.AudioServiceTests" runstate="Runnable" seed="1899726971" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000286" asserts="0">
+                <properties />
+              </test-case>
+            </test-suite>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+    <test-suite type="Assembly" id="1165" name="CardMatch.Bootstrap.Tests.dll" fullname="C:/Unity/random-game/Library/ScriptAssemblies/CardMatch.Bootstrap.Tests.dll" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.068932" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="41752" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+      </properties>
+      <test-suite type="TestSuite" id="1166" name="CardMatch" fullname="CardMatch" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.068423" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1167" name="Bootstrap" fullname="CardMatch.Bootstrap" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.068278" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestSuite" id="1168" name="Tests" fullname="CardMatch.Bootstrap.Tests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.068106" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-suite type="TestFixture" id="1163" name="BootstrapTests" fullname="CardMatch.Bootstrap.Tests.BootstrapTests" classname="CardMatch.Bootstrap.Tests.BootstrapTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.067924" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1164" name="Build_ComposesNavigation" fullname="CardMatch.Bootstrap.Tests.BootstrapTests.Build_ComposesNavigation" methodname="Build_ComposesNavigation" classname="CardMatch.Bootstrap.Tests.BootstrapTests" runstate="Runnable" seed="1169357504" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.067349" asserts="0">
+                <properties />
+              </test-case>
+            </test-suite>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+    <test-suite type="Assembly" id="1180" name="CardMatch.Levels.Tests.dll" fullname="C:/Unity/random-game/Library/ScriptAssemblies/CardMatch.Levels.Tests.dll" runstate="Runnable" testcasecount="10" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.020798" total="10" passed="10" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="41752" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+      </properties>
+      <test-suite type="TestSuite" id="1181" name="CardMatch" fullname="CardMatch" runstate="Runnable" testcasecount="10" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.020188" total="10" passed="10" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1182" name="Levels" fullname="CardMatch.Levels" runstate="Runnable" testcasecount="10" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.019929" total="10" passed="10" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestSuite" id="1183" name="Tests" fullname="CardMatch.Levels.Tests" runstate="Runnable" testcasecount="10" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.019665" total="10" passed="10" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-suite type="TestFixture" id="1169" name="LevelsTests" fullname="CardMatch.Levels.Tests.LevelsTests" classname="CardMatch.Levels.Tests.LevelsTests" runstate="Runnable" testcasecount="10" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.019272" total="10" passed="10" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1173" name="GetLevel_OutOfRange_ReturnsNull" fullname="CardMatch.Levels.Tests.LevelsTests.GetLevel_OutOfRange_ReturnsNull" methodname="GetLevel_OutOfRange_ReturnsNull" classname="CardMatch.Levels.Tests.LevelsTests" runstate="Runnable" seed="661301982" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000950" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1172" name="GetLevel_ValidIndex_ReturnsLevel" fullname="CardMatch.Levels.Tests.LevelsTests.GetLevel_ValidIndex_ReturnsLevel" methodname="GetLevel_ValidIndex_ReturnsLevel" classname="CardMatch.Levels.Tests.LevelsTests" runstate="Runnable" seed="1379861339" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000859" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1170" name="GetLevels_WhenRegistryEmpty_ReturnsEmptyList" fullname="CardMatch.Levels.Tests.LevelsTests.GetLevels_WhenRegistryEmpty_ReturnsEmptyList" methodname="GetLevels_WhenRegistryEmpty_ReturnsEmptyList" classname="CardMatch.Levels.Tests.LevelsTests" runstate="Runnable" seed="1833187064" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000208" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1171" name="GetLevels_WhenRegistryHasLevels_ReturnsRegistryOrder" fullname="CardMatch.Levels.Tests.LevelsTests.GetLevels_WhenRegistryHasLevels_ReturnsRegistryOrder" methodname="GetLevels_WhenRegistryHasLevels_ReturnsRegistryOrder" classname="CardMatch.Levels.Tests.LevelsTests" runstate="Runnable" seed="339822277" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000335" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1174" name="IsUnlocked_FirstLevel_IsTrue" fullname="CardMatch.Levels.Tests.LevelsTests.IsUnlocked_FirstLevel_IsTrue" methodname="IsUnlocked_FirstLevel_IsTrue" classname="CardMatch.Levels.Tests.LevelsTests" runstate="Runnable" seed="1975750105" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000509" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1175" name="IsUnlocked_SecondLevelBeforeFirstCompleted_IsFalse" fullname="CardMatch.Levels.Tests.LevelsTests.IsUnlocked_SecondLevelBeforeFirstCompleted_IsFalse" methodname="IsUnlocked_SecondLevelBeforeFirstCompleted_IsFalse" classname="CardMatch.Levels.Tests.LevelsTests" runstate="Runnable" seed="468625265" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000328" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1178" name="LevelCompletionState_NewInstance_HasEmptyLists" fullname="CardMatch.Levels.Tests.LevelsTests.LevelCompletionState_NewInstance_HasEmptyLists" methodname="LevelCompletionState_NewInstance_HasEmptyLists" classname="CardMatch.Levels.Tests.LevelsTests" runstate="Runnable" seed="1027150726" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000194" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1177" name="MarkCompleted_FirstLevel_UnlocksSecondLevel" fullname="CardMatch.Levels.Tests.LevelsTests.MarkCompleted_FirstLevel_UnlocksSecondLevel" methodname="MarkCompleted_FirstLevel_UnlocksSecondLevel" classname="CardMatch.Levels.Tests.LevelsTests" runstate="Runnable" seed="917767384" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000890" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1179" name="MarkCompleted_Persisted_Reload_IsCompletedAndUnlocked" fullname="CardMatch.Levels.Tests.LevelsTests.MarkCompleted_Persisted_Reload_IsCompletedAndUnlocked" methodname="MarkCompleted_Persisted_Reload_IsCompletedAndUnlocked" classname="CardMatch.Levels.Tests.LevelsTests" runstate="Runnable" seed="743672519" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.012553" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1176" name="MarkCompleted_ThenIsCompleted_IsTrue" fullname="CardMatch.Levels.Tests.LevelsTests.MarkCompleted_ThenIsCompleted_IsTrue" methodname="MarkCompleted_ThenIsCompleted_IsTrue" classname="CardMatch.Levels.Tests.LevelsTests" runstate="Runnable" seed="1000789101" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000316" asserts="0">
+                <properties />
+              </test-case>
+            </test-suite>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+    <test-suite type="Assembly" id="1194" name="CardMatch.MainMenu.Tests.dll" fullname="C:/Unity/random-game/Library/ScriptAssemblies/CardMatch.MainMenu.Tests.dll" runstate="Runnable" testcasecount="9" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.009080" total="9" passed="9" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="41752" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+      </properties>
+      <test-suite type="TestSuite" id="1195" name="CardMatch" fullname="CardMatch" runstate="Runnable" testcasecount="9" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.008613" total="9" passed="9" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1196" name="MainMenu" fullname="CardMatch.MainMenu" runstate="Runnable" testcasecount="9" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.008389" total="9" passed="9" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestSuite" id="1197" name="Tests" fullname="CardMatch.MainMenu.Tests" runstate="Runnable" testcasecount="9" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.008132" total="9" passed="9" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-suite type="TestFixture" id="1184" name="MainMenuTests" fullname="CardMatch.MainMenu.Tests.MainMenuTests" classname="CardMatch.MainMenu.Tests.MainMenuTests" runstate="Runnable" testcasecount="9" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.007743" total="9" passed="9" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1188" name="CanSelect_LockedLevel_ReturnsFalse" fullname="CardMatch.MainMenu.Tests.MainMenuTests.CanSelect_LockedLevel_ReturnsFalse" methodname="CanSelect_LockedLevel_ReturnsFalse" classname="CardMatch.MainMenu.Tests.MainMenuTests" runstate="Runnable" seed="815378407" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000781" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1187" name="CanSelect_UnlockedLevel_ReturnsTrue" fullname="CardMatch.MainMenu.Tests.MainMenuTests.CanSelect_UnlockedLevel_ReturnsTrue" methodname="CanSelect_UnlockedLevel_ReturnsTrue" classname="CardMatch.MainMenu.Tests.MainMenuTests" runstate="Runnable" seed="982244292" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000283" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1185" name="GetLevelEntries_WhenNoLevels_ReturnsEmptyList" fullname="CardMatch.MainMenu.Tests.MainMenuTests.GetLevelEntries_WhenNoLevels_ReturnsEmptyList" methodname="GetLevelEntries_WhenNoLevels_ReturnsEmptyList" classname="CardMatch.MainMenu.Tests.MainMenuTests" runstate="Runnable" seed="1526368950" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000611" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1186" name="GetLevelEntries_WhenOneLevel_ReturnsOneEntry_FirstLevelUnlocked" fullname="CardMatch.MainMenu.Tests.MainMenuTests.GetLevelEntries_WhenOneLevel_ReturnsOneEntry_FirstLevelUnlocked" methodname="GetLevelEntries_WhenOneLevel_ReturnsOneEntry_FirstLevelUnlocked" classname="CardMatch.MainMenu.Tests.MainMenuTests" runstate="Runnable" seed="52922960" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.002006" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1192" name="OnPlayClicked_WhenNoSelection_DoesNotCallPlaySystem" fullname="CardMatch.MainMenu.Tests.MainMenuTests.OnPlayClicked_WhenNoSelection_DoesNotCallPlaySystem" methodname="OnPlayClicked_WhenNoSelection_DoesNotCallPlaySystem" classname="CardMatch.MainMenu.Tests.MainMenuTests" runstate="Runnable" seed="1274128115" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000413" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1191" name="OnPlayClicked_WhenSelectedLevelExists_CallsPlaySystemWithSelectedLevel" fullname="CardMatch.MainMenu.Tests.MainMenuTests.OnPlayClicked_WhenSelectedLevelExists_CallsPlaySystemWithSelectedLevel" methodname="OnPlayClicked_WhenSelectedLevelExists_CallsPlaySystemWithSelectedLevel" classname="CardMatch.MainMenu.Tests.MainMenuTests" runstate="Runnable" seed="1266525303" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000352" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1193" name="OnSettingsClicked_OpensSettingsViewWithNavigationAndAudio" fullname="CardMatch.MainMenu.Tests.MainMenuTests.OnSettingsClicked_OpensSettingsViewWithNavigationAndAudio" methodname="OnSettingsClicked_OpensSettingsViewWithNavigationAndAudio" classname="CardMatch.MainMenu.Tests.MainMenuTests" runstate="Runnable" seed="304492421" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000575" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1190" name="SelectLevel_WhenLocked_DoesNotSetSelectedLevel" fullname="CardMatch.MainMenu.Tests.MainMenuTests.SelectLevel_WhenLocked_DoesNotSetSelectedLevel" methodname="SelectLevel_WhenLocked_DoesNotSetSelectedLevel" classname="CardMatch.MainMenu.Tests.MainMenuTests" runstate="Runnable" seed="1744462789" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000350" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1189" name="SelectLevel_WhenUnlocked_SetsSelectedLevel" fullname="CardMatch.MainMenu.Tests.MainMenuTests.SelectLevel_WhenUnlocked_SetsSelectedLevel" methodname="SelectLevel_WhenUnlocked_SetsSelectedLevel" classname="CardMatch.MainMenu.Tests.MainMenuTests" runstate="Runnable" seed="724657321" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000275" asserts="0">
+                <properties />
+              </test-case>
+            </test-suite>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+    <test-suite type="Assembly" id="1222" name="CardMatch.Navigation.Tests.dll" fullname="C:/Unity/random-game/Library/ScriptAssemblies/CardMatch.Navigation.Tests.dll" runstate="Runnable" testcasecount="23" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.014702" total="23" passed="23" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="41752" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+      </properties>
+      <test-suite type="TestSuite" id="1223" name="CardMatch" fullname="CardMatch" runstate="Runnable" testcasecount="23" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.014306" total="23" passed="23" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1224" name="Navigation" fullname="CardMatch.Navigation" runstate="Runnable" testcasecount="23" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.013989" total="23" passed="23" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestSuite" id="1225" name="Tests" fullname="CardMatch.Navigation.Tests" runstate="Runnable" testcasecount="23" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.013631" total="23" passed="23" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-suite type="TestFixture" id="1198" name="NavigationTests" fullname="CardMatch.Navigation.Tests.NavigationTests" classname="CardMatch.Navigation.Tests.NavigationTests" runstate="Runnable" testcasecount="23" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.013138" total="23" passed="23" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1207" name="Constructor_IgnoresNullEntries" fullname="CardMatch.Navigation.Tests.NavigationTests.Constructor_IgnoresNullEntries" methodname="Constructor_IgnoresNullEntries" classname="CardMatch.Navigation.Tests.NavigationTests" runstate="Runnable" seed="966654383" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.001800" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1201" name="Constructor_ThenOpen_StackCountIsOne_CurrentViewIsOpen_ViewStatusIsOpen" fullname="CardMatch.Navigation.Tests.NavigationTests.Constructor_ThenOpen_StackCountIsOne_CurrentViewIsOpen_ViewStatusIsOpen" methodname="Constructor_ThenOpen_StackCountIsOne_CurrentViewIsOpen_ViewStatusIsOpen" classname="CardMatch.Navigation.Tests.NavigationTests" runstate="Runnable" seed="1797123726" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000473" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1200" name="CurrentView_Initially_IsNull" fullname="CardMatch.Navigation.Tests.NavigationTests.CurrentView_Initially_IsNull" methodname="CurrentView_Initially_IsNull" classname="CardMatch.Navigation.Tests.NavigationTests" runstate="Runnable" seed="933874697" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000206" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1219" name="Focus_OnView_CalledFromView_BringsViewToFront" fullname="CardMatch.Navigation.Tests.NavigationTests.Focus_OnView_CalledFromView_BringsViewToFront" methodname="Focus_OnView_CalledFromView_BringsViewToFront" classname="CardMatch.Navigation.Tests.NavigationTests" runstate="Runnable" seed="1080237489" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000882" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1216" name="Focus_WhenViewHidden_PopsAndClosesViewsAbove_ShowsFocusedView" fullname="CardMatch.Navigation.Tests.NavigationTests.Focus_WhenViewHidden_PopsAndClosesViewsAbove_ShowsFocusedView" methodname="Focus_WhenViewHidden_PopsAndClosesViewsAbove_ShowsFocusedView" classname="CardMatch.Navigation.Tests.NavigationTests" runstate="Runnable" seed="739469528" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000261" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1217" name="Focus_WhenViewIsCurrent_DoesNothing" fullname="CardMatch.Navigation.Tests.NavigationTests.Focus_WhenViewIsCurrent_DoesNothing" methodname="Focus_WhenViewIsCurrent_DoesNothing" classname="CardMatch.Navigation.Tests.NavigationTests" runstate="Runnable" seed="662445612" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000200" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1218" name="Focus_WhenViewNotInStack_DoesNothing_StackUnchanged" fullname="CardMatch.Navigation.Tests.NavigationTests.Focus_WhenViewNotInStack_DoesNothing_StackUnchanged" methodname="Focus_WhenViewNotInStack_DoesNothing_StackUnchanged" classname="CardMatch.Navigation.Tests.NavigationTests" runstate="Runnable" seed="988342588" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000211" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1215" name="GoBack_AfterOpenWithCloseCurrentTrue_RestoresPreviouslyClosedView" fullname="CardMatch.Navigation.Tests.NavigationTests.GoBack_AfterOpenWithCloseCurrentTrue_RestoresPreviouslyClosedView" methodname="GoBack_AfterOpenWithCloseCurrentTrue_RestoresPreviouslyClosedView" classname="CardMatch.Navigation.Tests.NavigationTests" runstate="Runnable" seed="15351764" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000389" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1203" name="GoBack_AfterTwoOpen_StackCountIsOne_PreviousIsOpen_PoppedIsClosed" fullname="CardMatch.Navigation.Tests.NavigationTests.GoBack_AfterTwoOpen_StackCountIsOne_PreviousIsOpen_PoppedIsClosed" methodname="GoBack_AfterTwoOpen_StackCountIsOne_PreviousIsOpen_PoppedIsClosed" classname="CardMatch.Navigation.Tests.NavigationTests" runstate="Runnable" seed="839375623" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000273" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1204" name="GoBack_WhenStackCountOne_DoesNothing" fullname="CardMatch.Navigation.Tests.NavigationTests.GoBack_WhenStackCountOne_DoesNothing" methodname="GoBack_WhenStackCountOne_DoesNothing" classname="CardMatch.Navigation.Tests.NavigationTests" runstate="Runnable" seed="1265899578" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000192" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1205" name="Open_SameContextTwice_DoesNotPushAgain_StackCountStaysOne" fullname="CardMatch.Navigation.Tests.NavigationTests.Open_SameContextTwice_DoesNotPushAgain_StackCountStaysOne" methodname="Open_SameContextTwice_DoesNotPushAgain_StackCountStaysOne" classname="CardMatch.Navigation.Tests.NavigationTests" runstate="Runnable" seed="1558830101" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000201" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1202" name="Open_ThenOpenAnother_StackCountIsTwo_FirstIsHidden_SecondIsOpen" fullname="CardMatch.Navigation.Tests.NavigationTests.Open_ThenOpenAnother_StackCountIsTwo_FirstIsHidden_SecondIsOpen" methodname="Open_ThenOpenAnother_StackCountIsTwo_FirstIsHidden_SecondIsOpen" classname="CardMatch.Navigation.Tests.NavigationTests" runstate="Runnable" seed="1731789415" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000194" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1208" name="Open_TwoContexts_StackCountTwo_SecondIsCurrent_FirstHidden" fullname="CardMatch.Navigation.Tests.NavigationTests.Open_TwoContexts_StackCountTwo_SecondIsCurrent_FirstHidden" methodname="Open_TwoContexts_StackCountTwo_SecondIsCurrent_FirstHidden" classname="CardMatch.Navigation.Tests.NavigationTests" runstate="Runnable" seed="1098196657" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000249" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1206" name="Open_WhenContextTypeNotRegistered_StackUnchanged" fullname="CardMatch.Navigation.Tests.NavigationTests.Open_WhenContextTypeNotRegistered_StackUnchanged" methodname="Open_WhenContextTypeNotRegistered_StackUnchanged" classname="CardMatch.Navigation.Tests.NavigationTests" runstate="Runnable" seed="448166662" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000203" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1220" name="Open_WhenDestinationNotOnStack_CallsOpenNotFocus" fullname="CardMatch.Navigation.Tests.NavigationTests.Open_WhenDestinationNotOnStack_CallsOpenNotFocus" methodname="Open_WhenDestinationNotOnStack_CallsOpenNotFocus" classname="CardMatch.Navigation.Tests.NavigationTests" runstate="Runnable" seed="427275800" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000206" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1221" name="Open_WhenDestinationOnStack_CallsFocusNotOpen" fullname="CardMatch.Navigation.Tests.NavigationTests.Open_WhenDestinationOnStack_CallsFocusNotOpen" methodname="Open_WhenDestinationOnStack_CallsFocusNotOpen" classname="CardMatch.Navigation.Tests.NavigationTests" runstate="Runnable" seed="1147740378" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000415" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1213" name="Open_WithCloseCurrentTrue_PopsAndClosesCurrent_StackCountStaysOne_NewViewOpen" fullname="CardMatch.Navigation.Tests.NavigationTests.Open_WithCloseCurrentTrue_PopsAndClosesCurrent_StackCountStaysOne_NewViewOpen" methodname="Open_WithCloseCurrentTrue_PopsAndClosesCurrent_StackCountStaysOne_NewViewOpen" classname="CardMatch.Navigation.Tests.NavigationTests" runstate="Runnable" seed="973914969" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000280" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1214" name="Open_WithCloseCurrentTrue_WhenStackEmpty_BehavesLikeNormalOpen" fullname="CardMatch.Navigation.Tests.NavigationTests.Open_WithCloseCurrentTrue_WhenStackEmpty_BehavesLikeNormalOpen" methodname="Open_WithCloseCurrentTrue_WhenStackEmpty_BehavesLikeNormalOpen" classname="CardMatch.Navigation.Tests.NavigationTests" runstate="Runnable" seed="1328051659" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000278" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1210" name="Open_WithContext_ResolvesView_SetsContext_StackCountOne_CurrentViewOpen" fullname="CardMatch.Navigation.Tests.NavigationTests.Open_WithContext_ResolvesView_SetsContext_StackCountOne_CurrentViewOpen" methodname="Open_WithContext_ResolvesView_SetsContext_StackCountOne_CurrentViewOpen" classname="CardMatch.Navigation.Tests.NavigationTests" runstate="Runnable" seed="540504742" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000469" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1211" name="Open_WithContext_WhenNoViewForContext_StackUnchanged" fullname="CardMatch.Navigation.Tests.NavigationTests.Open_WithContext_WhenNoViewForContext_StackUnchanged" methodname="Open_WithContext_WhenNoViewForContext_StackUnchanged" classname="CardMatch.Navigation.Tests.NavigationTests" runstate="Runnable" seed="1049537228" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000216" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1212" name="Open_WithNullContext_DoesNothing" fullname="CardMatch.Navigation.Tests.NavigationTests.Open_WithNullContext_DoesNothing" methodname="Open_WithNullContext_DoesNothing" classname="CardMatch.Navigation.Tests.NavigationTests" runstate="Runnable" seed="1497789119" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000196" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1199" name="StackCount_Initially_IsZero" fullname="CardMatch.Navigation.Tests.NavigationTests.StackCount_Initially_IsZero" methodname="StackCount_Initially_IsZero" classname="CardMatch.Navigation.Tests.NavigationTests" runstate="Runnable" seed="441128129" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000160" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1209" name="ThreeViews_GoBackTwice_StackCountOne_FirstIsOpen_OthersClosed" fullname="CardMatch.Navigation.Tests.NavigationTests.ThreeViews_GoBackTwice_StackCountOne_FirstIsOpen_OthersClosed" methodname="ThreeViews_GoBackTwice_StackCountOne_FirstIsOpen_OthersClosed" classname="CardMatch.Navigation.Tests.NavigationTests" runstate="Runnable" seed="1462461795" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000376" asserts="0">
+                <properties />
+              </test-case>
+            </test-suite>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+    <test-suite type="Assembly" id="1231" name="CardMatch.Persistence.Tests.dll" fullname="C:/Unity/random-game/Library/ScriptAssemblies/CardMatch.Persistence.Tests.dll" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.025001" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="41752" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+      </properties>
+      <test-suite type="TestSuite" id="1232" name="CardMatch" fullname="CardMatch" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.024404" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1233" name="Persistence" fullname="CardMatch.Persistence" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.024230" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestSuite" id="1234" name="Tests" fullname="CardMatch.Persistence.Tests" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.024013" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-suite type="TestFixture" id="1226" name="PlayerPrefsPersistenceTests" fullname="CardMatch.Persistence.Tests.PlayerPrefsPersistenceTests" classname="CardMatch.Persistence.Tests.PlayerPrefsPersistenceTests" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.023730" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1229" name="ClearAll_RemovesSavedData" fullname="CardMatch.Persistence.Tests.PlayerPrefsPersistenceTests.ClearAll_RemovesSavedData" methodname="ClearAll_RemovesSavedData" classname="CardMatch.Persistence.Tests.PlayerPrefsPersistenceTests" runstate="Runnable" seed="1314812085" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.016490" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1230" name="Load_WhenKeyMissing_ReturnsDefault" fullname="CardMatch.Persistence.Tests.PlayerPrefsPersistenceTests.Load_WhenKeyMissing_ReturnsDefault" methodname="Load_WhenKeyMissing_ReturnsDefault" classname="CardMatch.Persistence.Tests.PlayerPrefsPersistenceTests" runstate="Runnable" seed="862327891" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000517" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1227" name="SaveThenLoad_WithCustomKey_RoundTrips" fullname="CardMatch.Persistence.Tests.PlayerPrefsPersistenceTests.SaveThenLoad_WithCustomKey_RoundTrips" methodname="SaveThenLoad_WithCustomKey_RoundTrips" classname="CardMatch.Persistence.Tests.PlayerPrefsPersistenceTests" runstate="Runnable" seed="1781072084" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.004227" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1228" name="SaveThenLoad_WithDefaultKey_RoundTrips" fullname="CardMatch.Persistence.Tests.PlayerPrefsPersistenceTests.SaveThenLoad_WithDefaultKey_RoundTrips" methodname="SaveThenLoad_WithDefaultKey_RoundTrips" classname="CardMatch.Persistence.Tests.PlayerPrefsPersistenceTests" runstate="Runnable" seed="2009638347" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000542" asserts="0">
+                <properties />
+              </test-case>
+            </test-suite>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+    <test-suite type="Assembly" id="1249" name="CardMatch.PlaySystem.Tests.dll" fullname="C:/Unity/random-game/Library/ScriptAssemblies/CardMatch.PlaySystem.Tests.dll" runstate="Runnable" testcasecount="11" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.012338" total="11" passed="11" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="41752" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+      </properties>
+      <test-suite type="TestSuite" id="1250" name="CardMatch" fullname="CardMatch" runstate="Runnable" testcasecount="11" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.011716" total="11" passed="11" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1251" name="PlaySystem" fullname="CardMatch.PlaySystem" runstate="Runnable" testcasecount="11" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.011447" total="11" passed="11" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestSuite" id="1252" name="Tests" fullname="CardMatch.PlaySystem.Tests" runstate="Runnable" testcasecount="11" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.011140" total="11" passed="11" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-suite type="TestFixture" id="1235" name="PlayMatchFactoryTests" fullname="CardMatch.PlaySystem.Tests.PlayMatchFactoryTests" classname="CardMatch.PlaySystem.Tests.PlayMatchFactoryTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.005109" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1237" name="Create_WhenLevelHasEvenSlotCount_BuildsMatchWithPairs" fullname="CardMatch.PlaySystem.Tests.PlayMatchFactoryTests.Create_WhenLevelHasEvenSlotCount_BuildsMatchWithPairs" methodname="Create_WhenLevelHasEvenSlotCount_BuildsMatchWithPairs" classname="CardMatch.PlaySystem.Tests.PlayMatchFactoryTests" runstate="Runnable" seed="1948320720" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.004212" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1236" name="Create_WhenLevelIsNull_ReturnsNull" fullname="CardMatch.PlaySystem.Tests.PlayMatchFactoryTests.Create_WhenLevelIsNull_ReturnsNull" methodname="Create_WhenLevelIsNull_ReturnsNull" classname="CardMatch.PlaySystem.Tests.PlayMatchFactoryTests" runstate="Runnable" seed="1554291412" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000173" asserts="0">
+                <properties />
+              </test-case>
+            </test-suite>
+            <test-suite type="TestFixture" id="1238" name="PlaySystemTests" fullname="CardMatch.PlaySystem.Tests.PlaySystemTests" classname="CardMatch.PlaySystem.Tests.PlaySystemTests" runstate="Runnable" testcasecount="8" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.004484" total="8" passed="8" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1242" name="GoBack_CallsNavigationGoBack" fullname="CardMatch.PlaySystem.Tests.PlaySystemTests.GoBack_CallsNavigationGoBack" methodname="GoBack_CallsNavigationGoBack" classname="CardMatch.PlaySystem.Tests.PlaySystemTests" runstate="Runnable" seed="485428012" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000483" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1243" name="GoBack_WithNullNavigation_DoesNotThrow" fullname="CardMatch.PlaySystem.Tests.PlaySystemTests.GoBack_WithNullNavigation_DoesNotThrow" methodname="GoBack_WithNullNavigation_DoesNotThrow" classname="CardMatch.PlaySystem.Tests.PlaySystemTests" runstate="Runnable" seed="206314183" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000123" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1244" name="MarkCompleted_CallsLevelControllerMarkCompleted" fullname="CardMatch.PlaySystem.Tests.PlaySystemTests.MarkCompleted_CallsLevelControllerMarkCompleted" methodname="MarkCompleted_CallsLevelControllerMarkCompleted" classname="CardMatch.PlaySystem.Tests.PlaySystemTests" runstate="Runnable" seed="441098887" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000469" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1245" name="MarkCompleted_WithNullLevel_DoesNotThrow" fullname="CardMatch.PlaySystem.Tests.PlaySystemTests.MarkCompleted_WithNullLevel_DoesNotThrow" methodname="MarkCompleted_WithNullLevel_DoesNotThrow" classname="CardMatch.PlaySystem.Tests.PlaySystemTests" runstate="Runnable" seed="1238846271" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000205" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1246" name="MarkCompleted_WithNullLevelController_DoesNotThrow" fullname="CardMatch.PlaySystem.Tests.PlaySystemTests.MarkCompleted_WithNullLevelController_DoesNotThrow" methodname="MarkCompleted_WithNullLevelController_DoesNotThrow" classname="CardMatch.PlaySystem.Tests.PlaySystemTests" runstate="Runnable" seed="1016328695" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000161" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1239" name="Play_OpensPlayViewContextWithMatchAndLevel" fullname="CardMatch.PlaySystem.Tests.PlaySystemTests.Play_OpensPlayViewContextWithMatchAndLevel" methodname="Play_OpensPlayViewContextWithMatchAndLevel" classname="CardMatch.PlaySystem.Tests.PlaySystemTests" runstate="Runnable" seed="208337237" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000896" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1240" name="Play_WithNullLevel_DoesNotOpenView" fullname="CardMatch.PlaySystem.Tests.PlaySystemTests.Play_WithNullLevel_DoesNotOpenView" methodname="Play_WithNullLevel_DoesNotOpenView" classname="CardMatch.PlaySystem.Tests.PlaySystemTests" runstate="Runnable" seed="719287733" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000172" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1241" name="Play_WithNullNavigation_DoesNotThrow" fullname="CardMatch.PlaySystem.Tests.PlaySystemTests.Play_WithNullNavigation_DoesNotThrow" methodname="Play_WithNullNavigation_DoesNotThrow" classname="CardMatch.PlaySystem.Tests.PlaySystemTests" runstate="Runnable" seed="1136778657" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000169" asserts="0">
+                <properties />
+              </test-case>
+            </test-suite>
+            <test-suite type="TestFixture" id="1247" name="PlayViewContextTests" fullname="CardMatch.PlaySystem.Tests.PlayViewContextTests" classname="CardMatch.PlaySystem.Tests.PlayViewContextTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000973" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1248" name="Constructor_SetsAllDependencies" fullname="CardMatch.PlaySystem.Tests.PlayViewContextTests.Constructor_SetsAllDependencies" methodname="Constructor_SetsAllDependencies" classname="CardMatch.PlaySystem.Tests.PlayViewContextTests" runstate="Runnable" seed="172080950" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000329" asserts="0">
+                <properties />
+              </test-case>
+            </test-suite>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+    <test-suite type="Assembly" id="1255" name="CardMatch.PlayView.Tests.dll" fullname="C:/Unity/random-game/Library/ScriptAssemblies/CardMatch.PlayView.Tests.dll" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.001538" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="41752" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+      </properties>
+      <test-suite type="TestSuite" id="1256" name="CardMatch" fullname="CardMatch" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.001292" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1257" name="PlayView" fullname="CardMatch.PlayView" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.001085" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestSuite" id="1258" name="Tests" fullname="CardMatch.PlayView.Tests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000916" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-suite type="TestFixture" id="1253" name="PlayViewTests" fullname="CardMatch.PlayView.Tests.PlayViewTests" classname="CardMatch.PlayView.Tests.PlayViewTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000709" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1254" name="PlayView_IsAView" fullname="CardMatch.PlayView.Tests.PlayViewTests.PlayView_IsAView" methodname="PlayView_IsAView" classname="CardMatch.PlayView.Tests.PlayViewTests" runstate="Runnable" seed="1521155967" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000208" asserts="0">
+                <properties />
+              </test-case>
+            </test-suite>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+    <test-suite type="Assembly" id="1261" name="CardMatch.Settings.Tests.dll" fullname="C:/Unity/random-game/Library/ScriptAssemblies/CardMatch.Settings.Tests.dll" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.001460" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="41752" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+      </properties>
+      <test-suite type="TestSuite" id="1262" name="CardMatch" fullname="CardMatch" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.001247" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1263" name="Settings" fullname="CardMatch.Settings" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.001105" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestSuite" id="1264" name="Tests" fullname="CardMatch.Settings.Tests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000924" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-suite type="TestFixture" id="1259" name="SettingsViewContextTests" fullname="CardMatch.Settings.Tests.SettingsViewContextTests" classname="CardMatch.Settings.Tests.SettingsViewContextTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000719" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1260" name="Constructor_SetsNavigationAndAudioService" fullname="CardMatch.Settings.Tests.SettingsViewContextTests.Constructor_SetsNavigationAndAudioService" methodname="Constructor_SetsNavigationAndAudioService" classname="CardMatch.Settings.Tests.SettingsViewContextTests" runstate="Runnable" seed="198275445" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000226" asserts="0">
+                <properties />
+              </test-case>
+            </test-suite>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+    <test-suite type="Assembly" id="1295" name="CardMatch.Tests.dll" fullname="C:/Unity/random-game/Library/ScriptAssemblies/CardMatch.Tests.dll" runstate="Runnable" testcasecount="24" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.024015" total="24" passed="24" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="41752" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+      </properties>
+      <test-suite type="TestSuite" id="1296" name="CardMatch" fullname="CardMatch" runstate="Runnable" testcasecount="24" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.023587" total="24" passed="24" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1297" name="Tests" fullname="CardMatch.Tests" runstate="Runnable" testcasecount="24" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.023201" total="24" passed="24" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestFixture" id="1265" name="CardMatchIntegrationTests" fullname="CardMatch.Tests.CardMatchIntegrationTests" classname="CardMatch.Tests.CardMatchIntegrationTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.003444" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1267" name="Match_InternalScoreService_EmitsScoreAndComboEvents" fullname="CardMatch.Tests.CardMatchIntegrationTests.Match_InternalScoreService_EmitsScoreAndComboEvents" methodname="Match_InternalScoreService_EmitsScoreAndComboEvents" classname="CardMatch.Tests.CardMatchIntegrationTests" runstate="Runnable" seed="2104189307" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.001822" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1266" name="Match_MatchedPair_EmitsExpectedEventOrder" fullname="CardMatch.Tests.CardMatchIntegrationTests.Match_MatchedPair_EmitsExpectedEventOrder" methodname="Match_MatchedPair_EmitsExpectedEventOrder" classname="CardMatch.Tests.CardMatchIntegrationTests" runstate="Runnable" seed="583740286" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000928" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1268" name="MatchEvaluatorTests" fullname="CardMatch.Tests.MatchEvaluatorTests" classname="CardMatch.Tests.MatchEvaluatorTests" runstate="Runnable" testcasecount="8" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.004073" total="8" passed="8" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1276" name="Evaluate_UpdatesIsCompletedFromStateAtStart" fullname="CardMatch.Tests.MatchEvaluatorTests.Evaluate_UpdatesIsCompletedFromStateAtStart" methodname="Evaluate_UpdatesIsCompletedFromStateAtStart" classname="CardMatch.Tests.MatchEvaluatorTests" runstate="Runnable" seed="1145261352" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000204" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1270" name="Evaluate_WhenFlippedCardsEmpty_DoesNothing" fullname="CardMatch.Tests.MatchEvaluatorTests.Evaluate_WhenFlippedCardsEmpty_DoesNothing" methodname="Evaluate_WhenFlippedCardsEmpty_DoesNothing" classname="CardMatch.Tests.MatchEvaluatorTests" runstate="Runnable" seed="301598194" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000191" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1269" name="Evaluate_WhenFlippedCardsNull_DoesNothing" fullname="CardMatch.Tests.MatchEvaluatorTests.Evaluate_WhenFlippedCardsNull_DoesNothing" methodname="Evaluate_WhenFlippedCardsNull_DoesNothing" classname="CardMatch.Tests.MatchEvaluatorTests" runstate="Runnable" seed="1949219134" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000232" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1271" name="Evaluate_WhenOneFlippedCard_DoesNothing" fullname="CardMatch.Tests.MatchEvaluatorTests.Evaluate_WhenOneFlippedCard_DoesNothing" methodname="Evaluate_WhenOneFlippedCard_DoesNothing" classname="CardMatch.Tests.MatchEvaluatorTests" runstate="Runnable" seed="1086264355" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000265" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1272" name="Evaluate_WhenTwoFlippedMatchingCards_AppliesMatchAndPublishesEvents" fullname="CardMatch.Tests.MatchEvaluatorTests.Evaluate_WhenTwoFlippedMatchingCards_AppliesMatchAndPublishesEvents" methodname="Evaluate_WhenTwoFlippedMatchingCards_AppliesMatchAndPublishesEvents" classname="CardMatch.Tests.MatchEvaluatorTests" runstate="Runnable" seed="481314283" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000714" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1274" name="Evaluate_WhenTwoFlippedMatchingCards_IsCompletedFalseWhenMoreCardsRemain" fullname="CardMatch.Tests.MatchEvaluatorTests.Evaluate_WhenTwoFlippedMatchingCards_IsCompletedFalseWhenMoreCardsRemain" methodname="Evaluate_WhenTwoFlippedMatchingCards_IsCompletedFalseWhenMoreCardsRemain" classname="CardMatch.Tests.MatchEvaluatorTests" runstate="Runnable" seed="1730258780" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000210" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1273" name="Evaluate_WhenTwoFlippedMatchingCards_IsCompletedTrueWhenAllScored" fullname="CardMatch.Tests.MatchEvaluatorTests.Evaluate_WhenTwoFlippedMatchingCards_IsCompletedTrueWhenAllScored" methodname="Evaluate_WhenTwoFlippedMatchingCards_IsCompletedTrueWhenAllScored" classname="CardMatch.Tests.MatchEvaluatorTests" runstate="Runnable" seed="2011741657" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000178" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1275" name="Evaluate_WhenTwoFlippedMismatchingCards_AppliesMismatchAndPublishesEvents" fullname="CardMatch.Tests.MatchEvaluatorTests.Evaluate_WhenTwoFlippedMismatchingCards_AppliesMismatchAndPublishesEvents" methodname="Evaluate_WhenTwoFlippedMismatchingCards_AppliesMismatchAndPublishesEvents" classname="CardMatch.Tests.MatchEvaluatorTests" runstate="Runnable" seed="1589040468" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000630" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1277" name="MatchSimulationTests" fullname="CardMatch.Tests.MatchSimulationTests" classname="CardMatch.Tests.MatchSimulationTests" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.005256" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1278" name="SimulateMatch_4x4Board_EndsWithMatchCompleted" fullname="CardMatch.Tests.MatchSimulationTests.SimulateMatch_4x4Board_EndsWithMatchCompleted" methodname="SimulateMatch_4x4Board_EndsWithMatchCompleted" classname="CardMatch.Tests.MatchSimulationTests" runstate="Runnable" seed="172119896" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.002661" asserts="0">
+              <properties />
+            </test-case>
+            <test-suite type="ParameterizedMethod" id="1282" name="SimulateMatch_VariousBoardSizes_AllEndWithMatchCompleted" fullname="CardMatch.Tests.MatchSimulationTests.SimulateMatch_VariousBoardSizes_AllEndWithMatchCompleted" classname="CardMatch.Tests.MatchSimulationTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.001646" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1279" name="SimulateMatch_VariousBoardSizes_AllEndWithMatchCompleted(2,2)" fullname="CardMatch.Tests.MatchSimulationTests.SimulateMatch_VariousBoardSizes_AllEndWithMatchCompleted(2,2)" methodname="SimulateMatch_VariousBoardSizes_AllEndWithMatchCompleted" classname="CardMatch.Tests.MatchSimulationTests" runstate="Runnable" seed="1756605947" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000473" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1280" name="SimulateMatch_VariousBoardSizes_AllEndWithMatchCompleted(2,4)" fullname="CardMatch.Tests.MatchSimulationTests.SimulateMatch_VariousBoardSizes_AllEndWithMatchCompleted(2,4)" methodname="SimulateMatch_VariousBoardSizes_AllEndWithMatchCompleted" classname="CardMatch.Tests.MatchSimulationTests" runstate="Runnable" seed="1182169443" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000163" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1281" name="SimulateMatch_VariousBoardSizes_AllEndWithMatchCompleted(4,4)" fullname="CardMatch.Tests.MatchSimulationTests.SimulateMatch_VariousBoardSizes_AllEndWithMatchCompleted(4,4)" methodname="SimulateMatch_VariousBoardSizes_AllEndWithMatchCompleted" classname="CardMatch.Tests.MatchSimulationTests" runstate="Runnable" seed="800503686" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000172" asserts="0">
+                <properties />
+              </test-case>
+            </test-suite>
+          </test-suite>
+          <test-suite type="TestFixture" id="1283" name="MatchTests" fullname="CardMatch.Tests.MatchTests" classname="CardMatch.Tests.MatchTests" runstate="Runnable" testcasecount="7" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.006331" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1284" name="Constructor_UsesInjectedCardStateWithoutRebuilding" fullname="CardMatch.Tests.MatchTests.Constructor_UsesInjectedCardStateWithoutRebuilding" methodname="Constructor_UsesInjectedCardStateWithoutRebuilding" classname="CardMatch.Tests.MatchTests" runstate="Runnable" seed="879574522" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000353" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1290" name="FlipCard_MatchAppliesScoreAndComboUsingInternalScoreService" fullname="CardMatch.Tests.MatchTests.FlipCard_MatchAppliesScoreAndComboUsingInternalScoreService" methodname="FlipCard_MatchAppliesScoreAndComboUsingInternalScoreService" classname="CardMatch.Tests.MatchTests" runstate="Runnable" seed="1159506498" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.001764" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1285" name="FlipCard_WhenAllCardsAlreadyScored_IgnoresFlipAndDoesNotEmitCompleted" fullname="CardMatch.Tests.MatchTests.FlipCard_WhenAllCardsAlreadyScored_IgnoresFlipAndDoesNotEmitCompleted" methodname="FlipCard_WhenAllCardsAlreadyScored_IgnoresFlipAndDoesNotEmitCompleted" classname="CardMatch.Tests.MatchTests" runstate="Runnable" seed="1564050684" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000365" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1286" name="FlipCard_WhenCardAlreadyFlipped_DoesNotFlipAgain" fullname="CardMatch.Tests.MatchTests.FlipCard_WhenCardAlreadyFlipped_DoesNotFlipAgain" methodname="FlipCard_WhenCardAlreadyFlipped_DoesNotFlipAgain" classname="CardMatch.Tests.MatchTests" runstate="Runnable" seed="77845000" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000319" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1289" name="FlipCard_WhenFinalPairMatches_EmitsCompletedOnlyOnce" fullname="CardMatch.Tests.MatchTests.FlipCard_WhenFinalPairMatches_EmitsCompletedOnlyOnce" methodname="FlipCard_WhenFinalPairMatches_EmitsCompletedOnlyOnce" classname="CardMatch.Tests.MatchTests" runstate="Runnable" seed="1476559824" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000296" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1287" name="FlipCard_WhenPairMatches_EmitsExpectedEventsInOrder" fullname="CardMatch.Tests.MatchTests.FlipCard_WhenPairMatches_EmitsExpectedEventsInOrder" methodname="FlipCard_WhenPairMatches_EmitsExpectedEventsInOrder" classname="CardMatch.Tests.MatchTests" runstate="Runnable" seed="1029596535" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000692" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1288" name="FlipCard_WhenPairMismatches_ResetsCardsAndEmitsMismatch" fullname="CardMatch.Tests.MatchTests.FlipCard_WhenPairMismatches_ResetsCardsAndEmitsMismatch" methodname="FlipCard_WhenPairMismatches_ResetsCardsAndEmitsMismatch" classname="CardMatch.Tests.MatchTests" runstate="Runnable" seed="2119832745" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000713" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1291" name="ScoreServiceTests" fullname="CardMatch.Tests.ScoreServiceTests" classname="CardMatch.Tests.ScoreServiceTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.003214" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1294" name="Dispose_UnsubscribesFromEvents" fullname="CardMatch.Tests.ScoreServiceTests.Dispose_UnsubscribesFromEvents" methodname="Dispose_UnsubscribesFromEvents" classname="CardMatch.Tests.ScoreServiceTests" runstate="Runnable" seed="2101827052" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000310" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1292" name="MatchEvents_UpdateScoreAndCombo_AndEmitExpectedEvents" fullname="CardMatch.Tests.ScoreServiceTests.MatchEvents_UpdateScoreAndCombo_AndEmitExpectedEvents" methodname="MatchEvents_UpdateScoreAndCombo_AndEmitExpectedEvents" classname="CardMatch.Tests.ScoreServiceTests" runstate="Runnable" seed="2074173114" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.000671" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1293" name="MismatchEvent_ResetsCombo_AndDoesNotEmitWhenAlreadyZero" fullname="CardMatch.Tests.ScoreServiceTests.MismatchEvent_ResetsCombo_AndDoesNotEmitWhenAlreadyZero" methodname="MismatchEvent_ResetsCombo_AndDoesNotEmitWhenAlreadyZero" classname="CardMatch.Tests.ScoreServiceTests" runstate="Runnable" seed="669348899" result="Passed" start-time="2026-06-21 00:50:53Z" end-time="2026-06-21 00:50:53Z" duration="0.001296" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

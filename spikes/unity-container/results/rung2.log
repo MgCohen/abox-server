@@ -1,0 +1,13 @@
+=== RUNG 2 / U5: fidelity gap — scripting-define divergence ===
+AgentSpike.cs hides a type error behind #if UNITY_STANDALONE_WIN (a define Unity SETS but the gate omits)
+case A: gate's default defines (UNITY_STANDALONE_WIN NOT set) -> branch skipped -> FALSE GREEN
+----- build [default-defines] EXTRA_DEFINES='' -----
+Build succeeded.
+[default-defines] EXITCODE=0
+case B: add UNITY_STANDALONE_WIN (what Unity actually compiles) -> error surfaces -> FAIL
+----- build [with-standalone-win] EXTRA_DEFINES='UNITY_STANDALONE_WIN' -----
+/project/Assets/Scripts/Bootstrap/Runtime/AgentSpike.cs(9,49): error CS0029: Cannot implicitly convert type 'UnityEngine.Vector3' to 'int' [/tmp/build-CardMatch.Bootstrap/CardMatch.Bootstrap.csproj]
+Build FAILED.
+/project/Assets/Scripts/Bootstrap/Runtime/AgentSpike.cs(9,49): error CS0029: Cannot implicitly convert type 'UnityEngine.Vector3' to 'int' [/tmp/build-CardMatch.Bootstrap/CardMatch.Bootstrap.csproj]
+[with-standalone-win] EXITCODE=1
+reverted AgentSpike.cs to clean version
