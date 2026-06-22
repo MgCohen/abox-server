@@ -293,8 +293,8 @@ In rough order of "how often you'll touch them":
 | Design context (read first) | [`PLANS/csharp-orchestrator-rewrite.md`](csharp-orchestrator-rewrite.md) |
 | JS orchestrator architecture | [`remote-agents/orchestrator/docs/architecture.md`](../../remote-agents/orchestrator/docs/architecture.md) |
 | JS orchestrator usage | [`remote-agents/orchestrator/docs/usage.md`](../../remote-agents/orchestrator/docs/usage.md) |
-| Logging plan (T0 ingest in step 7) | [`research/logging-and-telemetry.md`](../../research/logging-and-telemetry.md) |
-| C# validation result + carry-forward findings | [`research/csharp-rewrite-validation.md`](../../research/csharp-rewrite-validation.md) |
+| Logging plan (T0 ingest in step 7) | [`research/logging-and-telemetry.md`](../design/research/logging-and-telemetry.md) |
+| C# validation result + carry-forward findings | [`research/csharp-rewrite-validation.md`](../design/research/csharp-rewrite-validation.md) |
 | Reference smoke test artifact | `C:\Unity\dotnet-pty-smoke\` (outside repo) |
 | JS claude provider (port reference for step 5) | [`remote-agents/orchestrator/src/providers/claudeProvider.js`](../../remote-agents/orchestrator/src/providers/claudeProvider.js) |
 | JS codex provider (port reference for step 6) | [`remote-agents/orchestrator/src/providers/codexProvider.js`](../../remote-agents/orchestrator/src/providers/codexProvider.js) |

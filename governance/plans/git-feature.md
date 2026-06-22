@@ -7,7 +7,7 @@
 > run-not-just-compiled behind its own seam. Grounds in the canonical feature shape
 > ([ADR 0011](../decisions/0011-canonical-feature-slice-shape.md)) with
 > [`src/Features/Projects`](../../src/Features/Projects) as the worked reference, plus
-> [`design/the-box.md`](../../design/the-box.md) and [`research/stacked-prs.md`](../../research/stacked-prs.md).
+> [`design/the-box.md`](../design/the-box.md) and [`research/stacked-prs.md`](../design/research/stacked-prs.md).
 
 ## Orientation (for a cold reader)
 
@@ -319,5 +319,5 @@ land as Rulebooks (`test-rulebook` skill). Spike code is exempt — throwaway un
   dependency budget: [ADR 0012](../decisions/0012-dependency-budget-by-failure-mode.md)
 - Reference implementation: [`src/Features/Projects`](../../src/Features/Projects) ·
   bands + layer rules: [`PLANS/architecture-vsa.md`](architecture-vsa.md), `tests/Tests/Arch`
-- Box design: [`design/the-box.md`](../../design/the-box.md) (§4.2, §7, §12, §13, §16) ·
-  prior art + the spike sequence: [`research/stacked-prs.md`](../../research/stacked-prs.md)
+- Box design: [`design/the-box.md`](../design/the-box.md) (§4.2, §7, §12, §13, §16) ·
+  prior art + the spike sequence: [`research/stacked-prs.md`](../design/research/stacked-prs.md)

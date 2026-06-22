@@ -76,7 +76,7 @@ This ADR amends only those two points: 0003 §1's "no runner" and 0003 §2 / 000
 
 ## More Information
 
-- Mechanism + full pattern findings: [`research/command-operation-runner-patterns.md`](../../research/command-operation-runner-patterns.md)
+- Mechanism + full pattern findings: [`research/command-operation-runner-patterns.md`](../design/research/command-operation-runner-patterns.md)
 - Amends: [ADR 0003](0003-actors-operations-run-contract.md) (no-runner / interface),
   [ADR 0005](0005-operation-args-generic.md) (proposed contract)
 - Enforcement home: `tests/ArchTests`; YAGNI / least-mechanism: `CLAUDE.md`

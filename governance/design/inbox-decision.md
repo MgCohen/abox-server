@@ -4,7 +4,7 @@
 > **standalone design** that [`the-box.md`](the-box.md) §16 defers to ("the full
 > design of the parallel Inbox/Decision system … gets its own doc, authored as
 > the first task of the S1 track"). It is the **how/what** for build **S1** in
-> [`PLANS/the-box-implementation.md`](../governance/plans/the-box-implementation.md). The Box
+> [`PLANS/the-box-implementation.md`](../plans/the-box-implementation.md). The Box
 > is **one producer**, not the owner — nothing here is Box-specific. **Cold-readable**
 > (assumes no prior context). Where this doc and `the-box.md` §2.2/§5 differ on the
 > Inbox/Decision/Notification *model*, **this doc governs**; `the-box.md` keeps only

@@ -25,14 +25,14 @@ the difference in what the system *does*, the rebuild succeeded. We build in
 
 Source of truth, in order:
 
-- **Constitution (behavior):** [`design/behavioral-oracle.md`](design/behavioral-oracle.md)
+- **Constitution (behavior):** [`design/behavioral-oracle.md`](governance/design/behavioral-oracle.md)
   — Tier A invariants you MUST honor; Tier B prototype notes you must NOT follow
   unless we make a fresh, explicit decision. Cite the Tier-A item when you rely on it.
 - **Specs + plan:** [`PLANS/rebuild/`](governance/plans/rebuild) — `01-feature-map.md`
   (capabilities, WHAT/WHY), `02-prd.md` (EARS requirements + R-SPINE/R-ARCH
   rules), `03-implementation-plan.md` (layer architecture + L1→L12 build order).
   The plan's "Current state" + done-when gates are authoritative for progress.
-- **Decisions (ADRs):** [`design/adr/`](governance/decisions/) — focused records for choices
+- **Decisions (ADRs):** [`design/adr/`](governance/decisions) — focused records for choices
   that outlive a single layer. `0001` fixes the flow catalog / config / context model.
 
 ## `prototype/` is a REFERENCE, not source of truth

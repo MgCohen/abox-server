@@ -35,7 +35,7 @@ routes to per-provider **payload builders** + **response parsers**, with a
 Per-model quirks handled inline (o1/o3 reject temperature; some need
 `max_completion_tokens`; Ollama gets `num_ctx`).
 
-Theirs abstracts *JSON-over-REST* shapes; ours ([ADR 0004](../governance/decisions/0004-provider-seam.md))
+Theirs abstracts *JSON-over-REST* shapes; ours ([ADR 0004](../../decisions/0004-provider-seam.md))
 abstracts *CLI drive substrates* (PTY/subprocess + transcript parse). Different
 problem — but the **detect → build → parse triple with zero inheritance** is the
 same flat shape our seam already uses, and a good reference if we ever add an
@@ -67,7 +67,7 @@ Its "permission model" is **RBAC, not action-gating** — non-admin users simply
 lack shell/Python/file tools; admin-only = MCP mgmt, tokens, webhooks. Coarse,
 static, per-*user*.
 
-Our [permission-interaction-model](../governance/plans/permission-interaction-model.md) splits
+Our [permission-interaction-model](../../plans/permission-interaction-model.md) splits
 two concerns on one resolve seam (Permission gate + Interaction intercom) with
 `Interactivity {Interactive, Autonomous}`, `IDecisionResolver`, and the
 structured-questions spike. **Odysseus picked the Autonomous half and skipped the

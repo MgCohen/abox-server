@@ -12,6 +12,7 @@ tests/Tests/Structure/** @MgCohen
 governance/harness/** @MgCohen
 governance/policy/** @MgCohen
 governance/decisions/** @MgCohen
+governance/design/behavioral-oracle.md @MgCohen
 governance/plans/rebuild/02-prd.md @MgCohen
 CLAUDE.md @MgCohen
 Directory.Build.props @MgCohen

@@ -154,7 +154,7 @@ with its own focused tests and a green build before the next starts.
 
 Disposition legend: **REBUILD** = re-authored spine · **PORT** = lift validated
 code · **NEW** = didn't exist. Oracle refs point at
-[`design/behavioral-oracle.md`](../../../design/behavioral-oracle.md).
+[`design/behavioral-oracle.md`](../../design/behavioral-oracle.md).
 
 ---
 

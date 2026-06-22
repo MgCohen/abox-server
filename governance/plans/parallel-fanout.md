@@ -1,7 +1,7 @@
 # Plan — Parallel fan-out (`Flow.RunAll`)
 
 > Status: proposed (2026-06-07). Adds concurrent fan-out to the flow engine.
-> Backed by [`research/claude-code-dynamic-workflows.md`](../../research/claude-code-dynamic-workflows.md)
+> Backed by [`research/claude-code-dynamic-workflows.md`](../design/research/claude-code-dynamic-workflows.md)
 > §6/§7 (the combinator) and §9 (the parallelism-safety audit). Realizes the
 > "second real use" that the rebuild plan gates parallelism on — so it is **not**
 > part of the L1→L12 spine; it is an additive engine capability, built when a
@@ -40,7 +40,7 @@ Today (`src/ABox/Engine/`):
 
 > **Independently corroborated (2026-06-07).** A first-party dynamic-workflow run
 > (a read-only fan-out audit we generated + ran over `Engine/` — see
-> [`research/examples/engine-audit.report.md`](../../research/examples/engine-audit.report.md))
+> [`research/examples/engine-audit.report.md`](../design/research/examples/engine-audit.report.md))
 > surfaced exactly these issues unprompted: `StartOperation`/`Changed` outside the
 > `try` (poisons `_inFlight`), the object-identity guard + `_operations[^1]`
 > closing the wrong record under concurrency, and the mutable `_ctx`

@@ -29,6 +29,7 @@ tests/Tests/Structure/**  | @MgCohen | critical | Structure/placement rules: the
 governance/harness/**     | @MgCohen | critical | Portable enforcement engine — checker, generator, hooks, notifier (a copied engine can't be quietly weakened).
 governance/policy/**      | @MgCohen | critical | The policy itself — the single source of truth the engine reads.
 governance/decisions/**   | @MgCohen | review   | Architecture Decision Records — frozen history, not living docs.
+governance/design/behavioral-oracle.md | @MgCohen | review | The behavioral oracle — a stable spec (ADR 0014 Q1). Other design notes are living docs and ungoverned.
 governance/plans/rebuild/02-prd.md | @MgCohen | review   | The PRD — a stable spec (ADR 0014 Q1). Other plans are living docs and ungoverned.
 CLAUDE.md                 | @MgCohen | review   | Agent operating instructions for this repo.
 Directory.Build.props     | @MgCohen | review   | Solution-wide build config (nullable, warnings-as-errors, net10).

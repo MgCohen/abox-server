@@ -1,7 +1,7 @@
 # The Box — implementation plan
 
 > **Status:** Exploration / not part of the locked rebuild. The **how** that pairs
-> with the **what/why** in [`design/the-box.md`](../../design/the-box.md) — and the **single
+> with the **what/why** in [`design/the-box.md`](../design/the-box.md) — and the **single
 > authoritative build order** (the design doc defers all sequencing here, §15). Built on
 > top of the L1→L12 spine (it consumes the rebuild's Step/Flow + agent Steps) and does
 > not amend the oracle or `PLANS/rebuild/` specs. Ordered **builds + tasks**; refine a
@@ -70,7 +70,7 @@ S1 unblocks the most downstream (S5, S6, the whole inbox UX), while S2 carries t
 (`PendingDecision`, `IDecisionResolver`, `DecisionKind`, `Resolution`).
 
 - **First task: author its own design doc** — done:
-  [`design/inbox-decision.md`](../../design/inbox-decision.md) (three concepts bridged by
+  [`design/inbox-decision.md`](../design/inbox-decision.md) (three concepts bridged by
   adapters, in-process; `design/the-box.md` §2.2/§5 are only the Box-facing seam, §16).
 - General model: notification + decision items; decision subtypes (PR-approval, binary,
   choice, critical-confirm); flat-chronological + filters; criticality friction;
@@ -129,7 +129,7 @@ complete, deterministic `CardPayload`; pipeline recomposable in a test.
 
 **Goal:** deliver the inbox to a human and let them act with the right identity.
 
-- **SSE delivery** over the existing transport ([remote-access](../../design/remote-access.md),
+- **SSE delivery** over the existing transport ([remote-access](../design/remote-access.md),
   reusing `Features/Flows/Watch/Sse`) — no new pipe.
 - The swipe client (contract + thin view) rendering S4 payloads.
 - **Approve-as-owner from the phone** / read-feed-as-bot (`design/the-box.md` §5;
@@ -141,7 +141,7 @@ throwaway repo.
 
 ### S6 — ICS authoring flow  *(guided authoring)*
 
-**Goal:** a guided back-and-forth that produces an ICS doc ([`ics-template.md`](../../design/ics-template.md)
+**Goal:** a guided back-and-forth that produces an ICS doc ([`ics-template.md`](../design/ics-template.md)
 shape) — Box creation (`design/the-box.md` §4.0) consumes its output.
 
 - **Composes** `Domain/Flow` (Flow/Steps) + S1 (decision/inbox for the prompts).

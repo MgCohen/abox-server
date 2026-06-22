@@ -5,7 +5,7 @@
 > reply to a question), instead of pattern-matching the ANSI TUI buffer.
 >
 > **Audience**: anyone designing the ABox abstraction for
-> question-handling (see [`PLANS/interaction-modes.md`](../governance/plans/interaction-modes.md)).
+> question-handling (see [`PLANS/interaction-modes.md`](../../plans/interaction-modes.md)).
 >
 > **Status**: research complete 2026-05-28. Both providers expose the
 > signals we need under interactive PTY/subscription billing.
@@ -198,7 +198,7 @@ returns `AgentQuestion?`. `AgentResult.Status` is set from the parser
 output.
 
 Details and the data shape live in
-[`PLANS/interaction-modes.md`](../governance/plans/interaction-modes.md).
+[`PLANS/interaction-modes.md`](../../plans/interaction-modes.md).
 
 ---
 

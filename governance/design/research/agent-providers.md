@@ -2,11 +2,11 @@
 
 Researched June 2026. Companion to [`alternatives-considered.md`](alternatives-considered.md)
 (which rules out the *framework* landscape on the API-path objection). This doc asks a
-narrower question: **which additional vendor CLIs can we drive behind the [ADR 0004](../governance/decisions/0004-provider-seam.md)
+narrower question: **which additional vendor CLIs can we drive behind the [ADR 0004](../../decisions/0004-provider-seam.md)
 provider seam** (args + drive substrate + parse → `DriveResult`), and how do they bill?
 
 The seam already proves the shape twice: `ClaudeProvider` (ConPTY `PtySession` + JSONL parse,
-needed because oracle [A2](../design/behavioral-oracle.md) gates Max billing on `isatty()`) and
+needed because oracle [A2](../behavioral-oracle.md) gates Max billing on `isatty()`) and
 `CodexProvider` (plain `SubprocessSession` + JSON-stream parse, headless since `codex exec`).
 A new provider is a pure add: one `IProvider`, one factory arm, one fixture-tested parser. So the
 only questions that matter per candidate are:
@@ -55,12 +55,12 @@ ANTHROPIC_MODEL=glm-5.1 | kimi-k2.6 | deepseek-v4-pro
 
 ### The drive nuance this unlocks (and the env-scrub flip)
 
-On the override path **the isatty trick ([A2](../design/behavioral-oracle.md)) does not apply** —
+On the override path **the isatty trick ([A2](../behavioral-oracle.md)) does not apply** —
 that gate is *Anthropic's* Max-subscription detection. When billing is the alt-vendor's, charged
 against `ANTHROPIC_AUTH_TOKEN`, a **plain subprocess (`claude -p`) bills fine, no ConPTY**. So
 these backends can ride a clean `SubprocessSession` while still reusing `ClaudeJsonl`.
 
-It also **inverts oracle [A1](../design/behavioral-oracle.md)** for this provider — but the code
+It also **inverts oracle [A1](../behavioral-oracle.md)** for this provider — but the code
 already accommodates that, because the guard is **generic, not a global A1 gate**.
 `SubscriptionGuard.CheckAsync(forbiddenKeys, binary, ct)` takes the forbidden-key list and the
 binary as **parameters**; today the Claude path passes `EnvScrub.SubscriptionKeys` + `"claude"`,
@@ -116,7 +116,7 @@ edits). Install `curl https://cursor.com/install -fsS | bash`.
   `--resume=<session_id>`.
 - **The catch — it's `claude`-like, not `codex`-like:** multiple community reports say `-p`
   **hangs without a real TTY** and may not release the terminal on exit. So budget the **ConPTY
-  `PtySession` substrate + anti-zombie teardown** ([A2](../design/behavioral-oracle.md)-style),
+  `PtySession` substrate + anti-zombie teardown** ([A2](../behavioral-oracle.md)-style),
   not a clean pipe. Also: the IDE's free "Auto mode" isn't in the CLI, so CLI runs burn the shared
   pool faster.
 - **Verdict:** add behind the seam as a **PTY-driven provider**, but gate adoption on a hands-on

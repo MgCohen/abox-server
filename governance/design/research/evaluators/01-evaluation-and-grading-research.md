@@ -9,7 +9,7 @@
 > **Audience**: anyone designing the ABox eval/guardrail layer (the
 > natural layer after the flow lands). Pairs with the worked snippets under
 > [`examples/`](examples) and the actor/operation model in
-> [`design/adr/0003-actors-operations-run-contract.md`](../../governance/decisions/0003-actors-operations-run-contract.md).
+> [`design/adr/0003-actors-operations-run-contract.md`](../../../decisions/0003-actors-operations-run-contract.md).
 >
 > **Status**: research complete 2026-06-03. Conceptual only — **no implementation
 > decided**. This document captures findings; it is not a plan.

@@ -6,7 +6,7 @@
 > populates them.
 >
 > **Prerequisite reading**:
-> [`research/agent-hooks.md`](../../research/agent-hooks.md) — the structured
+> [`research/agent-hooks.md`](../design/research/agent-hooks.md) — the structured
 > signals Claude and Codex emit, and why hooks are the chosen detection
 > channel.
 >
@@ -87,7 +87,7 @@ Both must work for **Claude Code and Codex** with a single abstraction.
 
 | # | Question | Decision |
 |---|---|---|
-| Q1 | Detection channel | **Provider hooks** (`.claude/settings.json` `Notification`; `~/.codex/hooks.json` `PermissionRequest` + `Stop`). Not stream-json (forces `-p`, breaks billing). Not JSONL `stop_reason` (no such value exists). ANSI buffer scraping is fallback only. See [`research/agent-hooks.md`](../../research/agent-hooks.md). |
+| Q1 | Detection channel | **Provider hooks** (`.claude/settings.json` `Notification`; `~/.codex/hooks.json` `PermissionRequest` + `Stop`). Not stream-json (forces `-p`, breaks billing). Not JSONL `stop_reason` (no such value exists). ANSI buffer scraping is fallback only. See [`research/agent-hooks.md`](../design/research/agent-hooks.md). |
 | Q2 | Mode flag location | `AgentRunRequest.Mode` — per-call policy, not provider config. Default `NonInteractive` (preserves today's behavior). |
 | Q3 | Mode semantics | Mode does **not** change detection. Detection always runs. Mode changes what we do with a detected question: `Interactive` → `Status = NeedsInput`; `NonInteractive` → emit `NonInteractiveViolation` event + `Status = Failed`. |
 | Q4 | `AgentQuestion` shape | Discriminated abstract record with `TuiPrompt` and `OpenQuestion` cases. Justified because hook matchers naturally split the same way (`permission_prompt` / `PermissionRequest` vs `idle_prompt` / `Stop+heuristic`). |
@@ -353,7 +353,7 @@ keeps the model's behavior predictable across providers.
 
 ## 10. References
 
-- [`research/agent-hooks.md`](../../research/agent-hooks.md) — hook event
+- [`research/agent-hooks.md`](../design/research/agent-hooks.md) — hook event
   vocabulary, payload shapes, gotchas, sources.
 - [`csharp-orchestrator-prd.md`](csharp-orchestrator-prd.md) — broader
   orchestrator design this slots into.

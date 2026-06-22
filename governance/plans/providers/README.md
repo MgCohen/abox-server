@@ -2,7 +2,7 @@
 
 Individual, code-grounded plans for adding backends behind the [ADR 0004](../../decisions/0004-provider-seam.md)
 provider seam. Background and the value-vs-cost ranking live in
-[`research/agent-providers.md`](../../../research/agent-providers.md); this folder is the *how*.
+[`research/agent-providers.md`](../../design/research/agent-providers.md); this folder is the *how*.
 
 - [`kimi.md`](kimi.md) — cloud; **HTTP** (per-token) **or** native `kimi` CLI (flat sub)
 - [`gemini.md`](gemini.md) — cloud; native `gemini` CLI (free tier) **or** HTTP (per-token)

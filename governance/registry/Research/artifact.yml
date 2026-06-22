@@ -2,9 +2,9 @@
 # A Research report is a natural-language deliverable (no code second-representation), so it declares no
 # parity target and gates by advice, not block: it informs a decision or a later ADR/plan, never fails a
 # build. Read by the harness (ABox.Tests.Harness/Artifacts); the floor meta-guard checks this declares the
-# agent-first floor. home points at the existing reports; it moves with them under the relocation ADR.
+# agent-first floor. home is the consolidated research tree under governance/design/ (ADR 0014 Q3).
 
 purpose: ground a decision in multi-source, adversarially-verified evidence — a cited report that outlives the question
-home: research
+home: governance/design/research
 family: nl-first
 gate: advise

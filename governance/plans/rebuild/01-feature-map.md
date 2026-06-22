@@ -107,7 +107,7 @@ specify → plan → tasks) and AWS Kiro (requirements → design → tasks):
 
 | Our artifact | Industry role | Holds |
 |---|---|---|
-| [`design/behavioral-oracle.md`](../../../design/behavioral-oracle.md) | **Constitution** | Immutable invariants (Tier A) honored before any build; prototype notes (Tier B) do-not-follow. |
+| [`design/behavioral-oracle.md`](../../design/behavioral-oracle.md) | **Constitution** | Immutable invariants (Tier A) honored before any build; prototype notes (Tier B) do-not-follow. |
 | **This doc** (`01-feature-map.md`) | **Spec — capabilities** | WHAT/WHY, tech-agnostic, behavior LOCKED. |
 | [`02-prd.md`](02-prd.md) | **Spec — requirements** | EARS-style requirement contracts, NFRs, decisions, acceptance. |
 | [`03-implementation-plan.md`](03-implementation-plan.md) | **Design + Tasks** | The HOW: layer/domain architecture + the L1→L12 build sequence. |
