@@ -10,6 +10,15 @@ canonical docs rather than restating them.
 - Don't close turns with CI / policy-guard / `send_later` / PR-watching
   boilerplate. Raise those only when asked or when actively watching a PR.
 
+## Operating conventions
+
+How we operate travels with the portable engine under `governance/harness/`. These
+imports are auto-loaded; edit them there, not here:
+
+@governance/harness/conventions/code-standards.md
+@governance/harness/conventions/agent-guardrails.md
+@governance/harness/conventions/test-rulebook.md
+
 ## What we're doing
 
 Re-authoring the **spine** of a .NET 10 Unity-agent orchestrator (Host + Blazor
@@ -25,14 +34,14 @@ the difference in what the system *does*, the rebuild succeeded. We build in
 
 Source of truth, in order:
 
-- **Constitution (behavior):** [`design/behavioral-oracle.md`](governance/design/behavioral-oracle.md)
+- **Constitution (behavior):** [`behavioral-oracle.md`](governance/design/behavioral-oracle.md)
   — Tier A invariants you MUST honor; Tier B prototype notes you must NOT follow
   unless we make a fresh, explicit decision. Cite the Tier-A item when you rely on it.
-- **Specs + plan:** [`PLANS/rebuild/`](governance/plans/rebuild) — `01-feature-map.md`
+- **Specs + plan:** [`plans/rebuild/`](governance/plans/rebuild) — `01-feature-map.md`
   (capabilities, WHAT/WHY), `02-prd.md` (EARS requirements + R-SPINE/R-ARCH
   rules), `03-implementation-plan.md` (layer architecture + L1→L12 build order).
   The plan's "Current state" + done-when gates are authoritative for progress.
-- **Decisions (ADRs):** [`design/adr/`](governance/decisions) — focused records for choices
+- **Decisions (ADRs):** [`decisions/`](governance/decisions) — focused records for choices
   that outlive a single layer. `0001` fixes the flow catalog / config / context model.
 
 ## `prototype/` is a REFERENCE, not source of truth
@@ -54,7 +63,7 @@ One unified solution: `ABox.slnx`. Projects: `Core` (generic infra) ←
 `ABox` (the orchestrator — `Agents/`, `Steps/`, `Flows/` as folders, not
 separate assemblies); `Hosting` + `Host` compose; `Contracts` holds shared wire
 DTOs. An assembly boundary exists only where it earns enforcement or reuse — see
-`PLANS/rebuild/03-implementation-plan.md` § Assembly layout.
+`governance/plans/rebuild/03-implementation-plan.md` § Assembly layout.
 
 **Build & test:**
 ```
@@ -62,72 +71,4 @@ dotnet build ABox.slnx
 dotnet test  ABox.slnx
 ```
 
-**Tests are Rulebooks.** The test system has six types (Arch, Structure,
-Unit, E2E, Wire, Live), each a *Rulebook* whose definition (`template.md` + `rules.md`)
-lives in the artifact registry at `governance/registry/Test/<Type>/` and whose tests live
-in `tests/Tests/<Type>/Tests/`; its `### ` headers are guarantees
-enforced 1:1/1:N by `[Rule]` facts and a `ParityGuard` — a test never lands without
-the Rule it proves. Adding or moving a test? Use the **`test-rulebook`** skill; the
-front door is [`tests/README.md`](tests/README.md), the plan is
-[`PLANS/test-structure.md`](governance/plans/test-structure.md).
-
-## Repo controls (agent guardrails)
-
-This repo protects its **enforcement surface** — the test harness, ADRs, CI, and
-build config — from any agent. One policy ([`governance/protected-paths`](governance/protected-paths)),
-many enforcers (CI `policy-guard`, git hooks, a Claude `PreToolUse` deny). Editing a
-protected path is a deliberate, reviewed act: route it through a PR (don't disable
-the block; `ABOX_ALLOW_PROTECTED=1` is a logged local override, CI re-checks). Front
-door: [`governance/README.md`](governance/README.md); the why: [`ADR 0010`](governance/decisions/0010-agent-repo-controls.md).
-
-**You act as the bot `ABox-Agent` — never as the owner.** Use only the credentials this
-session was given. A permission wall — protected path, required review, blocked merge to
-`main` — is by design: stop and ask the owner to act, don't work around it.
-
-## Code standards
-
-Judgment-call rules we operate by. Mechanical style (formatting, naming) moves
-into `.editorconfig` later. Applied **going forward**; the codebase was swept to
-the no-comments rule at L3, so existing files already conform.
-
-**Architecture / spine**
-
-- **YAGNI / least mechanism.** Build for the requirement in front of you — no
-  speculative abstraction, config, or extensibility "for later." Add the
-  abstraction on the *second* real use, not the first. (The assembly-wall
-  collapse is the worked example.) **Exception: basic infrastructure that defines
-  the repo's architecture** — the structural guardrails that keep drift out (arch
-  rulebook, placement guards, the test taxonomy) earn their place on the *first*
-  use, because their whole job is to exist before the second use slips through.
-- **DI services over statics.** Construct collaborators from the container; no
-  hidden static singletons.
-- **Results own their display** via `ToString()` — no per-call `summarize` lambda.
-- **Test doubles live with the test that uses them.** Fakes and stubs stay local
-  to the consuming test; promote to a shared location only when genuinely reused
-  (a shared harness/fixture).
-- **Throw actionable errors; never swallow them silently.** Messages say what to
-  do; an intentional ignore gets a one-line *why*.
-- **Label provisional/scaffolding code as provisional** (e.g. `DelayStep` / the stub
-  flow) so it's never mistaken for settled design.
-- **Per layer:** warning-free build + green tests + behavior verified (run it,
-  not just compile) + one coherent commit. Nullable on, warnings-as-errors,
-  file-scoped namespaces, net10.0.
-- Honor the PRD's spine + architecture rules (R-SPINE-1/2, R-ARCH-1/2/3) and
-  non-goals — validators are Steps, no `new Agent()` in composition,
-  contracts/guards live with their layer.
-
-**Craft / quality**
-
-- **Prefer deleting to adding.** No dead or commented-out code — delete it; git
-  remembers.
-- **Clarity over cleverness.** Optimize for the next reader: obvious names,
-  straight-line logic.
-- **Make illegal states unrepresentable.** Lean on the type system — non-null,
-  records, enums, small value types — so bad states don't compile.
-- **Single type per file** — except nested types and a generic + its companion.
-- **No comments.** Code carries its meaning through names and structure — no
-  XML-doc summaries, no narration of what the code already says, no section
-  banners. Exactly two comments are allowed: (a) a one-line non-obvious *why* the
-  code genuinely cannot express, and (b) an oracle / Tier-A citation on a ported
-  tricky bit. Reaching for anything else means rename or restructure instead.
-- **Small, focused methods and classes.**
+The test system's front door is [`tests/README.md`](tests/README.md).
