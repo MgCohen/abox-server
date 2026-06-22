@@ -32,21 +32,21 @@ fixed and known.
 ## Current structure
 
 - `ABox.csproj` (the library) owns:
-  - [`AgentRunRequest.cs`](../../../remote-agents-dotnet/src/ABox/Core/Agents/AgentRunRequest.cs)
-  - [`AgentResult.cs`](../../../remote-agents-dotnet/src/ABox/Core/Agents/AgentResult.cs)
-  - [`AgentQuestion.cs`](../../../remote-agents-dotnet/src/ABox/Core/Agents/AgentQuestion.cs)
-  - [`AgentStatus.cs`](../../../remote-agents-dotnet/src/ABox/Core/Agents/AgentStatus.cs)
-  - [`InteractionMode.cs`](../../../remote-agents-dotnet/src/ABox/Core/Agents/InteractionMode.cs)
-  - [`AgentEvent.cs`](../../../remote-agents-dotnet/src/ABox/Core/Events/AgentEvent.cs)
+  - `AgentRunRequest.cs`
+  - `AgentResult.cs`
+  - `AgentQuestion.cs`
+  - `AgentStatus.cs`
+  - `InteractionMode.cs`
+  - `AgentEvent.cs`
 - `ABox.Host` owns:
-  - [`Dtos.cs`](../../../remote-agents-dotnet/ui/ABox.Host/Dtos.cs)
+  - `Dtos.cs`
     (`ProjectInfo`, `FlowInfo`, `StartRunRequest`, `RespondRequest`, `RunSummary`)
-  - [`Hubs/ChatEvent.cs`](../../../remote-agents-dotnet/ui/ABox.Host/Hubs/ChatEvent.cs)
-  - [`Runs/Run.cs`](../../../remote-agents-dotnet/ui/ABox.Host/Runs/Run.cs) — mixes runtime state and persistable state
-  - [`Runs/PersistedRun.cs`](../../../remote-agents-dotnet/ui/ABox.Host/Runs/PersistedRun.cs) — the persistable projection
+  - `Hubs/ChatEvent.cs`
+  - `Runs/Run.cs` — mixes runtime state and persistable state
+  - `Runs/PersistedRun.cs` — the persistable projection
 - `ABox.UI.Components` owns:
-  - [`Models/WireShapes.cs`](../../../remote-agents-dotnet/ui/ABox.UI.Components/Models/WireShapes.cs) — byte-identical mirror of `Dtos.cs`
-  - [`Models/ChatEvent.cs`](../../../remote-agents-dotnet/ui/ABox.UI.Components/Models/ChatEvent.cs) — byte-identical mirror of `Hubs/ChatEvent.cs`
+  - `Models/WireShapes.cs` — byte-identical mirror of `Dtos.cs`
+  - `Models/ChatEvent.cs` — byte-identical mirror of `Hubs/ChatEvent.cs`
 
 ## Gap
 
@@ -63,22 +63,22 @@ fixed and known.
    `Project`, `Flow`, `Prompt`, `Args` are durable. The result is
    *three projections of the same data* — `Run`, `PersistedRun`,
    `RunSummary` — converted by three sibling functions in
-   [`Program.cs:170-183`](../../../remote-agents-dotnet/ui/ABox.Host/Program.cs).
-4. **`Run.ClaudeSessionId`** ([`Run.cs:46`](../../../remote-agents-dotnet/ui/ABox.Host/Runs/Run.cs))
+   `Program.cs:170-183`.
+4. **`Run.ClaudeSessionId`** (`Run.cs:46`)
    is provider-specific on a provider-agnostic type. The moment Codex
    needs the same it grows `CodexSessionId`. Either an open
    `ProviderMetadata` dict or a typed `ProviderSessionRef` carries it.
 5. **`AgentEvent.Phase.Status` is a `string`** with constants on the
-   record ([`AgentEvent.cs:46-53`](../../../remote-agents-dotnet/src/ABox/Core/Events/AgentEvent.cs)).
+   record (`AgentEvent.cs:46-53`).
    The constants exist next to the field — the data shape is asking
    for an enum.
-6. **`Session.End(string result, ...)`** ([`Session.cs:71`](../../../remote-agents-dotnet/src/ABox/Core/Sessions/Session.cs))
+6. **`Session.End(string result, ...)`** (`Session.cs:71`)
    takes a free-form string. Values like `"shipped"`,
    `"validation-failed"`, `"verdict-unclear"`, `"revision-broke-validation"`,
    `"no-changes"`, `"aborted-dirty-tree"`, `"failed"` are scattered
    across flow files. No central enumeration. The Host doesn't read
    the value.
-7. **`Reviews.CodexVerdict.Verdict`** ([`Reviews.cs:16`](../../../remote-agents-dotnet/src/ABox/Flows/Reviews.cs))
+7. **`Reviews.CodexVerdict.Verdict`** (`Reviews.cs:16`)
    is a stringly-typed enum (`"approve"` / `"revise"` / `"unclear"`)
    with derived `IsApprove` / `IsRevise` / `IsUnclear` properties.
    Should be an enum.

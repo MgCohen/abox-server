@@ -31,7 +31,7 @@ on the owner's machine (in priority order):
    stream end-to-end. Costs subscription cycles, leaves a session dir.
 2. **MAUI Android target** — install JDK 17+ and Android SDK (Android
    Studio is the easiest path); see
-   [`../remote-agents-dotnet/ui/ABox.UI.Maui.README.md`](../../remote-agents-dotnet/ui/ABox.UI.Maui.README.md).
+   `../remote-agents-dotnet/ui/ABox.UI.Maui.README.md`.
 3. **Always-on service** — run `ui/scripts/configure-power.ps1` and
    `ui/scripts/install-host-service.ps1` from an Admin PowerShell.
 4. **Update tailnet ACL** — snippet in `ui/README.md`.
@@ -92,7 +92,7 @@ existing library / flow / agent / validator / CLI file was modified.
 
 Read in this order before doing anything: §2 (decisions), §3 (architecture
 in one diagram), §4 (the phases). The parent C# orchestrator architecture
-lives in [`../remote-agents-dotnet/docs/architecture.md`](../../remote-agents-dotnet/docs/architecture.md) — §10
+lives in `../remote-agents-dotnet/docs/architecture.md` — §10
 "UI seam (for later)" is the explicit attach point this plan operationalises.
 
 - **Gate at each phase boundary.** Tick the checkboxes in this file, commit,
@@ -438,7 +438,7 @@ Hetzner-VM time lands).
 
 ## 9. References
 
-- Parent architecture: [`../remote-agents-dotnet/docs/architecture.md`](../../remote-agents-dotnet/docs/architecture.md) §10 "UI seam (for later)".
+- Parent architecture: `../remote-agents-dotnet/docs/architecture.md` §10 "UI seam (for later)".
 - Parent PRD: [`csharp-orchestrator-prd.md`](csharp-orchestrator-prd.md) §3 "Secondary user (future): MAUI Blazor Hybrid".
 - Parent build plan: [`csharp-orchestrator-build.md`](csharp-orchestrator-build.md) Q2 "UI direction: defer / UI-agnostic".
 - Infra plan: [`unity-agent-infrastructure.md`](unity-agent-infrastructure.md) §A4.2 Tailscale ACL, A2 phone-on-tailnet validation.

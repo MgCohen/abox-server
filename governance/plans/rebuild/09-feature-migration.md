@@ -173,8 +173,8 @@ Flows positively (removed from both allow-lists).
 | csproj | holds | route |
 |---|---|---|
 | [`PrList`](../../../src/Features/Git/PrList/PrListEndpoint.cs) | `PrListEndpoint` | `GET /git/prs` (optional `?project=`) |
-| [`PrOps`](../../../src/Features/Git/PrOps/PrMergeEndpoint.cs) | `PrMergeEndpoint` | `POST /git/prs/{number:int}/merge` |
-| [`Module`](../../../src/Features/Git/Module/GitModule.cs) | `GitModule` (`AddGit`+`MapGit`) + [`StubPullRequests`](../../../src/Features/Git/Module/StubPullRequests.cs) | — |
+| `PrOps` | `PrMergeEndpoint` | `POST /git/prs/{number:int}/merge` |
+| [`Module`](../../../src/Features/Git/Module/GitModule.cs) | `GitModule` (`AddGit`+`MapGit`) + `StubPullRequests` | — |
 | [`Contracts`](../../../src/Features/Git/Contracts) | `IPullRequests`/`PullRequestDto`/`MergeResult` | — |
 
 `MapGit` uses `MapGroup("/git/prs")`.
@@ -197,7 +197,7 @@ deleted. Wire Composition/Program/slnx/allow-lists per the standard steps.
 - **`Domain/Git` is OUT OF SCOPE.** [`src/Domain/Git/ABox.Domain.Git.csproj`](../../../ABox.slnx)
   is a separate Domain actor (the real Git substrate), not part of this feature
   slice. Do not touch it. This migration is only the `Features/Git` HTTP slice, whose
-  PR data is still the provisional [`StubPullRequests`](../../../src/Features/Git/Module/StubPullRequests.cs).
+  PR data is still the provisional `StubPullRequests`.
 - `PrMergeEndpoint` returns 404 when the PR number is absent, 200 `MergeResult`
   otherwise — preserve both. `PrListEndpoint`'s `?project=` defaults to `"."`.
 

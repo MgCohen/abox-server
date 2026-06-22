@@ -70,25 +70,25 @@ stay; the file's location now matches its actual ownership.
 ## Current structure
 
 - **Three `ResolveOrchestratorRoot` routines:**
-  - [`cli/agents-dotnet.cs:19-28`](../../../remote-agents-dotnet/cli/agents-dotnet.cs)
-  - [`Host/Runs/FlowRunner.cs:275-289`](../../../remote-agents-dotnet/ui/ABox.Host/Runs/FlowRunner.cs)
-  - [`Sessions/Session.cs:98-107`](../../../remote-agents-dotnet/src/ABox/Core/Sessions/Session.cs)
+  - `cli/agents-dotnet.cs:19-28`
+  - `Host/Runs/FlowRunner.cs:275-289`
+  - `Sessions/Session.cs:98-107`
     (different signature, slightly different walk)
 - **File basenames hardcoded in many places:**
-  - `"claude-text.txt"` — written by [claude-only.cs:33](../../../remote-agents-dotnet/cli/flows/claude-only.cs),
-    [claude-validate.cs:65](../../../remote-agents-dotnet/cli/flows/claude-validate.cs);
-    read by [Program.cs:137](../../../remote-agents-dotnet/ui/ABox.Host/Program.cs).
+  - `"claude-text.txt"` — written by `claude-only.cs:33`,
+    `claude-validate.cs:65`;
+    read by `Program.cs:137`.
   - `"codex-review.txt"` — written by
-    [full-review.cs:116](../../../remote-agents-dotnet/cli/flows/full-review.cs),
-    [unity-review.cs:129](../../../remote-agents-dotnet/cli/flows/unity-review.cs);
-    read by [Program.cs:138](../../../remote-agents-dotnet/ui/ABox.Host/Program.cs).
+    `full-review.cs:116`,
+    `unity-review.cs:129`;
+    read by `Program.cs:138`.
   - `"claude-raw.txt"` — written by four flows; not read anywhere
     yet (forensic dump).
   - `"codex-review.jsonl"` — written by
-    [Reviews.cs:117](../../../remote-agents-dotnet/src/ABox/Flows/Reviews.cs).
+    `Reviews.cs:117`.
   - `"transcript.jsonl"`, `"prompt.txt"`, `"meta.json"` — owned by
     `Session`, but `transcript.jsonl` is also referenced by
-    [`Host/Runs/FlowRunner.cs:222`](../../../remote-agents-dotnet/ui/ABox.Host/Runs/FlowRunner.cs)
+    `Host/Runs/FlowRunner.cs:222`
     by string.
 - **`Session.DefaultSessionsRoot`** walks the FS at every
   `Session.Start` call.
@@ -106,7 +106,7 @@ stay; the file's location now matches its actual ownership.
    are written directly by flows. Inconsistent ownership: the type
    that should own session layout owns less than half of it.
 4. **The Host's `/runs/{id}/output` endpoint hardcodes the candidate
-   file list** ([`Program.cs:135-139`](../../../remote-agents-dotnet/ui/ABox.Host/Program.cs))
+   file list** (`Program.cs:135-139`)
    — flow-specific filenames baked into a transport endpoint, with
    `Path.Combine` reconstruction.
 5. **`PtySession` accumulates Claude-specific knobs** while named as

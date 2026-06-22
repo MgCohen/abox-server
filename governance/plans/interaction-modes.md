@@ -66,7 +66,7 @@
 
 The current orchestrator can't distinguish "agent finished its work" from
 "agent is waiting on the user." Today's loop in
-[`ClaudeAgent.ExecuteAsync`](../../remote-agents-dotnet/src/ABox/Providers/Claude/ClaudeAgent.cs)
+`ClaudeAgent.ExecuteAsync`
 is: type prompt → `WaitIdleAsync` → `/exit`. If the model pauses for tool
 approval or ends its turn with "What would you like me to do next?", the
 idle threshold fires, we send `/exit`, and the question text returns as

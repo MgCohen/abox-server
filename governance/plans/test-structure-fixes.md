@@ -23,7 +23,7 @@ fence-skip is deleted** (#3) and there is nothing in either file to ignore or ga
 
 ## 1. Harness README: `[Fact]` → `[ParityFact]` (build-breaking trap)
 
-- **What:** [`tests/Harness/README.md`](tests/Harness/README.md) teaches the parity fact as a plain `[Fact]` (§ "The two pieces", lines 27–33; § "Standing up a new type", step 3).
+- **What:** [`tests/Harness/README.md`](../../tests/Harness/README.md) teaches the parity fact as a plain `[Fact]` (§ "The two pieces", lines 27–33; § "Standing up a new type", step 3).
 - **Why:** Real code uses `[ParityFact]` — the one marker exempt from `requireAllCited`. Follow the doc literally on a `requireAllCited` type (the example even uses the Arch path) and the build goes red on "uncited". The canonical convention doc hands you a failing build.
 - **Change:** Both spots → `[ParityFact]`. Class name `Parity` → `ParityTests` to match reality.
 - **Expected:** Copying the README example yields a green build.
@@ -37,21 +37,21 @@ fence-skip is deleted** (#3) and there is nothing in either file to ignore or ga
 
 ## 3. Delete the fence-skip in `DeclaredRules` (moot under the two-file layout)
 
-- **What:** [`ParityGuard.DeclaredRules`](tests/Harness/ParityGuard.cs:78) toggles `inFence` to skip the in-file `Template:` example so its `### ` isn't counted as a rule. A negative "ignore-this" mechanism: an unbalanced/stray fence silently hides real rules (parity passes green with enforcement gone — the silent-green failure the README calls most dangerous) and is gameable.
+- **What:** [`ParityGuard.DeclaredRules`](../../tests/Harness/ParityGuard.cs) toggles `inFence` to skip the in-file `Template:` example so its `### ` isn't counted as a rule. A negative "ignore-this" mechanism: an unbalanced/stray fence silently hides real rules (parity passes green with enforcement gone — the silent-green failure the README calls most dangerous) and is gameable.
 - **Why:** Under the two-file layout the template lives in `template.md`, so `rules.md` has no `### ` example — nothing to skip. Remove the *reason* to skip rather than guarding the skip.
 - **Change:** Delete the `inFence` toggle + the fenced-skip branch; every `### ` in `rules.md` counts unconditionally. No "fail loud on unbalanced fence" guard is needed — there are no fences to balance.
 - **Expected:** `rules.md` has no ignore mechanism; a stray fence cannot hide a rule because nothing is skipped.
 
 ## 4. Trim comment essays to the repo's one-line-why standard
 
-- **What:** Multi-paragraph comments past CLAUDE.md's "one-line why" rule: [`TestMarkers.cs`](tests/Harness/TestMarkers.cs:5) (11 lines), [`ArchitectureModel.cs`](tests/Tests/Arch/Support/ArchitectureModel.cs) (several blocks), [`ParityGuard.cs`](tests/Harness/ParityGuard.cs:5) (6 lines).
+- **What:** Multi-paragraph comments past CLAUDE.md's "one-line why" rule: [`TestMarkers.cs`](../../tests/Harness/TestMarkers.cs) (11 lines), [`ArchitectureModel.cs`](../../tests/Tests/Arch/Support/ArchitectureModel.cs) (several blocks), [`ParityGuard.cs`](../../tests/Harness/ParityGuard.cs) (6 lines).
 - **Why:** `src/` was swept to no-comments; the test tree holds itself to a looser bar. Rejected-alternative rationale (name-list vs subtype-audit) is design-journal material — it already lives in commit `8637024`.
 - **Change:** Trim to a one-line *why* + pointer (commit/ADR). Drop the rejected-alternative narration.
 - **Expected:** Test tree matches the `src/` comment standard; no standing essays.
 
 ## 5. New-type docs omit the mandatory `TestTypes.Registered` step
 
-- **What:** [`tests/Harness/README.md`](tests/Harness/README.md) § "Standing up a new test type" and [`tests/Tests/README.md`](tests/Tests/README.md) § "How to extend" list the new-type steps; neither says to add the type to `TestTypes.Registered`.
+- **What:** [`tests/Harness/README.md`](../../tests/Harness/README.md) § "Standing up a new test type" and [`tests/Tests/README.md`](../../tests/Tests/README.md) § "How to extend" list the new-type steps; neither says to add the type to `TestTypes.Registered`.
 - **Why:** `StructureTests.EveryTestFolderIsARegisteredType` fails the instant the new folder lands if it's unregistered. Following the docs literally → red build. The gate is deliberate; the instructions to pass it are missing.
 - **Change:** Add the `TestTypes.Registered` edit as an explicit step in both docs (alongside "no csproj edit needed").
 - **Expected:** The documented flow produces a green build end to end.
@@ -76,7 +76,7 @@ fence-skip is deleted** (#3) and there is nothing in either file to ignore or ga
 
 ## 8. Canonical Rulebook skeleton; new-type step "fills" it, not "copies a sibling"
 
-- **What:** No template exists for the *Rulebook files themselves*. Both new-type docs say to *copy the preamble + template from a sibling* ([`tests/Harness/README.md`](tests/Harness/README.md) step 2; [`tests/Tests/README.md`](tests/Tests/README.md) "How to extend").
+- **What:** No template exists for the *Rulebook files themselves*. Both new-type docs say to *copy the preamble + template from a sibling* ([`tests/Harness/README.md`](../../tests/Harness/README.md) step 2; [`tests/Tests/README.md`](../../tests/Tests/README.md) "How to extend").
 - **Why:** Copy-from-sibling is the drift source behind #6 (two `Why:` stylings) and #7 (6× preamble). File structure is defined by whichever sibling you happen to copy — no single source.
 - **Change:** Put the canonical skeleton for **both files** — the `template.md` schema shape and the `rules.md` preamble stub — once in `Harness/README.md`. Change the new-type step from "copy a sibling" → "create `template.md` + `rules.md` from this skeleton." Closes the loop with #5/#6/#7.
 - **Expected:** Both Rulebook files are fill-in-the-blanks against one owner, not archaeology across siblings.

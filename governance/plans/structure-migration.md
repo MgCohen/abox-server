@@ -216,7 +216,7 @@ Output: a one-page findings note + the agreed extractions — evidence, not assu
 
 The **only** phase that touches visual Blazor components. With the backend
 reorganized, transport on SignalR, and V2 green, build the fake UI screens as
-needed and validate them with [`tools/frontend-verify/`](../../tools/frontend-verify/README.md)
+needed and validate them with `tools/frontend-verify/`
 (real-browser render + console/network errors + animation). Nothing before this
 phase renders or depends on a screen.
 
