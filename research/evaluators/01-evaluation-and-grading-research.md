@@ -8,8 +8,8 @@
 >
 > **Audience**: anyone designing the ABox eval/guardrail layer (the
 > natural layer after the flow lands). Pairs with the worked snippets under
-> [`examples/`](examples/) and the actor/operation model in
-> [`design/adr/0003-actors-operations-run-contract.md`](../../design/adr/0003-actors-operations-run-contract.md).
+> [`examples/`](examples) and the actor/operation model in
+> [`design/adr/0003-actors-operations-run-contract.md`](../../governance/decisions/0003-actors-operations-run-contract.md).
 >
 > **Status**: research complete 2026-06-03. Conceptual only — **no implementation
 > decided**. This document captures findings; it is not a plan.
@@ -449,7 +449,7 @@ pass" on the reviewing side. Source:
 
 ## 8. The anchoring spectrum (the unifying idea)
 
-Across the three worked examples in [`examples/`](examples/), the grader atom
+Across the three worked examples in [`examples/`](examples), the grader atom
 never changes (`judge → verdict`). What changes is **what anchors the judgment**:
 
 | Use case | Anchor | Activity | Reaction |

@@ -1,4 +1,4 @@
-Template: [template.md](./template.md)
+Template: [template.md](template.md)
 Harness: [Rulebook convention](../../../../tests/Harness/README.md)
 
 ### Parity holds for every registered type

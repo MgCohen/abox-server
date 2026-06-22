@@ -8,8 +8,8 @@ Members today:
 
 | Artifact | Family | Gate | What it is |
 |---|---|---|---|
-| [`Test`](Test/) | code-first | block | A behavior or invariant locked by an executable check (sub-typed: Arch, Unit, …). |
-| [`Research`](Research/) | nl-first | advise | A multi-source, adversarially-verified cited report that grounds a decision. |
+| [`Test`](Test) | code-first | block | A behavior or invariant locked by an executable check (sub-typed: Arch, Unit, …). |
+| [`Research`](Research) | nl-first | advise | A multi-source, adversarially-verified cited report that grounds a decision. |
 
 ## The floor every artifact declares
 

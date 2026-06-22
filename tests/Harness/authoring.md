@@ -78,7 +78,7 @@ express AAA **structurally** — three blank-line-separated blocks, one Act line
   *arranged*, found by its known id.
 - Ties to AAA: **Arrange establishes the oracle; Assert derives from Arrange.**
 
-Full decision record + sources: [`PLANS/test-authoring.md`](../../PLANS/test-authoring.md) (the plan this
+Full decision record + sources: [`PLANS/test-authoring.md`](../../governance/plans/test-authoring.md) (the plan this
 doc supersedes as the controller).
 
 ## Criteria

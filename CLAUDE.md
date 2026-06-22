@@ -28,11 +28,11 @@ Source of truth, in order:
 - **Constitution (behavior):** [`design/behavioral-oracle.md`](design/behavioral-oracle.md)
   — Tier A invariants you MUST honor; Tier B prototype notes you must NOT follow
   unless we make a fresh, explicit decision. Cite the Tier-A item when you rely on it.
-- **Specs + plan:** [`PLANS/rebuild/`](PLANS/rebuild) — `01-feature-map.md`
+- **Specs + plan:** [`PLANS/rebuild/`](governance/plans/rebuild) — `01-feature-map.md`
   (capabilities, WHAT/WHY), `02-prd.md` (EARS requirements + R-SPINE/R-ARCH
   rules), `03-implementation-plan.md` (layer architecture + L1→L12 build order).
   The plan's "Current state" + done-when gates are authoritative for progress.
-- **Decisions (ADRs):** [`design/adr/`](design/adr) — focused records for choices
+- **Decisions (ADRs):** [`design/adr/`](governance/decisions/) — focused records for choices
   that outlive a single layer. `0001` fixes the flow catalog / config / context model.
 
 ## `prototype/` is a REFERENCE, not source of truth
@@ -69,7 +69,7 @@ in `tests/Tests/<Type>/Tests/`; its `### ` headers are guarantees
 enforced 1:1/1:N by `[Rule]` facts and a `ParityGuard` — a test never lands without
 the Rule it proves. Adding or moving a test? Use the **`test-rulebook`** skill; the
 front door is [`tests/README.md`](tests/README.md), the plan is
-[`PLANS/test-structure.md`](PLANS/test-structure.md).
+[`PLANS/test-structure.md`](governance/plans/test-structure.md).
 
 ## Repo controls (agent guardrails)
 
@@ -78,7 +78,7 @@ build config — from any agent. One policy ([`governance/protected-paths`](gove
 many enforcers (CI `policy-guard`, git hooks, a Claude `PreToolUse` deny). Editing a
 protected path is a deliberate, reviewed act: route it through a PR (don't disable
 the block; `ABOX_ALLOW_PROTECTED=1` is a logged local override, CI re-checks). Front
-door: [`governance/README.md`](governance/README.md); the why: [`ADR 0010`](design/adr/0010-agent-repo-controls.md).
+door: [`governance/README.md`](governance/README.md); the why: [`ADR 0010`](governance/decisions/0010-agent-repo-controls.md).
 
 **You act as the bot `ABox-Agent` — never as the owner.** Use only the credentials this
 session was given. A permission wall — protected path, required review, blocked merge to

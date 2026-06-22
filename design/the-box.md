@@ -190,7 +190,7 @@ stream, all Boxes, both item types interleaved.
 - **Identity (load-bearing):** the **read feed** (cards, diffs, CI status) is served
   **as the bot** (`ABox-Agent`); the **approve/merge action authenticates as you, the
   owner, from the phone** — never the bot. This is required by the agent/owner split
-  (the bot cannot self-approve; see [`PLANS/agent-controls/`](../PLANS/agent-controls/README.md)).
+  (the bot cannot self-approve; see [`PLANS/agent-controls/`](../governance/plans/agent-controls/README.md)).
   Keeping approval authority on the phone is *stronger* than approving on the build
   machine — the box where the agent runs never holds the power to land code.
 
@@ -300,7 +300,7 @@ unchosen branch is **pruned**. The policy is tunable; the default leans conserva
 
 Different project types need different **workspace strategies**, and **the workspace
 strategy and the security isolation tier are the same axis** — choosing one chooses
-the trust boundary (see [`control-plane.research.md`](../PLANS/agent-controls/control-plane.research.md)
+the trust boundary (see [`control-plane.research.md`](../governance/plans/agent-controls/control-plane.research.md)
 §3.3, §8).
 
 | Project type | Workspace strategy | Why | Isolation tier |
@@ -374,7 +374,7 @@ The spine never sees a prompt, a model, a diff algorithm, or a GitHub API shape.
 ## 15. Build order & sequencing
 
 Build order, workstream decomposition, and the done-when bar live in the **single
-authoritative plan**, [`PLANS/the-box-implementation.md`](../PLANS/the-box-implementation.md)
+authoritative plan**, [`PLANS/the-box-implementation.md`](../governance/plans/the-box-implementation.md)
 — kept in one place so there is one sequencing story, not two. This doc stays *what/why*;
 that doc owns *how/order*.
 

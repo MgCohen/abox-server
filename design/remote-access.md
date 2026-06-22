@@ -3,7 +3,7 @@
 - **Status:** Living design doc (2026-06-09). Records the *how / what / cost* of
   reaching the Host from remote devices. The *why* (the decision to make transport
   a swappable concern) is ADR-shaped and noted in [Open decisions](#open-decisions);
-  feature-map [`A8`](../PLANS/rebuild/01-feature-map.md) is the spec touch-point.
+  feature-map [`A8`](../governance/plans/rebuild/01-feature-map.md) is the spec touch-point.
 - **Audience:** anyone wiring up how a phone / laptop / browser talks to the Host
   running on the always-on PC.
 

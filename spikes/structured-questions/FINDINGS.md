@@ -1,6 +1,6 @@
 # Structured Questions Spike — Findings
 
-> Companion to [`PLANS/structured-questions-spike.md`](../../PLANS/structured-questions-spike.md).
+> Companion to [`PLANS/structured-questions-spike.md`](../../governance/plans/structured-questions-spike.md).
 > The auto-generated, per-run numbers live in `out/<tag>/summary.md` (git-ignored);
 > this file is the durable distillation for the architecture-hardening pass.
 >

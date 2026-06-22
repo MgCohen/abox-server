@@ -11,8 +11,8 @@ tests/Tests/Structure/** @MgCohen
 .github/** @MgCohen
 governance/harness/** @MgCohen
 governance/policy/** @MgCohen
-governance/** @MgCohen
-design/adr/** @MgCohen
+governance/decisions/** @MgCohen
+governance/plans/rebuild/02-prd.md @MgCohen
 CLAUDE.md @MgCohen
 Directory.Build.props @MgCohen
 .editorconfig @MgCohen

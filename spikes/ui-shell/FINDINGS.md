@@ -7,7 +7,7 @@ tags: [#ui, #blazor, #wasm, #neumorphism, #transitions]
 # UI Shell Spike — Findings
 
 Throwaway spike to validate front-end tech for the eventual product UI
-([`PLANS/product-ui-spec.md`](../../PLANS/product-ui-spec.md)) **before** building
+([`PLANS/product-ui-spec.md`](../../governance/plans/product-ui-spec.md)) **before** building
 the real `RemoteAgents.Web`. Not wired into `RemoteAgents.slnx`. Goal: prove the
 shell setup, the neumorphic style, and a unified screen-to-screen transition —
 all on static stubs, no domain.

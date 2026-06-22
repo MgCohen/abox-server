@@ -7,8 +7,8 @@ shape** drifts. Read this before you touch `src/Features`.
 
 It is the *what* and the *how*. The *why* lives in the ADRs — this cites them, it
 does not re-argue them. Canonical worked example: [`src/Features/Projects`](../src/Features/Projects).
-Placement rules in full: [`PLANS/structure.md`](../PLANS/structure.md). Shape decision:
-[ADR 0011](../design/adr/0011-canonical-feature-slice-shape.md).
+Placement rules in full: [`PLANS/structure.md`](../governance/plans/structure.md). Shape decision:
+[ADR 0011](../governance/decisions/0011-canonical-feature-slice-shape.md).
 
 ---
 

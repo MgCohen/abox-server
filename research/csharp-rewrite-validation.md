@@ -3,7 +3,7 @@
 Date: 2026-05-28
 Status: validation complete — green light on technical risk; awaiting user decision on rewrite
 
-Pairs with [`pty-smoke-result.md`](./pty-smoke-result.md) (the original Node/JS PTY validation).
+Pairs with [`pty-smoke-result.md`](pty-smoke-result.md) (the original Node/JS PTY validation).
 
 ---
 

@@ -57,4 +57,4 @@ dotnet build ABox.slnx
 dotnet test  ABox.slnx
 ```
 
-Plan of record: [`PLANS/test-structure.md`](../PLANS/test-structure.md).
+Plan of record: [`PLANS/test-structure.md`](../governance/plans/test-structure.md).

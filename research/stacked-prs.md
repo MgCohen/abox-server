@@ -1,7 +1,7 @@
 # Stacked PRs — prior art & mechanics (research)
 
 > **Status:** Research / prior-art for the **S2 (PR / Git stack)** track of
-> [`PLANS/the-box-implementation.md`](../PLANS/the-box-implementation.md). Feeds the
+> [`PLANS/the-box-implementation.md`](../governance/plans/the-box-implementation.md). Feeds the
 > technical spike that retires the rebase-merge / retarget unknown
 > ([`design/the-box.md`](../design/the-box.md) §16). Not a decision record — when a
 > finding becomes a locked choice it graduates to an ADR. Every claim carries a source;

@@ -180,7 +180,7 @@ in). The skeleton is the one owner of the shape:
 
 ```markdown
 <!-- governance/registry/Test/<Type>/rules.md -->
-Template: [template.md](./template.md)
+Template: [template.md](template.md)
 Harness: [Rulebook convention](../../../../tests/Harness/README.md)
 
 ### <first Rule, in the template's header shape>

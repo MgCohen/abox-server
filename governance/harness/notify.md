@@ -1,8 +1,8 @@
 # Critical-path alerts
 
 Every protected-path change is labelled by tier (`review` / `attention` /
-`critical-path` — see [`README`](README.md)). On top of that label, a file marked
-**`critical`** in [`protected-paths`](protected-paths) raises one extra, exclusive
+`critical-path` — see [`README`](../README.md)). On top of that label, a file marked
+**`critical`** in [`protected-paths`](../policy/protected-paths) raises one extra, exclusive
 signal:
 
 - a **push notification** (via Apprise → your channels, e.g. ntfy), parallel to and
@@ -14,7 +14,7 @@ CODEOWNERS review, which is independent of any of this.
 
 ## How it works
 
-Runs in the **`policy-guard` job** of [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml),
+Runs in the **`policy-guard` job** of [`../.github/workflows/ci.yml`](../../.github/workflows/ci.yml),
 on `pull_request`:
 
 ```
@@ -27,7 +27,7 @@ determine changed files
 - **Detection:** `protected-paths-check.sh --tier critical` intersects the PR diff
   with policy rows tiered `critical`. Each policy row is `glob | owner | tier |
   reason`; that format and the glob semantics (`**` spans directories, `*` stays
-  within a segment) are documented in the [`protected-paths`](protected-paths) header.
+  within a segment) are documented in the [`protected-paths`](../policy/protected-paths) header.
 - **Two sinks, independent:** the label and the notification are separate steps —
   one failing never affects the other.
 - **The label is a *projection*, not the authority.** The source of truth is
@@ -39,11 +39,11 @@ determine changed files
 
 | To change… | Edit | How |
 |---|---|---|
-| Which files are critical | [`protected-paths`](protected-paths) | set an existing row's `tier` to `critical`, **or** add a new `glob \| owner \| tier \| reason` row, then run `./governance/generate-codeowners.sh` (see *Make a new path critical*) |
+| Which files are critical | [`protected-paths`](../policy/protected-paths) | set an existing row's `tier` to `critical`, **or** add a new `glob \| owner \| tier \| reason` row, then run `./governance/generate-codeowners.sh` (see *Make a new path critical*) |
 | The message (title / body) | [`notify-critical.sh`](notify-critical.sh) | the `title=` / `body=` lines |
 | Channels + presentation | [`notify.yml`](notify.yml) | add/edit Apprise URLs |
 | Channel secrets | repo Actions secrets | e.g. `NTFY_TOPIC` — low-value only in PR CI; see the secrets caveat under *Add a channel* |
-| Which secrets reach the runtime | [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml) | the `Alert on critical-path changes` step's `env:` block |
+| Which secrets reach the runtime | [`../.github/workflows/ci.yml`](../../.github/workflows/ci.yml) | the `Alert on critical-path changes` step's `env:` block |
 
 ## Operations
 
@@ -62,7 +62,7 @@ own URL syntax; **read its page in the Apprise wiki:**
 2. Add the matching secret(s) under repo **Settings → Secrets and variables →
    Actions**.
 3. Wire those secrets into the **`Alert on critical-path changes`** step's `env:`
-   block in [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml) — the step
+   block in [`../.github/workflows/ci.yml`](../../.github/workflows/ci.yml) — the step
    that already has `NTFY_TOPIC`, *not* the label step — so the `${VAR}` placeholders
    expand at runtime:
    ```yaml
@@ -74,7 +74,7 @@ own URL syntax; **read its page in the Apprise wiki:**
 That is the whole operation — no per-channel code, because Apprise owns the
 integrations.
 
-> **⚠️ Secrets in PR-triggered CI (C2 / [ADR 0012](../design/adr/0012-dependency-budget-by-failure-mode.md)).**
+> **⚠️ Secrets in PR-triggered CI (C2 / [ADR 0012](../decisions/0012-dependency-budget-by-failure-mode.md)).**
 > This step runs on `pull_request`, including PRs authored by the agent. A secret
 > wired here is readable by that PR's workflow *before* an owner approves it. Only a
 > **low-value** secret belongs here — `NTFY_TOPIC` is an unguessable string, not a
@@ -93,7 +93,7 @@ To add a **new** field, wire it in **two places** — the env-var name in `ci.ym
 the `$VAR` in the script must match exactly; that pairing is what makes the field
 appear at runtime:
 
-1. In [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml), add it to the
+1. In [`../.github/workflows/ci.yml`](../../.github/workflows/ci.yml), add it to the
    `Alert on critical-path changes` step's `env:`, mapping a GitHub event field to an
    env var. Common fields:
    - PR number → `PR_NUMBER: ${{ github.event.pull_request.number }}`
@@ -109,7 +109,7 @@ appear at runtime:
 
 ### Make a new path critical (alert + label)
 
-1. Add a row to [`protected-paths`](protected-paths) in the format
+1. Add a row to [`protected-paths`](../policy/protected-paths) in the format
    `glob | owner | tier | reason`, with `tier = critical`. (`**` spans directories,
    `*` stays within a segment. To make an *existing* path critical, just change its
    `tier` to `critical` — no new row.)
@@ -155,13 +155,13 @@ relying on CI, run it locally with real values, e.g.
 
 ## Files
 
-- [`protected-paths`](protected-paths) — which paths, which tier (`glob | owner | tier | reason`).
+- [`protected-paths`](../policy/protected-paths) — which paths, which tier (`glob | owner | tier | reason`).
 - [`protected-paths-check.sh`](protected-paths-check.sh) — the shared checker; `--tier <name>` lists matches of a tier.
 - [`generate-codeowners.sh`](generate-codeowners.sh) — regenerate `.github/CODEOWNERS` after editing the policy.
-- [`../.github/CODEOWNERS`](../.github/CODEOWNERS) — generated owner map (do not hand-edit).
+- [`../.github/CODEOWNERS`](../../.github/CODEOWNERS) — generated owner map (do not hand-edit).
 - [`notify.yml`](notify.yml) — channels (Apprise URLs).
 - [`notify-critical.sh`](notify-critical.sh) — detection + message + delivery.
-- [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml) — the `policy-guard` job that runs it.
+- [`../.github/workflows/ci.yml`](../../.github/workflows/ci.yml) — the `policy-guard` job that runs it.
 
-See [ADR 0012](../design/adr/0012-dependency-budget-by-failure-mode.md) for why the
+See [ADR 0012](../decisions/0012-dependency-budget-by-failure-mode.md) for why the
 alert may use a dependency while the guards may not.

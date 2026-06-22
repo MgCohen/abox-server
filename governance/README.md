@@ -3,9 +3,9 @@
 Guardrails that protect this repo's enforcement surface — the test harness, the
 ADRs, CI, the build config, and these controls themselves — from any agent
 (Claude, Codex, Cursor, aider, Windsurf), not just one. The *why* and the choices
-are in [ADR 0010](../design/adr/0010-agent-repo-controls.md); the full phased plan
+are in [ADR 0010](decisions/0010-agent-repo-controls.md); the full phased plan
 and probe evidence are in
-[`PLANS/agent-controls/RETURN-PLAN.md`](../PLANS/agent-controls/RETURN-PLAN.md).
+[`PLANS/agent-controls/RETURN-PLAN.md`](plans/agent-controls/RETURN-PLAN.md).
 
 ## The one idea
 
@@ -31,7 +31,7 @@ projects a PR label naming its tier — **`review`**, **`attention`**, or
 **`critical-path`** — for routing / visibility. All three gate identically (code-owner
 review); the tier escalates on top: **`attention`** marks an elevated change, and
 **`critical`** additionally raises a push notification when it changes. See
-[`notify.md`](notify.md).
+[`notify.md`](harness/notify.md).
 
 ## Working with it
 
@@ -43,7 +43,7 @@ review); the tier escalates on top: **`attention`** marks an elevated change, an
   so this never changes what can merge.
 - **Enable the git hooks** in a clone: `git config core.hooksPath governance/harness/hooks`.
 - **Changing what's protected:** edit [`policy/protected-paths`](policy/protected-paths) (the
-  `tier` column controls whether a path also alerts — see [`notify.md`](notify.md)),
+  `tier` column controls whether a path also alerts — see [`notify.md`](harness/notify.md)),
   then regenerate CODEOWNERS — never hand-edit it:
 
   ```sh

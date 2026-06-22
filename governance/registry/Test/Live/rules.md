@@ -1,4 +1,4 @@
-Template: [template.md](./template.md)
+Template: [template.md](template.md)
 Harness: [Rulebook convention](../../../../tests/Harness/README.md)
 
 ### a ping flow with a trivial prompt → the agent replies and the run completes

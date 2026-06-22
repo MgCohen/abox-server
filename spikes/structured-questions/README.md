@@ -1,6 +1,6 @@
 # Structured Agent Questions — Spike
 
-Throwaway probe for [`PLANS/structured-questions-spike.md`](../../PLANS/structured-questions-spike.md).
+Throwaway probe for [`PLANS/structured-questions-spike.md`](../../governance/plans/structured-questions-spike.md).
 Validates that `claude` and `codex` can be steered to emit a structured
 `<<NEEDS_INPUT>>` + JSON envelope when blocked, that we can parse it into a typed
 `AgentQuestion`, and that resuming the session keeps context — all at the output

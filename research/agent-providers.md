@@ -2,7 +2,7 @@
 
 Researched June 2026. Companion to [`alternatives-considered.md`](alternatives-considered.md)
 (which rules out the *framework* landscape on the API-path objection). This doc asks a
-narrower question: **which additional vendor CLIs can we drive behind the [ADR 0004](../design/adr/0004-provider-seam.md)
+narrower question: **which additional vendor CLIs can we drive behind the [ADR 0004](../governance/decisions/0004-provider-seam.md)
 provider seam** (args + drive substrate + parse → `DriveResult`), and how do they bill?
 
 The seam already proves the shape twice: `ClaudeProvider` (ConPTY `PtySession` + JSONL parse,
