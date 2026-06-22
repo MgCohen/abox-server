@@ -1,13 +1,13 @@
 #!/bin/sh
 # Critical-path notifier (ADR 0012: fail-safe convenience — may use a dependency,
 # never gates). Reads changed files, asks the canonical checker which are tier
-# `critical`, and if any, fires every channel in governance/notify.yml via Apprise.
+# `critical`, and if any, fires every channel in governance/harness/notify.yml via Apprise.
 # Always exits 0: a missed alert must never fail CI or block a merge.
 set -eu
 
 root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
-checker="$root/governance/protected-paths-check.sh"
-cfg="$root/governance/notify.yml"
+checker="$root/governance/harness/protected-paths-check.sh"
+cfg="$root/governance/harness/notify.yml"
 
 if [ -n "${1:-}" ]; then changed=$(printf '%s\n' "$@"); else changed=$(cat); fi
 [ -n "$changed" ] || exit 0

@@ -32,9 +32,9 @@ jobs:
           fetch-depth: 0
       - name: Verify CODEOWNERS matches generator
         run: |
-          governance/generate-codeowners.sh >/dev/null
+          governance/harness/generate-codeowners.sh >/dev/null
           if ! git diff --quiet -- .github/CODEOWNERS; then
-            echo "::error::CODEOWNERS is out of sync with governance/protected-paths. Run ./governance/generate-codeowners.sh and commit."
+            echo "::error::CODEOWNERS is out of sync with governance/policy/protected-paths. Run ./governance/harness/generate-codeowners.sh and commit."
             git --no-pager diff -- .github/CODEOWNERS
             exit 1
           fi
@@ -52,7 +52,7 @@ jobs:
           if [ ! -s changed.txt ]; then
             echo "No files changed."; exit 0
           fi
-          if out=$(governance/protected-paths-check.sh < changed.txt 2>&1); then
+          if out=$(governance/harness/protected-paths-check.sh < changed.txt 2>&1); then
             echo "No protected paths changed."; exit 0
           fi
           echo "$out"
@@ -76,7 +76,7 @@ jobs:
             case "$tier" in critical) label="critical-path" ;; *) label="$tier" ;; esac
             hits=
             if [ -s changed.txt ]; then
-              hits=$(governance/protected-paths-check.sh --tier "$tier" < changed.txt || true)
+              hits=$(governance/harness/protected-paths-check.sh --tier "$tier" < changed.txt || true)
             fi
             if [ -n "$hits" ]; then
               echo "Tier '$tier' changed — labelling PR #$PR '$label'."
@@ -97,13 +97,13 @@ jobs:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
         run: |
           [ -s changed.txt ] || { echo "No files changed."; exit 0; }
-          hits=$(governance/protected-paths-check.sh --tier critical < changed.txt || true)
+          hits=$(governance/harness/protected-paths-check.sh --tier critical < changed.txt || true)
           if [ -z "$hits" ]; then echo "No critical-path changes."; exit 0; fi
           echo "Critical-path changes detected:"; printf '%s\n' "$hits" | sed 's/^/  - /'
           if [ -z "${NTFY_TOPIC:-}" ]; then
-            echo "::warning::Critical path changed but no alert channel configured (set the NTFY_TOPIC secret; see governance/notify.yml)."
+            echo "::warning::Critical path changed but no alert channel configured (set the NTFY_TOPIC secret; see governance/harness/notify.yml)."
             exit 0
           fi
           pipx install apprise >/dev/null 2>&1 || python3 -m pip install --quiet apprise || { echo "apprise unavailable (non-blocking)"; exit 0; }
-          governance/notify-critical.sh < changed.txt || echo "notify step failed (non-blocking)"
+          governance/harness/notify-critical.sh < changed.txt || echo "notify step failed (non-blocking)"
           exit 0

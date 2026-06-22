@@ -13,7 +13,7 @@
 set -eu
 
 root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
-policy="$root/governance/protected-paths"
+policy="$root/governance/policy/protected-paths"
 
 if [ ! -f "$policy" ]; then
   echo "protected-paths-check: policy file not found at $policy" >&2

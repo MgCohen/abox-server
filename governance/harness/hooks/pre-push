@@ -1,7 +1,7 @@
 #!/bin/sh
 # Secondary local catch: block pushes whose range touches protected paths. The
 # merge gate of record is CODEOWNERS required review; CI policy-guard is advisory.
-# Enable: git config core.hooksPath .githooks
+# Enable: git config core.hooksPath governance/harness/hooks
 set -eu
 
 root=$(git rev-parse --show-toplevel)
@@ -15,5 +15,5 @@ while read -r _local_ref local_sha _remote_ref remote_sha; do
     base=$remote_sha
   fi
   git diff --name-only "$base" "$local_sha" -z \
-    | xargs -0 -r "$root/governance/protected-paths-check.sh" || exit 1
+    | xargs -0 -r "$root/governance/harness/protected-paths-check.sh" || exit 1
 done

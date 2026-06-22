@@ -1,8 +1,9 @@
 # Protected paths — single source of truth for the repo's agent guardrails.
 #
-# Consumed by: the git hooks (.githooks/), the CI `policy-guard` job, the
-# CODEOWNERS generator, and the critical-path notifier. Editing any path matched
-# here is a deliberate, reviewed act — not routine work.
+# Consumed by: the git hooks (governance/harness/hooks/), the CI `policy-guard`
+# job, the CODEOWNERS generator, and the critical-path notifier — all under the
+# portable engine governance/harness/. Editing any path matched here is a
+# deliberate, reviewed act — not routine work.
 #
 # Format, one rule per line:   <glob>  |  <owner>  |  <tier>  |  <reason>
 #   - glob: gitignore-style; `**` spans directories, `*` stays within a segment.
@@ -25,8 +26,9 @@ governance/registry/**    | @MgCohen | critical | Artifact registry: agent-first
 tests/Tests/Arch/**       | @MgCohen | critical | Architecture rules: the asserting test code, not just its rulebook.
 tests/Tests/Structure/**  | @MgCohen | critical | Structure/placement rules: the asserting test code, not just its rulebook.
 .github/**                | @MgCohen | critical | CI, CODEOWNERS, and repo workflow config — the server-side backstop.
-.githooks/**              | @MgCohen | critical | Local git-hook enforcers.
-governance/**             | @MgCohen | critical | The policy itself and its enforcers — cannot be quietly weakened.
+governance/harness/**     | @MgCohen | critical | Portable enforcement engine — checker, generator, hooks, notifier (a copied engine can't be quietly weakened).
+governance/policy/**      | @MgCohen | critical | The policy itself — the single source of truth the engine reads.
+governance/**             | @MgCohen | critical | Anything else under governance — load-bearing until explicitly tiered.
 design/adr/**             | @MgCohen | review   | Architecture Decision Records — frozen history, not living docs.
 CLAUDE.md                 | @MgCohen | review   | Agent operating instructions for this repo.
 Directory.Build.props     | @MgCohen | review   | Solution-wide build config (nullable, warnings-as-errors, net10).

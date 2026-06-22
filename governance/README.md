@@ -10,14 +10,15 @@ and probe evidence are in
 ## The one idea
 
 One declarative policy, many enforcers. The single source of truth is
-[`protected-paths`](protected-paths) — a flat `glob | owner | tier | reason` list.
-Every enforcer reads that one file:
+[`policy/protected-paths`](policy/protected-paths) — a flat `glob | owner | tier | reason`
+list. The enforcers that read it live in the portable engine
+[`harness/`](harness). Every enforcer reads that one file:
 
 | Enforcer | Where | Role | Bypassable? |
 |---|---|---|---|
 | GitHub ruleset + `CODEOWNERS` review | repo settings + `.github/CODEOWNERS` | **Merge gate of record** — required PR review by code owners | Only by admin/bypass |
 | `policy-guard` CI job | `.github/workflows/ci.yml` | **Advisory** — annotates protected-path changes for visibility; never blocks | n/a (does not block) |
-| `pre-commit` / `pre-push` | [`.githooks/`](../.githooks) | Fast local catch | Yes (`--no-verify`, opt-in clone) |
+| `pre-commit` / `pre-push` | [`harness/hooks/`](harness/hooks) | Fast local catch | Yes (`--no-verify`, opt-in clone) |
 
 `protected-paths-check.sh` is the one checker all of them call. The git hooks are
 local accident-prevention; `policy-guard` is server-side visibility. The
@@ -40,13 +41,13 @@ review); the tier escalates on top: **`attention`** marks an elevated change, an
 - **Local override**, when you genuinely mean it: `ABOX_ALLOW_PROTECTED=1` skips
   the local hook/guard for that invocation (it is logged). CI re-checks regardless,
   so this never changes what can merge.
-- **Enable the git hooks** in a clone: `git config core.hooksPath .githooks`.
-- **Changing what's protected:** edit [`protected-paths`](protected-paths) (the
+- **Enable the git hooks** in a clone: `git config core.hooksPath governance/harness/hooks`.
+- **Changing what's protected:** edit [`policy/protected-paths`](policy/protected-paths) (the
   `tier` column controls whether a path also alerts — see [`notify.md`](notify.md)),
   then regenerate CODEOWNERS — never hand-edit it:
 
   ```sh
-  ./governance/generate-codeowners.sh
+  ./governance/harness/generate-codeowners.sh
   ```
 
 ## Status — what's live, what's optional
@@ -72,12 +73,15 @@ remaining phase is optional hardening.
 
 ## Files
 
-- [`protected-paths`](protected-paths) — the policy (single source of truth).
-- [`protected-paths-check.sh`](protected-paths-check.sh) — the shared checker.
-- [`generate-codeowners.sh`](generate-codeowners.sh) — regenerates `.github/CODEOWNERS`.
-- [`notify.md`](notify.md) — critical-path alerts: how it works + all the knobs.
-- [`notify.yml`](notify.yml) — Apprise channel config for alerts.
-- [`notify-critical.sh`](notify-critical.sh) — the alert detector + dispatcher.
-- [`../.githooks/`](../.githooks) — `pre-commit`, `pre-push`.
+The policy is the instance; everything that reads it is the portable engine under
+[`harness/`](harness):
+
+- [`policy/protected-paths`](policy/protected-paths) — the policy (single source of truth).
+- [`harness/protected-paths-check.sh`](harness/protected-paths-check.sh) — the shared checker.
+- [`harness/generate-codeowners.sh`](harness/generate-codeowners.sh) — regenerates `.github/CODEOWNERS`.
+- [`harness/notify.md`](harness/notify.md) — critical-path alerts: how it works + all the knobs.
+- [`harness/notify.yml`](harness/notify.yml) — Apprise channel config for alerts.
+- [`harness/notify-critical.sh`](harness/notify-critical.sh) — the alert detector + dispatcher.
+- [`harness/hooks/`](harness/hooks) — `pre-commit`, `pre-push`.
 - [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml) — the `policy-guard` job.
 - [`../.gitattributes`](../.gitattributes) — pins the enforcer files to LF.
