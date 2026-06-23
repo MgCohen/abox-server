@@ -18,6 +18,11 @@ What the spike proved, the decisions taken, and what's still punted.
   plain-markdown answer to "a renderer would show a nicer overview".
 - **Readable raw.** Type-first headers + an `<!-- id -->` comment keep the file
   legible without a renderer (confirmed by a cold-read sub-agent).
+- **Semantic judge organized.** `criteria/feature-plan.yaml` (selection + quality
+  rubrics) runs via the repo's generic judge (PLANS/generic-judge.md). First run:
+  9/9 pass, and it caught a silently-dropped precondition (the Box abort/discard
+  mechanic) that the structural validator cannot see. Judge = soft/semantic;
+  validator = hard/structural; they are different layers.
 
 ## Decisions taken (from the cold-read)
 
@@ -48,6 +53,14 @@ What the spike proved, the decisions taken, and what's still punted.
    as its own gate and self-correct on failure.
 6. **A second doc type** (ADR, research-note) to prove the engine is generic,
    not feature-plan-shaped.
+7. **Grouping.** Collection block types (phase, decision) that read better
+   clustered need a model — a `collection:` flag on the block + an optional
+   `group` attr for ad-hoc meta-groups (id kept separate from grouping, since id
+   is the stable handle). Open fork: does grouping reshape the source (nested
+   `## Phases` → `### member`) or stay view/render-only metadata over a flat source?
+8. **The selector** (still the gap). Block selection was hand-done in-context this
+   time. Needs an organized author prompt: dump + catalog → blocks, gated by
+   validate.py, then graded by the judge criteria.
 
 ## How this lands in the repo (when real)
 
