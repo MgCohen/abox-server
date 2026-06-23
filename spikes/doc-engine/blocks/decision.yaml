@@ -1,8 +1,8 @@
 type: decision
 collection: true
 group: Decisions
-short: A settled choice carried in; do not re-litigate.
-rubric: |
-  Members under the "## Decisions" group as "### <title>". State the decision and
-  the one-line why. Closed choices only; genuinely open ones are `open-question`.
+description: A settled choice carried in; do not re-litigate.
+rubric:
+  - State the decision and the one-line why.
+  - Closed choices only — genuinely open ones go in open-question.
 body: markdown

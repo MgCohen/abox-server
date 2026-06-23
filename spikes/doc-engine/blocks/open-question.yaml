@@ -1,11 +1,12 @@
 type: open-question
 collection: true
 group: Open Questions
-short: A genuinely unresolved decision the reader must make.
-rubric: |
-  Members under the "## Open Questions" group as "### <title>". State the question
-  and options; put the recommended default in `lean`. If already decided, it is a
-  `decision`. The group goes last.
+description: A genuinely unresolved decision the reader must make.
+rubric:
+  - State the question and the realistic options.
+  - Put the recommended default in `lean`.
+  - If already decided, it is a decision, not an open question.
+  - The group goes last.
 attrs:
   lean: string
 body: markdown

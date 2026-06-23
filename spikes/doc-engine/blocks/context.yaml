@@ -1,7 +1,7 @@
 type: context
-short: What exists today and where the gap is.
-rubric: |
-  Explain the current state in prose, then name the specific gap this plan
-  closes. Cite the real files/types that exist now. This block earns prose —
-  enough for a reader to understand the starting point, not just a file list.
+description: What exists today and where the gap is.
+rubric:
+  - Describe the current state in prose, then name the specific gap this closes.
+  - Cite the real files/types that exist now.
+  - Enough prose to orient a reader, not just a file list.
 body: markdown

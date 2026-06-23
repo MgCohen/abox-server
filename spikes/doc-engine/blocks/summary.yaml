@@ -1,7 +1,7 @@
 type: summary
-short: One-paragraph what-and-why at the very top.
-rubric: |
-  Outcome-first prose. State the objective and what "done" means in concrete
-  terms. A reader with no prior context should grasp the goal and the stakes.
-  Real sentences, not a bullet skeleton — but one tight paragraph, not a wall.
+description: One-paragraph what-and-why at the very top.
+rubric:
+  - Outcome-first — state the objective and what "done" means, concretely.
+  - One tight paragraph of real prose, not a bullet skeleton or a wall.
+  - Understandable with no prior context.
 body: markdown

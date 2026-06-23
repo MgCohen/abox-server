@@ -26,7 +26,7 @@ selection:
   - id: sel-no-filler
     description: >-
       No block is filler; each carries real substance for its type per the
-      block's own `short`/`rubric`.
+      block's own `description`/`rubric`.
     howToCheck: Flag any block that restates another or says nothing concrete.
 
 quality:

@@ -1,6 +1,6 @@
 type: verification
-short: How "done" is proven.
-rubric: |
-  Name the concrete checks: build, tests, and at least one behaviour actually
-  run end-to-end — not just "it compiles". One block, near the end.
+description: How "done" is proven.
+rubric:
+  - Name concrete checks — build, tests, and at least one behaviour run end-to-end.
+  - Not just "it compiles". One block, near the end.
 body: markdown

@@ -30,19 +30,19 @@ def main():
         w = max(len(n) for n in names)
         print(f"{dt['docType']} blocks — pick what carries substance:")
         for n in names:
-            print(row(n, defs[n].get("short"), w))
+            print(row(n, defs[n].get("description"), w))
         return
 
     dts = all_doctypes()
     w = max(len(d["docType"]) for d in dts)
     print("Doc types — pick one:")
     for d in dts:
-        print(row(d["docType"], d.get("short"), w))
+        print(row(d["docType"], d.get("description"), w))
 
     w2 = max(len(t) for t in defs)
     print("\nBlocks — pick what carries substance:")
     for t in sorted(defs):
-        print(row(t, defs[t].get("short"), w2))
+        print(row(t, defs[t].get("description"), w2))
 
 
 if __name__ == "__main__":

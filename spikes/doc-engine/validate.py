@@ -28,7 +28,6 @@ H2_RE = re.compile(r'^##\s+(.+?)\s*$')
 H3_RE = re.compile(r'^###\s+(.+?)\s*$')
 ID_RE = re.compile(r'^<!--\s*id:\s*(\S+)\s*-->\s*$')
 ATTR_RE = re.compile(r'^([\w-]+):\s*(.+?)\s*$')
-FM_RE = re.compile(r'^<!--\s*([\w-]+):\s*(.+?)\s*-->\s*$')
 
 
 def slug(label):
@@ -60,26 +59,24 @@ def load_doctype(name):
     return yaml.safe_load(open(os.path.join(ROOT, "doctypes", name + ".yaml")))
 
 
-def doctype_of(path, lines):
-    for ln in lines[:5]:
-        m = re.search(r'docType:\s*([\w-]+)', ln)
-        if m:
-            return m.group(1)
-    raise SystemExit("no `docType:` marker in first lines of " + path)
-
-
 def parse_frontmatter(lines):
-    # Leading `<!-- key: value -->` comments above the first block / index are
-    # doc-level attributes. `docType` is reserved.
-    fm = {}
-    for raw in lines:
-        s = raw.strip()
-        if s.startswith("## ") or "INDEX:START" in s:
+    # A leading `---` YAML block is the doc's front matter — visible (unlike a
+    # comment), and the home for `docType` plus any doc-level attrs.
+    if not lines or lines[0].strip() != "---":
+        return {}
+    buf = []
+    for raw in lines[1:]:
+        if raw.strip() == "---":
             break
-        m = FM_RE.match(s)
-        if m and m.group(1) != "docType":
-            fm[m.group(1)] = m.group(2)
-    return fm
+        buf.append(raw)
+    return yaml.safe_load("".join(buf)) or {}
+
+
+def doctype_of(path, lines):
+    dt = parse_frontmatter(lines).get("docType")
+    if not dt:
+        raise SystemExit("no `docType` in the `---` front matter of " + path)
+    return dt
 
 
 def label_maps(defs):

@@ -44,10 +44,10 @@ What the spike proved, the decisions taken, and what's still punted.
 | index | compact grouped list (sections + member titles), not a matrix |
 | field syntax | bare type is shorthand (`body: markdown`, `lean: string`); object form only for extras (`{ enum: [...], default: ... }`). body required by default, attrs optional by default |
 | type vocabulary | only `markdown`, `string`, `enum` are in use; `bool`/`ref`/`list` deferred until a block needs one |
-| naming | block guidance is `rubric` (was `usage`); both blocks and doc-types carry a `short` one-liner that feeds a decision matrix (`catalog.py`) |
+| naming | the one-liner is `description` (was `short`) on blocks + doc-types, feeding the decision matrix (`catalog.py`); authoring guidance is `rubric` — a checkable one-liner list on both; doc `title` dropped (the filename is the name) |
 | doc rubric | a list of binary, checkable one-liners (pairs with the judge), not a paragraph |
 | exemplar | dropped — rely on `short` + `rubric` + the judge; re-add a doctype `exemplar` only if selector output suffers |
-| doc front matter | doc-types can declare `attrs`; instances carry them as leading `<!-- key: value -->` comments (e.g. `status: draft`), validated — also the home for a future single-block doc |
+| doc front matter | a visible leading `---` YAML block carries doc-level attrs (e.g. `status: draft`), declared in the doctype `attrs` and validated — also the home for a future single-block doc |
 | how reference does it | visual-plan keeps schema in a runtime registry (`get-plan-blocks`), when-to-use one-liners in prose, one doc-level exemplar — never per-block examples |
 
 ## Still punted (decide before promoting out of spike)

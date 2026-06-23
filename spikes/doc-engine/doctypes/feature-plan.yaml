@@ -1,13 +1,12 @@
 docType: feature-plan
-title: Feature implementation plan
-short: Build or change a feature — objective, scope, ordered phases, verification.
+description: Build or change a feature — objective, scope, ordered phases, verification.
 
-# Catalog: which block types may appear. No counts — pick by each block's `short`.
+# Catalog: which block types may appear. No counts — pick by each block's description.
 blocks: [summary, context, scope, decision, phase, verification, open-question]
 required: [summary, phase, verification]
 
-# Doc-level attributes (front matter), validated against the leading
-# `<!-- key: value -->` comments. Lets simple/single-block docs carry data here.
+# Doc-level attributes — carried as a visible `---` YAML front-matter block at the
+# top of the instance, and validated. Also the home for a future single-block doc.
 attrs:
   status: { enum: [draft, approved], default: draft }
 
@@ -15,7 +14,7 @@ attrs:
 rubric:
   - Distill the dump; never transcribe it.
   - Name real files and symbols, not invented ones.
-  - Include only blocks that carry substance (pick by each block's `short`).
+  - Include only blocks that carry substance (pick by each block's description).
   - Summary and context get real prose; no block is a wall of text.
   - Bold marks labels (**Goal.**), not inline emphasis.
   - Open questions, if any, come last.
