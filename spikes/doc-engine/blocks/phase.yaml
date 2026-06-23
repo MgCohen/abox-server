@@ -2,13 +2,18 @@ type: phase
 short: One ordered, shippable step of the build.
 usage: |
   Lead with what the step reuses before what it adds. The body states the goal
-  and the done-when bar. Carry `status` as work proceeds; use `blocked` and name
-  the blocker in the body. Use at least two phases — a single step is not a plan.
+  and the done-when bar. Carry `status` as work proceeds; for a `blocked` phase,
+  list the blockers as a sub-list (one per line), not a run-on sentence. Use
+  `caveat` for a short qualifier on an otherwise-done phase (e.g. pending review).
+  Use at least two phases — a single step is not a plan. Bold is for labels
+  (**Goal.**), not for inline emphasis.
 attrs:
   status: { type: enum, values: [todo, doing, done, blocked], default: todo }
+  caveat: { type: string, required: false }
 body: { type: markdown, required: true }
 example: |
-  ## 4 - Phase - Wire AgentHost to PtySession
+  ## Phase - Wire AgentHost to PtySession
+  <!-- id: 4 -->
   status: doing
 
   **Goal.** Replace the inline PTY fields in `AgentHost` with a `PtySession`

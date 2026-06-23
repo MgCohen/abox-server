@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Spike validator: enforce a block-structured doc against its doc-type catalog.
 
-Block sections are plain markdown headers:
+Block sections are plain markdown headers, type-first, with the (agent-oriented)
+id tucked into a comment so it stays out of the human's way:
 
-    ## <id> - <type> [- <optional title>]
-    key: value          # optional attribute lines, until a blank line
-    key: value
+    ## <type> [- <optional title>]
+    <!-- id: 12 -->        # the stable handle, de-emphasised
+    key: value             # optional attribute lines, until a blank line
 
-    body markdown ...   # until the next "## " header
+    body markdown ...      # until the next "## " header
 
 The type label is normalised (lower-cased, spaces -> hyphens) to a block slug,
 so "Open Question" matches blocks/open-question.yaml. Doc-type catalogs list the
@@ -20,6 +21,7 @@ import yaml
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 HEADER_RE = re.compile(r'^##\s+(.+?)\s*$')
+ID_RE = re.compile(r'^<!--\s*id:\s*(\S+)\s*-->\s*$')
 ATTR_RE = re.compile(r'^([\w-]+):\s*(.+?)\s*$')
 
 
@@ -48,7 +50,7 @@ def doctype_of(path, lines):
 
 
 def parse(lines):
-    blocks, cur, in_attrs = [], None, False
+    blocks, cur, meta = [], None, False
     for raw in lines:
         line = raw.rstrip("\n")
         h = HEADER_RE.match(line)
@@ -58,25 +60,24 @@ def parse(lines):
                 blocks.append(cur)
             parts = [p.strip() for p in h.group(1).split(" - ")]
             cur = {
-                "id": parts[0] if parts else "",
-                "type": slug(parts[1]) if len(parts) > 1 else "",
-                "type_label": parts[1] if len(parts) > 1 else "",
-                "title": " - ".join(parts[2:]) if len(parts) > 2 else "",
-                "attrs": {}, "lines": [],
+                "type": slug(parts[0]) if parts else "",
+                "type_label": parts[0] if parts else "",
+                "title": " - ".join(parts[1:]) if len(parts) > 1 else "",
+                "id": "", "attrs": {}, "lines": [],
             }
-            in_attrs = True
+            meta = True
             continue
         if cur is None:
             continue
-        if in_attrs:
+        if meta:
+            if ID_RE.match(line):
+                cur["id"] = ID_RE.match(line).group(1); continue
             if line.strip() == "":
-                in_attrs = False
-                continue
+                meta = False; continue
             a = ATTR_RE.match(line)
             if a:
-                cur["attrs"][a.group(1)] = a.group(2)
-                continue
-            in_attrs = False  # first non-attr line starts the body
+                cur["attrs"][a.group(1)] = a.group(2); continue
+            meta = False  # first real content line begins the body
         cur["lines"].append(line)
     if cur is not None:
         cur["body"] = "\n".join(cur.pop("lines")).strip()
@@ -93,16 +94,14 @@ def validate(defs, dt, parsed):
     for i, b in enumerate(parsed):
         where = f"#{i+1} (id={b['id'] or '?'})"
         if not b["id"]:
-            errs.append(f"{where}: missing id in header")
+            errs.append(f"{where}: missing `<!-- id: -->` under the header")
         elif b["id"] in seen_ids:
             errs.append(f"{where}: duplicate id '{b['id']}'")
         seen_ids.add(b["id"])
 
-        t = b["type"]
-        present.add(t)
+        t = b["type"]; present.add(t)
         if t not in defs:
-            errs.append(f"{where}: unknown block type '{b['type_label']}'")
-            continue
+            errs.append(f"{where}: unknown block type '{b['type_label']}'"); continue
         if t not in allowed:
             errs.append(f"{where}: '{t}' not in the '{dt['docType']}' catalog")
 
@@ -122,7 +121,7 @@ def validate(defs, dt, parsed):
 
     for t in sorted(required - present):
         errs.append(f"doctype: required block '{t}' is missing")
-    return errs, parsed
+    return errs
 
 
 def main():
@@ -131,7 +130,7 @@ def main():
     defs = load_blocks()
     dt = load_doctype(doctype_of(path, lines))
     parsed = parse(lines)
-    errs, _ = validate(defs, dt, parsed)
+    errs = validate(defs, dt, parsed)
     print(f"doc: {os.path.relpath(path, ROOT)}   docType: {dt['docType']}   blocks: {len(parsed)}")
     if errs:
         print(f"\nFAIL — {len(errs)} violation(s):")

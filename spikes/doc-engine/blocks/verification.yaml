@@ -5,7 +5,8 @@ usage: |
   run end-to-end — not just "it compiles". One block, near the end.
 body: { type: markdown, required: true }
 example: |
-  ## 8 - Verification
+  ## Verification
+  <!-- id: 8 -->
 
   Warning-free build; green tests; the PR-merge flow run end-to-end once against
   a real repo; one coherent commit. Tests land as Rulebooks.

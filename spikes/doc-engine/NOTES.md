@@ -1,58 +1,57 @@
 # Spike findings — doc-engine
 
-What the spike proved, what it punted, and the decisions to make before this
-becomes real infrastructure.
+What the spike proved, the decisions taken, and what's still punted.
 
-## What it proved
+## Proved
 
-- **Data-defined catalogs work.** 7 lean block schemas + 1 doc-type catalog, no
-  code, fully drove validation of a real distilled plan.
-- **Quality rules become enforcement, not rubric.** "Never a single-step plan"
-  is `phase: { min: 2 }`; the status vocabulary is an `enum`; "one open-questions
-  block, last" is `{ max: 1, position: last }`. The validator caught all three
-  when broken (bad enum, unknown attr, min-occurrence). This is the AI-first
-  payoff over BuilderIO's prose-only rubrics.
-- **Distill ≠ transcribe.** The 323-line dump → 17 blocks that stand alone. The
-  `status=blocked` phase carries its blockers inline; no separate progress layer.
+- **Data-defined catalogs work.** 7 block schemas + 1 doc-type catalog (pure
+  YAML, no code) drive validation of a real distilled plan.
+- **Quality rules become enforcement, not rubric.** status vocabulary is an
+  `enum`; required presence is a `required:` list; ids are unique. The validator
+  caught a bad enum, an unknown attr, a duplicate id, and a missing required
+  block when fed a broken doc.
+- **Tiered rubrics fit selection.** `short` is the one-liner for a pick-matrix;
+  `usage` is read after a block is chosen; `example` is a curated static sample
+  (not pulled from un-approved live docs).
+- **Derived views are free.** Because the engine parses blocks, `outline.py`
+  generates an index + phase status board with no authoring cost — the
+  plain-markdown answer to "a renderer would show a nicer overview".
+- **Readable raw.** Type-first headers + an `<!-- id -->` comment keep the file
+  legible without a renderer (confirmed by a cold-read sub-agent).
 
-## Rubric vs enforcement (the line)
+## Decisions taken (from the cold-read)
 
-| Concern | Where | Hard or soft |
-|---|---|---|
-| block exists / attrs typed / enum values | block YAML | **hard** (validator) |
-| required blocks, min/max, position | doctype YAML | **hard** (validator) |
-| "distill don't transcribe", "name real files", "lead with reuse" | `rubric:` text | soft (author guidance) |
+| Topic | Decision |
+|---|---|
+| header order | type-first (`## Phase - Title`) — the type column is the scan key |
+| ids | global numeric, de-emphasised into `<!-- id: N -->` (agent-oriented) |
+| doc-type rules | catalog + `required` only; no min/max/position |
+| scope `kind` | dropped — the title ("In/Out of scope") already carries it |
+| done-but-qualified | `caveat:` attr instead of contradicting prose |
+| overview | engine-generated index between `INDEX` markers |
+| prose | summary/context earn full sentences; bold for labels, not emphasis |
 
-Soft rubric is for the LLM author; hard structure is for the validator. Keep
-genuinely-prose things (a summary's narrative) soft — over-structuring breeds
-filler.
+## Still punted (decide before promoting out of spike)
 
-## Punted (decide before promoting out of spike)
-
-1. **Structured list fields.** Kept everything to `scalar attrs + markdown body`
-   (lean, per feedback). `key-files` / `references` as typed lists
-   (`[{path, note}]`) were *not* modeled. Do we need machine-readable lists, or
-   is markdown-in-body enough? Probably add 1–2 list blocks only when a consumer
-   needs them.
-2. **Blocker / precondition block.** The dump's owner-escalation preconditions
-   were folded into `phase.status=blocked` + body. A first-class `blocker` block
-   (owner-action, severity) is a candidate — but YAGNI until a second doc type
-   wants it.
-3. **Meta-schema.** `validate.py` hard-codes the field vocabulary (`type`,
-   `enum`, `values`, `min`, `max`, `position`). Next step is a meta-schema that
-   validates the `blocks/*.yaml` and `doctypes/*.yaml` themselves, so a typo in a
-   definition fails on load (the type-checker equivalent we lose by going to YAML).
-4. **Order enforcement.** Only `position: first|last` is enforced; full block
-   ordering is not. Add a `order:` list to the doctype if strict sequence matters.
+1. **Index freshness.** The injected index can go stale. The engine should
+   regenerate + check it (a staleness guard, like the repo's other guards).
+2. **Structured list fields.** Everything is `scalar attrs + markdown body`. No
+   typed lists (`key-files` as `[{path, note}]`) yet — add only when a consumer
+   needs machine-readable lists.
+3. **Cross-references.** Cold-read wanted phases to point at the decision they
+   implement. A `refs:` attr (ids) is a candidate; YAGNI until needed.
+4. **Meta-schema.** `validate.py` hard-codes the field vocabulary. A meta-schema
+   for `blocks/*.yaml` + `doctypes/*.yaml` would catch a typo in a definition on
+   load (the type-checker equivalent lost by going to YAML).
 5. **The selector.** This spike hand-distilled the dump. The real engine needs
-   the **author prompt** that turns dump + catalog → conformant blocks, then runs
-   `validate.py` as its own gate (self-correct on failure).
+   the author prompt: dump + catalog → conformant blocks, then run `validate.py`
+   as its own gate and self-correct on failure.
+6. **A second doc type** (ADR, research-note) to prove the engine is generic,
+   not feature-plan-shaped.
 
 ## How this lands in the repo (when real)
 
-- Generic engine (registry, parser, validator) → `Core` (generic infra).
-- Validator runs as a **Rulebook-style structure guard** in CI — same posture as
-  `tests/Tests/Structure`. A non-conforming doc fails the build, like a test that
-  lands without its Rule.
-- `blocks/` + `doctypes/` are the data; adding a doc type (ADR, research-note,
-  recap) is a YAML change, reusing the same engine.
+- Generic engine (registry, parser, validator, outline) → `Core`.
+- Validator + index-freshness run as Structure-Rulebook guards in CI: a
+  non-conforming or stale doc fails the build.
+- `blocks/` + `doctypes/` are data; adding a doc type is a YAML change.

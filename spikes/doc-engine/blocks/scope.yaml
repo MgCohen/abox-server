@@ -1,15 +1,13 @@
 type: scope
 short: A bounded in/out list that draws the work boundary.
 usage: |
-  Bullet list. `kind=in` is what this plan builds; `kind=out` names what is
-  deliberately owned elsewhere, with where it goes. Keep each bullet a real
-  capability, not a vague gesture.
-attrs:
-  kind: { type: enum, values: [in, out], required: true }
+  Bullet list. Use one block titled "In scope" for what this plan builds and one
+  titled "Out of scope" for what is deliberately owned elsewhere (with where it
+  goes). Keep each bullet a real capability, not a vague gesture.
 body: { type: markdown, required: true }
 example: |
-  ## 5 - Scope - Out of scope
-  kind: out
+  ## Scope - Out of scope
+  <!-- id: 5 -->
 
   - Conflict resolution → B3 (this plan ships only the mechanical rebase primitive).
   - Owner-identity approval → S5 (this plan is read-as-bot only).

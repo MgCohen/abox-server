@@ -12,5 +12,5 @@ rubric: |
   Distill the dump into blocks; do not transcribe it. Name real files and
   symbols. Pick blocks by their `short` rubric. Write enough prose to be
   understood — summary and context deserve real sentences and rationale, not a
-  terse skeleton — but keep any single block tight, not a wall of text. Open
-  questions, if any, go last.
+  terse skeleton — but keep any single block tight, not a wall of text. Use bold
+  for labels (**Goal.**), not for inline emphasis. Open questions, if any, last.

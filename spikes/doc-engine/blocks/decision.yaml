@@ -2,10 +2,11 @@ type: decision
 short: A settled choice carried in; do not re-litigate.
 usage: |
   State the decision and the one-line why. These are closed; genuinely open
-  choices belong in `open-question`. The header id is the stable handle.
+  choices belong in `open-question`. The title names the decision.
 body: { type: markdown, required: true }
 example: |
-  ## 6 - Decision - Merge-commit for Level-1
+  ## Decision - Merge-commit for Level-1
+  <!-- id: 6 -->
 
   Use a merge commit for L1 stacked merges: it keeps the parent an ancestor, so
   descendants only retarget — no rebase. Rebase cascade is reject/rebuild-only.
