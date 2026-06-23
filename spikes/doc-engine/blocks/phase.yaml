@@ -2,7 +2,7 @@ type: phase
 collection: true
 group: Phases
 short: One ordered, shippable step of the build.
-usage: |
+rubric: |
   Members under the "## Phases" group as "### <title>". Lead with what the step
   reuses before what it adds; the body states the goal and the done-when bar.
   Carry `status`; for a blocked phase list blockers as a sub-list. Use `caveat`

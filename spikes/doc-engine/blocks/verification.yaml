@@ -1,6 +1,6 @@
 type: verification
 short: How "done" is proven.
-usage: |
+rubric: |
   Name the concrete checks: build, tests, and at least one behaviour actually
   run end-to-end — not just "it compiles". One block, near the end.
 body: markdown

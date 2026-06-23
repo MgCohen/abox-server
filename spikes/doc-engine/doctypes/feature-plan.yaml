@@ -1,21 +1,21 @@
 docType: feature-plan
 title: Feature implementation plan
+short: Build or change a feature — objective, scope, ordered phases, verification.
 
-# Catalog: which block types may appear. No counts — the author picks by each
-# block's `short` rubric and includes only what carries substance.
+# Catalog: which block types may appear. No counts — pick by each block's `short`.
 blocks: [summary, context, scope, decision, phase, verification, open-question]
-
-# At most we require presence. No min/max, no ordering rules.
 required: [summary, phase, verification]
 
-# One worked, judge-validated example beats per-block samples (less drift) — the
-# same approach the reference (visual-plan) takes: a single exemplar, not per-block.
-exemplar: out/git-feature.plan.md
+# Doc-level attributes (front matter), validated against the leading
+# `<!-- key: value -->` comments. Lets simple/single-block docs carry data here.
+attrs:
+  status: { enum: [draft, approved], default: draft }
 
-rubric: |
-  Distill the dump into blocks; do not transcribe it. Name real files and
-  symbols. Pick blocks by their `short` rubric. Write enough prose to be
-  understood — summary and context deserve real sentences and rationale, not a
-  terse skeleton — but keep any single block tight, not a wall of text. Use bold
-  for labels (**Goal.**), not for inline emphasis. Open questions, if any, last.
-  See the `exemplar` for the bar.
+# Binary, checkable one-liners (pairs with the judge), not a paragraph.
+rubric:
+  - Distill the dump; never transcribe it.
+  - Name real files and symbols, not invented ones.
+  - Include only blocks that carry substance (pick by each block's `short`).
+  - Summary and context get real prose; no block is a wall of text.
+  - Bold marks labels (**Goal.**), not inline emphasis.
+  - Open questions, if any, come last.

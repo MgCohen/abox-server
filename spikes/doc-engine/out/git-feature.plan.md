@@ -1,4 +1,5 @@
 <!-- docType: feature-plan -->
+<!-- status: draft -->
 <!-- distilled from dump: PLANS/git-feature.md -->
 
 

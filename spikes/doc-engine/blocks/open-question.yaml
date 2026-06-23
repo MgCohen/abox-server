@@ -2,7 +2,7 @@ type: open-question
 collection: true
 group: Open Questions
 short: A genuinely unresolved decision the reader must make.
-usage: |
+rubric: |
   Members under the "## Open Questions" group as "### <title>". State the question
   and options; put the recommended default in `lean`. If already decided, it is a
   `decision`. The group goes last.

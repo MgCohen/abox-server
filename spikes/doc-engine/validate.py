@@ -28,6 +28,7 @@ H2_RE = re.compile(r'^##\s+(.+?)\s*$')
 H3_RE = re.compile(r'^###\s+(.+?)\s*$')
 ID_RE = re.compile(r'^<!--\s*id:\s*(\S+)\s*-->\s*$')
 ATTR_RE = re.compile(r'^([\w-]+):\s*(.+?)\s*$')
+FM_RE = re.compile(r'^<!--\s*([\w-]+):\s*(.+?)\s*-->\s*$')
 
 
 def slug(label):
@@ -65,6 +66,20 @@ def doctype_of(path, lines):
         if m:
             return m.group(1)
     raise SystemExit("no `docType:` marker in first lines of " + path)
+
+
+def parse_frontmatter(lines):
+    # Leading `<!-- key: value -->` comments above the first block / index are
+    # doc-level attributes. `docType` is reserved.
+    fm = {}
+    for raw in lines:
+        s = raw.strip()
+        if s.startswith("## ") or "INDEX:START" in s:
+            break
+        m = FM_RE.match(s)
+        if m and m.group(1) != "docType":
+            fm[m.group(1)] = m.group(2)
+    return fm
 
 
 def label_maps(defs):
@@ -133,7 +148,7 @@ def parse(lines, defs):
     return blocks, groups_seen
 
 
-def validate(defs, dt, blocks, groups_seen):
+def validate(defs, dt, blocks, groups_seen, fm):
     errs = []
     allowed = set(dt.get("blocks") or [])
     required = set(dt.get("required") or [])
@@ -179,6 +194,13 @@ def validate(defs, dt, blocks, groups_seen):
 
     for t in sorted(required - present):
         errs.append(f"doctype: required block '{t}' is missing")
+
+    for an, raw in (dt.get("attrs") or {}).items():
+        asp = norm_field(raw, False)
+        if asp["required"] and an not in fm:
+            errs.append(f"doc: missing required front-matter attr '{an}'")
+        if an in fm and asp["type"] == "enum" and fm[an] not in asp["values"]:
+            errs.append(f"doc: front-matter {an}='{fm[an]}' not in {asp['values']}")
     return errs
 
 
@@ -188,7 +210,8 @@ def main():
     defs = load_blocks()
     dt = load_doctype(doctype_of(path, lines))
     blocks, groups_seen = parse(lines, defs)
-    errs = validate(defs, dt, blocks, groups_seen)
+    fm = parse_frontmatter(lines)
+    errs = validate(defs, dt, blocks, groups_seen, fm)
     print(f"doc: {os.path.relpath(path, ROOT)}   docType: {dt['docType']}   blocks: {len(blocks)}")
     if errs:
         print(f"\nFAIL — {len(errs)} violation(s):")

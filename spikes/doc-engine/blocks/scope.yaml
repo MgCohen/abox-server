@@ -2,7 +2,7 @@ type: scope
 collection: true
 group: Scope
 short: A bounded in/out list that draws the work boundary.
-usage: |
+rubric: |
   Two members under the "## Scope" group: "### In scope" (what this plan builds)
   and "### Out of scope" (what is owned elsewhere, with where it goes). Bullets,
   each a real capability.
