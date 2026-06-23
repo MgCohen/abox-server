@@ -1,5 +1,16 @@
 type: open-question
-repeatable: true
+short: A genuinely unresolved decision the reader must make.
+usage: |
+  State the question and the realistic options in prose. Put your recommended
+  default in `lean`. If the choice is already made, it is a `decision`, not an
+  open question. Put these at the end.
 attrs:
   lean: { type: string, required: false }
 body: { type: markdown, required: true }
+example: |
+  ## 9 - Open Question - GitHub client library
+  lean: Octokit.NET
+
+  Octokit.NET (typed, official) vs raw `HttpClient` vs shelling `gh`. This is
+  feature code, so ADR 0012's zero-dependency rule does not apply — but flag the
+  new dependency for the owner.

@@ -1,7 +1,16 @@
 type: phase
-repeatable: true
+short: One ordered, shippable step of the build.
+usage: |
+  Lead with what the step reuses before what it adds. The body states the goal
+  and the done-when bar. Carry `status` as work proceeds; use `blocked` and name
+  the blocker in the body. Use at least two phases — a single step is not a plan.
 attrs:
-  id:     { type: string, required: true }
-  title:  { type: string, required: true }
   status: { type: enum, values: [todo, doing, done, blocked], default: todo }
 body: { type: markdown, required: true }
+example: |
+  ## 4 - Phase - Wire AgentHost to PtySession
+  status: doing
+
+  **Goal.** Replace the inline PTY fields in `AgentHost` with a `PtySession`
+  dependency. Reuses `ConPtyInterop`; adds the session boundary.
+  **Done-when.** Teardown covered by a Rulebook test; build warning-free.

@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
 """Spike validator: enforce a block-structured doc against its doc-type catalog.
 
-Reads the block schemas (blocks/*.yaml) and one doc-type catalog
-(doctypes/<docType>.yaml), parses a :::block instance file, and reports every
-structural violation. This is the throwaway proof of "structure over prose,
-enforced" — the rules in the YAML are law, not suggestions.
+Block sections are plain markdown headers:
+
+    ## <id> - <type> [- <optional title>]
+    key: value          # optional attribute lines, until a blank line
+    key: value
+
+    body markdown ...   # until the next "## " header
+
+The type label is normalised (lower-cased, spaces -> hyphens) to a block slug,
+so "Open Question" matches blocks/open-question.yaml. Doc-type catalogs list the
+allowed block types and (at most) which are required — no min/max/position.
 
     python3 validate.py out/git-feature.plan.md
 """
@@ -12,8 +19,12 @@ import sys, re, glob, os
 import yaml
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-OPEN_RE = re.compile(r'^:::([\w-]+)\s*(?:\{(.*)\})?\s*$')
-ATTR_RE = re.compile(r'(\w[\w-]*)=(?:"([^"]*)"|(\S+))')
+HEADER_RE = re.compile(r'^##\s+(.+?)\s*$')
+ATTR_RE = re.compile(r'^([\w-]+):\s*(.+?)\s*$')
+
+
+def slug(label):
+    return label.strip().lower().replace(" ", "-")
 
 
 def load_blocks():
@@ -28,75 +39,90 @@ def load_doctype(name):
     return yaml.safe_load(open(os.path.join(ROOT, "doctypes", name + ".yaml")))
 
 
-def doctype_of(md_path, lines):
+def doctype_of(path, lines):
     for ln in lines[:5]:
         m = re.search(r'docType:\s*([\w-]+)', ln)
         if m:
             return m.group(1)
-    raise SystemExit("no `docType:` marker in first lines of " + md_path)
+    raise SystemExit("no `docType:` marker in first lines of " + path)
 
 
 def parse(lines):
-    blocks, cur = [], None
+    blocks, cur, in_attrs = [], None, False
     for raw in lines:
         line = raw.rstrip("\n")
-        s = line.strip()
-        if s == ":::" and cur is not None:
-            cur["body"] = "\n".join(cur.pop("lines")).strip()
-            blocks.append(cur); cur = None; continue
-        m = OPEN_RE.match(s)
-        if m and cur is None and s != ":::":
-            attrs = {}
-            if m.group(2):
-                for a in ATTR_RE.finditer(m.group(2)):
-                    attrs[a.group(1)] = a.group(2) if a.group(2) is not None else a.group(3)
-            cur = {"type": m.group(1), "attrs": attrs, "lines": []}
+        h = HEADER_RE.match(line)
+        if h:
+            if cur is not None:
+                cur["body"] = "\n".join(cur.pop("lines")).strip()
+                blocks.append(cur)
+            parts = [p.strip() for p in h.group(1).split(" - ")]
+            cur = {
+                "id": parts[0] if parts else "",
+                "type": slug(parts[1]) if len(parts) > 1 else "",
+                "type_label": parts[1] if len(parts) > 1 else "",
+                "title": " - ".join(parts[2:]) if len(parts) > 2 else "",
+                "attrs": {}, "lines": [],
+            }
+            in_attrs = True
             continue
-        if cur is not None:
-            cur["lines"].append(line)
+        if cur is None:
+            continue
+        if in_attrs:
+            if line.strip() == "":
+                in_attrs = False
+                continue
+            a = ATTR_RE.match(line)
+            if a:
+                cur["attrs"][a.group(1)] = a.group(2)
+                continue
+            in_attrs = False  # first non-attr line starts the body
+        cur["lines"].append(line)
     if cur is not None:
-        raise SystemExit("unterminated block ::: " + cur["type"])
+        cur["body"] = "\n".join(cur.pop("lines")).strip()
+        blocks.append(cur)
     return blocks
 
 
 def validate(defs, dt, parsed):
     errs = []
-    counts, order = {}, []
-    for i, b in enumerate(parsed):
-        t = b["type"]; order.append(t); counts[t] = counts.get(t, 0) + 1
-        spec = defs.get(t)
-        if not spec:
-            errs.append(f"block #{i+1}: unknown block type '{t}'"); continue
-        attrs = spec.get("attrs") or {}
-        for an, asp in attrs.items():
-            if asp.get("required") and an not in b["attrs"]:
-                errs.append(f"{t} #{i+1}: missing required attr '{an}'")
-            if an in b["attrs"] and asp.get("type") == "enum" and b["attrs"][an] not in asp["values"]:
-                errs.append(f"{t} #{i+1}: attr {an}='{b['attrs'][an]}' not in {asp['values']}")
-        for an in b["attrs"]:
-            if an not in attrs:
-                errs.append(f"{t} #{i+1}: unknown attr '{an}'")
-        body = spec.get("body")
-        if body and body.get("required") and not b["body"]:
-            errs.append(f"{t} #{i+1}: required body is empty")
-        if not spec.get("repeatable") and counts[t] > 1:
-            errs.append(f"{t} #{i+1}: block is not repeatable but appears {counts[t]}×")
+    allowed = set(dt.get("blocks") or [])
+    required = set(dt.get("required") or [])
+    seen_ids, present = set(), set()
 
-    rules = dt.get("blocks") or {}
-    for t in counts:
-        if t not in rules:
-            errs.append(f"doctype: block '{t}' not allowed in '{dt['docType']}'")
-    for t, r in rules.items():
-        c = counts.get(t, 0)
-        if "min" in r and c < r["min"]:
-            errs.append(f"doctype: '{t}' appears {c}× (min {r['min']})")
-        if "max" in r and c > r["max"]:
-            errs.append(f"doctype: '{t}' appears {c}× (max {r['max']})")
-        if r.get("position") == "first" and c and order[0] != t:
-            errs.append(f"doctype: '{t}' must be the first block")
-        if r.get("position") == "last" and c and order[-1] != t:
-            errs.append(f"doctype: '{t}' must be the last block")
-    return errs, counts
+    for i, b in enumerate(parsed):
+        where = f"#{i+1} (id={b['id'] or '?'})"
+        if not b["id"]:
+            errs.append(f"{where}: missing id in header")
+        elif b["id"] in seen_ids:
+            errs.append(f"{where}: duplicate id '{b['id']}'")
+        seen_ids.add(b["id"])
+
+        t = b["type"]
+        present.add(t)
+        if t not in defs:
+            errs.append(f"{where}: unknown block type '{b['type_label']}'")
+            continue
+        if t not in allowed:
+            errs.append(f"{where}: '{t}' not in the '{dt['docType']}' catalog")
+
+        spec_attrs = defs[t].get("attrs") or {}
+        for an, asp in spec_attrs.items():
+            if asp.get("required") and an not in b["attrs"]:
+                errs.append(f"{where} {t}: missing required attr '{an}'")
+            if an in b["attrs"] and asp.get("type") == "enum" and b["attrs"][an] not in asp["values"]:
+                errs.append(f"{where} {t}: {an}='{b['attrs'][an]}' not in {asp['values']}")
+        for an in b["attrs"]:
+            if an not in spec_attrs:
+                errs.append(f"{where} {t}: unknown attr '{an}'")
+
+        body = defs[t].get("body")
+        if body and body.get("required") and not b["body"]:
+            errs.append(f"{where} {t}: required body is empty")
+
+    for t in sorted(required - present):
+        errs.append(f"doctype: required block '{t}' is missing")
+    return errs, parsed
 
 
 def main():
@@ -105,15 +131,14 @@ def main():
     defs = load_blocks()
     dt = load_doctype(doctype_of(path, lines))
     parsed = parse(lines)
-    errs, counts = validate(defs, dt, parsed)
-    print(f"doc: {os.path.relpath(path, ROOT)}   docType: {dt['docType']}")
-    print(f"blocks: {len(parsed)}  " + ", ".join(f"{k}×{v}" for k, v in counts.items()))
+    errs, _ = validate(defs, dt, parsed)
+    print(f"doc: {os.path.relpath(path, ROOT)}   docType: {dt['docType']}   blocks: {len(parsed)}")
     if errs:
         print(f"\nFAIL — {len(errs)} violation(s):")
         for e in errs:
-            print("  ✗ " + e)
+            print("  x " + e)
         sys.exit(1)
-    print("\nPASS — conforms to the catalog.")
+    print("PASS — conforms to the catalog.")
 
 
 if __name__ == "__main__":
