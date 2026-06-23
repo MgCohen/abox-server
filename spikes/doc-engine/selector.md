@@ -5,10 +5,18 @@ block-structured instance under `out/`, gated by the engine. Do NOT invent the
 format — read it from the data (catalog + per-block rubrics).
 
 ## Inputs
-- The dump (a path you are given). It is scratch; the durable artifact is the block file.
+- **The dump material** — from any of: a file path, inline pasted text, or the
+  current conversation. It is scratch; the durable artifact is the block file.
 - The engine: `blocks/*.yaml`, `doctypes/*.yaml`, `catalog.py`, `validate.py`, `outline.py`.
 
+> Context caveat: "dump from the conversation" only works when you run in the
+> session that holds it (a skill / main-loop run). A sub-agent starts fresh, so it
+> must be handed the dump as a path or inlined text.
+
 ## Procedure
+0. **Obtain the dump.** Resolve the source: read the given path, use the pasted
+   text, or — when running in a session that already discussed the work — distill
+   from the conversation. No file is required.
 1. **Pick the doc type.** `python3 catalog.py` → choose the doc type whose
    `description` fits the dump.
 2. **Read the doc type.** `doctypes/<docType>.yaml`: its `blocks` (catalog),
