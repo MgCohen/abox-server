@@ -7,6 +7,8 @@ format — read it from the data (catalog + per-block rubrics).
 ## Inputs
 - **The dump material** — from any of: a file path, inline pasted text, or the
   current conversation. It is scratch; the durable artifact is the block file.
+- **The target doc type (optional)** — if the caller names one ("make this a
+  research"), use it; otherwise infer it from the dump.
 - The engine: `blocks/*.yaml`, `doctypes/*.yaml`, `catalog.py`, `validate.py`, `outline.py`.
 
 > Context caveat: "dump from the conversation" only works when you run in the
@@ -17,8 +19,9 @@ format — read it from the data (catalog + per-block rubrics).
 0. **Obtain the dump.** Resolve the source: read the given path, use the pasted
    text, or — when running in a session that already discussed the work — distill
    from the conversation. No file is required.
-1. **Pick the doc type.** `python3 catalog.py` → choose the doc type whose
-   `description` fits the dump.
+1. **Choose the doc type.** If the caller named one (e.g. "make this a research"),
+   use it. Otherwise run `python3 catalog.py` and pick the doc type whose
+   `description` fits the dump — the doc-type decision matrix.
 2. **Read the doc type.** `doctypes/<docType>.yaml`: its `blocks` (catalog),
    `required` set, `attrs` (front matter), and `rubric`. Follow the rubric.
 3. **Pick blocks.** `python3 catalog.py <docType>` → choose blocks whose
