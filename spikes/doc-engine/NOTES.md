@@ -37,6 +37,13 @@ What the spike proved, the decisions taken, and what's still punted.
   + `check_schema.py` validate every block and doc-type *definition* (required
   fields, kinds, the type vocabulary, `collection ⇒ group`, `required ⊆ blocks`).
   The whole stack is structured: meta-schema → definitions → instance.
+- **Second doc type proves genericity.** `research` (question / quotation /
+  expected-result / analysis / outcome) reuses `summary` + `open-question` and adds
+  research-specific blocks — same engine, no code change. The wired `create-doc`
+  agent, handed a research dump with *no type named*, inferred `research` via the
+  decision matrix and validated PASS. Doc types and blocks are pure data.
+  (NB: `feature-plan` and `research` are spike doc types to exercise the tech —
+  the real plan/blocks come later.)
 
 ## Decisions taken (from the cold-read)
 
@@ -87,6 +94,9 @@ What the spike proved, the decisions taken, and what's still punted.
 9. **A `risks` / `failure-modes` block?** Both real dumps had operational
    fallback/failure content with no clean home (folded into phases). If a second
    doc type wants it too, add the block — the first concrete catalog-growth signal.
+10. **Per-doc-type judge criteria.** Only `feature-plan` has `criteria/`. `research`
+    validates structurally but is not judged yet; add `criteria/research.yaml` when
+    semantic grading of research docs is wanted.
 
 ## How this lands in the repo (when real)
 

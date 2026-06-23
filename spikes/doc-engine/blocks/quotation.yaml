@@ -1,0 +1,10 @@
+type: quotation
+collection: true
+group: Quotations
+description: A cited quote or source bearing on a question.
+attrs:
+  source: string
+rubric:
+  - Quote or paraphrase faithfully; attribute it in `source`.
+  - Keep each to the load-bearing excerpt, not a wall.
+body: markdown

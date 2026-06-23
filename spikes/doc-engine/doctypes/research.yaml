@@ -1,0 +1,16 @@
+docType: research
+description: Investigate questions against sources and record what was found.
+
+# Reuses `summary` and `open-question` from the shared block registry; the rest
+# are research-specific. (Proves blocks are shared across doc types.)
+blocks: [summary, question, expected-result, quotation, analysis, outcome, open-question]
+required: [summary, question, outcome]
+
+attrs:
+  status: { enum: [draft, final], default: draft }
+
+rubric:
+  - Lead with the headline finding; do not bury it.
+  - Tie each claim to a cited source; no unsupported assertions.
+  - State whether the outcome matched the expectation.
+  - Distill; do not transcribe sources wholesale.
