@@ -1,0 +1,17 @@
+docType: feature-plan
+title: Feature implementation plan
+
+blocks:
+  summary:       { min: 1, max: 1, position: first }
+  context:       { min: 1, max: 1 }
+  scope:         { min: 1 }
+  decision:      { min: 0 }
+  phase:         { min: 2 }
+  verification:  { min: 1, max: 1 }
+  open-question: { min: 0, position: last }
+
+rubric: |
+  Distill the dump into blocks; do not transcribe it. Name real files and
+  symbols, not invented ones. Lead each phase with what it reuses before what
+  it adds. Phases carry status. Open questions go last, each with a `lean`
+  (the default you would pick).

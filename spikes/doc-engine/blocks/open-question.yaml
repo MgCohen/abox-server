@@ -1,0 +1,5 @@
+type: open-question
+repeatable: true
+attrs:
+  lean: { type: string, required: false }
+body: { type: markdown, required: true }

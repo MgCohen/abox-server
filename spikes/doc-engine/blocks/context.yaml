@@ -1,0 +1,2 @@
+type: context
+body: { type: markdown, required: true }

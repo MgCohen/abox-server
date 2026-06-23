@@ -1,0 +1,7 @@
+type: phase
+repeatable: true
+attrs:
+  id:     { type: string, required: true }
+  title:  { type: string, required: true }
+  status: { type: enum, values: [todo, doing, done, blocked], default: todo }
+body: { type: markdown, required: true }

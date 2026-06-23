@@ -1,0 +1,5 @@
+type: scope
+repeatable: true
+attrs:
+  kind: { type: enum, values: [in, out], required: true }
+body: { type: markdown, required: true }

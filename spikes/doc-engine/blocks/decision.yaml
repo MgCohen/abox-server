@@ -1,0 +1,5 @@
+type: decision
+repeatable: true
+attrs:
+  id: { type: string, required: true }
+body: { type: markdown, required: true }
