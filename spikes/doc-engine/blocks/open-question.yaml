@@ -1,17 +1,21 @@
 type: open-question
+collection: true
+group: Open Questions
 short: A genuinely unresolved decision the reader must make.
 usage: |
-  State the question and the realistic options in prose. Put your recommended
-  default in `lean`. If the choice is already made, it is a `decision`, not an
-  open question. Put these at the end.
+  Members under the "## Open Questions" group as "### <title>". State the question
+  and options; put the recommended default in `lean`. If already decided, it is a
+  `decision`. The group goes last.
 attrs:
   lean: { type: string, required: false }
 body: { type: markdown, required: true }
 example: |
-  ## Open Question - GitHub client library
+  ## Open Questions
+
+  ### GitHub client library
   <!-- id: 9 -->
   lean: Octokit.NET
 
   Octokit.NET (typed, official) vs raw `HttpClient` vs shelling `gh`. This is
-  feature code, so ADR 0012's zero-dependency rule does not apply — but flag the
-  new dependency for the owner.
+  feature code, so ADR 0012's zero-dependency rule does not apply — flag the new
+  dependency for the owner.

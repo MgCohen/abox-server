@@ -19,7 +19,10 @@ dump (ephemeral)  ──distill──►  instance.md (blocks)  ──validate�
 - **dump** — `PLANS/git-feature.md` (a real feature plan). Ephemeral input; the
   durable artifact is the block file, which stands alone.
 - **blocks/** — one YAML per block type: `short` (selection one-liner) + `usage`
-  (how to mount) + `example` (curated, static) + typed `attrs` + `body`.
+  (how to mount) + `example` (curated, static) + typed `attrs` + `body`. Collection
+  types set `collection: true` + a `group:` label and render as `## Group` → `### member`.
+- **criteria/** — selection + quality rubrics for the repo's generic judge (soft,
+  semantic) — runs after validate.py (hard, structural).
 - **doctypes/** — one YAML per doc type: the catalog of allowed blocks + a
   `required` set. No counts, no ordering rules.
 - **out/** — the distilled block instance.
@@ -37,17 +40,24 @@ python3 outline.py  out/git-feature.plan.md --write # inject the index in place
 
 ## Instance syntax
 
-```md
-## Phase - Wire AgentHost to PtySession
-<!-- id: 13 -->
-status: doing
+Singleton blocks are top-level; collection blocks are grouped:
 
-**Goal.** Markdown body — distilled prose, real files/symbols.
+```md
+## Context                       <- singleton: the header is the type
+<!-- id: 2 -->
+
+Markdown body — distilled prose, real files/symbols.
+
+## Phases                        <- group header for a collection type
+### Real GitHub adapter          <- member: ### title, type from the group
+<!-- id: 12 -->
+status: blocked
+
+**Goal.** ...
 ```
 
-- Header is type-first (`## <type> [- <title>]`) — scannable.
-- The id lives in an `<!-- id: N -->` comment: it is the stable handle for
-  patch/resume, but agent-oriented, so it stays out of the human's way.
-- `key: value` lines under the header are scalar attrs (status, lean, caveat).
+- The id lives in an `<!-- id: N -->` comment — the stable handle, kept out of the
+  human header (it is agent-oriented and orthogonal to grouping).
+- `key: value` lines under the (sub)header are scalar attrs (status, lean, caveat).
 - Final on-disk syntax should match the render repo's parser — the model here is
   parser-agnostic.

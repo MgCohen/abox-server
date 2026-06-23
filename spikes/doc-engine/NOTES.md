@@ -23,6 +23,10 @@ What the spike proved, the decisions taken, and what's still punted.
   9/9 pass, and it caught a silently-dropped precondition (the Box abort/discard
   mechanic) that the structural validator cannot see. Judge = soft/semantic;
   validator = hard/structural; they are different layers.
+- **Grouping works.** Collection types render nested (`## Decisions` → `### …`);
+  the validator inherits a member's type from its group, enforces attrs/enums on
+  members, and flags a group whose type has no members; outline shows a group
+  column + phase status board.
 
 ## Decisions taken (from the cold-read)
 
@@ -35,6 +39,7 @@ What the spike proved, the decisions taken, and what's still punted.
 | done-but-qualified | `caveat:` attr instead of contradicting prose |
 | overview | engine-generated index between `INDEX` markers |
 | prose | summary/context earn full sentences; bold for labels, not emphasis |
+| grouping | nested source — collection types (`collection:true` + `group:`) as `## Group` → `### member`; singletons stay top-level; id stays in its comment |
 
 ## Still punted (decide before promoting out of spike)
 
@@ -53,11 +58,11 @@ What the spike proved, the decisions taken, and what's still punted.
    as its own gate and self-correct on failure.
 6. **A second doc type** (ADR, research-note) to prove the engine is generic,
    not feature-plan-shaped.
-7. **Grouping.** Collection block types (phase, decision) that read better
-   clustered need a model — a `collection:` flag on the block + an optional
-   `group` attr for ad-hoc meta-groups (id kept separate from grouping, since id
-   is the stable handle). Open fork: does grouping reshape the source (nested
-   `## Phases` → `### member`) or stay view/render-only metadata over a flat source?
+7. **Ad-hoc meta-groups.** Type grouping is done (collection → `## Group`).
+   Cross-type meta-grouping (tag an arbitrary sequence for the renderer via a
+   `group` attr, id kept separate) is noted but unbuilt — YAGNI until a real need.
+   Also a known edge: an empty group is only flagged when its *type* has zero
+   members anywhere (a duplicate group header is not).
 8. **The selector** (still the gap). Block selection was hand-done in-context this
    time. Needs an organized author prompt: dump + catalog → blocks, gated by
    validate.py, then graded by the judge criteria.

@@ -1,18 +1,22 @@
 #!/usr/bin/env python3
 """Spike validator: enforce a block-structured doc against its doc-type catalog.
 
-Block sections are plain markdown headers, type-first, with the (agent-oriented)
-id tucked into a comment so it stays out of the human's way:
+Singleton blocks are top-level headers; collection blocks are grouped:
 
-    ## <type> [- <optional title>]
-    <!-- id: 12 -->        # the stable handle, de-emphasised
-    key: value             # optional attribute lines, until a blank line
+    ## Summary                     <- singleton block (type from the header)
+    <!-- id: 1 -->
 
-    body markdown ...      # until the next "## " header
+    body ...
 
-The type label is normalised (lower-cased, spaces -> hyphens) to a block slug,
-so "Open Question" matches blocks/open-question.yaml. Doc-type catalogs list the
-allowed block types and (at most) which are required — no min/max/position.
+    ## Decisions                   <- group header for a collection type
+    ### Merge-commit for Level-1   <- member block (type inherited from the group)
+    <!-- id: 6 -->
+
+    body ...
+
+A block schema with `collection: true` declares its `group:` label; the engine
+maps "## <group>" to that type and reads its "### <title>" members. Doc-type
+catalogs list allowed block types + (at most) a required set — no min/max.
 
     python3 validate.py out/git-feature.plan.md
 """
@@ -20,7 +24,8 @@ import sys, re, glob, os
 import yaml
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-HEADER_RE = re.compile(r'^##\s+(.+?)\s*$')
+H2_RE = re.compile(r'^##\s+(.+?)\s*$')
+H3_RE = re.compile(r'^###\s+(.+?)\s*$')
 ID_RE = re.compile(r'^<!--\s*id:\s*(\S+)\s*-->\s*$')
 ATTR_RE = re.compile(r'^([\w-]+):\s*(.+?)\s*$')
 
@@ -49,23 +54,55 @@ def doctype_of(path, lines):
     raise SystemExit("no `docType:` marker in first lines of " + path)
 
 
-def parse(lines):
-    blocks, cur, meta = [], None, False
+def label_maps(defs):
+    singleton, group = {}, {}
+    for t, d in defs.items():
+        if d.get("collection"):
+            group[slug(d.get("group", t))] = t
+        else:
+            singleton[slug(t)] = t
+    return singleton, group
+
+
+def parse(lines, defs):
+    singleton, group = label_maps(defs)
+    blocks, groups_seen = [], []
+    cur, mode, gtype, meta = None, None, None, False
+
+    def new(t, title, grp, unknown=False):
+        return {"type": t, "title": title, "group": grp, "id": "",
+                "attrs": {}, "unknown": unknown, "lines": []}
+
+    def close():
+        nonlocal cur
+        if cur is not None:
+            cur["body"] = "\n".join(cur.pop("lines")).strip()
+            blocks.append(cur); cur = None
+
     for raw in lines:
         line = raw.rstrip("\n")
-        h = HEADER_RE.match(line)
-        if h:
+        m2 = H2_RE.match(line)
+        m3 = None if m2 else H3_RE.match(line)
+        if m2:
+            close()
+            lab = slug(m2.group(1))
+            if lab in group:
+                mode, gtype = "group", group[lab]
+                groups_seen.append(gtype)
+            elif lab in singleton:
+                mode, gtype = "single", None
+                cur = new(singleton[lab], "", None); meta = True
+            else:
+                mode, gtype = "single", None
+                cur = new(lab, "", None, unknown=True); meta = True
+            continue
+        if m3:
+            if mode == "group":
+                close()
+                cur = new(gtype, m3.group(1), defs[gtype].get("group")); meta = True
+                continue
             if cur is not None:
-                cur["body"] = "\n".join(cur.pop("lines")).strip()
-                blocks.append(cur)
-            parts = [p.strip() for p in h.group(1).split(" - ")]
-            cur = {
-                "type": slug(parts[0]) if parts else "",
-                "type_label": parts[0] if parts else "",
-                "title": " - ".join(parts[1:]) if len(parts) > 1 else "",
-                "id": "", "attrs": {}, "lines": [],
-            }
-            meta = True
+                cur["lines"].append(line)
             continue
         if cur is None:
             continue
@@ -77,31 +114,29 @@ def parse(lines):
             a = ATTR_RE.match(line)
             if a:
                 cur["attrs"][a.group(1)] = a.group(2); continue
-            meta = False  # first real content line begins the body
+            meta = False
         cur["lines"].append(line)
-    if cur is not None:
-        cur["body"] = "\n".join(cur.pop("lines")).strip()
-        blocks.append(cur)
-    return blocks
+    close()
+    return blocks, groups_seen
 
 
-def validate(defs, dt, parsed):
+def validate(defs, dt, blocks, groups_seen):
     errs = []
     allowed = set(dt.get("blocks") or [])
     required = set(dt.get("required") or [])
     seen_ids, present = set(), set()
 
-    for i, b in enumerate(parsed):
+    for i, b in enumerate(blocks):
         where = f"#{i+1} (id={b['id'] or '?'})"
         if not b["id"]:
-            errs.append(f"{where}: missing `<!-- id: -->` under the header")
+            errs.append(f"{where}: missing `<!-- id: -->`")
         elif b["id"] in seen_ids:
             errs.append(f"{where}: duplicate id '{b['id']}'")
         seen_ids.add(b["id"])
 
         t = b["type"]; present.add(t)
-        if t not in defs:
-            errs.append(f"{where}: unknown block type '{b['type_label']}'"); continue
+        if b["unknown"] or t not in defs:
+            errs.append(f"{where}: unknown block/section '{t}'"); continue
         if t not in allowed:
             errs.append(f"{where}: '{t}' not in the '{dt['docType']}' catalog")
 
@@ -119,6 +154,13 @@ def validate(defs, dt, parsed):
         if body and body.get("required") and not b["body"]:
             errs.append(f"{where} {t}: required body is empty")
 
+    counts = {}
+    for b in blocks:
+        counts[b["type"]] = counts.get(b["type"], 0) + 1
+    for gt in groups_seen:
+        if counts.get(gt, 0) == 0:
+            errs.append(f"group '{defs[gt]['group']}' has no members")
+
     for t in sorted(required - present):
         errs.append(f"doctype: required block '{t}' is missing")
     return errs
@@ -129,9 +171,9 @@ def main():
     lines = open(path).readlines()
     defs = load_blocks()
     dt = load_doctype(doctype_of(path, lines))
-    parsed = parse(lines)
-    errs = validate(defs, dt, parsed)
-    print(f"doc: {os.path.relpath(path, ROOT)}   docType: {dt['docType']}   blocks: {len(parsed)}")
+    blocks, groups_seen = parse(lines, defs)
+    errs = validate(defs, dt, blocks, groups_seen)
+    print(f"doc: {os.path.relpath(path, ROOT)}   docType: {dt['docType']}   blocks: {len(blocks)}")
     if errs:
         print(f"\nFAIL — {len(errs)} violation(s):")
         for e in errs:
