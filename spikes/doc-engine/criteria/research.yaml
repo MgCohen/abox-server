@@ -1,0 +1,48 @@
+docType: research
+
+# Criteria for the repo's generic judge (PLANS/generic-judge.md): { id, description,
+# howToCheck }. Soft/semantic layer — runs AFTER validate.py (structure) passes.
+#   selection — did the author pick the right blocks?
+#   quality   — was the research authored correctly?
+
+selection:
+  - id: sel-coverage
+    description: >-
+      Every load-bearing element of the source has a home — the questions
+      investigated, the key sources, the analysis, and the conclusion.
+    howToCheck: Compare the source's substance against the blocks present; flag major gaps.
+  - id: sel-right-type
+    description: >-
+      Content sits in the correct block — investigated questions are `question`,
+      cited sources are `quotation`, the hypothesis is `expected-result`, the
+      conclusion is `outcome`, deferred decisions are `open-question`.
+    howToCheck: Look for miscategorised content (e.g. a conclusion parked in analysis).
+  - id: sel-no-filler
+    description: No block is filler; each carries real substance per its description.
+    howToCheck: Flag any block that restates another or says nothing concrete.
+
+quality:
+  - id: q-standalone
+    description: >-
+      The document stands alone — no references to "the source"/"the dump", prior
+      chat, or revision language.
+    howToCheck: Search the prose for back-references to context outside the doc.
+  - id: q-sourced
+    description: >-
+      Every substantive claim ties to a cited source (a `quotation` or an inline
+      citation); no unsupported assertions.
+    howToCheck: Spot-check analysis/outcome claims for a backing source.
+  - id: q-headline-first
+    description: The summary leads with the finding, not a buried conclusion.
+    howToCheck: Read the summary — the headline result should be in the first sentences.
+  - id: q-expectation-vs-outcome
+    description: The outcome states whether the result matched the expected-result.
+    howToCheck: Confirm the outcome explicitly confirms or upsets the hypothesis.
+  - id: q-questions-answered
+    description: Each `question` is actually answered in the analysis or outcome.
+    howToCheck: For each question, find its answer; flag any left dangling.
+  - id: q-prose-level
+    description: >-
+      Prose is substantive where it matters (summary, analysis, outcome); bold
+      marks labels, not inline emphasis.
+    howToCheck: Judge whether the prose reads as real explanation and bold usage.
