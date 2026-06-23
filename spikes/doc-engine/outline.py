@@ -18,13 +18,22 @@ END = "<!-- INDEX:END -->"
 
 
 def index_md(blocks):
-    rows = ["**Outline** (generated — run `outline.py --write`)", "",
-            "| id | group | type | title | status |",
-            "| --- | --- | --- | --- | --- |"]
-    for b in blocks:
-        rows.append(f"| {b['id']} | {b['group'] or ''} | {b['type']} "
-                    f"| {b['title']} | {b['attrs'].get('status', '')} |")
-    return "\n".join(rows)
+    lines = ["**Outline** (generated — run `outline.py --write`)", ""]
+    i = 0
+    while i < len(blocks):
+        b = blocks[i]
+        if b["group"]:
+            grp, members = b["group"], []
+            while i < len(blocks) and blocks[i]["group"] == grp:
+                m = blocks[i]
+                st = m["attrs"].get("status")
+                members.append(f"{m['title']} ({st})" if st else m["title"])
+                i += 1
+            lines.append(f"- {grp} — " + "; ".join(members))
+        else:
+            lines.append(f"- {b['type'].replace('-', ' ').title()}")
+            i += 1
+    return "\n".join(lines)
 
 
 def status_board(blocks):

@@ -3,21 +3,11 @@ collection: true
 group: Phases
 short: One ordered, shippable step of the build.
 usage: |
-  Members live under the "## Phases" group as "### <title>". Lead with what the
-  step reuses before what it adds; the body states the goal and the done-when
-  bar. Carry `status`; for a blocked phase list blockers as a sub-list. Use
-  `caveat` for a short qualifier on an otherwise-done phase. At least two phases.
+  Members under the "## Phases" group as "### <title>". Lead with what the step
+  reuses before what it adds; the body states the goal and the done-when bar.
+  Carry `status`; for a blocked phase list blockers as a sub-list. Use `caveat`
+  for a short qualifier on an otherwise-done phase. At least two phases.
 attrs:
   status: { type: enum, values: [todo, doing, done, blocked], default: todo }
   caveat: { type: string, required: false }
 body: { type: markdown, required: true }
-example: |
-  ## Phases
-
-  ### Wire AgentHost to PtySession
-  <!-- id: 4 -->
-  status: doing
-
-  **Goal.** Replace the inline PTY fields in `AgentHost` with a `PtySession`
-  dependency. Reuses `ConPtyInterop`; adds the session boundary.
-  **Done-when.** Teardown covered by a Rulebook test; build warning-free.

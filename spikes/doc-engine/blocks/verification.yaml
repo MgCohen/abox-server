@@ -4,9 +4,3 @@ usage: |
   Name the concrete checks: build, tests, and at least one behaviour actually
   run end-to-end — not just "it compiles". One block, near the end.
 body: { type: markdown, required: true }
-example: |
-  ## Verification
-  <!-- id: 8 -->
-
-  Warning-free build; green tests; the PR-merge flow run end-to-end once against
-  a real repo; one coherent commit. Tests land as Rulebooks.

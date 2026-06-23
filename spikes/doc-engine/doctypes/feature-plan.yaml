@@ -8,9 +8,14 @@ blocks: [summary, context, scope, decision, phase, verification, open-question]
 # At most we require presence. No min/max, no ordering rules.
 required: [summary, phase, verification]
 
+# One worked, judge-validated example beats per-block samples (less drift) — the
+# same approach the reference (visual-plan) takes: a single exemplar, not per-block.
+exemplar: out/git-feature.plan.md
+
 rubric: |
   Distill the dump into blocks; do not transcribe it. Name real files and
   symbols. Pick blocks by their `short` rubric. Write enough prose to be
   understood — summary and context deserve real sentences and rationale, not a
   terse skeleton — but keep any single block tight, not a wall of text. Use bold
   for labels (**Goal.**), not for inline emphasis. Open questions, if any, last.
+  See the `exemplar` for the bar.

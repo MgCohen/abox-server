@@ -7,11 +7,3 @@ usage: |
   and "### Out of scope" (what is owned elsewhere, with where it goes). Bullets,
   each a real capability.
 body: { type: markdown, required: true }
-example: |
-  ## Scope
-
-  ### Out of scope
-  <!-- id: 5 -->
-
-  - Conflict resolution → B3 (this plan ships only the mechanical rebase primitive).
-  - Owner-identity approval → S5 (this plan is read-as-bot only).

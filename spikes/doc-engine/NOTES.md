@@ -40,6 +40,9 @@ What the spike proved, the decisions taken, and what's still punted.
 | overview | engine-generated index between `INDEX` markers |
 | prose | summary/context earn full sentences; bold for labels, not emphasis |
 | grouping | nested source — collection types (`collection:true` + `group:`) as `## Group` → `### member`; singletons stay top-level; id stays in its comment |
+| examples | per-block `example` dropped; one judge-validated `exemplar` (`out/git-feature.plan.md`) on the doctype instead — matches visual-plan, kills drift |
+| index | compact grouped list (sections + member titles), not a matrix |
+| how reference does it | visual-plan keeps schema in a runtime registry (`get-plan-blocks`), when-to-use one-liners in prose, one doc-level exemplar — never per-block examples |
 
 ## Still punted (decide before promoting out of spike)
 

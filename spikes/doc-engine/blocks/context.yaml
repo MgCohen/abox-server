@@ -5,11 +5,3 @@ usage: |
   closes. Cite the real files/types that exist now. This block earns prose —
   enough for a reader to understand the starting point, not just a file list.
 body: { type: markdown, required: true }
-example: |
-  ## Context
-  <!-- id: 2 -->
-
-  Git lives in two bands today. `Domain/Git/Git.cs` runs local working-copy
-  operations but knows nothing about remotes. `Features/Git` exposes the PR
-  slice, but it is almost entirely stubbed by `StubPullRequests`. The gap: there
-  is no real GitHub adapter and no branch/PR CRUD to build a stack on.

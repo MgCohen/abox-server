@@ -9,13 +9,3 @@ usage: |
 attrs:
   lean: { type: string, required: false }
 body: { type: markdown, required: true }
-example: |
-  ## Open Questions
-
-  ### GitHub client library
-  <!-- id: 9 -->
-  lean: Octokit.NET
-
-  Octokit.NET (typed, official) vs raw `HttpClient` vs shelling `gh`. This is
-  feature code, so ADR 0012's zero-dependency rule does not apply — flag the new
-  dependency for the owner.
