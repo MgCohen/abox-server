@@ -7,5 +7,5 @@ usage: |
   and options; put the recommended default in `lean`. If already decided, it is a
   `decision`. The group goes last.
 attrs:
-  lean: { type: string, required: false }
-body: { type: markdown, required: true }
+  lean: string
+body: markdown

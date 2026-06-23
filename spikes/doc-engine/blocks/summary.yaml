@@ -4,4 +4,4 @@ usage: |
   Outcome-first prose. State the objective and what "done" means in concrete
   terms. A reader with no prior context should grasp the goal and the stakes.
   Real sentences, not a bullet skeleton — but one tight paragraph, not a wall.
-body: { type: markdown, required: true }
+body: markdown

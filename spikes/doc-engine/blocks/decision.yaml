@@ -5,4 +5,4 @@ short: A settled choice carried in; do not re-litigate.
 usage: |
   Members under the "## Decisions" group as "### <title>". State the decision and
   the one-line why. Closed choices only; genuinely open ones are `open-question`.
-body: { type: markdown, required: true }
+body: markdown

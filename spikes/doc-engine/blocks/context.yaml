@@ -4,4 +4,4 @@ usage: |
   Explain the current state in prose, then name the specific gap this plan
   closes. Cite the real files/types that exist now. This block earns prose —
   enough for a reader to understand the starting point, not just a file list.
-body: { type: markdown, required: true }
+body: markdown

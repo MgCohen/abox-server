@@ -8,6 +8,6 @@ usage: |
   Carry `status`; for a blocked phase list blockers as a sub-list. Use `caveat`
   for a short qualifier on an otherwise-done phase. At least two phases.
 attrs:
-  status: { type: enum, values: [todo, doing, done, blocked], default: todo }
-  caveat: { type: string, required: false }
-body: { type: markdown, required: true }
+  status: { enum: [todo, doing, done, blocked], default: todo }
+  caveat: string
+body: markdown

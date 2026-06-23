@@ -34,6 +34,19 @@ def slug(label):
     return label.strip().lower().replace(" ", "-")
 
 
+def norm_field(spec, default_required):
+    # Shorthand: a bare type name (`body: markdown`, `lean: string`). The object
+    # form is only needed for extras — `{ enum: [...], default: ..., required: ... }`.
+    if isinstance(spec, str):
+        return {"type": spec, "required": default_required}
+    d = dict(spec)
+    if "enum" in d:
+        d["values"] = d.pop("enum")
+        d.setdefault("type", "enum")
+    d.setdefault("required", default_required)
+    return d
+
+
 def load_blocks():
     out = {}
     for f in glob.glob(os.path.join(ROOT, "blocks", "*.yaml")):
@@ -141,18 +154,21 @@ def validate(defs, dt, blocks, groups_seen):
             errs.append(f"{where}: '{t}' not in the '{dt['docType']}' catalog")
 
         spec_attrs = defs[t].get("attrs") or {}
-        for an, asp in spec_attrs.items():
-            if asp.get("required") and an not in b["attrs"]:
+        for an, raw in spec_attrs.items():
+            asp = norm_field(raw, False)
+            if asp["required"] and an not in b["attrs"]:
                 errs.append(f"{where} {t}: missing required attr '{an}'")
-            if an in b["attrs"] and asp.get("type") == "enum" and b["attrs"][an] not in asp["values"]:
+            if an in b["attrs"] and asp["type"] == "enum" and b["attrs"][an] not in asp["values"]:
                 errs.append(f"{where} {t}: {an}='{b['attrs'][an]}' not in {asp['values']}")
         for an in b["attrs"]:
             if an not in spec_attrs:
                 errs.append(f"{where} {t}: unknown attr '{an}'")
 
-        body = defs[t].get("body")
-        if body and body.get("required") and not b["body"]:
-            errs.append(f"{where} {t}: required body is empty")
+        bspec = defs[t].get("body")
+        if bspec:
+            body = norm_field(bspec, True)
+            if body["required"] and not b["body"]:
+                errs.append(f"{where} {t}: required body is empty")
 
     counts = {}
     for b in blocks:

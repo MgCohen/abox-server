@@ -6,4 +6,4 @@ usage: |
   Two members under the "## Scope" group: "### In scope" (what this plan builds)
   and "### Out of scope" (what is owned elsewhere, with where it goes). Bullets,
   each a real capability.
-body: { type: markdown, required: true }
+body: markdown
