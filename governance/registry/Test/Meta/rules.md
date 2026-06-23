@@ -68,3 +68,13 @@ fails. Presence only — whether the line truly guides selection is the judge's 
 `Artifacts.All` reads each `governance/registry/*/artifact.yml`; the guard checks purpose/home/family/gate are
 present and valid, and that `parity` is consistent with `family` (code-first binds a target, nl-first doesn't).
 Template and criteria stay the per-type Rulebook guards' job; this owns the registry floor.
+
+### Every artifact instance conforms to its type's declared shape
+- **Why:** A type's `template.md` may declare a `## Shape` — the sections every instance must carry. Without a
+  check the shape is only aspirational: an instance could drop a required section and drift from the type's
+  contract, and the advisory judge would never hard-stop it. This makes structure mechanical so the judge is
+  left to grade only what structure can't: quality.
+
+`Artifacts.All` pairs each registry member with its `template.md`; for any that declares a `## Shape`, the guard
+reads the type's `home` and asserts every instance carries each declared `## ` heading. Presence only — whether
+a section is *good* stays the judge's call, and a type with no `## Shape` is free-form and unconstrained.

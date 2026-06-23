@@ -31,3 +31,22 @@ Drop a `governance/registry/<Name>/artifact.yml` declaring the floor; the guard 
 folder lands. A `code-first` type also needs its parity binding and (like Test) may sub-type into Rulebooks
 with `template.md` + `rules.md` under `<Name>/<Type>/`. An `nl-first` type carries no Rules or parity — an
 optional `template.md` with `## Purpose` + `## Criteria` gives `/judge` a rubric to grade instances against.
+
+## The structural floor: `## Shape`
+
+A `template.md` may add a `## Shape` — the `## ` sections every instance must carry — listed as backticked
+heading bullets:
+
+```markdown
+## Shape
+
+- `## Objective`
+- `## Summary`
+- `## Citations`
+```
+
+The Meta guard *Every artifact instance conforms to its type's declared shape*
+([`tests/Meta/Tests/InstanceShapeTests.cs`](../../tests/Meta/Tests/InstanceShapeTests.cs)) reads each type's
+`## Shape` and fails the build if any instance under `home` is missing a declared heading. Structure is
+**mechanical** (presence only) and hard-blocks regardless of `gate`; quality stays **semantic** — `/judge`
+against `## Criteria`. A type with no `## Shape` is free-form (like `Research`).
