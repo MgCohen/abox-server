@@ -27,6 +27,16 @@ What the spike proved, the decisions taken, and what's still punted.
   the validator inherits a member's type from its group, enforces attrs/enums on
   members, and flags a group whose type has no members; outline shows a group
   column + phase status board.
+- **Selector works, end to end.** A sub-agent following `selector.md` distilled a
+  *fresh* dump (`PLANS/claude-stop-hook-plan.md`) into a conformant instance —
+  first-try validate PASS. The judge then caught a real coverage gap (the dump's
+  "Failure modes & fallbacks" was dropped); the selector revised, folding the
+  guards into the relevant phases/verification → PASS. generate → validate → judge
+  → revise is closed.
+- **Floor enforcement on the definitions.** `_schema/{block,doctype}.schema.yaml`
+  + `check_schema.py` validate every block and doc-type *definition* (required
+  fields, kinds, the type vocabulary, `collection ⇒ group`, `required ⊆ blocks`).
+  The whole stack is structured: meta-schema → definitions → instance.
 
 ## Decisions taken (from the cold-read)
 
@@ -72,9 +82,11 @@ What the spike proved, the decisions taken, and what's still punted.
    `group` attr, id kept separate) is noted but unbuilt — YAGNI until a real need.
    Also a known edge: an empty group is only flagged when its *type* has zero
    members anywhere (a duplicate group header is not).
-8. **The selector** (still the gap). Block selection was hand-done in-context this
-   time. Needs an organized author prompt: dump + catalog → blocks, gated by
-   validate.py, then graded by the judge criteria.
+8. **The selector** — built (`selector.md`) and proven on two dumps. Now an agent
+   procedure; folding it into a repo command/skill is the productionisation step.
+9. **A `risks` / `failure-modes` block?** Both real dumps had operational
+   fallback/failure content with no clean home (folded into phases). If a second
+   doc type wants it too, add the block — the first concrete catalog-growth signal.
 
 ## How this lands in the repo (when real)
 

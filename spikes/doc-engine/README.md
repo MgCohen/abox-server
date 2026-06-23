@@ -29,14 +29,19 @@ dump (ephemeral)  ──distill──►  instance.md (blocks)  ──validate�
 - **out/** — the distilled block instance.
 - **validate.py** — parses the instance, enforces the catalog. Structure is law.
 - **outline.py** — derives an index + phase status board from the blocks.
-- **catalog.py** — prints the decision matrices (`short`s) a selector reads to pick
-  a doc type, then its blocks.
+- **catalog.py** — prints the decision matrices (descriptions) a selector reads to
+  pick a doc type, then its blocks.
+- **selector.md** — the author procedure: dump → conformant instance, gated by
+  validate.py and graded by the judge.
+- **_schema/ + check_schema.py** — the meta-schema: every block and doc-type
+  *definition* is itself validated (floor enforcement, so the whole stack is structured).
 
 ## Run
 
 ```bash
 cd spikes/doc-engine
-python3 validate.py out/git-feature.plan.md       # enforce
+python3 check_schema.py                              # definitions conform to the meta-schema
+python3 validate.py out/git-feature.plan.md       # instance conforms to the catalog
 python3 catalog.py                                  # decision matrices (doc types, blocks)
 python3 outline.py  out/git-feature.plan.md        # print derived views
 python3 outline.py  out/git-feature.plan.md --write # inject the index in place
