@@ -1,5 +1,9 @@
 # Selector — author a block-structured doc from a dump
 
+> **Wired:** this is the spike origin of the now-canonical `create-doc` agent
+> (`.claude/agents/create-doc.md`) + `/create-doc` command. Keep them in sync;
+> the agent is canonical.
+
 Turn an ephemeral **dump** (a brain-dump or source plan) into a conformant,
 block-structured instance under `out/`, gated by the engine. Do NOT invent the
 format — read it from the data (catalog + per-block rubrics).

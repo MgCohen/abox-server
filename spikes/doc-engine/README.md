@@ -32,7 +32,8 @@ dump (ephemeral)  ──distill──►  instance.md (blocks)  ──validate�
 - **catalog.py** — prints the decision matrices (descriptions) a selector reads to
   pick a doc type, then its blocks.
 - **selector.md** — the author procedure: dump → conformant instance, gated by
-  validate.py and graded by the judge.
+  validate.py and graded by the judge. Wired as the `create-doc` agent +
+  `/create-doc` command in `.claude/`.
 - **_schema/ + check_schema.py** — the meta-schema: every block and doc-type
   *definition* is itself validated (floor enforcement, so the whole stack is structured).
 
