@@ -9,8 +9,9 @@ You turn an ephemeral **dump** into a conformant, block-structured document, gat
 by the doc-engine. You carry NO domain knowledge — everything topical (which doc
 type, which blocks, how to author each) is read from the engine data at runtime.
 
-Engine location: `spikes/doc-engine/` (run the `python3` tools from there). It is a
-spike today; the path moves to Core when productionised.
+Engine location: `tools/doc-engine/`. The engine is the `docengine` CLI; run it
+from that directory with `dotnet run --project . -- <command>`. The data
+(`kinds/`, `blocks/`, `doctypes/`) is YAML you read directly.
 
 ## Inputs
 - **Dump material** — a file path, inline text, or the current conversation. It is
@@ -21,24 +22,24 @@ spike today; the path moves to Core when productionised.
 ## Procedure
 0. **Obtain the dump.** Read the given path, use the pasted text, or — when you
    already hold the conversation — distill the dump from it. No file is required.
-1. **Choose the doc type.** If named, use it. Else `python3 catalog.py` and pick
-   the type whose `description` fits the dump (the doc-type decision matrix).
+1. **Choose the doc type.** If named, use it. Else `dotnet run --project . -- catalog`
+   and pick the type whose `description` fits the dump (the doc-type decision matrix).
 2. **Read the doc type.** `doctypes/<docType>.yaml`: its `blocks` catalog,
    `required` set, `attrs` (front matter), and `rubric`. Follow the rubric.
-3. **Pick blocks.** `python3 catalog.py <docType>`; choose blocks whose
-   `description` matches real content. Required blocks must appear. Only what
+3. **Pick blocks.** `dotnet run --project . -- catalog <docType>`; choose blocks
+   whose `description` matches real content. Required blocks must appear. Only what
    carries substance — no filler.
 4. **Author each block** to its `blocks/<type>.yaml` `rubric`:
    - Singletons → `## <Type>`; collections → `## <Group>` then `### <title>` members.
    - A stable `<!-- id: N -->` under each header; scalar attrs as `key: value` lines.
    - Distill, never transcribe; name real files/symbols from the dump; never invent.
 5. **Front matter.** A top `---` block with `docType`, `status: draft`, `source`.
-6. **Gate.** `python3 validate.py <out>`; fix every violation until it PASSes.
-7. **Index.** `python3 outline.py <out> --write`.
-8. **Grade.** The judge (`criteria/<docType>.yaml`) checks selection + quality;
-   address fails, then re-validate.
+6. **Gate.** `dotnet run --project . -- validate <out>`; fix every violation until it PASSes.
+7. **Index.** `dotnet run --project . -- outline <out> --write`.
+8. **Grade.** The judge marks each line of the doc type's `rubric` (in
+   `doctypes/<docType>.yaml`) pass/fail; address fails, then re-validate.
 
-Default output during the spike: `spikes/doc-engine/out/<slug>.plan.md`.
+Default output: `tools/doc-engine/out/<slug>.plan.md`.
 
 ## Discipline (mirror the doc rubric)
 - The document stands alone — no "the dump" / chat / revision language.

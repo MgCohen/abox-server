@@ -1,6 +1,7 @@
-# Spike findings — doc-engine
+# doc-engine — findings & decisions
 
-What the spike proved, the decisions taken, and what's still punted.
+What the build proved (spike → ported tool), the decisions taken, and what's still
+punted. History is preserved as the rationale behind the current design.
 
 ## Proved
 
@@ -107,10 +108,15 @@ What the spike proved, the decisions taken, and what's still punted.
     doc-type's `rubric` (binary one-liners), used by both the selector and the judge;
     `criteria/` removed.
 
-## How this lands in the repo (when real)
+## How it landed in the repo
 
-- Generic engine (registry, parser, validator, outline) → `Core`.
-- Validator + index-freshness run as Structure-Rulebook guards in CI: a
-  non-conforming or stale doc fails the build.
+- **Ported to C#** as a standalone tool, `tools/doc-engine/` (`ABox.DocEngine`,
+  the `docengine` CLI: `check` / `validate` / `catalog` / `outline`). Deliberately
+  NOT in `ABox.slnx` — it is dev tooling, not the orchestrator spine, so it carries
+  its own YamlDotNet dependency off the product's zero-dep assemblies. Behavioural
+  parity with the Python spike was verified before the spike was deleted.
 - `_schema/` + `kinds/` + `blocks/` + `doctypes/` are data; adding a kind, a
   block, or a doc type is a YAML change — the engine names none of them.
+- **Still owner-gated (protected paths):** a Structure-Rulebook CI guard that fails
+  the build on a non-conforming/stale doc, and any ADR recording the design. These
+  touch `tests/**` / `design/adr/**` and must land via the owner's PR.
