@@ -14,7 +14,7 @@ internal static class Program
             {
                 "check" => Check(root),
                 "validate" => ValidateCmd(root, positional.ElementAtOrDefault(1)),
-                "catalog" => CatalogCmd(root, positional.ElementAtOrDefault(1)),
+                "catalog" => CatalogCmd(root, positional.ElementAtOrDefault(1), args.Contains("--json")),
                 "outline" => OutlineCmd(root, positional.ElementAtOrDefault(1), args.Contains("--write")),
                 _ => Usage(),
             };
@@ -59,8 +59,14 @@ internal static class Program
         return 0;
     }
 
-    private static int CatalogCmd(string root, string? doctype)
+    private static int CatalogCmd(string root, string? doctype, bool json)
     {
+        if (json)
+        {
+            Console.WriteLine(CatalogExport.Json(root));
+            return 0;
+        }
+
         var defs = Catalog.LoadBlocks(root);
         if (doctype is not null)
         {
@@ -121,7 +127,7 @@ internal static class Program
         for (var i = 0; i < args.Length; i++)
         {
             if (args[i] == "--root" && i + 1 < args.Length) root = args[++i];
-            else if (args[i] != "--write") positional.Add(args[i]);
+            else if (args[i] != "--write" && args[i] != "--json") positional.Add(args[i]);
         }
         return (positional, root);
     }
@@ -143,7 +149,7 @@ internal static class Program
 
     private static int Usage()
     {
-        Console.Error.WriteLine("usage: docengine <check | validate <file> | catalog [doctype] | outline <file> [--write]> [--root <dir>]");
+        Console.Error.WriteLine("usage: docengine <check | validate <file> | catalog [doctype] [--json] | outline <file> [--write]> [--root <dir>]");
         return 2;
     }
 }

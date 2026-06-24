@@ -33,15 +33,16 @@ owns presentation. So we ship the vocabulary as one file.
 
 ### 1. A catalog export command
 
-Add to the `docengine` CLI:
+Built — `docengine catalog --json`:
 
 ```
 docengine catalog --json > doc-catalog.json
 ```
 
 It serializes the already-loaded `kinds` + `blocks` + `doctypes` into one
-machine-readable file. No new domain logic — `Catalog` already loads all of it for
-the text `catalog` command; this is a serializer over the same data.
+machine-readable file (`CatalogExport`). No new domain logic — `Catalog` already
+loads all of it for the text `catalog` command; this is a serializer over the same
+data, normalizing the YAML graph to JSON.
 
 ### 2. A version stamp
 
@@ -63,7 +64,11 @@ forgotten.
 > the cost of build wiring + folding a tooling concern into the wire-contracts
 > assembly. Use only if "remember to copy one more file" actually bites.
 
-### Proposed `doc-catalog.json` shape
+### `doc-catalog.json` shape
+
+Each definition is serialized **as-is** (the engine names no kind, so the export
+special-cases none) and keyed by its identifier — blocks by `type`, doctypes by
+`docType`, kinds by `name`. Abridged real output of `docengine catalog --json`:
 
 ```json
 {
@@ -71,9 +76,10 @@ forgotten.
   "kinds":    { "block": { "...": "..." }, "doctype": { "...": "..." } },
   "blocks": {
     "phase": {
-      "description": "One ordered, shippable step of the build.",
-      "collection": true,
+      "type": "phase",
+      "collection": "true",
       "group": "Phases",
+      "description": "One ordered, shippable step of the build.",
       "attrs": {
         "status": { "enum": ["todo", "doing", "done", "blocked"], "default": "todo" },
         "caveat": { "type": "string" }
@@ -84,6 +90,7 @@ forgotten.
   },
   "doctypes": {
     "feature-plan": {
+      "docType": "feature-plan",
       "description": "Build or change a feature...",
       "blocks": ["summary", "context", "scope", "decision", "phase", "verification", "open-question"],
       "required": ["summary", "phase", "verification"],
@@ -96,6 +103,12 @@ forgotten.
 This is the whole contract. Everything the client needs to render — block types,
 their attrs/enums, which are collections and under what group header, what a
 doctype is composed of — is in this one file.
+
+> **Scalars are strings.** YAML scalars (including bool-looking ones) serialize as
+> JSON **strings** — note `"collection": "true"`, not `true`. This mirrors the
+> engine's string-centric model; blind bool coercion is deliberately avoided
+> because it would corrupt enum values like `[yes, no]`. The client applies the
+> same truthiness rule (`true/yes/on/1`) the engine does for the few bool fields.
 
 ---
 
