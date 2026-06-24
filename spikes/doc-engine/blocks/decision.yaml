@@ -5,4 +5,5 @@ description: A settled choice carried in; do not re-litigate.
 rubric:
   decision-and-why: State the decision and the one-line why.
   closed-only:      Closed choices only — genuinely open ones go in open-question.
-body: markdown
+body:
+  type: markdown

@@ -3,4 +3,5 @@ description: What was actually found — the conclusion.
 rubric:
   answer-and-match: Answer the questions and say whether the result matched the expectation.
   decisive:         Concrete and decisive; name follow-ups only if real.
-body: markdown
+body:
+  type: markdown

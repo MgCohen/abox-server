@@ -4,4 +4,5 @@ rubric:
   state-then-gap: Describe the current state in prose, then name the specific gap this closes.
   cite-real:      Cite the real files/types that exist now.
   prose:          Enough prose to orient a reader, not just a file list.
-body: markdown
+body:
+  type: markdown

@@ -1,9 +1,0 @@
-# Meta-schema — every doctypes/*.yaml must conform. Run: python3 check_schema.py
-fields:
-  docType:     { kind: string, required: true }
-  description: { kind: string, required: true }
-  blocks:      { kind: list,   required: true, of: string }
-  required:    { kind: list,   required: false, of: string }
-  attrs:       { kind: attrs,  required: false }
-  rubric:      { kind: strmap, required: false }
-# Semantic rule (enforced in check_schema.py): `required` must be a subset of `blocks`.

@@ -3,4 +3,5 @@ description: The main investigation — evidence and reasoning.
 rubric:
   evidence-to-outcome: Walk the evidence and reasoning that connects the questions to the outcome.
   sourced:             Lean on the quotations/sources; real specifics, not vague claims.
-body: markdown
+body:
+  type: markdown

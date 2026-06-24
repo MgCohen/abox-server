@@ -7,7 +7,9 @@ blocks: [summary, question, expected-result, quotation, analysis, outcome, open-
 required: [summary, question, outcome]
 
 attrs:
-  status: { enum: [draft, final], default: draft }
+  status:
+    enum: [draft, final]
+    default: draft
 
 # Binary checks as `id: rule` — one list, for both authoring and grading.
 rubric:

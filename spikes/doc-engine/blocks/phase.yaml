@@ -9,6 +9,10 @@ rubric:
   caveat:        Use `caveat` for a short qualifier on an otherwise-done phase.
   min-two:       At least two phases — a single step is not a plan.
 attrs:
-  status: { enum: [todo, doing, done, blocked], default: todo }
-  caveat: string
-body: markdown
+  status:
+    enum: [todo, doing, done, blocked]
+    default: todo
+  caveat:
+    type: string
+body:
+  type: markdown

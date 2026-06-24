@@ -34,8 +34,13 @@ dump (ephemeral)  ──distill──►  instance.md (blocks)  ──validate�
 - **selector.md** — the author procedure: dump → conformant instance, gated by
   validate.py and graded by the judge. Wired as the `create-doc` agent +
   `/create-doc` command in `.claude/`.
-- **_schema/ + check_schema.py** — the meta-schema: every block and doc-type
-  *definition* is itself validated (floor enforcement, so the whole stack is structured).
+- **kinds/** — one YAML per *kind* of definition: `block` and `doctype`. Each
+  declares the `fields` its definitions must carry + cross-field `constraints`.
+  A new enforced structure is a new `kinds/*.yaml` — the engine names no kind.
+- **_schema/kind.schema.yaml + check_schema.py** — the single meta-schema: it
+  says what a kind file looks like and is *itself a kind* (conforms to itself),
+  so the whole stack is structured top to bottom — meta-schema → kinds →
+  definitions → instance.
 
 ## Run
 

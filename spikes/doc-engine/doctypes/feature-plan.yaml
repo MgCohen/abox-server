@@ -7,7 +7,9 @@ required: [summary, phase, verification]
 
 # Doc-level attributes — a visible `---` YAML front-matter block on the instance.
 attrs:
-  status: { enum: [draft, approved], default: draft }
+  status:
+    enum: [draft, approved]
+    default: draft
 
 # Binary checks as `id: rule` — ONE list for both authoring (the selector writes to
 # them) and grading (the judge marks each pass/fail, echoing the id). The judge is

@@ -4,4 +4,5 @@ rubric:
   outcome-first: Outcome-first — state the objective and what "done" means, concretely.
   tight:         One tight paragraph of real prose, not a bullet skeleton or a wall.
   standalone:    Understandable with no prior context.
-body: markdown
+body:
+  type: markdown

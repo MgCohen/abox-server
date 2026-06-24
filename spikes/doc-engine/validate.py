@@ -35,10 +35,12 @@ def slug(label):
 
 
 def norm_field(spec, default_required):
-    # Shorthand: a bare type name (`body: markdown`, `lean: string`). The object
-    # form is only needed for extras — `{ enum: [...], default: ..., required: ... }`.
-    if isinstance(spec, str):
-        return {"type": spec, "required": default_required}
+    # One canonical form, no shorthand: a field spec is always a map in block
+    # notation (`type: markdown` / `enum: [...]`). Agent-first — uniform
+    # structure beats a terser bare-string form.
+    if not isinstance(spec, dict):
+        raise SystemExit(f"field spec must be a map, got {spec!r} — "
+                         "write `type:`/`enum:` explicitly (no bare-string shorthand)")
     d = dict(spec)
     if "enum" in d:
         d["values"] = d.pop("enum")

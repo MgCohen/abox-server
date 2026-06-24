@@ -3,4 +3,5 @@ description: The hypothesis — what we expected to find before looking.
 rubric:
   state-expectation: State the prior expectation plainly, so the outcome can confirm or upset it.
   short:             One short block; not a place for analysis.
-body: markdown
+body:
+  type: markdown

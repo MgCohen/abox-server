@@ -33,10 +33,18 @@ What the spike proved, the decisions taken, and what's still punted.
   "Failure modes & fallbacks" was dropped); the selector revised, folding the
   guards into the relevant phases/verification → PASS. generate → validate → judge
   → revise is closed.
-- **Floor enforcement on the definitions.** `_schema/{block,doctype}.schema.yaml`
-  + `check_schema.py` validate every block and doc-type *definition* (required
-  fields, kinds, the type vocabulary, `collection ⇒ group`, `required ⊆ blocks`).
-  The whole stack is structured: meta-schema → definitions → instance.
+- **Floor enforcement on the definitions.** `check_schema.py` validates every
+  block and doc-type *definition* (required fields, kinds, the type vocabulary,
+  `collection ⇒ group`, `required ⊆ blocks`). The whole stack is structured:
+  meta-schema → kinds → definitions → instance.
+- **Collapsed to one self-describing meta-schema.** `block` and `doctype` stopped
+  being special-cased in code: each is now a data file in `kinds/` declaring its
+  `fields` + cross-field `constraints` (a 2-primitive registry — `requires_when`,
+  `subset` — replaces the hard-coded semantic rules). One `_schema/kind.schema.yaml`
+  says what a kind file is and is *itself a kind*, so it conforms to itself and the
+  regress stops. `check_schema.py` names no kind (grep-clean); a new enforced
+  structure is a new `kinds/*.yaml`, zero engine change. Behaviour unchanged — same
+  PASS on the 12 blocks / 2 doc-types / 3 instances.
 - **Second doc type proves genericity.** `research` (question / quotation /
   expected-result / analysis / outcome) reuses `summary` + `open-question` and adds
   research-specific blocks — same engine, no code change. The wired `create-doc`
@@ -59,7 +67,8 @@ What the spike proved, the decisions taken, and what's still punted.
 | grouping | nested source — collection types (`collection:true` + `group:`) as `## Group` → `### member`; singletons stay top-level; id stays in its comment |
 | examples | per-block `example` dropped; one judge-validated `exemplar` (`out/git-feature.plan.md`) on the doctype instead — matches visual-plan, kills drift |
 | index | compact grouped list (sections + member titles), not a matrix |
-| field syntax | bare type is shorthand (`body: markdown`, `lean: string`); object form only for extras (`{ enum: [...], default: ... }`). body required by default, attrs optional by default |
+| field syntax | one canonical form, **no shorthand** — agent-first, so uniform structure beats terseness. Mappings are block notation (`type:`/`enum:` on their own lines); scalar lists stay flow (`[draft, approved]`). The bare-string form (`body: markdown`) is rejected with an actionable error. `required` still defaults (body required, attrs optional) — omitting an optional is not shorthand |
+| kinds (meta-model) | `block`/`doctype` are not special-cased — each is a `kinds/*.yaml` declaring `fields` + `constraints`; one self-describing `_schema/kind.schema.yaml` is the floor. Adding a kind = adding data. Generalising *instance composition* (a kind's `medium`/`composes`) is deferred — it needs a 3rd kind with a different instance shape, and we have none |
 | type vocabulary | only `markdown`, `string`, `enum` are in use; `bool`/`ref`/`list` deferred until a block needs one |
 | naming | the one-liner is `description` (was `short`) on blocks + doc-types, feeding the decision matrix (`catalog.py`); authoring guidance is `rubric` — a checkable one-liner list on both; doc `title` dropped (the filename is the name) |
 | rubric = criteria | ONE `rubric` per doc type serves both authoring (selector) and grading (judge marks each pass/fail). `criteria/` merged in and removed — no description/howToCheck ceremony, the judge infers how. Shape is an `id: rule` map **everywhere** (all blocks + doc-types, `kind: strmap`): the id is the stable handle the judge echoes |
@@ -76,9 +85,9 @@ What the spike proved, the decisions taken, and what's still punted.
    needs machine-readable lists.
 3. **Cross-references.** Cold-read wanted phases to point at the decision they
    implement. A `refs:` attr (ids) is a candidate; YAGNI until needed.
-4. **Meta-schema.** `validate.py` hard-codes the field vocabulary. A meta-schema
-   for `blocks/*.yaml` + `doctypes/*.yaml` would catch a typo in a definition on
-   load (the type-checker equivalent lost by going to YAML).
+4. ~~**Meta-schema.**~~ — **resolved**: `_schema/kind.schema.yaml` +
+   `check_schema.py` validate every definition, and the meta-schema is one
+   self-describing kind (`kinds/*.yaml`). A typo in a definition fails on load.
 5. **The selector.** This spike hand-distilled the dump. The real engine needs
    the author prompt: dump + catalog → conformant blocks, then run `validate.py`
    as its own gate and self-correct on failure.
@@ -103,4 +112,5 @@ What the spike proved, the decisions taken, and what's still punted.
 - Generic engine (registry, parser, validator, outline) → `Core`.
 - Validator + index-freshness run as Structure-Rulebook guards in CI: a
   non-conforming or stale doc fails the build.
-- `blocks/` + `doctypes/` are data; adding a doc type is a YAML change.
+- `_schema/` + `kinds/` + `blocks/` + `doctypes/` are data; adding a kind, a
+  block, or a doc type is a YAML change — the engine names none of them.
