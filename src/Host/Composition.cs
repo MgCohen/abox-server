@@ -51,18 +51,7 @@ internal static class Composition
         services.AddSingleton<DenyResolver>();
         services.AddSingleton<AutoPolicy>();
         services.AddSingleton<ResolverSelector>();
-        // Box config (ADR 0013). Network + ProxyUrl point at the egress-up.sh sidecar so
-        // the box's only route out is the allowlist proxy — fail-closed: a box won't open
-        // until the sidecar is up. SetupToken is the owner's host-held `claude setup-token`
-        // (subscription OAuth), read from the environment so it never lives in source; null
-        // until provisioned, which gates a real billed turn (B1/B2). EnsureCredentialConfined
-        // forbids a credentialed box on the default bridge, so the token can only ship here
-        // alongside the confining network.
-        services.AddSingleton(new SandboxSettings(
-            Image: "abox-claude:latest",
-            Network: "abox-boxnet",
-            ProxyUrl: "http://abox-egress-proxy:8888",
-            SetupToken: Environment.GetEnvironmentVariable("ABOX_CLAUDE_SETUP_TOKEN")));
+        services.AddSingleton(ClaudeBox.Confined());
         services.AddSingleton<IAgentFactory, AgentFactory>();
 
         services.AddFlows(flows);

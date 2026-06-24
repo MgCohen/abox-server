@@ -34,7 +34,7 @@ public sealed class CodexProvider(CodexConfig config) : IProvider
     private ProcessStartInfo BuildStartInfo(AgentRunRequest request, string lastMessageFile)
     {
         var args = CodexProtocol.BuildArgs(request.SessionId, request.ProjectDir, lastMessageFile, config.Model);
-        var commandLine = "codex " + string.Join(' ', args.Select(Shell.QuoteArg));
+        var commandLine = "codex " + string.Join(' ', args.Select(Shell.Quote));
 
         var psi = Shell.Command(commandLine);
         psi.WorkingDirectory = request.ProjectDir;

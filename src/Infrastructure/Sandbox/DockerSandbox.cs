@@ -27,14 +27,17 @@ public sealed class DockerSandbox : ISandbox
 
     public static async Task<DockerSandbox> OpenAsync(SandboxOptions options, CancellationToken ct)
     {
-        var network = options.Network is null ? "" : $"--network {Shell.QuotePosix(options.Network)} ";
+        var network = options.Network is null ? "" : $"--network {Shell.Quote(options.Network)} ";
+        // PID 1 is `sleep infinity` via an explicit entrypoint: the box image's own
+        // ENTRYPOINT is /bin/sh, so a bare `sleep infinity` CMD would run `/bin/sh sleep …`
+        // and exit. The agent turn runs later through `docker exec`, which ignores this.
         var runLine =
-            $"docker run -d {UserFlag}-w {WorkMount} " +
-            $"-v {Shell.QuotePosix(options.Worktree.FullName)}:{WorkMount} " +
-            $"-v {Shell.QuotePosix(options.SessionDir.FullName)}:{SessionMount} " +
-            $"-v {Shell.QuotePosix(options.Home.FullName)}:{HomeMount} " +
+            $"docker run -d --entrypoint sleep {UserFlag}-w {WorkMount} " +
+            $"-v {Shell.Quote(options.Worktree.FullName)}:{WorkMount} " +
+            $"-v {Shell.Quote(options.SessionDir.FullName)}:{SessionMount} " +
+            $"-v {Shell.Quote(options.Home.FullName)}:{HomeMount} " +
             network +
-            $"{Shell.QuotePosix(options.Image)} sleep infinity";
+            $"{Shell.Quote(options.Image)} infinity";
 
         var result = (await RunCommand.RunAsync(runLine, ct: ct)).EnsureOk("docker run");
         var id = result.Stdout.Trim();
@@ -49,7 +52,7 @@ public sealed class DockerSandbox : ISandbox
         ObjectDisposedException.ThrowIf(_disposed, this);
         var envFlags = env is null
             ? ""
-            : string.Concat(env.Select(kv => $"-e {Shell.QuotePosix($"{kv.Key}={kv.Value}")} "));
+            : string.Concat(env.Select(kv => $"-e {Shell.Quote($"{kv.Key}={kv.Value}")} "));
         return $"docker exec -it {envFlags}-w {WorkMount} {_containerId} {command}";
     }
 

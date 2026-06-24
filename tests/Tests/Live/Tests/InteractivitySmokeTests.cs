@@ -1,5 +1,6 @@
 using ABox.Domain.Agents;
 using ABox.Domain.Agents.Claude;
+using ABox.Host;
 using Xunit.Abstractions;
 using ABox.Tests.Live.Support;
 
@@ -72,9 +73,9 @@ public class InteractivitySmokeTests(ITestOutputHelper output)
             {
                 Resolution = resolution,
             };
-            var provider = new ClaudeProvider(config, resolver, new AutoPolicy(), new SandboxSettings("abox-claude:latest"));
+            var provider = new ClaudeProvider(config, resolver, new AutoPolicy(), ClaudeBox.Confined());
             var cap = resolution == Resolution.Auto ? config.ResolveCap : (int?)null;
-            var agent = new Agent(provider, resolver, cap, projectDir);
+            await using var agent = new Agent(provider, resolver, cap, projectDir);
 
             using var cts = new CancellationTokenSource(Timeout);
             var outcome = await Op.Exec(agent, new AgentArgs("turn", prompt), projectDir, cts.Token);

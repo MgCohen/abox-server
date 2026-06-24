@@ -1,10 +1,11 @@
+using System.Text.RegularExpressions;
 using Porta.Pty;
 using ABox.Infrastructure.CommandLine;
 using ABox.Infrastructure.Sandbox;
 
 namespace ABox.Domain.Agents.Claude;
 
-public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolver, AutoPolicy autoPolicy, SandboxSettings sandbox) : IProvider
+public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolver, AutoPolicy autoPolicy, SandboxSettings sandbox) : IProvider, IAsyncDisposable
 {
     private const int Cols = 120;
     private const int Rows = 40;
@@ -17,6 +18,11 @@ public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolv
     private const int ResolveTimeoutMs = 2_000;
     private const int ResolvePollMs = 100;
     private const int MaxOverallMs = 10 * 60_000;      // oracle A10: wall-clock cap → guaranteed teardown
+
+    // One HOME for the provider's whole life, not per turn: claude writes the session JSONL
+    // here, and a --resume turn opens a fresh box that must re-mount the same HOME to find it.
+    // Disposed with the provider (which the Agent owns).
+    private DirectoryInfo? _home;
 
     public async Task<DriveResult> DriveAsync(AgentRunRequest request, CancellationToken ct)
     {
@@ -41,61 +47,63 @@ public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolv
             AgentDirective.ComposeSystemPrompt(config.SystemPrompt, config.Resolution));
         var sysPromptInBox = $"{DockerSandbox.SessionMount}/{sysPromptName}";
 
-        var home = PrepareHome();
-        try
-        {
-            var permissionMode = ClaudeProtocol.PermissionMode(config.Policy);
-            var args = ClaudeProtocol.BuildArgs(sessionId, isResume, permissionMode, config.Model, sysPromptInBox, hook.SettingsPathInBox);
-            var claudeLine = "claude " + string.Join(' ', args.Select(Shell.QuotePosix));
+        var home = _home ??= PrepareHome();
+        var permissionMode = ClaudeProtocol.PermissionMode(config.Policy);
+        var args = ClaudeProtocol.BuildArgs(sessionId, isResume, permissionMode, config.Model, sysPromptInBox, hook.SettingsPathInBox);
+        var claudeLine = "claude " + string.Join(' ', args.Select(Shell.Quote));
 
-            using var deadlineCts = new CancellationTokenSource(MaxOverallMs);
-            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, deadlineCts.Token);
-            var dct = linkedCts.Token;
+        using var deadlineCts = new CancellationTokenSource(MaxOverallMs);
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, deadlineCts.Token);
+        var dct = linkedCts.Token;
 
-            var options = new SandboxOptions(
-                Worktree: new DirectoryInfo(request.ProjectDir),
-                SessionDir: new DirectoryInfo(hook.HostDir),
-                Home: home,
-                Image: sandbox.Image,
-                Network: sandbox.Network);
-            await using var box = await DockerSandbox.OpenAsync(options, dct);
+        var options = new SandboxOptions(
+            Worktree: new DirectoryInfo(request.ProjectDir),
+            SessionDir: new DirectoryInfo(hook.HostDir),
+            Home: home,
+            Image: sandbox.Image,
+            Network: sandbox.Network);
+        await using var box = await DockerSandbox.OpenAsync(options, dct);
 
-            var launchLine = box.InteractiveExecLine(claudeLine, BoxEnv(hook));
+        var launchLine = box.InteractiveExecLine(claudeLine, BoxEnv(hook));
 
-            var pty = await PtyProvider.SpawnAsync(BuildPtyOptions(), dct);
-            await using var session = new PtySession(pty, dct);
+        var pty = await PtyProvider.SpawnAsync(BuildPtyOptions(), dct);
+        await using var session = new PtySession(pty, dct);
 
-            await session.WriteLineAsync(launchLine, dct);
-            await DismissStartupDialogsAsync(session, dct);
+        await session.WriteLineAsync(launchLine, dct);
+        await DismissStartupDialogsAsync(session, dct);
 
-            // Wait for the input-bar marker, not for silence: a mid-startup re-render is indistinguishable from a settled idle.
-            if (!await session.WaitUntilAsync(ClaudeProtocol.IsPromptReady, ReadySettleMs, StartupCapMs, PollMs, dct))
-                throw new InvalidOperationException("Claude input bar did not become ready in time; cannot submit the prompt.");
+        // Wait for the input-bar marker, not for silence: a mid-startup re-render is indistinguishable from a settled idle.
+        if (!await session.WaitUntilAsync(ClaudeProtocol.IsPromptReady, ReadySettleMs, StartupCapMs, PollMs, dct))
+            throw new InvalidOperationException(
+                "Claude input bar did not become ready in time; cannot submit the prompt. " +
+                $"Last screen:\n{Tail(session.Buffer)}");
 
-            await session.SubmitAsync(request.Prompt, SubmitSettleMs, dct);
-            await PumpUntilStopAsync(hook, dct);
+        await session.SubmitAsync(request.Prompt, SubmitSettleMs, dct);
+        await PumpUntilStopAsync(hook, dct);
 
-            // Stop fired across the /session mount, so the final message + JSONL are on disk;
-            // read them before dispose tears the box down (docker rm -f, oracle A10).
-            var projectsRoot = Path.Combine(home.FullName, ".claude", "projects");
-            var text = hook.ReadFinalMessage();
-            if (string.IsNullOrWhiteSpace(text))
-                text = await ResolveTextFallbackAsync(sessionId, request.Prompt, projectsRoot, dct);
-            var transcript = ClaudeJsonl.TryReadLastTurnTranscript(sessionId, request.Prompt, projectsRoot) ?? [];
-            var exitCode = hook.HasFired || !string.IsNullOrWhiteSpace(text) ? 0 : 1;
-            return new DriveResult(text ?? "", sessionId, exitCode, session.Buffer, transcript);
-        }
-        finally
-        {
-            TryDeleteDir(home);
-        }
+        // Stop fired across the /session mount, so the final message + JSONL are on disk;
+        // read them before dispose tears the box down (docker rm -f, oracle A10).
+        var projectsRoot = Path.Combine(home.FullName, ".claude", "projects");
+        var text = hook.ReadFinalMessage();
+        if (string.IsNullOrWhiteSpace(text))
+            text = await ResolveTextFallbackAsync(sessionId, request.Prompt, projectsRoot, dct);
+        var transcript = ClaudeJsonl.TryReadLastTurnTranscript(sessionId, request.Prompt, projectsRoot) ?? [];
+        var exitCode = hook.HasFired || !string.IsNullOrWhiteSpace(text) ? 0 : 1;
+        return new DriveResult(text ?? "", sessionId, exitCode, session.Buffer, transcript);
     }
 
-    // The per-turn HOME: a fresh temp dir (writable mount where claude writes the JSONL)
-    // seeded from the non-secret onboarding skeleton so the first-run theme/onboarding
-    // dialogs don't appear. The credential is NOT here — it rides the box env per turn.
-    // Provisional: until the owner provisions a skeleton, claude hits onboarding and a
-    // real turn stalls — the deferred validation step (B1/B2, owner's setup-token host).
+    // The session HOME outlives each turn (resume re-mounts it), so cleanup is the provider's
+    // job, not the turn's — the Agent disposes the provider when the run is done.
+    public ValueTask DisposeAsync()
+    {
+        if (_home is { } home) TryDeleteDir(home);
+        _home = null;
+        return ValueTask.CompletedTask;
+    }
+
+    // The session HOME: a temp dir (writable mount where claude writes the JSONL) seeded once
+    // from the non-secret onboarding skeleton so the first-run dialogs don't appear. The
+    // credential is NOT here — it rides the box env per turn.
     private DirectoryInfo PrepareHome()
     {
         var home = Directory.CreateTempSubdirectory("ra-claude-home-");
@@ -122,6 +130,17 @@ public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolv
     {
         try { dir.Delete(recursive: true); }
         catch { /* best-effort: temp cleanup is non-fatal */ }
+    }
+
+    private static readonly Regex OAuthToken = new(@"sk-ant-\S+", RegexOptions.Compiled);
+
+    // Surface what Claude rendered when a startup wait times out — ANSI-stripped and
+    // tail-trimmed — but never the subscription token: it rides the `docker exec` line,
+    // which the driving PTY echoes straight into this buffer.
+    private static string Tail(string buffer)
+    {
+        var text = OAuthToken.Replace(AnsiHelpers.StripAnsi(buffer), "sk-ant-***");
+        return text.Length <= 1500 ? text : text[^1500..];
     }
 
     // Dismiss each dialog kind at most once: a repeated keystroke would land in the next screen and corrupt the prompt.

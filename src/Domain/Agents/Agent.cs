@@ -4,12 +4,17 @@ using ABox.Infrastructure.Operations;
 namespace ABox.Domain.Agents;
 
 public sealed class Agent(IProvider provider, IDecisionResolver resolver, int? resolveCap, string projectDir)
-    : Operation<AgentArgs, AgentOutcome>, IDecisionSource
+    : Operation<AgentArgs, AgentOutcome>, IDecisionSource, IAsyncDisposable
 {
     private string? _sessionId;
     private readonly List<DecisionDto> _decisions = [];
 
     public IReadOnlyList<DecisionDto> Decisions => _decisions;
+
+    // The provider may own a session-scoped resource (the Claude box HOME); tear it down with
+    // the agent. Only the concrete provider knows whether it has anything to release.
+    public ValueTask DisposeAsync() =>
+        provider is IAsyncDisposable disposable ? disposable.DisposeAsync() : ValueTask.CompletedTask;
 
     protected override async Task<AgentOutcome> Invoke(AgentArgs args, CancellationToken ct)
     {
