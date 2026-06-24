@@ -62,7 +62,7 @@ What the spike proved, the decisions taken, and what's still punted.
 | field syntax | bare type is shorthand (`body: markdown`, `lean: string`); object form only for extras (`{ enum: [...], default: ... }`). body required by default, attrs optional by default |
 | type vocabulary | only `markdown`, `string`, `enum` are in use; `bool`/`ref`/`list` deferred until a block needs one |
 | naming | the one-liner is `description` (was `short`) on blocks + doc-types, feeding the decision matrix (`catalog.py`); authoring guidance is `rubric` — a checkable one-liner list on both; doc `title` dropped (the filename is the name) |
-| rubric = criteria | ONE `rubric` of binary one-liners per doc type serves both authoring (selector) and grading (judge marks each line pass/fail). `criteria/` merged in and removed — no id/description/howToCheck ceremony, since the judge is an AI that infers how to check |
+| rubric = criteria | ONE `rubric` per doc type serves both authoring (selector) and grading (judge marks each pass/fail). `criteria/` merged in and removed — no description/howToCheck ceremony, the judge infers how. Shape is an `id: rule` map: the id is the stable handle the judge echoes; block rubrics stay plain lists (no judge consumer, no ids) |
 | exemplar | dropped — rely on `short` + `rubric` + the judge; re-add a doctype `exemplar` only if selector output suffers |
 | doc front matter | a visible leading `---` YAML block carries doc-level attrs (e.g. `status: draft`), declared in the doctype `attrs` and validated — also the home for a future single-block doc |
 | how reference does it | visual-plan keeps schema in a runtime registry (`get-plan-blocks`), when-to-use one-liners in prose, one doc-level exemplar — never per-block examples |

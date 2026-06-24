@@ -9,14 +9,14 @@ required: [summary, question, outcome]
 attrs:
   status: { enum: [draft, final], default: draft }
 
-# Binary checks — one list, for both authoring and grading.
+# Binary checks as `id: rule` — one list, for both authoring and grading.
 rubric:
-  - Every investigated question, key source, and the conclusion has a block.
-  - Content sits in the right block (questions → question, sources → quotation, conclusion → outcome).
-  - No filler blocks.
-  - The doc stands alone — no references to the source, prior chat, or drafts.
-  - Every claim ties to a cited source; no unsupported assertions.
-  - The summary leads with the finding, not a buried conclusion.
-  - The outcome says whether the result matched the expected-result.
-  - Each question is actually answered.
-  - Prose is substantive; bold marks labels, not emphasis.
+  coverage:               Every investigated question, key source, and the conclusion has a block.
+  right-type:             Content sits in the right block (questions → question, sources → quotation, conclusion → outcome).
+  no-filler:              No filler blocks.
+  standalone:             The doc stands alone — no references to the source, prior chat, or drafts.
+  sourced:                Every claim ties to a cited source; no unsupported assertions.
+  headline-first:         The summary leads with the finding, not a buried conclusion.
+  expectation-vs-outcome: The outcome says whether the result matched the expected-result.
+  questions-answered:     Each question is actually answered.
+  prose:                  Prose is substantive; bold marks labels, not emphasis.

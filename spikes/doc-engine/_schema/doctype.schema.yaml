@@ -5,5 +5,5 @@ fields:
   blocks:      { kind: list,   required: true, of: string }
   required:    { kind: list,   required: false, of: string }
   attrs:       { kind: attrs,  required: false }
-  rubric:      { kind: list,   required: false, of: string }
+  rubric:      { kind: strmap, required: false }
 # Semantic rule (enforced in check_schema.py): `required` must be a subset of `blocks`.

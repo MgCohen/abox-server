@@ -45,6 +45,11 @@ def check_field(name, spec, value):
             return [f"{name}: expected map"]
         return [f"{name}.{an}: type must be one of {sorted(TYPES)}"
                 for an, av in value.items() if not is_typespec(av)]
+    if kind == "strmap":
+        if not isinstance(value, dict):
+            return [f"{name}: expected map (id: rule)"]
+        return [f"{name}.{k}: expected a string rule" for k, v in value.items()
+                if not isinstance(v, str)]
     return []
 
 

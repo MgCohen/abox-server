@@ -9,16 +9,16 @@ required: [summary, phase, verification]
 attrs:
   status: { enum: [draft, approved], default: draft }
 
-# Binary checks — ONE list for both authoring (the selector writes to them) and
-# grading (the judge marks each pass/fail). Each line is a single checkable claim;
-# the judge is an AI and infers how to check it.
+# Binary checks as `id: rule` — ONE list for both authoring (the selector writes to
+# them) and grading (the judge marks each pass/fail, echoing the id). The judge is
+# an AI and infers how to check each rule.
 rubric:
-  - Every load-bearing part of the dump has a block; nothing significant dropped.
-  - Each piece sits in the right block type (settled → decision, open → open-question, steps → phase).
-  - No filler blocks — each carries real substance.
-  - The doc stands alone — no references to the dump, prior chat, or earlier drafts.
-  - Names real files and symbols, not vague gestures.
-  - Each phase leads with what it reuses before what it adds.
-  - Open questions are genuinely open and carry a recommended lean.
-  - Verification runs a real end-to-end behaviour, not just build/typecheck.
-  - Prose is substantive where it matters; bold marks labels, not emphasis.
+  coverage:    Every load-bearing part of the dump has a block; nothing significant dropped.
+  right-type:  Each piece sits in the right block type (settled → decision, open → open-question, steps → phase).
+  no-filler:   No filler blocks — each carries real substance.
+  standalone:  The doc stands alone — no references to the dump, prior chat, or earlier drafts.
+  concrete:    Names real files and symbols, not vague gestures.
+  reuse-first: Each phase leads with what it reuses before what it adds.
+  open-lean:   Open questions are genuinely open and carry a recommended lean.
+  verify-real: Verification runs a real end-to-end behaviour, not just build/typecheck.
+  prose:       Prose is substantive where it matters; bold marks labels, not emphasis.
