@@ -112,31 +112,41 @@ public class ClaudeProtocolTests
         Assert.Equal(StartupDialog.Trust, ClaudeProtocol.DetectStartupDialog(buffer));
     }
 
-    [Rule("BuildBoxEnv with a setup token → injects it as CLAUDE_CODE_OAUTH_TOKEN and never an API key")]
+    [Rule("BuildCredentialEnv with a setup token → injects it as CLAUDE_CODE_OAUTH_TOKEN and never an API key")]
     [Fact]
-    public void BuildBoxEnv_injects_the_token_as_oauth_not_an_api_key()
+    public void BuildCredentialEnv_injects_the_token_as_oauth_not_an_api_key()
     {
-        var env = ClaudeProtocol.BuildBoxEnv("/home/box", "/session/stop-signal.json", null, null, "tok-123");
+        var env = ClaudeProtocol.BuildCredentialEnv("tok-123");
 
+        Assert.NotNull(env);
         Assert.Equal("tok-123", env["CLAUDE_CODE_OAUTH_TOKEN"]);
         Assert.False(env.ContainsKey("ANTHROPIC_API_KEY"));
         Assert.False(env.ContainsKey("CLAUDE_API_KEY"));
     }
 
-    [Rule("BuildBoxEnv with no setup token → carries no credential env")]
+    [Rule("BuildCredentialEnv with no setup token → carries no credential env")]
     [Fact]
-    public void BuildBoxEnv_omits_the_credential_when_no_token()
+    public void BuildCredentialEnv_is_empty_when_no_token()
     {
-        var env = ClaudeProtocol.BuildBoxEnv("/home/box", "/session/stop-signal.json", null, null, null);
+        Assert.Null(ClaudeProtocol.BuildCredentialEnv(null));
+        Assert.Null(ClaudeProtocol.BuildCredentialEnv(""));
+    }
+
+    [Rule("BuildBoxEnv never carries the credential → the token never reaches the PTY-echoed exec line")]
+    [Fact]
+    public void BuildBoxEnv_never_carries_the_credential()
+    {
+        var env = ClaudeProtocol.BuildBoxEnv("/home/box", "/session/stop-signal.json", "/session/perms", "http://proxy:8888");
 
         Assert.False(env.ContainsKey("CLAUDE_CODE_OAUTH_TOKEN"));
+        Assert.False(env.ContainsKey("ANTHROPIC_API_KEY"));
     }
 
     [Rule("BuildBoxEnv with an egress proxy → routes the box out through HTTPS_PROXY and HTTP_PROXY")]
     [Fact]
     public void BuildBoxEnv_routes_through_the_proxy_when_set()
     {
-        var env = ClaudeProtocol.BuildBoxEnv("/home/box", "/session/stop-signal.json", null, "http://proxy:8888", null);
+        var env = ClaudeProtocol.BuildBoxEnv("/home/box", "/session/stop-signal.json", null, "http://proxy:8888");
 
         Assert.Equal("http://proxy:8888", env["HTTPS_PROXY"]);
         Assert.Equal("http://proxy:8888", env["HTTP_PROXY"]);

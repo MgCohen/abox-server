@@ -25,6 +25,11 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 - **Why:** Auto auto-approves through the same gate without a human — the write runs even though the resolver
   would have denied, and the resolver is never consulted.
 
+### a credentialed live turn → the subscription token never appears in the drive buffer
+- **Why:** the credential rides `docker run`, not the PTY-echoed `docker exec` line, so a real billed turn's
+  drive buffer (logged, surfaced to callers) must carry no `sk-ant-` token — the end-to-end proof the
+  hardening keeps the subscription credential off the agent transcript.
+
 ### a Human agent given a registry answer → resumes and completes
 - **Why:** InteractiveResolver parks the question and a registry answer resumes the live run to Completed —
   the inbox/endpoint resume loop against a real CLI.

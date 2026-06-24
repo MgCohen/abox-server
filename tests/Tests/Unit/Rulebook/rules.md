@@ -206,11 +206,14 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 ### DetectStartupDialog given dialog text split by ANSI escapes → still classifies it
 - **Why:** the terminal interleaves color/style escape codes through the prompt text, so detection must see past the noise or it would miss real dialogs on a styled terminal.
 
-### BuildBoxEnv with a setup token → injects it as CLAUDE_CODE_OAUTH_TOKEN and never an API key
-- **Why:** the box must bill the owner's subscription, so the credential must arrive under the OAuth-token var while no ANTHROPIC_API_KEY is set — an API key would silently switch claude to metered billing (oracle A1).
+### BuildCredentialEnv with a setup token → injects it as CLAUDE_CODE_OAUTH_TOKEN and never an API key
+- **Why:** the box must bill the owner's subscription, so the credential must arrive under the OAuth-token var while no ANTHROPIC_API_KEY is set — an API key would silently switch claude to metered billing (oracle A1). It rides `docker run`, not the exec line, so the token never lands on the PTY-echoed launch line.
 
-### BuildBoxEnv with no setup token → carries no credential env
+### BuildCredentialEnv with no setup token → carries no credential env
 - **Why:** an unprovisioned box must not fabricate a credential; omitting the token leaves the turn unauthenticated rather than mis-billed, which is the deferred-validation gate (B1/B2).
+
+### BuildBoxEnv never carries the credential → the token never reaches the PTY-echoed exec line
+- **Why:** the exec line is typed into the host PTY, which echoes it into the drive buffer (logged, surfaced); keeping the credential out of the per-exec env is what makes the token leak-safe on the transcript, with `docker run` carrying it instead.
 
 ### BuildBoxEnv with an egress proxy → routes the box out through HTTPS_PROXY and HTTP_PROXY
 - **Why:** the box's only sanctioned route is the allowlist proxy, so both vars must point at it or the box either can't reach Anthropic or slips the egress boundary that keeps the in-box token leak-safe.

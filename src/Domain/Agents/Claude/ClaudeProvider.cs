@@ -61,7 +61,8 @@ public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolv
             SessionDir: new DirectoryInfo(hook.HostDir),
             Home: home,
             Image: sandbox.Image,
-            Network: sandbox.Network);
+            Network: sandbox.Network,
+            ContainerEnv: ClaudeProtocol.BuildCredentialEnv(sandbox.SetupToken));
         await using var box = await DockerSandbox.OpenAsync(options, dct);
 
         var launchLine = box.InteractiveExecLine(claudeLine, BoxEnv(hook));
@@ -123,8 +124,7 @@ public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolv
 
     private Dictionary<string, string> BoxEnv(ClaudeHooks hook) =>
         ClaudeProtocol.BuildBoxEnv(
-            DockerSandbox.HomeMount, hook.SignalPathInBox, hook.PermissionDirInBox,
-            sandbox.ProxyUrl, sandbox.SetupToken);
+            DockerSandbox.HomeMount, hook.SignalPathInBox, hook.PermissionDirInBox, sandbox.ProxyUrl);
 
     private static void TryDeleteDir(DirectoryInfo dir)
     {
@@ -135,8 +135,8 @@ public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolv
     private static readonly Regex OAuthToken = new(@"sk-ant-\S+", RegexOptions.Compiled);
 
     // Surface what Claude rendered when a startup wait times out — ANSI-stripped and
-    // tail-trimmed — but never the subscription token: it rides the `docker exec` line,
-    // which the driving PTY echoes straight into this buffer.
+    // tail-trimmed. The credential now rides `docker run`, not the exec line, so it no
+    // longer enters this buffer; the scrub stays as defense-in-depth against any echo.
     private static string Tail(string buffer)
     {
         var text = OAuthToken.Replace(AnsiHelpers.StripAnsi(buffer), "sk-ant-***");

@@ -1,9 +1,10 @@
 namespace ABox.Domain.Agents;
 
 // Box config for a sandboxed provider (ADR 0013). The subscription credential rides
-// per-turn as SetupToken (the owner's `claude setup-token`), injected via `docker exec
-// -e CLAUDE_CODE_OAUTH_TOKEN` — never baked into the image, never left at rest on a
-// mount. It is only leak-safe because egress is confined, so a credentialed box MUST run
+// per-turn as SetupToken (the owner's `claude setup-token`), injected at `docker run -e
+// CLAUDE_CODE_OAUTH_TOKEN` so the turn's `docker exec` inherits it without echoing it onto
+// the PTY-driven exec line — never baked into the image, never left at rest on a mount, and
+// never on the agent transcript. It is only leak-safe because egress is confined, so a credentialed box MUST run
 // on the egress sidecar's network + proxy (EnsureCredentialConfined). HomeSkeleton is a
 // non-secret onboarding home (theme / onboarding-complete) copied in per turn so claude
 // skips its first-run dialogs; no credential ever lives there.
