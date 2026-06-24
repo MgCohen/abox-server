@@ -37,6 +37,7 @@ dump (ephemeral)  ──distill──►  instance.md (blocks)  ──validate�
   (feature-plan) and `odysseus.research.md` (research).
 - **selector.md** — the author procedure (dump → conformant instance). Wired as the
   `create-doc` agent + `/create-doc` command in `.claude/`.
+- **howto/** — step-by-step guides: add a block, an instance, or a kind.
 
 The engine is the C# under this directory: `SchemaChecker` (floor),
 `InstanceParser` + `DocValidator` (instance), `Catalog` (decision matrices),
