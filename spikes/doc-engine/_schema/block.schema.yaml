@@ -3,7 +3,7 @@
 fields:
   type:        { kind: string,   required: true }
   description: { kind: string,   required: true }
-  rubric:      { kind: list,     required: true, of: string }
+  rubric:      { kind: strmap,   required: true }
   body:        { kind: typespec, required: false }
   attrs:       { kind: attrs,    required: false }
   collection:  { kind: bool,     required: false }

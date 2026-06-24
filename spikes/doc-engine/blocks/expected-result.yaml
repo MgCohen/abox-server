@@ -1,6 +1,6 @@
 type: expected-result
 description: The hypothesis — what we expected to find before looking.
 rubric:
-  - State the prior expectation plainly, so the outcome can confirm or upset it.
-  - One short block; not a place for analysis.
+  state-expectation: State the prior expectation plainly, so the outcome can confirm or upset it.
+  short:             One short block; not a place for analysis.
 body: markdown

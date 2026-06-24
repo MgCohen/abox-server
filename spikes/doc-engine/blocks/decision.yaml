@@ -3,6 +3,6 @@ collection: true
 group: Decisions
 description: A settled choice carried in; do not re-litigate.
 rubric:
-  - State the decision and the one-line why.
-  - Closed choices only — genuinely open ones go in open-question.
+  decision-and-why: State the decision and the one-line why.
+  closed-only:      Closed choices only — genuinely open ones go in open-question.
 body: markdown
