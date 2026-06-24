@@ -18,11 +18,11 @@ What the spike proved, the decisions taken, and what's still punted.
   plain-markdown answer to "a renderer would show a nicer overview".
 - **Readable raw.** Type-first headers + an `<!-- id -->` comment keep the file
   legible without a renderer (confirmed by a cold-read sub-agent).
-- **Semantic judge organized.** `criteria/feature-plan.yaml` (selection + quality
-  rubrics) runs via the repo's generic judge (PLANS/generic-judge.md). First run:
-  9/9 pass, and it caught a silently-dropped precondition (the Box abort/discard
-  mechanic) that the structural validator cannot see. Judge = soft/semantic;
-  validator = hard/structural; they are different layers.
+- **Semantic judge organized.** The doc-type `rubric` (binary one-liners) IS the
+  judge's criteria — no separate criteria file; the judge marks each line
+  pass/fail via the repo's generic judge (PLANS/generic-judge.md). It caught a
+  silently-dropped precondition the structural validator cannot see. Judge =
+  soft/semantic; validator = hard/structural; different layers.
 - **Grouping works.** Collection types render nested (`## Decisions` → `### …`);
   the validator inherits a member's type from its group, enforces attrs/enums on
   members, and flags a group whose type has no members; outline shows a group
@@ -62,7 +62,7 @@ What the spike proved, the decisions taken, and what's still punted.
 | field syntax | bare type is shorthand (`body: markdown`, `lean: string`); object form only for extras (`{ enum: [...], default: ... }`). body required by default, attrs optional by default |
 | type vocabulary | only `markdown`, `string`, `enum` are in use; `bool`/`ref`/`list` deferred until a block needs one |
 | naming | the one-liner is `description` (was `short`) on blocks + doc-types, feeding the decision matrix (`catalog.py`); authoring guidance is `rubric` — a checkable one-liner list on both; doc `title` dropped (the filename is the name) |
-| doc rubric | a list of binary, checkable one-liners (pairs with the judge), not a paragraph |
+| rubric = criteria | ONE `rubric` of binary one-liners per doc type serves both authoring (selector) and grading (judge marks each line pass/fail). `criteria/` merged in and removed — no id/description/howToCheck ceremony, since the judge is an AI that infers how to check |
 | exemplar | dropped — rely on `short` + `rubric` + the judge; re-add a doctype `exemplar` only if selector output suffers |
 | doc front matter | a visible leading `---` YAML block carries doc-level attrs (e.g. `status: draft`), declared in the doctype `attrs` and validated — also the home for a future single-block doc |
 | how reference does it | visual-plan keeps schema in a runtime registry (`get-plan-blocks`), when-to-use one-liners in prose, one doc-level exemplar — never per-block examples |
@@ -94,9 +94,9 @@ What the spike proved, the decisions taken, and what's still punted.
 9. **A `risks` / `failure-modes` block?** Both real dumps had operational
    fallback/failure content with no clean home (folded into phases). If a second
    doc type wants it too, add the block — the first concrete catalog-growth signal.
-10. **Per-doc-type judge criteria.** Only `feature-plan` has `criteria/`. `research`
-    validates structurally but is not judged yet; add `criteria/research.yaml` when
-    semantic grading of research docs is wanted.
+10. ~~Per-doc-type judge criteria~~ — **resolved**: criteria merged into each
+    doc-type's `rubric` (binary one-liners), used by both the selector and the judge;
+    `criteria/` removed.
 
 ## How this lands in the repo (when real)
 

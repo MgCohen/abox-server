@@ -9,8 +9,14 @@ required: [summary, question, outcome]
 attrs:
   status: { enum: [draft, final], default: draft }
 
+# Binary checks — one list, for both authoring and grading.
 rubric:
-  - Lead with the headline finding; do not bury it.
-  - Tie each claim to a cited source; no unsupported assertions.
-  - State whether the outcome matched the expectation.
-  - Distill; do not transcribe sources wholesale.
+  - Every investigated question, key source, and the conclusion has a block.
+  - Content sits in the right block (questions → question, sources → quotation, conclusion → outcome).
+  - No filler blocks.
+  - The doc stands alone — no references to the source, prior chat, or drafts.
+  - Every claim ties to a cited source; no unsupported assertions.
+  - The summary leads with the finding, not a buried conclusion.
+  - The outcome says whether the result matched the expected-result.
+  - Each question is actually answered.
+  - Prose is substantive; bold marks labels, not emphasis.

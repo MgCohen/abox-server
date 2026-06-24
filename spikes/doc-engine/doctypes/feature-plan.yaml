@@ -5,16 +5,20 @@ description: Build or change a feature — objective, scope, ordered phases, ver
 blocks: [summary, context, scope, decision, phase, verification, open-question]
 required: [summary, phase, verification]
 
-# Doc-level attributes — carried as a visible `---` YAML front-matter block at the
-# top of the instance, and validated. Also the home for a future single-block doc.
+# Doc-level attributes — a visible `---` YAML front-matter block on the instance.
 attrs:
   status: { enum: [draft, approved], default: draft }
 
-# Binary, checkable one-liners (pairs with the judge), not a paragraph.
+# Binary checks — ONE list for both authoring (the selector writes to them) and
+# grading (the judge marks each pass/fail). Each line is a single checkable claim;
+# the judge is an AI and infers how to check it.
 rubric:
-  - Distill the dump; never transcribe it.
-  - Name real files and symbols, not invented ones.
-  - Include only blocks that carry substance (pick by each block's description).
-  - Summary and context get real prose; no block is a wall of text.
-  - Bold marks labels (**Goal.**), not inline emphasis.
-  - Open questions, if any, come last.
+  - Every load-bearing part of the dump has a block; nothing significant dropped.
+  - Each piece sits in the right block type (settled → decision, open → open-question, steps → phase).
+  - No filler blocks — each carries real substance.
+  - The doc stands alone — no references to the dump, prior chat, or earlier drafts.
+  - Names real files and symbols, not vague gestures.
+  - Each phase leads with what it reuses before what it adds.
+  - Open questions are genuinely open and carry a recommended lean.
+  - Verification runs a real end-to-end behaviour, not just build/typecheck.
+  - Prose is substantive where it matters; bold marks labels, not emphasis.

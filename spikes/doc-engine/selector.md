@@ -40,8 +40,8 @@ format — read it from the data (catalog + per-block rubrics).
 6. **Gate.** `python3 validate.py out/<slug>.plan.md`; fix every violation; repeat
    until it PASSes.
 7. **Index.** `python3 outline.py out/<slug>.plan.md --write`.
-8. **(Optional) grade.** The judge (`criteria/<docType>.yaml`) checks selection +
-   quality; address fails.
+8. **(Optional) grade.** The judge marks each line of the doc-type's `rubric`
+   pass/fail; address fails.
 
 ## Discipline (mirror the doc rubric)
 - The doc stands alone — no "the dump" / chat / revision language.
