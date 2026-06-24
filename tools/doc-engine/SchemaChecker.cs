@@ -59,7 +59,7 @@ public sealed class SchemaChecker
                 if (value is not string) errs.Add($"{name}: expected string");
                 break;
             case "bool":
-                if (value is not bool && value is not ("true" or "false")) errs.Add($"{name}: expected bool");
+                if (!Yaml.IsBoolToken(value)) errs.Add($"{name}: expected bool");
                 break;
             case "list":
                 if (!Yaml.IsList(value)) { errs.Add($"{name}: expected list"); break; }

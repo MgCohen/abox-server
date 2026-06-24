@@ -32,11 +32,17 @@ internal static class Yaml
 
     public static bool IsList(object? node) => node is IEnumerable and not string and not IDictionary;
 
+    private static readonly HashSet<string> FalseTokens = new(StringComparer.OrdinalIgnoreCase) { "false", "no", "off", "0" };
+    private static readonly HashSet<string> TrueTokens = new(StringComparer.OrdinalIgnoreCase) { "true", "yes", "on", "1" };
+
+    public static bool IsBoolToken(object? node) =>
+        node is bool || (node is string s && (TrueTokens.Contains(s) || FalseTokens.Contains(s)));
+
     public static bool Truthy(object? node) => node switch
     {
         null => false,
         bool b => b,
-        string s => s.Length > 0 && !s.Equals("false", StringComparison.OrdinalIgnoreCase),
+        string s => s.Length > 0 && !FalseTokens.Contains(s),
         _ => true,
     };
 }
