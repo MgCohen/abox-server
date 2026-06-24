@@ -66,51 +66,41 @@ cross-refs land.
 
 ---
 
-## 2. `tests` — a test-type Rulebook
+## 2. Rulebook + test-template — **BUILT (Phase 1)**
 
-Model the repo's **Rulebook** concept (`tests/**/Rulebook/`, `tests/README.md`): a
-doc whose guarantees (Rules) are each proven by tests, policed by the ParityGuard.
-An enforced `tests` doc type makes a Rulebook a validated artifact.
+> Superseded the original single-`tests`-doctype sketch. A test type's Rulebook is
+> modelled by **two** doctypes, not one, and `proven-by` is dropped — parity (Rule ↔
+> proving test) is the **test engine's** job, never the doc-engine's.
 
-**Front matter (`attrs`)**
+**As built** (`doctypes/rulebook.yaml`, `doctypes/test-template.yaml`):
 
-| attr | type | notes |
-|---|---|---|
-| `testType` | enum `[arch, structure, unit, e2e, wire, live, meta]` | which taxonomy bucket |
-
-**Blocks**
-
-| block | reuse / NEW | required | role |
+| doctype | blocks | required | front matter |
 |---|---|---|---|
-| `summary` | reuse | ✓ | what this test type guarantees, overall |
-| `scope` | reuse | — | what is in/out for this test type |
-| `rule` | **NEW** (collection "Rules") | ✓ | one guarantee per member, with the test(s) that prove it |
+| `rulebook` | `links`, `rule` | both | `testType` enum (required) |
+| `test-template` | `summary`, `criterion` | both | `testType` enum (required) |
 
-`required: [summary, rule]`
+**New blocks:** `rule` (collection "Rules") with explicit labels **Why** (required) +
+**Outcome** (optional — the `→` tail of behaviour types); `links` (Template/Harness
+pointers, both required); `criterion` (collection "Criteria").
 
-**New block `rule`** (collection, group "Rules"):
-- attrs: `proven-by` (string — the test name/fact id that enforces it).
-- `rubric`: `guarantee-not-implementation` (states a behaviour guaranteed, not how
-  it's coded), `one-per-member` (one rule each), `proven` (names the test that proves
-  it), `stable-id` (the `<!-- id -->` is the durable handle the ParityGuard echoes).
+**New engine capability:** a `labelmap` field-kind — a block declares required/optional
+`**Label:**` bullets in its body, enforced at `validate` (used by `rule` and `links`).
+Plus a canonical field-order check at `check` (`body` last), driven by each kind's
+declared field order.
 
-**Doc-type `rubric` sketch:** `coverage` (every guarantee has a rule), `each-rule-proven`
-(no rule without a proving test), `right-type` (rules match the declared `testType`),
-`no-orphans`.
+**Proof:** `out/arch.rulebook.md` (invariant), `out/wire.rulebook.md` (arrowed, uses
+`Outcome`), `out/arch.test-template.md` — all `validate` PASS.
 
-**⚠ Governance:** `tests/**/Rulebook/**` is a **protected, critical** path (owner
-review; ParityGuard + policy-guard enforce it). A `tests` doc type that *generates or
-validates* real Rulebooks would intersect that machinery — so it is **owner-gated**:
-design it here, but landing/wiring it into the test tree is the owner's call, ideally
-behind an ADR. Until then it can target `out/` as a standalone authoring aid.
+**Phase 2 (owner-gated, protected):** a `Docs` test type whose `[Rule]` facts shell out
+to `docengine check` / `validate` (mirroring `Live → claude`), so doc enforcement runs
+under `dotnet test` + ParityGuard with no Harness dependency on the engine; then
+front-matter/ids on the real `tests/**/Rulebook/` files. Lands via the owner's PR + an ADR.
 
 ---
 
-## Net new work to implement both (when chosen)
+## Net new work — ADR (still planned)
 
-- **New blocks:** `decision-record`, `consequences`, `alternatives` (ADR); `rule` (Tests).
-- **New doctypes:** `doctypes/adr.yaml`, `doctypes/tests.yaml`.
-- **Engine/kind change:** none — both are doc types over the existing `doctype` kind.
-- **Then:** author one real instance of each as the proof (dogfood: this very file
-  could become the first `adr`-or-`feature-plan` instance), `validate`, and — for
-  Tests — get owner sign-off on touching the Rulebook surface.
+- **New blocks:** `decision-record`, `consequences`, `alternatives`.
+- **New doctype:** `doctypes/adr.yaml`.
+- **Engine/kind change:** none — a doc type over the existing `doctype` kind.
+- **Then:** author one real instance as the proof, `validate`. (Tests: §2 above is built.)

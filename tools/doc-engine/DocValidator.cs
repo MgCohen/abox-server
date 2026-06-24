@@ -1,7 +1,14 @@
+using System.Text.RegularExpressions;
+
 namespace ABox.DocEngine;
 
 public static class DocValidator
 {
+    private static readonly Regex LabelBullet = new(@"^\s*-\s+\*\*(?<label>[^:*]+):\*\*", RegexOptions.Multiline);
+
+    private static HashSet<string> LabelsIn(string body) =>
+        LabelBullet.Matches(body).Select(m => m.Groups["label"].Value.Trim()).ToHashSet(StringComparer.Ordinal);
+
     public static IReadOnlyList<string> Validate(
         IReadOnlyDictionary<string, IReadOnlyDictionary<string, object?>> defs,
         IReadOnlyDictionary<string, object?> dt,
@@ -52,6 +59,21 @@ public static class DocValidator
                 var body = FieldSpec.Normalize(bodySpec, true);
                 if (body.Required && b.Body.Length == 0)
                     errs.Add($"{where} {b.Type}: required body is empty");
+            }
+
+            var labelSpec = Yaml.AsMap(defs[b.Type].GetValueOrDefault("labels"));
+            if (labelSpec is not null)
+            {
+                var labels = LabelsIn(b.Body);
+                foreach (var (label, spec) in labelSpec)
+                {
+                    var ls = Yaml.AsMap(spec);
+                    if (ls is not null && Yaml.Truthy(ls.GetValueOrDefault("required")) && !labels.Contains(label))
+                        errs.Add($"{where} {b.Type}: missing required label '**{label}:**'");
+                }
+                foreach (var label in labels)
+                    if (!labelSpec.ContainsKey(label))
+                        errs.Add($"{where} {b.Type}: unexpected label '**{label}:**'");
             }
         }
 

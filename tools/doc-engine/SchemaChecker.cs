@@ -46,7 +46,9 @@ public sealed class SchemaChecker
                          IReadOnlyDictionary<string, object?> kind, string path)
     {
         var local = new List<string>();
-        CheckFields(local, defn, Yaml.AsMap(kind["fields"])!);
+        var fields = Yaml.AsMap(kind["fields"])!;
+        CheckFields(local, defn, fields);
+        CheckFieldOrder(local, defn, fields);
         RunConstraints(local, defn, kind.GetValueOrDefault("constraints"));
         var rel = Path.GetRelativePath(_root, path);
         foreach (var e in local) errs.Add($"{rel}: {e}");
@@ -66,6 +68,16 @@ public sealed class SchemaChecker
         foreach (var name in defn.Keys)
             if (!fields.ContainsKey(name))
                 errs.Add($"unknown field '{name}'");
+    }
+
+    private static void CheckFieldOrder(List<string> errs, IReadOnlyDictionary<string, object?> defn,
+                                        IReadOnlyDictionary<string, object?> fields)
+    {
+        var order = fields.Keys.ToList();
+        var present = defn.Keys.Where(order.Contains).ToList();
+        var canonical = present.OrderBy(order.IndexOf).ToList();
+        if (!present.SequenceEqual(canonical, StringComparer.Ordinal))
+            errs.Add($"fields out of canonical order: found [{string.Join(", ", present)}], expected [{string.Join(", ", canonical)}]");
     }
 
     private static void CheckField(List<string> errs, string name,
@@ -104,6 +116,18 @@ public sealed class SchemaChecker
                 if (fieldmap is null) { errs.Add($"{name}: expected map (field: spec)"); break; }
                 foreach (var (fn, fv) in fieldmap)
                     if (!IsFieldspec(fv)) errs.Add($"{name}.{fn}: each field spec needs a `kind`");
+                break;
+            case "labelmap":
+                var labelmap = Yaml.AsMap(value);
+                if (labelmap is null) { errs.Add($"{name}: expected map (label: spec)"); break; }
+                foreach (var (ln, lv) in labelmap)
+                {
+                    var lspec = Yaml.AsMap(lv);
+                    if (lspec is null || !lspec.ContainsKey("required"))
+                        errs.Add($"{name}.{ln}: each label needs a `required` bool");
+                    else if (!Yaml.IsBoolToken(lspec.GetValueOrDefault("required")))
+                        errs.Add($"{name}.{ln}.required: expected bool");
+                }
                 break;
         }
     }
