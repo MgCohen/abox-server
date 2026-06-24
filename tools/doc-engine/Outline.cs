@@ -57,6 +57,7 @@ public static class Outline
             return Regex.Replace(src, Regex.Escape(Start) + ".*?" + Regex.Escape(End),
                                  block.Replace("$", "$$"), RegexOptions.Singleline);
         var at = src.IndexOf("\n## ", StringComparison.Ordinal);
+        if (at < 0) throw new InvalidDataException("cannot inject index: the document has no '## ' section");
         return src[..at] + "\n\n" + block + "\n" + src[at..];
     }
 

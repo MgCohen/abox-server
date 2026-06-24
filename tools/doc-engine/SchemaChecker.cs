@@ -12,16 +12,34 @@ public sealed class SchemaChecker
     {
         var errs = new List<string>();
         var floorPath = Path.Combine(_root, "_schema", "kind.schema.yaml");
-        var floor = Yaml.AsMap(Yaml.Load(floorPath))!;
+        var floor = LoadMap(errs, floorPath);
+        if (floor is null) return errs;
         Conform(errs, floor, floor, floorPath);
-        foreach (var kindFile in Catalog.Files(_root, Yaml.AsString(floor["defs"])!))
+
+        var floorDefs = Yaml.AsString(floor.GetValueOrDefault("defs"));
+        if (floorDefs is null) return errs;
+        foreach (var kindFile in Catalog.Files(_root, floorDefs))
         {
-            var kind = Yaml.AsMap(Yaml.Load(kindFile))!;
+            var kind = LoadMap(errs, kindFile);
+            if (kind is null) continue;
             Conform(errs, kind, floor, kindFile);
-            foreach (var defFile in Catalog.Files(_root, Yaml.AsString(kind["defs"])!))
-                Conform(errs, Yaml.AsMap(Yaml.Load(defFile))!, kind, defFile);
+
+            var kindDefs = Yaml.AsString(kind.GetValueOrDefault("defs"));
+            if (kindDefs is null) continue;
+            foreach (var defFile in Catalog.Files(_root, kindDefs))
+            {
+                var def = LoadMap(errs, defFile);
+                if (def is not null) Conform(errs, def, kind, defFile);
+            }
         }
         return errs;
+    }
+
+    private IReadOnlyDictionary<string, object?>? LoadMap(List<string> errs, string path)
+    {
+        var map = Yaml.AsMap(Yaml.Load(path));
+        if (map is null) errs.Add($"{Path.GetRelativePath(_root, path)}: not a YAML map");
+        return map;
     }
 
     private void Conform(List<string> errs, IReadOnlyDictionary<string, object?> defn,
@@ -106,24 +124,31 @@ public sealed class SchemaChecker
         foreach (var node in Yaml.AsList(constraints))
         {
             var c = Yaml.AsMap(node);
-            switch (Yaml.AsString(c?.GetValueOrDefault("rule")))
+            if (c is null) { errs.Add("constraint must be a map"); continue; }
+            switch (Yaml.AsString(c.GetValueOrDefault("rule")))
             {
                 case "requires_when":
-                    var when = Yaml.AsString(c!["when"])!;
-                    var then = Yaml.AsString(c["then"])!;
+                {
+                    var when = Yaml.AsString(c.GetValueOrDefault("when"));
+                    var then = Yaml.AsString(c.GetValueOrDefault("then"));
+                    if (when is null || then is null) { errs.Add("requires_when constraint needs `when` and `then`"); break; }
                     if (Yaml.Truthy(defn.GetValueOrDefault(when)) && !Yaml.Truthy(defn.GetValueOrDefault(then)))
                         errs.Add($"`{when}` is set but `{then}` is missing");
                     break;
+                }
                 case "subset":
-                    var of = Yaml.AsString(c!["of"])!;
-                    var inField = Yaml.AsString(c["in"])!;
+                {
+                    var of = Yaml.AsString(c.GetValueOrDefault("of"));
+                    var inField = Yaml.AsString(c.GetValueOrDefault("in"));
+                    if (of is null || inField is null) { errs.Add("subset constraint needs `of` and `in`"); break; }
                     var extra = StrSet(defn.GetValueOrDefault(of)).Except(StrSet(defn.GetValueOrDefault(inField)))
                         .OrderBy(x => x, StringComparer.Ordinal).ToList();
                     if (extra.Count > 0)
                         errs.Add($"`{of}` is not a subset of `{inField}`: [{string.Join(", ", extra.Select(x => $"'{x}'"))}]");
                     break;
+                }
                 default:
-                    errs.Add($"unknown constraint rule '{Yaml.AsString(c?.GetValueOrDefault("rule"))}'");
+                    errs.Add($"unknown constraint rule '{Yaml.AsString(c.GetValueOrDefault("rule"))}'");
                     break;
             }
         }

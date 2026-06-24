@@ -5,6 +5,7 @@ namespace ABox.DocEngine;
 
 internal static class Yaml
 {
+    // YAML scalars deserialize as strings by design — the data model is string-centric (names, rule text, enum values); bool fields go through IsBoolToken/Truthy.
     private static readonly IDeserializer Deser = new DeserializerBuilder().Build();
 
     public static object? Load(string path) => Deser.Deserialize<object?>(File.ReadAllText(path));

@@ -8,14 +8,22 @@ internal static class Program
         var root = ResolveRoot(rootArg);
         if (positional.Count == 0) return Usage();
 
-        return positional[0] switch
+        try
         {
-            "check" => Check(root),
-            "validate" => ValidateCmd(root, positional.ElementAtOrDefault(1)),
-            "catalog" => CatalogCmd(root, positional.ElementAtOrDefault(1)),
-            "outline" => OutlineCmd(root, positional.ElementAtOrDefault(1), args.Contains("--write")),
-            _ => Usage(),
-        };
+            return positional[0] switch
+            {
+                "check" => Check(root),
+                "validate" => ValidateCmd(root, positional.ElementAtOrDefault(1)),
+                "catalog" => CatalogCmd(root, positional.ElementAtOrDefault(1)),
+                "outline" => OutlineCmd(root, positional.ElementAtOrDefault(1), args.Contains("--write")),
+                _ => Usage(),
+            };
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException)
+        {
+            Console.Error.WriteLine($"error: {ex.Message}");
+            return 2;
+        }
     }
 
     private static int Check(string root)
@@ -86,7 +94,7 @@ internal static class Program
         }
         var path = ToPath(root, rel);
         var lines = File.ReadAllLines(path);
-        InstanceParser.DoctypeOf(path, lines);
+        _ = InstanceParser.DoctypeOf(path, lines); // why: fail fast if the file isn't a valid instance (no docType front matter)
         var defs = Catalog.LoadBlocks(root);
         var (blocks, _) = InstanceParser.Parse(lines, defs);
         var index = Outline.IndexMd(blocks);
