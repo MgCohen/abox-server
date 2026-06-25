@@ -19,11 +19,23 @@ spine — Harness never depends on the engine (ADR 0012 / 0013).
 |---|---|---|
 | #89 | `claude/rulebook-docengine` | doc-engine Rulebook model: `rule`/`links`/`criterion` blocks, `rulebook`/`test-template` doctypes, `labelmap` field-kind, canonical field-order check, fence-aware label parser |
 | #90 | `claude/rulebook-adr` | ADR 0013 (proposed) |
-| #92 | `claude/docs-test-type` | `Docs` test type — runs `docengine check`/`validate` under `dotnet test` by shelling out (no Harness→engine reference) |
+| #92 | `claude/docs-test-type` | `Docs` test type — runs `docengine check`/`validate` under `dotnet test` by shelling out (no Harness→engine reference); + the Fork 1/2 model changes below (block id optional, rulebook front-matter, `links` block retired) |
 
 Review remediation (H1/L1/L2/M1/Nit) closed; H2 cut as over-mechanism (a config
 switch + protected `ci.yml` edit buying nothing — the engine's output is
 config-identical).
+
+## Forks — settled
+
+The three model decisions are made. Fork 1 + 2 landed as engine changes on
+`claude/docs-test-type`; Fork 3 is a decision whose implementation *is* the
+migration (below).
+
+| Fork | Decision | Why |
+|---|---|---|
+| Block identity | `<!-- id -->` is an **optional** handle, not required, never derived. Nothing consumes it (no lookup, no link, no parity); the one render use was ordinal noise. | Parser keeps it for an agent that wants a stable cross-edit handle; most blocks omit it. |
+| Front-matter | **Explicit** `docType`/`testType` per file; `Template`/`Harness` move into front-matter as required string attrs; the `links` block is deleted. | Engine reads front-matter as-is (zero new code) and stays uncoupled from the test-tree layout (ADR 0013). |
+| `RulebookFormat` | **Delete** `RulebookFormat.cs` + `RulebookFormatTests.cs` — not "shrink." Drop the mechanical arrow-shape check. | All three Meta guards are intra-document structure the engine now owns. Parity was never in `RulebookFormat` — it lives in `ParityGuard`, untouched. Arrow-shape is a coarse proxy the judge's `right-type` rubric already covers semantically. |
 
 ## Remaining work
 
@@ -32,17 +44,17 @@ Protected paths + merge-to-`main` are walled off from the agent. Order, bottom-u
 `#89 → main`, then `#90` retargets → main, then `#92`. Flip ADR 0013
 `proposed → accepted` when it lands.
 
-### 2. Migrate the real rulebooks — the actual goal (needs decisions)
-Today the `Docs` test only validates the **sample** docs in
-`tools/doc-engine/out/`. The real `tests/**/Rulebook/rules.md` files are still
-governed by the legacy `RulebookFormat` harness. The two models coexist; they are
-not yet merged. Three forks to settle **before** touching real rulebooks:
-
-| Fork | Options |
-|---|---|
-| Block identity | derive `<!-- id -->` from the `### ` header text vs. explicit id comments per rule |
-| Front-matter | sweep `docType:`/`testType:` into all seven `tests/**/Rulebook/` files vs. keep implicit/inferred |
-| `RulebookFormat` | shrink to cross-artifact/parity only once the engine owns intra-document structure vs. leave whole and run both |
+### 2. Migrate the real rulebooks — the actual goal (owner-gated, protected paths)
+`tests/Harness/**`, `tests/Meta/**`, `tests/**/Rulebook/**` are all protected, so
+this is one reviewed PR. Steps, applying the settled forks:
+- Reauthor each `tests/**/Rulebook/rules.md` to the engine shape — front-matter
+  (`docType`/`testType`/`template`/`harness`) + `## Rules` of `### ` rules, **full
+  headers kept** (so `[Rule("…")]` strings + parity keys don't move).
+- Reauthor each `template.md` as a `test-template` instance (Summary + Criteria);
+  its schema-by-example role dies, its Criteria survive for the judge.
+- Point the `Docs` test at the real `tests/**/Rulebook/*.md`, not just `out/`.
+- Delete `RulebookFormat.cs` + `RulebookFormatTests.cs` once the engine validates
+  the real files. `ParityGuard` is unchanged.
 
 ### 3. Field-kind lookup — deferred, smallest
 A documented catalog of the field-kinds (`string`/`bool`/`list`/`typespec`/
@@ -51,5 +63,5 @@ available. Independent of 1 and 2.
 
 ## Recommended sequence
 
-Merge (1) first to clear protected-path churn → settle the forks in (2) before
-any real-rulebook edits → (3) any time; it's self-contained.
+Merge (1) first to clear protected-path churn → run the migration (2) as one
+owner-reviewed PR → (3) any time; it's self-contained.
