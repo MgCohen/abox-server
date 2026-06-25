@@ -17,8 +17,8 @@ punted. History is preserved as the rationale behind the current design.
 - **Derived views are free.** Because the engine parses blocks, `outline.py`
   generates an index + phase status board with no authoring cost — the
   plain-markdown answer to "a renderer would show a nicer overview".
-- **Readable raw.** Type-first headers + an `<!-- id -->` comment keep the file
-  legible without a renderer (confirmed by a cold-read sub-agent).
+- **Readable raw.** Type-first headers keep the file legible without a renderer
+  (confirmed by a cold-read sub-agent).
 - **Semantic judge organized.** The doc-type `rubric` (binary one-liners) IS the
   judge's criteria — no separate criteria file; the judge marks each line
   pass/fail via the repo's generic judge (PLANS/generic-judge.md). It caught a
@@ -59,7 +59,7 @@ punted. History is preserved as the rationale behind the current design.
 | Topic | Decision |
 |---|---|
 | header order | type-first (`## Phase - Title`) — the type column is the scan key |
-| ids | global numeric, de-emphasised into `<!-- id: N -->` (agent-oriented) |
+| ids | optional `<!-- id: <slug> -->` handle, not required — only when a block is referenced across edits (agent-oriented); nothing consumes it yet |
 | doc-type rules | catalog + `required` only; no min/max/position |
 | scope `kind` | dropped — the title ("In/Out of scope") already carries it |
 | done-but-qualified | `caveat:` attr instead of contradicting prose |

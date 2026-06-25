@@ -18,7 +18,6 @@ source: research/odysseus-comparison.md
 <!-- INDEX:END -->
 
 ## Summary
-<!-- id: 1 -->
 
 **Objective.** Decide what, if anything, our orchestrator should borrow from
 **Odysseus** — Felix Kjellberg's MIT-licensed self-hosted AI workspace
@@ -36,34 +35,29 @@ of our Interactivity axis rather than a gap to close.
 ## Questions
 
 ### Should we borrow Odysseus's provider abstraction?
-<!-- id: 2 -->
 
 Both projects must abstract over multiple model backends. Does Odysseus's
 approach suggest a better shape than our current CLI-substrate seam
 ([ADR 0004](../design/adr/0004-provider-seam.md))?
 
 ### Is there anything in their agent loop / tool dispatch we should copy?
-<!-- id: 3 -->
 
 Odysseus owns a tool-dispatch loop; we delegate the turn to `claude`/`codex`. Do
 their loop mechanics (tool-calling, completion contract) carry over to our Steps
 and step-completion semantics?
 
 ### How does their interactivity & permission model compare to ours?
-<!-- id: 4 -->
 
 Our permission-interaction model splits a Permission gate from an Interaction
 intercom on one resolve seam. Did a 30k-star project converge on the same axis,
 or skip it — and what does that tell us about whether the axis is real?
 
 ### Do they have a memory capability we lack?
-<!-- id: 5 -->
 
 Odysseus ships an in-product vector memory store. Is its absence from our design
 a gap, or a deliberate consequence of being a different category of product?
 
 ## Expected Result
-<!-- id: 6 -->
 
 A high-profile, similarly-named project was expected to be either a near-duplicate
 worth heavy borrowing, or wholly unrelated. The prior lean was that little would
@@ -74,7 +68,6 @@ the comparison.
 ## Quotations
 
 ### Completion is model-declared, not timed
-<!-- id: 7 -->
 source: src/agent_loop.py (paraphrased design note)
 
 "The agent declares when the job is done… Never trail off mid-task." Three exits
@@ -82,7 +75,6 @@ are defined: success, blocked (capability or permission missing, stated plainly)
 and continuation.
 
 ### Tools execute immediately upon detection
-<!-- id: 8 -->
 source: Odysseus README / agent_loop.py
 
 "Tools execute immediately upon detection." There is no approval step — the loop
@@ -90,7 +82,6 @@ is autonomous-only, and the only access control is RBAC over which tools a user
 may hold.
 
 ### Dual tool-calling for weak backends
-<!-- id: 9 -->
 source: src/agent_loop.py
 
 Native OpenAI function-calling is used when the endpoint supports it, plus a
@@ -99,7 +90,6 @@ language tag and the block auto-executes — so small local models that cannot d
 structured tool-calls still drive tools.
 
 ## Analysis
-<!-- id: 10 -->
 
 **Category and overlap.** Odysseus is a product/UI shell (Python 3.11 ·
 FastAPI/Uvicorn · SQLite · ChromaDB · Docker Compose with SearXNG + ntfy) that
@@ -158,7 +148,6 @@ Cookbook / `hwfit` does VRAM-aware model recommendation across 270+ models, with
 no analog here because the CLI subscription, not us, picks the model.
 
 ## Outcome
-<!-- id: 11 -->
 
 The expectation that little would transfer held — but the comparison surfaced two
 concrete patterns worth keeping, sharpening the vague prior into actionable
@@ -187,7 +176,6 @@ RBAC — is an explicit non-goal; resist scope creep toward "workspace."
 ## Open Questions
 
 ### Where should the "model-declared completion" prior art be recorded?
-<!-- id: 12 -->
 lean: Cite it in the oracle/step-completion notes when that work lands, not as a standalone doc now.
 
 The three-exit completion contract is worth citing, but only at the moment we
@@ -196,7 +184,6 @@ against the relevant oracle item; (b) wait and cite it inline when the work
 lands. Deferring avoids a dangling note, but risks losing the reference.
 
 ### Do we pre-place a note for the fenced-block tool fallback?
-<!-- id: 13 -->
 lean: Note it against the Ollama row in agent-providers.md, but build nothing.
 
 The language-tag-as-tool-name fallback is the known-good pattern for backends

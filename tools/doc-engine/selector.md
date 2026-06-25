@@ -34,7 +34,8 @@ format — read it from the data (catalog + per-block rubrics).
    Include only what carries substance — no filler.
 4. **Author each block** to its own `rubric` (`blocks/<type>.yaml`):
    - Singletons → `## <Type>`. Collections → `## <Group>` then `### <title>` members.
-   - A stable `<!-- id: N -->` under each header; scalar attrs as `key: value` lines.
+   - Scalar attrs as `key: value` lines; an optional `<!-- id: <slug> -->` handle only
+     when a block must be referenced across edits.
    - Distill, do not transcribe. Name real files/symbols from the dump; never invent.
 5. **Front matter.** Top of the file, a `---` block: `docType`, `status: draft`,
    `source: <dump path>`.

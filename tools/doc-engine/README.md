@@ -70,20 +70,18 @@ status: draft
 ---
 
 ## Context                       <- singleton: the header is the type
-<!-- id: 2 -->
 
 Markdown body — distilled prose, real files/symbols.
 
 ## Phases                        <- group header for a collection type
 ### Real GitHub adapter          <- member: ### title, type from the group
-<!-- id: 12 -->
 status: blocked
 
 **Goal.** ...
 ```
 
-- The id lives in an `<!-- id: N -->` comment — the stable handle, kept out of the
-  human header (it is agent-oriented and orthogonal to grouping).
 - `key: value` lines under the (sub)header are scalar attrs (status, lean, caveat).
+- An optional `<!-- id: <slug> -->` comment pins a stable, agent-oriented handle on a
+  block — only when something references it across edits; most blocks omit it.
 - Final on-disk syntax should match the render repo's parser — the model here is
   parser-agnostic.

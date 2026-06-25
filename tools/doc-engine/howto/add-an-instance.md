@@ -55,10 +55,12 @@ it is a singleton.
 - **Collection block** → a `## <Group>` header (the block's `group:` value), then one
   or more `### <title>` members. The member's type is inherited from the group.
 - Under each header (or sub-header), put:
-  - a stable id comment: `<!-- id: N -->` — unique across the whole document;
   - any scalar attrs as `key: value` lines — enum or free string alike
     (e.g. `status: doing`, or `source: Microsoft ConPTY docs`);
   - then a blank line and the Markdown body.
+  - optionally a stable handle comment `<!-- id: <slug> -->` — only when something
+    needs to reference this block across edits; unique within the document. Most
+    blocks omit it.
 
 A complete minimal `feature-plan` (its required blocks are `summary`, `phase`,
 `verification`):
@@ -70,33 +72,29 @@ status: draft
 ---
 
 ## Summary
-<!-- id: 1 -->
 
 One paragraph: the objective and what "done" means.
 
 ## Phases
 ### Wire the adapter
-<!-- id: 2 -->
 status: todo
 
 **Goal.** What this step delivers. **Done when.** The bar.
 
 ### Prove it end to end
-<!-- id: 3 -->
 status: todo
 
 **Goal.** ... **Done when.** ...
 
 ## Verification
-<!-- id: 4 -->
 
 The concrete checks that prove "done" — build, tests, one behaviour run.
 ```
 
-Rules the validator enforces: every block carries a unique `<!-- id -->`; only
-blocks in the doc type's catalog appear; every `required` block is present; enum
-attrs hold an allowed value; a required body is non-empty; a collection group has at
-least one member.
+Rules the validator enforces: only blocks in the doc type's catalog appear; every
+`required` block is present; enum attrs hold an allowed value; a required body is
+non-empty; a collection group has at least one member; any `<!-- id -->` handles
+present are unique.
 
 ## 3. Verify
 
@@ -105,7 +103,7 @@ dotnet run --project . -- validate out/<slug>.<suffix>.md
 ```
 
 Expect `PASS — conforms to the catalog.` Each violation names the offending block
-(`#N (id=…)`) and the problem; fix and re-run.
+(`#N (<title>)`, or `#N (id=…)` when it carries a handle) and the problem; fix and re-run.
 
 ## 4. (Optional) generate the index
 

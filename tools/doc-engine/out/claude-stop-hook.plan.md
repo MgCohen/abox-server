@@ -18,7 +18,6 @@ source: PLANS/claude-stop-hook-plan.md
 <!-- INDEX:END -->
 
 ## Summary
-<!-- id: 1 -->
 
 **Objective.** Replace `ClaudeProvider`'s 6-second-idle turn-completion guess with
 Claude's own `Stop` hook, which fires exactly once when a turn ends and hands back
@@ -30,7 +29,6 @@ faulting mid-turn. This is the last blocker for Claude-on-Windows end-to-end;
 Codex already works.
 
 ## Context
-<!-- id: 2 -->
 
 `ClaudeProvider` decides a turn is finished after 6 s of terminal silence via
 `WaitIdleAsync`. Claude 2.1.158 runs high-effort thinking with pauses longer than
@@ -48,14 +46,12 @@ interactive ConPTY/TUI mode (the billing path), but it is unused.
 ## Scope
 
 ### In scope
-<!-- id: 3 -->
 
 - One Claude `Stop` hook for turn-completion plus final text, replacing `WaitIdleAsync`.
 - A minimal, Claude-local hook helper (`ClaudeStopHook`) — no cross-provider framework.
 - Demote the session JSONL (`ClaudeJsonl`) from completion-detector to full-transcript source only.
 
 ### Out of scope
-<!-- id: 4 -->
 
 - Codex hooks — the Codex path stays on `codex exec --json` (`turn.completed` + `agent_message`), parsed in `CodexProtocol`, unchanged.
 - `PreToolUse` deny/guardrail hooks and `PostToolUse` live progress for SSE — the helper accepts more events, but only `Stop` is wired now.
@@ -64,7 +60,6 @@ interactive ConPTY/TUI mode (the billing path), but it is unused.
 ## Decisions
 
 ### Install the hook via `--settings`, not the project
-<!-- id: 5 -->
 
 Pass the `Stop` hook config as a dedicated per-run `ra-hooks.json` on the launch
 line (`--settings`), never writing into the user's `.claude/settings.json`. A
@@ -74,7 +69,6 @@ backup/restore, no clobber risk, and the `.ra-bak` project-install fallback is n
 needed.
 
 ### Kill-only teardown
-<!-- id: 6 -->
 
 After `Stop`, the final message and transcript are already on disk, so the provider
 lets `await using` dispose kill the PTY tree (Job Object cascade, Oracle A10) — no
@@ -83,7 +77,6 @@ exit code, so the `/exit` dance and the ~15 s exit-wait are removed and
 `PtySession.ShutdownAsync`/`WaitIdleAsync` are deleted as dead.
 
 ### Exit code is a teardown artifact, not the outcome
-<!-- id: 7 -->
 
 For Claude, `DriveResult.ExitCode` is 0 when the `Stop` hook delivered a result (or
 text was recovered), else 1; the raw ConPTY cmd exit code is ignored because the
@@ -93,7 +86,6 @@ subprocess exit code — each provider uses its best native turn-end signal.
 ## Phases
 
 ### Verify `--settings` is honored in TUI
-<!-- id: 8 -->
 status: done
 
 Reuses the existing ConPTY launch path. **Goal.** Confirm `--settings` merges with
@@ -103,7 +95,6 @@ and project settings are retained — strategy fixed to `--settings`. Confirmed
 additive 2026-06-06.
 
 ### Add `ClaudeStopHook` helper
-<!-- id: 9 -->
 status: done
 
 Reuses the per-run temp-file pattern already used for the system-prompt file.
@@ -113,7 +104,6 @@ utf8`), exposes the settings and signal paths, reads `last_assistant_message`, a
 `Dispose()` deletes the temp dir. **Done-when.** Helper unit-tested green.
 
 ### Rewire `ClaudeProvider.DriveAsync`
-<!-- id: 10 -->
 status: done
 
 Reuses the existing SubscriptionGuard, env-scrub, dialog-dismiss, and
@@ -130,7 +120,6 @@ per-run `--settings`, confirmed on the pinned 2.1.158 build). **Done-when.**
 the hook.
 
 ### Demote `ClaudeJsonl` to fallback
-<!-- id: 11 -->
 status: done
 
 Reuses `ClaudeJsonl.TryReadLastTurnTranscript` as the full-transcript reader.
@@ -144,7 +133,6 @@ after `Stop`, not polled; the no-signal path is exercised and resolves degraded 
 recovered) or `Faulted` (none), never a hang.
 
 ### Update tests and live-validate
-<!-- id: 12 -->
 status: done
 
 Reuses `ClaudeProtocolTests` and the L9 env-bound live gate. **Goal.** Extend
@@ -153,7 +141,6 @@ spikes through the real `ClaudeProvider`. **Done-when.** Full suite green (100),
 warning-free; live question turn → `NeedsInput`, tool-heavy turn → `Completed`.
 
 ### Amend the ADR and mark landed
-<!-- id: 13 -->
 status: done
 
 Reuses ADR 0006. **Goal.** Amend R-ARCH-3 / D4 ("no hooks") to permit scoped hooks
@@ -162,7 +149,6 @@ cross-provider framework, Codex stays on `--json` — and record the spike evide
 **Done-when.** ADR amended and plan marked landed.
 
 ## Verification
-<!-- id: 14 -->
 
 Warning-free build with the full suite green (100 tests), covering the `ra-hooks.json`
 shape, signal-payload parse (`last_assistant_message`, `transcript_path`), and the shim
@@ -180,7 +166,6 @@ no false `Faulted`.
 ## Open Questions
 
 ### Codex parity — switch end-signal to `turn.completed`
-<!-- id: 15 -->
 lean: Won't do — keep Codex on process-exit.
 
 Should Codex switch its turn-end signal from process-exit to the stream's

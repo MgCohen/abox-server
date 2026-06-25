@@ -18,7 +18,6 @@ source: PLANS/git-feature.md
 <!-- INDEX:END -->
 
 ## Summary
-<!-- id: 1 -->
 
 **Objective.** Build S2 — the git/PR stack capability: an `IStackHost` seam and a
 real GitHub adapter behind it, on the choreography proven in the S2.1 spikes, plus
@@ -29,7 +28,6 @@ its own — a real PR surface helps the current flows UI.
 primitive, all behind a seam the Box can consume.
 
 ## Context
-<!-- id: 2 -->
 
 Git already exists in the repo, split across two bands and stubbed at the remote
 seam. `Domain/Git/Git.cs` (the Domain band, which stays) runs local working-copy
@@ -47,7 +45,6 @@ impl also doesn't yet match the canonical slice shape.
 ## Scope
 
 ### In scope
-<!-- id: 3 -->
 
 - Branch + PR CRUD, including PR creation onto a non-`main` base.
 - Base retarget — `PATCH` a PR's base after its parent merges.
@@ -57,7 +54,6 @@ impl also doesn't yet match the canonical slice shape.
 - The branch-delete mechanic (covers the Box abort/discard path; the lifecycle trigger is B-tier).
 
 ### Out of scope
-<!-- id: 4 -->
 
 - approve-as-owner identity → S5; S2 is read-as-bot only.
 - Agent builder / resolver → the agent frontier.
@@ -68,7 +64,6 @@ impl also doesn't yet match the canonical slice shape.
 ## Decisions
 
 ### Canonical feature shape (ADR 0011)
-<!-- id: 5 -->
 
 The canonical feature shape is ratified: FastEndpoints, one implementation assembly
 plus one `Contracts` leaf, `internal sealed` endpoints. Git's 4→2 consolidation and
@@ -76,26 +71,22 @@ the Minimal-API → FastEndpoints port is the planned migration, not an open cho
 Reference implementation: `Features/Projects`.
 
 ### Merge-commit for Level-1
-<!-- id: 6 -->
 
 Use a merge commit for L1 stacked merges. A clean merge keeps the parent an ancestor
 of the box branch, so descendants only retarget — no rebase. The rebase cascade is
 reserved for the reject/rebuild path.
 
 ### Never key state on a SHA
-<!-- id: 7 -->
 
 Stable identity is the PR number, branch name, or (later) `Node` id — never a commit
 SHA, which moves under rebases and force-pushes.
 
 ### Read-as-bot
-<!-- id: 8 -->
 
 All git/PR actions run as the bot (`ABox-Agent`): no self-approval and no owner
 credentials. Owner identity is a separate substrate (S5).
 
 ### Force-push lean
-<!-- id: 9 -->
 
 Force-pushes use `--force-with-lease --force-if-includes`. The lease alone was
 empirically clobbered by a background fetch during the spike. `Domain/Git/Git.cs`
@@ -105,7 +96,6 @@ wires the cascade.
 ## Phases
 
 ### Spikes: retire the unknowns
-<!-- id: 10 -->
 status: done
 
 **Goal.** Prove the git + GitHub choreography before building the real adapter, with
@@ -117,7 +107,6 @@ base retarget live — PR #64's diff stayed byte-identical across the retarget.
 **Done-when.** Both legs proven; findings folded into `research/stacked-prs.md` §9.
 
 ### Canonical framework port (stub stays, parity-gated)
-<!-- id: 11 -->
 status: done
 caveat: pending owner CODEOWNERS review (touches protected files)
 
@@ -129,7 +118,6 @@ four assemblies down to two — without changing behaviour, reusing the
 commit.
 
 ### Real GitHub adapter
-<!-- id: 12 -->
 status: blocked
 
 **Goal.** Replace `StubPullRequests` with a real GitHub reader behind the
@@ -143,7 +131,6 @@ status: blocked
 **Done-when.** Lists/reads real PRs; covered by Live Rulebook tests; warning-free; one commit.
 
 ### Stack system (IStackHost)
-<!-- id: 13 -->
 status: todo
 
 **Goal.** Build the stack primitives the Box consumes, on the proven choreography and
@@ -158,7 +145,6 @@ descendant (no rebase), then a rebuild leg cascade-rebases onto the rewritten pa
 driven by test code against a real repo. Tests land as Rulebooks.
 
 ## Verification
-<!-- id: 14 -->
 
 Every task clears the same bar as the rebuild: warning-free build, green tests, behaviour
 actually run (not just compiled), and one coherent commit. Kept code ships behind its seam
@@ -168,7 +154,6 @@ code is exempt — it stays throwaway under `spikes/`.
 ## Open Questions
 
 ### GitHub client library
-<!-- id: 15 -->
 lean: Octokit.NET
 
 Octokit.NET (typed, official) vs raw `HttpClient` vs shelling `gh`. This is feature code,
@@ -176,7 +161,6 @@ not the enforcement surface, so ADR 0012's zero-dependency rule does not apply �
 the new dependency for the owner. Decide at S2.2.
 
 ### Spike/adapter target repo
-<!-- id: 16 -->
 lean: owner provisions a sandbox repo
 
 A throwaway sandbox repo (per the box-impl doc) vs in-repo `spike/`-prefixed branches.
@@ -184,7 +168,6 @@ In-repo branches are cheaper but may trip the protected `.github/**` CI workflow
 branch protection. This is an owner call — don't self-decide against the governing doc.
 
 ### Level-2 merge method
-<!-- id: 17 -->
 lean: defer to S2.3/B2
 
 Squash vs merge-commit for the box → `main` final merge. Independent of the L1 decision;
