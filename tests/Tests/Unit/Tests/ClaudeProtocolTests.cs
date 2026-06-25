@@ -112,24 +112,15 @@ public class ClaudeProtocolTests
         Assert.Equal(StartupDialog.Trust, ClaudeProtocol.DetectStartupDialog(buffer));
     }
 
-    [Rule("BuildCredentialEnv with a setup token → injects it as CLAUDE_CODE_OAUTH_TOKEN and never an API key")]
+    [Rule("BuildCredentialLauncher → reads the OAuth token from the mount file in-box and never embeds the token value")]
     [Fact]
-    public void BuildCredentialEnv_injects_the_token_as_oauth_not_an_api_key()
+    public void BuildCredentialLauncher_reads_the_token_from_the_mount_file()
     {
-        var env = ClaudeProtocol.BuildCredentialEnv("tok-123");
+        var script = ClaudeProtocol.BuildCredentialLauncher("/session/credential");
 
-        Assert.NotNull(env);
-        Assert.Equal("tok-123", env["CLAUDE_CODE_OAUTH_TOKEN"]);
-        Assert.False(env.ContainsKey("ANTHROPIC_API_KEY"));
-        Assert.False(env.ContainsKey("CLAUDE_API_KEY"));
-    }
-
-    [Rule("BuildCredentialEnv with no setup token → carries no credential env")]
-    [Fact]
-    public void BuildCredentialEnv_is_empty_when_no_token()
-    {
-        Assert.Null(ClaudeProtocol.BuildCredentialEnv(null));
-        Assert.Null(ClaudeProtocol.BuildCredentialEnv(""));
+        Assert.Contains("CLAUDE_CODE_OAUTH_TOKEN=\"$(cat /session/credential)\"", script);
+        Assert.Contains("exec claude \"$@\"", script);
+        Assert.DoesNotContain("ANTHROPIC_API_KEY", script);
     }
 
     [Rule("BuildBoxEnv never carries the credential → the token never reaches the PTY-echoed exec line")]

@@ -209,14 +209,11 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 ### EnvScrub maps each agent to its own billing keys → claude scrubs the Anthropic keys, codex the OpenAI key
 - **Why:** oracle A1 — each CLI bills the metered API instead of the subscription if its billing key is visible, so codex must guard OPENAI_API_KEY just as claude guards the Anthropic keys; the lists are per-agent so a stray key for one CLI never blocks the other.
 
-### BuildCredentialEnv with a setup token → injects it as CLAUDE_CODE_OAUTH_TOKEN and never an API key
-- **Why:** the box must bill the owner's subscription, so the credential must arrive under the OAuth-token var while no ANTHROPIC_API_KEY is set — an API key would silently switch claude to metered billing (oracle A1). It rides `docker run`, not the exec line, so the token never lands on the PTY-echoed launch line.
-
-### BuildCredentialEnv with no setup token → carries no credential env
-- **Why:** an unprovisioned box must not fabricate a credential; omitting the token leaves the turn unauthenticated rather than mis-billed, which is the deferred-validation gate (B1/B2).
+### BuildCredentialLauncher → reads the OAuth token from the mount file in-box and never embeds the token value
+- **Why:** the box must bill the owner's subscription, so the credential is read from a 0600 session-mount file into CLAUDE_CODE_OAUTH_TOKEN inside the box at exec time — never embedded in the launch string. That keeps the token off the PTY-echoed exec line AND out of the container's `docker inspect` env, while staying an OAuth token (not an API key) so the scrub still selects subscription billing (oracle A1).
 
 ### BuildBoxEnv never carries the credential → the token never reaches the PTY-echoed exec line
-- **Why:** the exec line is typed into the host PTY, which echoes it into the drive buffer (logged, surfaced); keeping the credential out of the per-exec env is what makes the token leak-safe on the transcript, with `docker run` carrying it instead.
+- **Why:** the exec line is typed into the host PTY, which echoes it into the drive buffer (logged, surfaced); keeping the credential out of the per-exec env is what makes the token leak-safe on the transcript, with the in-box launcher reading it from a mount file instead.
 
 ### BuildBoxEnv with an egress proxy → routes the box out through HTTPS_PROXY and HTTP_PROXY
 - **Why:** the box's only sanctioned route is the allowlist proxy, so both vars must point at it or the box either can't reach Anthropic or slips the egress boundary that keeps the in-box token leak-safe.

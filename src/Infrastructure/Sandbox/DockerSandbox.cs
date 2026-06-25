@@ -27,16 +27,17 @@ public sealed class DockerSandbox : ISandbox
 
     public static async Task<DockerSandbox> OpenAsync(SandboxOptions options, CancellationToken ct)
     {
+        // A credentialed box is leak-safe only with no route out (ADR 0013): verify the
+        // network is actually --internal, not merely named, before the box ever holds a secret.
+        if (options.RequireInternalNetwork)
+            await EnsureInternalNetworkAsync(options.Network, ct);
+
         var network = options.Network is null ? "" : $"--network {Shell.Quote(options.Network)} ";
-        // The credential (and any container-scoped env) is set here, at `docker run`, so a
-        // later `docker exec` inherits it without the value ever reaching the exec line the
-        // driving PTY echoes into its buffer (ADR 0013: token stays off the agent transcript).
-        var containerEnv = EnvFlags(options.ContainerEnv);
         // PID 1 is `sleep infinity` via an explicit entrypoint: the box image's own
         // ENTRYPOINT is /bin/sh, so a bare `sleep infinity` CMD would run `/bin/sh sleep …`
         // and exit. The agent turn runs later through `docker exec`, which ignores this.
         var runLine =
-            $"docker run -d --entrypoint sleep {UserFlag}{containerEnv}-w {WorkMount} " +
+            $"docker run -d --entrypoint sleep {UserFlag}-w {WorkMount} " +
             $"-v {Shell.Quote(options.Worktree.FullName)}:{WorkMount} " +
             $"-v {Shell.Quote(options.SessionDir.FullName)}:{SessionMount} " +
             $"-v {Shell.Quote(options.Home.FullName)}:{HomeMount} " +
@@ -59,6 +60,17 @@ public sealed class DockerSandbox : ISandbox
 
     private static string EnvFlags(IReadOnlyDictionary<string, string>? env) =>
         env is null ? "" : string.Concat(env.Select(kv => $"-e {Shell.Quote($"{kv.Key}={kv.Value}")} "));
+
+    private static async Task EnsureInternalNetworkAsync(string? network, CancellationToken ct)
+    {
+        var inspect = await RunCommand.RunAsync(
+            $"docker network inspect -f {Shell.Quote("{{.Internal}}")} {Shell.Quote(network ?? "")}", ct: ct);
+        if (inspect.ExitCode != 0 || inspect.Stdout.Trim() != "true")
+            throw new InvalidOperationException(
+                $"A credentialed box must run on an --internal docker network with no route out (ADR 0013); " +
+                $"network '{network ?? "(none)"}' reports Internal='{inspect.Stdout.Trim()}'. " +
+                "Attach it to the egress sidecar's abox-boxnet, or clear the credential for an unbilled turn.");
+    }
 
     public async ValueTask DisposeAsync()
     {

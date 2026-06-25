@@ -50,7 +50,7 @@ public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolv
         var home = _home ??= PrepareHome();
         var permissionMode = ClaudeProtocol.PermissionMode(config.Policy);
         var args = ClaudeProtocol.BuildArgs(sessionId, isResume, permissionMode, config.Model, sysPromptInBox, hook.SettingsPathInBox);
-        var claudeLine = "claude " + string.Join(' ', args.Select(Shell.Quote));
+        var launchCommand = BuildLaunchCommand(hook, args, sandbox.SetupToken);
 
         using var deadlineCts = new CancellationTokenSource(MaxOverallMs);
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, deadlineCts.Token);
@@ -62,10 +62,10 @@ public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolv
             Home: home,
             Image: sandbox.Image,
             Network: sandbox.Network,
-            ContainerEnv: ClaudeProtocol.BuildCredentialEnv(sandbox.SetupToken));
+            RequireInternalNetwork: sandbox.SetupToken is not null);
         await using var box = await DockerSandbox.OpenAsync(options, dct);
 
-        var launchLine = box.InteractiveExecLine(claudeLine, BoxEnv(hook));
+        var launchLine = box.InteractiveExecLine(launchCommand, BoxEnv(hook));
 
         var pty = await PtyProvider.SpawnAsync(BuildPtyOptions(), dct);
         await using var session = new PtySession(pty, dct);
@@ -126,6 +126,24 @@ public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolv
         ClaudeProtocol.BuildBoxEnv(
             DockerSandbox.HomeMount, hook.SignalPathInBox, hook.PermissionDirInBox, sandbox.ProxyUrl);
 
+    // Unbilled turn → launch claude directly. Billed turn → write the token to a 0600 file on
+    // the /session mount and launch a tiny script that reads it into the env in-box, so the
+    // value never lands on the PTY-echoed exec line nor in the container's `docker inspect` env.
+    private static string BuildLaunchCommand(ClaudeHooks hook, List<string> args, string? setupToken)
+    {
+        var quotedArgs = string.Join(' ', args.Select(Shell.Quote));
+        if (string.IsNullOrEmpty(setupToken)) return "claude " + quotedArgs;
+
+        var credFile = Path.Combine(hook.HostDir, "credential");
+        File.WriteAllText(credFile, setupToken);
+        if (!OperatingSystem.IsWindows())
+            File.SetUnixFileMode(credFile, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+
+        var credInBox = $"{DockerSandbox.SessionMount}/credential";
+        File.WriteAllText(Path.Combine(hook.HostDir, "launch.sh"), ClaudeProtocol.BuildCredentialLauncher(credInBox));
+        return $"sh {DockerSandbox.SessionMount}/launch.sh " + quotedArgs;
+    }
+
     private static void TryDeleteDir(DirectoryInfo dir)
     {
         try { dir.Delete(recursive: true); }
@@ -135,8 +153,8 @@ public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolv
     private static readonly Regex OAuthToken = new(@"sk-ant-\S+", RegexOptions.Compiled);
 
     // Surface what Claude rendered when a startup wait times out — ANSI-stripped and
-    // tail-trimmed. The credential now rides `docker run`, not the exec line, so it no
-    // longer enters this buffer; the scrub stays as defense-in-depth against any echo.
+    // tail-trimmed. The credential is read from a mount file in-box, not echoed on the exec
+    // line, so it no longer enters this buffer; the scrub stays as defense-in-depth.
     private static string Tail(string buffer)
     {
         var text = OAuthToken.Replace(AnsiHelpers.StripAnsi(buffer), "sk-ant-***");

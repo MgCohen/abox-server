@@ -6,4 +6,4 @@ public sealed record SandboxOptions(
     DirectoryInfo Home,
     string Image,
     string? Network = null,
-    IReadOnlyDictionary<string, string>? ContainerEnv = null);
+    bool RequireInternalNetwork = false);

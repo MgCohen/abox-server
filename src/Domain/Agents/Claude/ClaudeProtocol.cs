@@ -54,10 +54,10 @@ public static class ClaudeProtocol
     }
 
     // The non-secret env injected per turn via `docker exec -e` (ADR 0013): HOME at the
-    // mounted skeleton, the Stop/permission shim paths as in-box mount paths, the egress
+    // mounted onboarding home, the Stop/permission shim paths as in-box mount paths, the egress
     // proxy. Per-turn and per-exec: nothing here is baked into the image. The subscription
-    // credential is deliberately NOT here — it rides `docker run` (BuildCredentialEnv) so it
-    // never reaches the exec line the driving PTY echoes into its buffer.
+    // credential is deliberately NOT here — the box reads it from a session-mounted file at exec
+    // time (BuildCredentialLauncher) so it never reaches the PTY-echoed exec line.
     public static Dictionary<string, string> BuildBoxEnv(
         string homeMount, string signalPathInBox, string? permissionDirInBox, string? proxyUrl)
     {
@@ -76,14 +76,13 @@ public static class ClaudeProtocol
         return env;
     }
 
-    // The subscription credential, set at `docker run` (inherited by the turn's `docker
-    // exec`) so it stays off the PTY-echoed exec line. An OAuth token, not an API key, so
-    // the ANTHROPIC_API_KEY scrub still selects subscription billing (oracle A1); no
-    // ANTHROPIC_API_KEY is ever set. Empty when there is no token (an unbilled turn).
-    public static IReadOnlyDictionary<string, string>? BuildCredentialEnv(string? setupToken) =>
-        string.IsNullOrEmpty(setupToken)
-            ? null
-            : new Dictionary<string, string> { [OAuthTokenEnvVar] = setupToken };
+    // A one-shot launcher the box runs in place of `claude`: it reads the subscription token
+    // from a 0600 session-mounted file into the OAuth env var, then exec's claude (ADR 0013).
+    // The token value is therefore never on the PTY-echoed exec line and never in the container's
+    // `docker inspect` env — only on a short-lived mount file. An OAuth token, not an API key, so
+    // the ANTHROPIC_API_KEY scrub still selects subscription billing (oracle A1).
+    public static string BuildCredentialLauncher(string credentialPathInBox) =>
+        $"export {OAuthTokenEnvVar}=\"$(cat {credentialPathInBox})\"\nexec claude \"$@\"\n";
 
     // Oracle A7: match the dialog wordings (Claude's) against the normalized,
     // whitespace-free buffer. Tweak the needles here if Claude changes them.
