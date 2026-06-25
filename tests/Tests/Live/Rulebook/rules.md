@@ -32,3 +32,8 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 ### a Human agent with no answer available → escalates as Needs input
 - **Why:** with no resolution a Human agent must surface NeedsInput rather than hang or guess — the
   deny-on-null escalation.
+
+### the agent-configured machine → a real commit lands as the bot, never the owner or generic default
+- **Why:** only the owner's real, agent-configured machine can prove the credential split holds — a probe
+  commit is authored as the bot and the resolved identity is never the owner or the unconfigured Claude
+  default; no scripted environment establishes which credential the live machine actually uses.
