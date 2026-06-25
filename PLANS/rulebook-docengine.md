@@ -21,8 +21,9 @@ spine — Harness never depends on the engine (ADR 0012 / 0013).
 | #90 | `claude/rulebook-adr` | ADR 0013 (proposed) |
 | #92 | `claude/docs-test-type` | `Docs` test type — runs `docengine check`/`validate` under `dotnet test` by shelling out (no Harness→engine reference) |
 
-Review remediation (H1/L1/L2/M1/Nit) closed; H2 cut as over-mechanism — see
-[`rulebook-review-fixes.md`](rulebook-review-fixes.md).
+Review remediation (H1/L1/L2/M1/Nit) closed; H2 cut as over-mechanism (a config
+switch + protected `ci.yml` edit buying nothing — the engine's output is
+config-identical).
 
 ## Remaining work
 
