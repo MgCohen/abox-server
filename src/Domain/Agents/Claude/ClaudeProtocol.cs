@@ -5,6 +5,10 @@ namespace ABox.Domain.Agents.Claude;
 
 public static class ClaudeProtocol
 {
+    // The subscription credential reaches the box here (ADR 0013): an OAuth token, not an
+    // API key, so the ANTHROPIC_API_KEY scrub still selects subscription billing (oracle A1).
+    public const string OAuthTokenEnvVar = "CLAUDE_CODE_OAUTH_TOKEN";
+
     // Hints shown only on Claude's live input bar — the positive "ready" signal.
     // "shift+tab" rides the bypass-mode footer; "? for shortcuts" shows in default
     // mode where the permission-cycle hint is absent. Match either.
@@ -48,6 +52,37 @@ public static class ClaudeProtocol
         if (!string.IsNullOrEmpty(settingsFile)) { args.Add("--settings"); args.Add(settingsFile); }
         return args;
     }
+
+    // The non-secret env injected per turn via `docker exec -e` (ADR 0013): HOME at the
+    // mounted onboarding home, the Stop/permission shim paths as in-box mount paths, the egress
+    // proxy. Per-turn and per-exec: nothing here is baked into the image. The subscription
+    // credential is deliberately NOT here — the box reads it from a session-mounted file at exec
+    // time (BuildCredentialLauncher) so it never reaches the PTY-echoed exec line.
+    public static Dictionary<string, string> BuildBoxEnv(
+        string homeMount, string signalPathInBox, string? permissionDirInBox, string? proxyUrl)
+    {
+        var env = new Dictionary<string, string>
+        {
+            ["HOME"] = homeMount,
+            [ClaudeHooks.SignalEnvVar] = signalPathInBox,
+        };
+        if (permissionDirInBox is not null)
+            env[ClaudeHooks.PermissionEnvVar] = permissionDirInBox;
+        if (proxyUrl is { } proxy)
+        {
+            env["HTTPS_PROXY"] = proxy;
+            env["HTTP_PROXY"] = proxy;
+        }
+        return env;
+    }
+
+    // A one-shot launcher the box runs in place of `claude`: it reads the subscription token
+    // from a 0600 session-mounted file into the OAuth env var, then exec's claude (ADR 0013).
+    // The token value is therefore never on the PTY-echoed exec line and never in the container's
+    // `docker inspect` env — only on a short-lived mount file. An OAuth token, not an API key, so
+    // the ANTHROPIC_API_KEY scrub still selects subscription billing (oracle A1).
+    public static string BuildCredentialLauncher(string credentialPathInBox) =>
+        $"export {OAuthTokenEnvVar}=\"$(cat {credentialPathInBox})\"\nexec claude \"$@\"\n";
 
     // Oracle A7: match the dialog wordings (Claude's) against the normalized,
     // whitespace-free buffer. Tweak the needles here if Claude changes them.

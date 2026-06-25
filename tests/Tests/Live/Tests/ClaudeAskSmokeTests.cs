@@ -1,5 +1,6 @@
 using ABox.Domain.Agents;
 using ABox.Domain.Agents.Claude;
+using ABox.Host;
 using Xunit.Abstractions;
 using ABox.Tests.Live.Support;
 
@@ -70,6 +71,22 @@ public class ClaudeAskSmokeTests(ITestOutputHelper output)
         finally { TryDeleteDir(projectDir); }
     }
 
+    // The credential rides `docker run`, never the PTY-echoed `docker exec` line, so a real
+    // billed turn's drive buffer must carry no token. Asserts the hardening end to end.
+    [Rule("a credentialed live turn → the subscription token never appears in the drive buffer")]
+    [LiveFact]
+    public async Task Credential_never_appears_in_the_drive_buffer()
+    {
+        var projectDir = Directory.CreateTempSubdirectory("claude-leak-").FullName;
+        try
+        {
+            var drive = await DriveAsync(PermissionPolicy.Auto, new RecordingResolver("Allow"), projectDir, CreateFilePrompt);
+
+            Assert.DoesNotContain("sk-ant-", drive.RawOutput);
+        }
+        finally { TryDeleteDir(projectDir); }
+    }
+
     private void AssertGatedToolWasAskedAbout(RecordingResolver resolver)
     {
         Assert.NotEmpty(resolver.Questions);
@@ -77,16 +94,17 @@ public class ClaudeAskSmokeTests(ITestOutputHelper output)
         foreach (var q in resolver.Questions) output.WriteLine($"gated: {q.Prompt}");
     }
 
-    private async Task DriveAsync(PermissionPolicy policy, IDecisionResolver resolver, string projectDir, string prompt)
+    private async Task<DriveResult> DriveAsync(PermissionPolicy policy, IDecisionResolver resolver, string projectDir, string prompt)
     {
         var config = new ClaudeConfig("asker", "Asks before acting.", "", "You implement.", policy);
-        var provider = new ClaudeProvider(config, resolver, new AutoPolicy(), new SandboxSettings("abox-claude:latest"));
+        await using var provider = new ClaudeProvider(config, resolver, new AutoPolicy(), ClaudeBox.Confined());
 
         using var cts = new CancellationTokenSource(Timeout);
         var drive = await provider.DriveAsync(new AgentRunRequest(prompt, projectDir), cts.Token);
 
         output.WriteLine($"exit={drive.ExitCode}");
         output.WriteLine($"text={drive.Text}");
+        return drive;
     }
 
     private sealed class RecordingResolver(string? answer) : IDecisionResolver

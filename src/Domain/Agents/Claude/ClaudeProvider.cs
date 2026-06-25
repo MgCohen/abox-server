@@ -1,10 +1,11 @@
+using System.Text.RegularExpressions;
 using Porta.Pty;
 using ABox.Infrastructure.CommandLine;
 using ABox.Infrastructure.Sandbox;
 
 namespace ABox.Domain.Agents.Claude;
 
-public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolver, AutoPolicy autoPolicy, SandboxSettings sandbox) : IProvider
+public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolver, AutoPolicy autoPolicy, SandboxSettings sandbox) : IProvider, IAsyncDisposable
 {
     private const int Cols = 120;
     private const int Rows = 40;
@@ -18,14 +19,21 @@ public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolv
     private const int ResolvePollMs = 100;
     private const int MaxOverallMs = 10 * 60_000;      // oracle A10: wall-clock cap → guaranteed teardown
 
+    // One HOME for the provider's whole life, not per turn: claude writes the session JSONL
+    // here, and a --resume turn opens a fresh box that must re-mount the same HOME to find it.
+    // Disposed with the provider (which the Agent owns).
+    private DirectoryInfo? _home;
+
     public async Task<DriveResult> DriveAsync(AgentRunRequest request, CancellationToken ct)
     {
-        await SubscriptionGuard.CheckAsync(EnvScrub.SubscriptionKeys, "claude", ct);
+        await SubscriptionGuard.CheckAsync(EnvScrub.ClaudeKeys, "claude", ct);
 
         if (config.Policy == PermissionPolicy.Bypass && DockerSandbox.RunsAsRoot)
             throw new InvalidOperationException(
                 "Bypass policy needs claude's bypassPermissions mode, which claude refuses as root; " +
                 "run the orchestrator as a non-root user so the box isn't root.");
+
+        sandbox.EnsureCredentialConfined();
 
         var isResume = request.SessionId is not null;
         var sessionId = request.SessionId ?? Guid.NewGuid().ToString();
@@ -39,64 +47,69 @@ public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolv
             AgentDirective.ComposeSystemPrompt(config.SystemPrompt, config.Resolution));
         var sysPromptInBox = $"{DockerSandbox.SessionMount}/{sysPromptName}";
 
-        var home = PrepareHome();
-        try
-        {
-            var permissionMode = ClaudeProtocol.PermissionMode(config.Policy);
-            var args = ClaudeProtocol.BuildArgs(sessionId, isResume, permissionMode, config.Model, sysPromptInBox, hook.SettingsPathInBox);
-            var claudeLine = "claude " + string.Join(' ', args.Select(Shell.QuotePosix));
+        var home = _home ??= PrepareHome();
+        var permissionMode = ClaudeProtocol.PermissionMode(config.Policy);
+        var args = ClaudeProtocol.BuildArgs(sessionId, isResume, permissionMode, config.Model, sysPromptInBox, hook.SettingsPathInBox);
+        var launchCommand = BuildLaunchCommand(hook, args, sandbox.SetupToken);
 
-            using var deadlineCts = new CancellationTokenSource(MaxOverallMs);
-            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, deadlineCts.Token);
-            var dct = linkedCts.Token;
+        using var deadlineCts = new CancellationTokenSource(MaxOverallMs);
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, deadlineCts.Token);
+        var dct = linkedCts.Token;
 
-            var options = new SandboxOptions(
-                Worktree: new DirectoryInfo(request.ProjectDir),
-                SessionDir: new DirectoryInfo(hook.HostDir),
-                Home: home,
-                Image: sandbox.Image,
-                Network: sandbox.Network);
-            await using var box = await DockerSandbox.OpenAsync(options, dct);
+        var options = new SandboxOptions(
+            Worktree: new DirectoryInfo(request.ProjectDir),
+            SessionDir: new DirectoryInfo(hook.HostDir),
+            Home: home,
+            Image: sandbox.Image,
+            Network: sandbox.Network,
+            RequireInternalNetwork: sandbox.SetupToken is not null);
+        await using var box = await DockerSandbox.OpenAsync(options, dct);
 
-            var launchLine = box.InteractiveExecLine(claudeLine, BoxEnv(hook));
+        var launchLine = box.InteractiveExecLine(launchCommand, BoxEnv(hook));
 
-            var pty = await PtyProvider.SpawnAsync(BuildPtyOptions(), dct);
-            await using var session = new PtySession(pty, dct);
+        var pty = await PtyProvider.SpawnAsync(BuildPtyOptions(), dct);
+        await using var session = new PtySession(pty, dct);
 
-            await session.WriteLineAsync(launchLine, dct);
-            await DismissStartupDialogsAsync(session, dct);
+        await session.WriteLineAsync(launchLine, dct);
+        await DismissStartupDialogsAsync(session, dct);
 
-            // Wait for the input-bar marker, not for silence: a mid-startup re-render is indistinguishable from a settled idle.
-            if (!await session.WaitUntilAsync(ClaudeProtocol.IsPromptReady, ReadySettleMs, StartupCapMs, PollMs, dct))
-                throw new InvalidOperationException("Claude input bar did not become ready in time; cannot submit the prompt.");
+        // Wait for the input-bar marker, not for silence: a mid-startup re-render is indistinguishable from a settled idle.
+        if (!await session.WaitUntilAsync(ClaudeProtocol.IsPromptReady, ReadySettleMs, StartupCapMs, PollMs, dct))
+            throw new InvalidOperationException(
+                "Claude input bar did not become ready in time; cannot submit the prompt. " +
+                $"Last screen:\n{Tail(session.Buffer)}");
 
-            await session.SubmitAsync(request.Prompt, SubmitSettleMs, dct);
-            await PumpUntilStopAsync(hook, dct);
+        await session.SubmitAsync(request.Prompt, SubmitSettleMs, dct);
+        await PumpUntilStopAsync(hook, dct);
 
-            // Stop fired across the /session mount, so the final message + JSONL are on disk;
-            // read them before dispose tears the box down (docker rm -f, oracle A10).
-            var projectsRoot = Path.Combine(home.FullName, ".claude", "projects");
-            var text = hook.ReadFinalMessage();
-            if (string.IsNullOrWhiteSpace(text))
-                text = await ResolveTextFallbackAsync(sessionId, request.Prompt, projectsRoot, dct);
-            var transcript = ClaudeJsonl.TryReadLastTurnTranscript(sessionId, request.Prompt, projectsRoot) ?? [];
-            var exitCode = hook.HasFired || !string.IsNullOrWhiteSpace(text) ? 0 : 1;
-            return new DriveResult(text ?? "", sessionId, exitCode, session.Buffer, transcript);
-        }
-        finally
-        {
-            TryDeleteDir(home);
-        }
+        // Stop fired across the /session mount, so the final message + JSONL are on disk;
+        // read them before dispose tears the box down (docker rm -f, oracle A10).
+        var projectsRoot = Path.Combine(home.FullName, ".claude", "projects");
+        var text = hook.ReadFinalMessage();
+        if (string.IsNullOrWhiteSpace(text))
+            text = await ResolveTextFallbackAsync(sessionId, request.Prompt, projectsRoot, dct);
+        var transcript = ClaudeJsonl.TryReadLastTurnTranscript(sessionId, request.Prompt, projectsRoot) ?? [];
+        var exitCode = hook.HasFired || !string.IsNullOrWhiteSpace(text) ? 0 : 1;
+        return new DriveResult(text ?? "", sessionId, exitCode, session.Buffer, transcript);
     }
 
-    // Provisional: the credential + onboarding state come from the pre-onboarded
-    // template HOME. Until the owner provisions a setup-token home, the box has no
-    // credential and a real turn can't authenticate — the deferred validation step.
+    // The session HOME outlives each turn (resume re-mounts it), so cleanup is the provider's
+    // job, not the turn's — the Agent disposes the provider when the run is done.
+    public ValueTask DisposeAsync()
+    {
+        if (_home is { } home) TryDeleteDir(home);
+        _home = null;
+        return ValueTask.CompletedTask;
+    }
+
+    // The session HOME: a temp dir (writable mount where claude writes the JSONL) seeded once
+    // from the non-secret onboarding skeleton so the first-run dialogs don't appear. The
+    // credential is NOT here — it rides the box env per turn.
     private DirectoryInfo PrepareHome()
     {
         var home = Directory.CreateTempSubdirectory("ra-claude-home-");
-        if (sandbox.TemplateHome is { Exists: true } template)
-            CopyDir(template, home);
+        if (sandbox.OnboardingHome is { Exists: true } onboarding)
+            CopyDir(onboarding, home);
         return home;
     }
 
@@ -109,29 +122,43 @@ public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolv
             file.CopyTo(Path.Combine(dst.FullName, file.Name), overwrite: true);
     }
 
-    // No API key in the box env (docker doesn't inherit the host's), so claude takes the
-    // subscription path (oracle A1). Injected via `docker exec -e`.
-    private Dictionary<string, string> BoxEnv(ClaudeHooks hook)
+    private Dictionary<string, string> BoxEnv(ClaudeHooks hook) =>
+        ClaudeProtocol.BuildBoxEnv(
+            DockerSandbox.HomeMount, hook.SignalPathInBox, hook.PermissionDirInBox, sandbox.ProxyUrl);
+
+    // Unbilled turn → launch claude directly. Billed turn → write the token to a 0600 file on
+    // the /session mount and launch a tiny script that reads it into the env in-box, so the
+    // value never lands on the PTY-echoed exec line nor in the container's `docker inspect` env.
+    private static string BuildLaunchCommand(ClaudeHooks hook, List<string> args, string? setupToken)
     {
-        var env = new Dictionary<string, string>
-        {
-            ["HOME"] = DockerSandbox.HomeMount,
-            [ClaudeHooks.SignalEnvVar] = hook.SignalPathInBox,
-        };
-        if (hook.PermissionDirInBox is not null)
-            env[ClaudeHooks.PermissionEnvVar] = hook.PermissionDirInBox;
-        if (sandbox.ProxyUrl is { } proxy)
-        {
-            env["HTTPS_PROXY"] = proxy;
-            env["HTTP_PROXY"] = proxy;
-        }
-        return env;
+        var quotedArgs = string.Join(' ', args.Select(Shell.Quote));
+        if (string.IsNullOrEmpty(setupToken)) return "claude " + quotedArgs;
+
+        var credFile = Path.Combine(hook.HostDir, "credential");
+        File.WriteAllText(credFile, setupToken);
+        if (!OperatingSystem.IsWindows())
+            File.SetUnixFileMode(credFile, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+
+        var credInBox = $"{DockerSandbox.SessionMount}/credential";
+        File.WriteAllText(Path.Combine(hook.HostDir, "launch.sh"), ClaudeProtocol.BuildCredentialLauncher(credInBox));
+        return $"sh {DockerSandbox.SessionMount}/launch.sh " + quotedArgs;
     }
 
     private static void TryDeleteDir(DirectoryInfo dir)
     {
         try { dir.Delete(recursive: true); }
         catch { /* best-effort: temp cleanup is non-fatal */ }
+    }
+
+    private static readonly Regex OAuthToken = new(@"sk-ant-\S+", RegexOptions.Compiled);
+
+    // Surface what Claude rendered when a startup wait times out — ANSI-stripped and
+    // tail-trimmed. The credential is read from a mount file in-box, not echoed on the exec
+    // line, so it no longer enters this buffer; the scrub stays as defense-in-depth.
+    private static string Tail(string buffer)
+    {
+        var text = OAuthToken.Replace(AnsiHelpers.StripAnsi(buffer), "sk-ant-***");
+        return text.Length <= 1500 ? text : text[^1500..];
     }
 
     // Dismiss each dialog kind at most once: a repeated keystroke would land in the next screen and corrupt the prompt.

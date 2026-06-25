@@ -6,7 +6,7 @@
 # safe. Ported from spike agent-in-box/egress (validated E1–E5).
 import ipaddress, os, socket, sys, threading
 
-ALLOW = {h.strip().lower() for h in os.environ.get("ALLOW", "api.anthropic.com").split(",") if h.strip()}
+ALLOW = {h.strip().lower() for h in os.environ.get("ALLOW", "api.anthropic.com,chatgpt.com").split(",") if h.strip()}
 PORT = int(os.environ.get("PORT", "8888"))
 
 

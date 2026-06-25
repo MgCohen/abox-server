@@ -21,6 +21,31 @@ the host's PTY. The box runs only `claude` + its sh hooks. This **revises decisi
 "brain on host / hooks cross the mount" intent is unchanged — strengthened, even, since
 *more* logic stays host-side.
 
+## Amendment-2 (2026-06-21) — credential delivery: per-turn `docker exec -e`, not fd-injection
+
+The fd-injection mechanism this ADR's `[llm]` confirmation describes
+(`CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR`, mirroring how Claude Code's own managed env
+authenticates) presupposed the in-box **driver** that Amendment-1 removed: a file descriptor can't
+cross the docker boundary, and with no in-box process there is nothing to set up the fd for the
+`claude` child. fd-injection became unbuildable the moment the driver did. The credential now reaches
+the box the simplest way the host-PTY model allows: the owner's `claude setup-token` (subscription
+OAuth) is held host-side and injected **per turn, per exec** as `CLAUDE_CODE_OAUTH_TOKEN` on the
+`docker exec` line — never baked into the image, never set box-wide on `docker run`. No
+`ANTHROPIC_BASE_URL` broker is needed: a real setup-token reaches `api.anthropic.com` directly, which
+is exactly what the egress allowlist permits.
+
+The token does land in `claude`'s `environ` (and so is visible to its in-box hook/tool children).
+That is acceptable **only** because egress is the boundary: the box sits on an `--internal` network
+whose sole route out is the allowlist proxy to Anthropic, so a read token has no exfil path. To keep
+that the load-bearing condition rather than a convention, `SandboxSettings.EnsureCredentialConfined`
+**refuses to open a credentialed box** unless a confining network + proxy are set — fail-closed
+against the default bridge. This **re-grades** the "mount a long-lived credential file" alternative
+below: its rejection rested on exfil risk, which the now-proven egress boundary neutralizes, so the
+mount-vs-exec-env choice is now about in-box hygiene only — and exec-env is the least mechanism (no
+copy machinery, nothing credential-bearing at rest on a mount). Non-secret onboarding state (theme /
+onboarding-complete) still rides a per-turn `HomeSkeleton` mount so `claude` skips its first-run
+dialogs; no credential lives there. Everything else in the ADR (and Amendment-1) stands.
+
 ## Context
 
 Today the orchestrator and the agent CLI run on the **same machine**:
@@ -103,8 +128,10 @@ as a host subprocess.** Concretely:
   allowlist proxy (no `--network` default bridge in the run path).
 - [llm] The resolver, `AutoPolicy`, JSONL parsing, *and* the PTY choreography run on the
   host side of the seam; the box runs only `claude` + its sh hooks (no in-box driver).
-- [llm] The model credential reaches the box ephemerally (tmpfs/fd-injection) and is
-  never baked into an image or set as a box-wide environment variable.
+- [det] The model credential reaches the box per turn as an exec-scoped
+  `CLAUDE_CODE_OAUTH_TOKEN` (Amendment-2) — never baked into an image, never set box-wide on
+  `docker run` — and `SandboxSettings.EnsureCredentialConfined` refuses to open a credentialed box
+  off the egress network/proxy, so its safety rests on the confined egress, not on hiding the token.
 
 ## Alternatives considered
 

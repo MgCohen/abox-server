@@ -51,14 +51,8 @@ internal static class Composition
         services.AddSingleton<DenyResolver>();
         services.AddSingleton<AutoPolicy>();
         services.AddSingleton<ResolverSelector>();
-        // Box config (ADR 0013). Network + ProxyUrl default to the egress-up.sh sidecar so
-        // the box's only route out is the allowlist proxy — fail-closed: a box won't open
-        // until the sidecar is up. TemplateHome is null until the owner provisions a
-        // setup-token home, the deferred step that gates a real billed turn.
-        services.AddSingleton(new SandboxSettings(
-            Image: "abox-claude:latest",
-            Network: "abox-boxnet",
-            ProxyUrl: "http://abox-egress-proxy:8888"));
+        services.AddSingleton(ClaudeBox.Confined());
+        services.AddSingleton(CodexBox.Confined());
         services.AddSingleton<IAgentFactory, AgentFactory>();
 
         services.AddFlows(flows);
