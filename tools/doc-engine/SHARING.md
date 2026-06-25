@@ -19,6 +19,14 @@ Rule of thumb: **share the data, not the engine.** The client never takes
 `ABox.DocEngine.dll`. It takes one data file describing the vocabulary and writes
 its own renderers against it.
 
+> **The catalog is a superset.** It carries every doctype the engine knows,
+> including **internal-tooling** ones the client never renders — the repo now
+> models its own test Rulebooks as `rulebook` / `test-template` doctypes (guarded
+> by the `Docs` test type). The client builds renderers for the block types it
+> **actually receives instances of**, doctype by doctype — it does not enumerate
+> the whole catalog. Product doctypes (`feature-plan`, `research`, …) are render
+> targets; the tooling doctypes are not.
+
 ## Why a file, not a DLL
 
 The DLLs the client copies are compiled **behavior**. The catalog is **data** —
@@ -157,6 +165,11 @@ seen. Guard it explicitly:
   produced against).
 - On an unknown block type or a version mismatch, the client **fails loud or
   degrades gracefully** (render the raw block, flag it) — never silently drops it.
+
+Producer-side drift is now CI-guarded: the `Docs` test type runs `docengine
+check` under `dotnet test`, so a self-inconsistent catalog (a block/doctype that
+no longer conforms to its kind) fails the build **before** it can be exported and
+shared. The version stamp guards the consumer; `check` guards the producer.
 
 ## Cadence
 
