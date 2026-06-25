@@ -1,11 +1,9 @@
 ---
 docType: rulebook
 testType: arch
+template: ./arch.test-template.md
+harness: ../../../tests/Harness/README.md
 ---
-
-## Links
-- **Template:** [Arch test-template](./arch.test-template.md)
-- **Harness:** [Rulebook convention](../../../tests/Harness/README.md)
 
 ## Rules
 

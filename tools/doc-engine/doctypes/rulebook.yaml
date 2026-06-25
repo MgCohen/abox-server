@@ -1,10 +1,16 @@
 docType: rulebook
-description: A test type's Rulebook — navigation links then a list of Rules, each a guarantee proven by tests.
-blocks: [links, rule]
-required: [links, rule]
+description: A test type's Rulebook — a list of Rules, each a guarantee proven by tests.
+blocks: [rule]
+required: [rule]
 attrs:
   testType:
     enum: [arch, structure, unit, e2e, wire, live, meta]
+    required: true
+  template:
+    type: string
+    required: true
+  harness:
+    type: string
     required: true
 rubric:
   coverage: Every guarantee of this type has a Rule; nothing significant unstated.

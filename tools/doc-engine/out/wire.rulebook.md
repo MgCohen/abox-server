@@ -1,11 +1,9 @@
 ---
 docType: rulebook
 testType: wire
+template: ./wire.test-template.md
+harness: ../../../tests/Harness/README.md
 ---
-
-## Links
-- **Template:** [Wire test-template](./wire.test-template.md)
-- **Harness:** [Rulebook convention](../../../tests/Harness/README.md)
 
 ## Rules
 

@@ -76,15 +76,15 @@ cross-refs land.
 
 | doctype | blocks | required | front matter |
 |---|---|---|---|
-| `rulebook` | `links`, `rule` | both | `testType` enum (required) |
+| `rulebook` | `rule` | `rule` | `testType` enum, `template`, `harness` (all required) |
 | `test-template` | `summary`, `criterion` | both | `testType` enum (required) |
 
 **New blocks:** `rule` (collection "Rules") with explicit labels **Why** (required) +
-**Outcome** (optional — the `→` tail of behaviour types); `links` (Template/Harness
-pointers, both required); `criterion` (collection "Criteria").
+**Outcome** (optional — the `→` tail of behaviour types); `criterion` (collection
+"Criteria"). The rulebook's Template/Harness pointers live in front matter, not a block.
 
 **New engine capability:** a `labelmap` field-kind — a block declares required/optional
-`**Label:**` bullets in its body, enforced at `validate` (used by `rule` and `links`).
+`**Label:**` bullets in its body, enforced at `validate` (used by `rule`).
 Plus a canonical field-order check at `check` (`body` last), driven by each kind's
 declared field order.
 
