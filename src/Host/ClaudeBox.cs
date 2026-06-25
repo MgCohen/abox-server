@@ -15,5 +15,5 @@ internal static class ClaudeBox
         Network: "abox-boxnet",
         ProxyUrl: "http://abox-egress-proxy:8888",
         SetupToken: Environment.GetEnvironmentVariable("ABOX_CLAUDE_SETUP_TOKEN"),
-        HomeSkeleton: ClaudeHomeSkeleton.Materialize());
+        OnboardingHome: ClaudeOnboardingHome.CreateTempHome());
 }

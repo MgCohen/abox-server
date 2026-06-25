@@ -22,20 +22,23 @@ Target machine for the local plans (from the requester): **Windows, 32 GB RAM, N
 A provider is a **pure add** — no change to `Agent`, flows, or consumers. You touch:
 
 1. **A config record** — subtype of `AgentConfig(Name, Description, Model, SystemPrompt)`
-   ([`AgentConfig.cs`](../../src/ABox/Actors/Agents/AgentConfig.cs)) with provider-specific
+   ([`AgentConfig.cs`](../../src/Domain/Agents/AgentConfig.cs)) with provider-specific
    fields. The config holds settings; `AgentRunRequest` carries only per-call
    `Prompt`/`ProjectDir`/`SessionId`.
 2. **An `IProvider`** — `Task<DriveResult> DriveAsync(AgentRunRequest, CancellationToken)`
-   ([`IProvider.cs`](../../src/ABox/Actors/Agents/IProvider.cs)). Builds inputs, drives a
+   ([`IProvider.cs`](../../src/Domain/Agents/IProvider.cs)). Builds inputs, drives a
    substrate, **normalizes** to `DriveResult(Text, SessionId, ExitCode, RawOutput, Transcript)`.
 3. **A parser** — a pure normalizer, fixture-tested, emitting `AgentTurn(AgentTurnKind, Body)` with
    kinds `Text | Thinking | ToolUse | ToolResult`.
-4. **One factory arm** in [`AgentFactory.cs`](../../src/ABox/Actors/Agents/AgentFactory.cs).
-5. **A catalog entry** (optional) in [`Agents.cs`](../../src/ABox/Actors/Agents/Agents.cs).
+4. **One factory arm** in [`AgentFactory.cs`](../../src/Domain/Agents/AgentFactory.cs).
+5. **A catalog entry** (optional) in [`Agents.cs`](../../src/Domain/Agents/Agents.cs).
 
 The **subscription/env policy is per-provider** — `SubscriptionGuard.CheckAsync(forbiddenKeys,
-binary, ct)` takes the key list as a parameter, and the live `ClaudeProvider` already calls it
-**inline** (not on the flow). A new provider supplies its own policy (or none, for local).
+binary, ct)` takes the key list as a parameter, and both live providers call it **inline** as the
+first line of `DriveAsync` (not on the flow). The keys live per-agent in
+[`EnvScrub.cs`](../../src/Domain/Agents/EnvScrub.cs) — `ClaudeKeys` (the Anthropic keys) and
+`CodexKeys` (`OPENAI_API_KEY`) — so a stray key for one CLI never blocks the other. A new provider
+adds its own list (or none, for a local/free backend that has no metered rail to fall onto).
 
 ## Substrate is chosen by *billing*, not by habit
 

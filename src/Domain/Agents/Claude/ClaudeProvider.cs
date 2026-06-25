@@ -108,8 +108,8 @@ public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolv
     private DirectoryInfo PrepareHome()
     {
         var home = Directory.CreateTempSubdirectory("ra-claude-home-");
-        if (sandbox.HomeSkeleton is { Exists: true } skeleton)
-            CopyDir(skeleton, home);
+        if (sandbox.OnboardingHome is { Exists: true } onboarding)
+            CopyDir(onboarding, home);
         return home;
     }
 

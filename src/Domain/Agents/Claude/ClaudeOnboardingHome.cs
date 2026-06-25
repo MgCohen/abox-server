@@ -4,16 +4,16 @@ namespace ABox.Domain.Agents.Claude;
 // reaches its input prompt instead of stalling on first-run dialogs. Onboarding/theme are
 // pre-completed, and bypass-permissions is pre-accepted (the box IS the sandbox that warning
 // asks about) — racing keystrokes to dismiss it confirmed the "No, exit" default ~1 in 3.
-// No credential lives here — the subscription token rides the box env per turn. Keys verified
+// No credential lives here — the subscription token rides the box per turn. Keys verified
 // against claude-code 2.1.187 and are version-fragile.
-public static class ClaudeHomeSkeleton
+public static class ClaudeOnboardingHome
 {
     private const string FirstRunState =
         """{"hasCompletedOnboarding":true,"numStartups":2,"theme":"dark","bypassPermissionsModeAccepted":true}""";
 
-    public static DirectoryInfo Materialize()
+    public static DirectoryInfo CreateTempHome()
     {
-        var dir = Directory.CreateTempSubdirectory("abox-claude-home-skeleton-");
+        var dir = Directory.CreateTempSubdirectory("abox-claude-onboarding-home-");
         File.WriteAllText(Path.Combine(dir.FullName, ".claude.json"), FirstRunState);
         return dir;
     }
