@@ -140,6 +140,9 @@ For each block `type`, write a render component driven by the catalog entry:
 - **`body.type`** → how to render the body (`markdown` → markdown component).
 - **`attrs`** → which fields to show; `enum` attrs render as a known, fixed set
   (e.g. a `status` chip), so the client can style each value.
+- **`labels`** → named sub-fields **inside** the body, each `required` or not
+  (e.g. `rule` declares `Why:` required, `Outcome:` optional — the `- **Why:** …`
+  lines). Render as distinct labeled fields, not lumped into freeform markdown.
 - **`collection` + `group`** → render as a `## Group` section with `### member`
   items; singletons render top-level.
 - **`description` / `rubric`** → semantics/tooltips, not pixels — the client owns
