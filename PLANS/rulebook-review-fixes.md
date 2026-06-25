@@ -9,14 +9,14 @@ Each fix notes its target branch. Apply on the owning branch; the stack carries
 fixes upward. Verify per fix with `docengine check` / `validate` and the Docs +
 Meta suites before pushing.
 
-| # | Sev | Fix | Branch | Files |
-|---|---|---|---|---|
-| H1 | High | Label parser: fence-aware + top-level only (folds in M2) | #89 | `tools/doc-engine/DocValidator.cs` |
-| H2 | High | Docs shell-out: config-driven + CI prebuild | #92 | `Docs/Support/DocEngine.cs`, `.github/workflows/ci.yml` (protected) |
-| M1 | Medium | Process runner: drain pipes concurrently | #92 | `Docs/Support/DocEngine.cs` |
-| L1 | Low | Author missing `wire.test-template.md` | #89 | `tools/doc-engine/out/` |
-| L2 | Low | Document field-order's order-dependency | #89 | `tools/doc-engine/SchemaChecker.cs` |
-| Nit | Nit | Soften ADR Consequences "how" | #90 | `design/adr/0013-rulebook-as-document.md` |
+| # | Sev | Fix | Branch | Files | Status |
+|---|---|---|---|---|---|
+| H1 | High | Label parser: fence-aware + top-level only (folds in M2) | #89 | `tools/doc-engine/DocValidator.cs` | ✅ done |
+| ~~H2~~ | ~~High~~ | **Cut** — over-mechanism (see below) | — | — | dropped |
+| M1 | Medium | Process runner: drain pipes concurrently | #92 | `Docs/Support/DocEngine.cs` | ✅ done |
+| L1 | Low | Author missing `wire.test-template.md` | #89 | `tools/doc-engine/out/` | ✅ done |
+| L2 | Low | Document field-order's order-dependency | #89 | `tools/doc-engine/SchemaChecker.cs` | ✅ done |
+| Nit | Nit | Soften ADR Consequences "how" | #90 | `design/adr/0013-rulebook-as-document.md` | ✅ done |
 
 ---
 
@@ -55,60 +55,26 @@ private static HashSet<string> LabelsIn(string body)
 
 ---
 
-## H2 — Docs shell-out builds/restores at test time, Debug pinned vs Release CI
-**Branch:** #92 · `Docs/Support/DocEngine.cs` + `.github/workflows/ci.yml` *(protected — owner-reviewed)*
+## H2 — CUT (over-mechanism)
 
-- **What:** (a) Make the shell-out config-driven; (b) prebuild+restore the out-of-solution tool in CI so the test phase neither restores nor builds.
-- **Why:** Tool isn't in `ABox.slnx`, so `dotnet test --no-build` triggers a Debug build + YamlDotNet restore *during tests* — needs network + a writable build at test time, and `-c Debug` diverges from CI's Release pipeline. Classic "green locally, red on offline/Windows runner."
-- **How — code:**
+The original proposal: make the shell-out config-driven (`ABOX_DOCENGINE_CONFIG`
+env var) and edit the **protected** `ci.yml` to prebuild the tool in Release.
 
-```csharp
-// BEFORE
-public static Result Run(params string[] args)
-{
-    _ = Built.Value;
-    return Exec(new[] { "run", "--project", ProjectDir, "--no-build", "-c", "Debug", "--" }.Concat(args).ToArray());
-}
-private static bool BuildOnce()
-{
-    var r = Exec(new[] { "build", ProjectDir, "-c", "Debug" });
-    ...
-}
-```
-```csharp
-// AFTER — config from env (CI=Release, local default Debug)
-private static readonly string Config =
-    Environment.GetEnvironmentVariable("ABOX_DOCENGINE_CONFIG") ?? "Debug";
+**Why cut:** the doc-engine is a YAML validator — `check`/`validate` produce
+byte-identical output in Debug and Release, so there is no behaviour to diverge.
+The fix would add a speculative config switch (against **YAGNI / least
+mechanism**), a reviewed edit to a protected path, and a fragile coupling: once
+CI prebuilds only Release, `dotnet run --no-build -c Debug` breaks unless the env
+var is threaded perfectly — it introduces the coupling it claims to remove.
 
-public static Result Run(params string[] args)
-{
-    _ = Built.Value;
-    return Exec(new[] { "run", "--project", ProjectDir, "--no-build", "-c", Config, "--" }.Concat(args).ToArray());
-}
-private static bool BuildOnce()
-{
-    var r = Exec(new[] { "build", ProjectDir, "-c", Config });
-    if (r.Exit != 0)
-        throw new InvalidOperationException($"Could not build the doc-engine at {ProjectDir} ({Config}):\n{r.Output}");
-    return true;
-}
-```
-- **How — CI** (confirm exact step names against `ci.yml`; protected):
+The one legitimate residual concern — a YamlDotNet restore inside `dotnet test`
+— is hypothetical here (the runner has network for the whole job) and already
+bounded: `BuildOnce` self-builds once, so per-file `validate` stays `--no-build`.
 
-```yaml
-# BEFORE
-- run: dotnet build ABox.slnx -c Release
-- run: dotnet test  ABox.slnx -c Release --no-build
-
-# AFTER
-- run: dotnet build ABox.slnx -c Release
-- run: dotnet build tools/doc-engine -c Release   # prebuild+restore the out-of-solution tool
-- run: dotnet test  ABox.slnx -c Release --no-build
-  env:
-    ABOX_DOCENGINE_CONFIG: Release
-```
-- **Expected:** Restore happens in the build phase; test-phase `BuildOnce` is an incremental no-op; `Run` uses the prebuilt Release output. No network/build coupling inside `dotnet test`. Local defaults to Debug, unchanged.
-- **Alt (no CI edit):** drop `--no-build` and `-c` so the tool self-builds Debug once at test time. Simpler, but keeps the restore-at-test-time risk. Prefer the CI prebuild.
+**Decision:** leave `DocEngine.cs` self-building Debug. No env var, no `ci.yml`
+edit, no protected-path PR. If a restore-at-test-time ever actually bites a
+runner, the minimal response is **one** CI line (`dotnet build tools/doc-engine`)
+with no config switch — added on the second real signal, not pre-emptively.
 
 ---
 
@@ -203,8 +169,9 @@ private static void CheckFieldOrder(List<string> errs, IReadOnlyDictionary<strin
 
 ## Sequencing
 
-1. **#89:** H1 + L1 + L2 → verify (`check`, `validate` all `out/*.md`).
-2. **#90:** Nit (optional).
-3. **#92:** H2 + M1 → verify (`dotnet test … ~Docs`, Meta suite).
+1. **#89:** H1 + L1 + L2 → verify (`check`, `validate` all `out/*.md`). ✅
+2. **#90:** Nit → rebased onto #89. ✅
+3. **#92:** M1 only (H2 cut) → verify (`dotnet test … ~Docs`, Meta suite). ✅
 
-Each verified before push; the stack carries the fixes upward.
+Each verified before push; the stack carries the fixes upward. #92 needs no
+protected change.

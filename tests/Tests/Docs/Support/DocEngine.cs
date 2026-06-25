@@ -39,8 +39,9 @@ public static class DocEngine
         foreach (var a in args) psi.ArgumentList.Add(a);
 
         using var p = Process.Start(psi) ?? throw new InvalidOperationException("could not start dotnet");
-        var output = p.StandardOutput.ReadToEnd() + p.StandardError.ReadToEnd();
+        var stdout = p.StandardOutput.ReadToEndAsync();
+        var stderr = p.StandardError.ReadToEndAsync();
         p.WaitForExit();
-        return new Result(p.ExitCode, output.Trim());
+        return new Result(p.ExitCode, (stdout.Result + stderr.Result).Trim());
     }
 }
