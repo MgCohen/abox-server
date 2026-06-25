@@ -9,7 +9,10 @@
 #   SandboxSettings.ProxyUrl = http://abox-egress-proxy:8888
 set -eu
 
-ALLOW="${ALLOW:-api.anthropic.com}"
+# Both agent backends: api.anthropic.com (claude subscription) + chatgpt.com (codex
+# subscription, backend-api/codex/responses). codex also probes files.openai.com and
+# ab.chatgpt.com; those stay denied (uploads/analytics) and the turn still completes.
+ALLOW="${ALLOW:-api.anthropic.com,chatgpt.com}"
 BOXNET=abox-boxnet
 OUTNET=abox-outnet
 PROXY=abox-egress-proxy

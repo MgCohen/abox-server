@@ -233,8 +233,8 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 ### BuildArgs with a session id → an exec resume run that threads that session id
 - **Why:** conversation continuity depends on resume carrying the exact prior session id, or the agent loses all context from earlier turns.
 
-### BuildArgs → carries the working dir, output path, OS-aware sandbox, model, and JSON flags
-- **Why:** each flag is load-bearing for correct execution, and the Windows sandbox bypass prevents codex's sandbox from failing to spawn on a platform that can't host it.
+### BuildArgs → carries the working dir, output path, sandbox bypass, model, and JSON flags
+- **Why:** each flag is load-bearing for correct execution; codex's own sandbox is bypassed because the confined box is the wall now (ADR 0013), and nesting an OS sandbox inside the box is redundant and fragile.
 
 ### BuildArgs with a blank model → omits the --model flag entirely
 - **Why:** passing an empty --model value would override the CLI's configured default with garbage instead of falling back to it.
@@ -335,8 +335,8 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 ### Codex resume → reuses the prior session via bypass, without re-setting cd or sandbox
 - **Why:** a resume must continue the existing CLI session as-is; re-asserting --cd/--sandbox would fork context or re-prompt approvals, so resume relies on the already-granted bypass instead.
 
-### Codex new turn → sets cd and the OS-specific sandbox default
-- **Why:** a fresh turn has no inherited session, so it must explicitly anchor the working directory and pick the per-OS sandbox so the agent runs with correct scope on Windows vs non-Windows.
+### Codex new turn → sets cd and bypasses its own sandbox, since the box is the wall
+- **Why:** a fresh turn has no inherited session, so it must explicitly anchor the working directory; the confined box is the sandbox now (ADR 0013), so codex's own OS sandbox is bypassed rather than nested inside the box.
 
 ### Codex driven with a non-bypass policy → throws an actionable NotSupportedException naming the policy
 - **Why:** Codex only operates under full bypass; silently downgrading or running an Ask/other policy would mislead the caller, so it must fail loudly with the offending policy in the message.

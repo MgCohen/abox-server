@@ -52,10 +52,18 @@ public sealed class DockerSandbox : ISandbox
     }
 
     // The container already runs as UserFlag's uid (set on `docker run`); exec inherits it.
-    public string InteractiveExecLine(string command, IReadOnlyDictionary<string, string>? env = null)
+    // Interactive (-it): a PTY-driven CLI that needs a tty (claude). Pipe (-i): a CLI driven
+    // over stdin/stdout with no tty (codex exec).
+    public string InteractiveExecLine(string command, IReadOnlyDictionary<string, string>? env = null) =>
+        ExecLine("-it", command, env);
+
+    public string PipeExecLine(string command, IReadOnlyDictionary<string, string>? env = null) =>
+        ExecLine("-i", command, env);
+
+    private string ExecLine(string flags, string command, IReadOnlyDictionary<string, string>? env)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        return $"docker exec -it {EnvFlags(env)}-w {WorkMount} {_containerId} {command}";
+        return $"docker exec {flags} {EnvFlags(env)}-w {WorkMount} {_containerId} {command}";
     }
 
     private static string EnvFlags(IReadOnlyDictionary<string, string>? env) =>

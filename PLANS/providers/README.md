@@ -51,9 +51,14 @@ The CLI-drive (PTY or subprocess) exists to reach billing that's locked behind a
 | **`SubprocessSession`** (clean pipe) | billing reachable **only via a CLI**, no isatty gate | Codex/ChatGPT sub; Gemini free/sub tier; native Kimi flat sub |
 | **HTTP / in-process** (`IChatClient`) *(proposed — see below)* | billing is **per-token API** or **local/free** (no CLI gate) | Kimi per-token; local Gemma (Ollama HTTP or in-process) |
 
+Both CLI substrates run **inside a confined per-turn box** (ADR 0013) for FS + egress
+containment — claude over `docker exec -it` (PTY), codex over `docker exec -i` (pipe). The box
+is the wall, so codex bypasses its own OS sandbox in-box; its subscription `auth.json` is mounted,
+and egress is the allowlist proxy (`chatgpt.com` for codex, `api.anthropic.com` for claude).
+
 Two consequences worth holding onto:
 
-- **PTY is Claude-only.** Nothing else here needs the fake-terminal dance.
+- **PTY is Claude-only.** Nothing else here needs the fake-terminal dance; codex pipes over `-i`.
 - **A CLI is a full *agent*; a model API/in-process call is a *text completion*.** `claude`/`codex`/
   `gemini` read and **edit files** and run tools. A raw `IChatClient` call returns tokens and touches
   nothing — perfect for **text tasks** (classify / summarize / validate / route / commit messages),
