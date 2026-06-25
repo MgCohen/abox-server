@@ -206,6 +206,9 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 ### DetectStartupDialog given dialog text split by ANSI escapes → still classifies it
 - **Why:** the terminal interleaves color/style escape codes through the prompt text, so detection must see past the noise or it would miss real dialogs on a styled terminal.
 
+### EnvScrub maps each agent to its own billing keys → claude scrubs the Anthropic keys, codex the OpenAI key
+- **Why:** oracle A1 — each CLI bills the metered API instead of the subscription if its billing key is visible, so codex must guard OPENAI_API_KEY just as claude guards the Anthropic keys; the lists are per-agent so a stray key for one CLI never blocks the other.
+
 ### BuildCredentialEnv with a setup token → injects it as CLAUDE_CODE_OAUTH_TOKEN and never an API key
 - **Why:** the box must bill the owner's subscription, so the credential must arrive under the OAuth-token var while no ANTHROPIC_API_KEY is set — an API key would silently switch claude to metered billing (oracle A1). It rides `docker run`, not the exec line, so the token never lands on the PTY-echoed launch line.
 

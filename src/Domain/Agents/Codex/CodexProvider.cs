@@ -7,6 +7,8 @@ public sealed class CodexProvider(CodexConfig config) : IProvider
 {
     public async Task<DriveResult> DriveAsync(AgentRunRequest request, CancellationToken ct)
     {
+        await SubscriptionGuard.CheckAsync(EnvScrub.CodexKeys, "codex", ct);
+
         if (config.Policy != PermissionPolicy.Bypass)
             throw new NotSupportedException(
                 $"Codex does not yet honor PermissionPolicy.{config.Policy} (ADR 0007 §5); it runs with the baked sandbox default. Leave Policy at the default Bypass.");

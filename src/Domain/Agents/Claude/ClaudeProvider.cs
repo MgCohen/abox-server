@@ -26,7 +26,7 @@ public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolv
 
     public async Task<DriveResult> DriveAsync(AgentRunRequest request, CancellationToken ct)
     {
-        await SubscriptionGuard.CheckAsync(EnvScrub.SubscriptionKeys, "claude", ct);
+        await SubscriptionGuard.CheckAsync(EnvScrub.ClaudeKeys, "claude", ct);
 
         if (config.Policy == PermissionPolicy.Bypass && DockerSandbox.RunsAsRoot)
             throw new InvalidOperationException(
