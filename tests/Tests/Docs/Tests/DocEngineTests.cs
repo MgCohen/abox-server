@@ -19,13 +19,18 @@ public class DocEngineTests
     [Fact]
     public void Instances_validate()
     {
-        var instances = Directory.EnumerateFiles(DocEngine.OutDir, "*.md")
+        var samples = Directory.EnumerateFiles(DocEngine.OutDir, "*.md");
+        var rulebooks = RepoTree.RulebookFolders()
+            .SelectMany(d => new[] { Path.Combine(d, "rules.md"), Path.Combine(d, "template.md") })
+            .Where(File.Exists);
+
+        var instances = samples.Concat(rulebooks)
             .OrderBy(p => p, StringComparer.Ordinal)
             .ToList();
         Assert.NotEmpty(instances);
 
         var failures = instances
-            .Select(f => (File: Path.GetFileName(f), Result: DocEngine.Run("validate", f)))
+            .Select(f => (File: Path.GetRelativePath(RepoTree.Root, f), Result: DocEngine.Run("validate", f)))
             .Where(x => x.Result.Exit != 0)
             .Select(x => $"{x.File}\n{x.Result.Output}")
             .ToList();

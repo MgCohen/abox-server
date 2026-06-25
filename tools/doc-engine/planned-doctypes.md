@@ -91,10 +91,11 @@ declared field order.
 **Proof:** `out/arch.rulebook.md` (invariant), `out/wire.rulebook.md` (arrowed, uses
 `Outcome`), `out/arch.test-template.md` — all `validate` PASS.
 
-**Phase 2 (owner-gated, protected):** a `Docs` test type whose `[Rule]` facts shell out
+**Phase 2 — BUILT (owner-gated merge):** a `Docs` test type whose `[Rule]` facts shell out
 to `docengine check` / `validate` (mirroring `Live → claude`), so doc enforcement runs
-under `dotnet test` + ParityGuard with no Harness dependency on the engine; then
-front-matter/ids on the real `tests/**/Rulebook/` files. Lands via the owner's PR + an ADR.
+under `dotnet test` + ParityGuard with no Harness dependency on the engine. The real
+`tests/**/Rulebook/` files are now front-matter `rulebook`/`test-template` instances the
+Docs test validates, and the old `RulebookFormat` Meta guard is retired. Lands via the owner's PR + an ADR.
 
 ---
 

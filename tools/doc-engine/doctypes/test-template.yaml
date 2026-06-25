@@ -4,7 +4,7 @@ blocks: [summary, criterion]
 required: [summary, criterion]
 attrs:
   testType:
-    enum: [arch, structure, unit, e2e, wire, live, meta]
+    enum: [arch, structure, unit, e2e, wire, live, meta, docs]
     required: true
 rubric:
   criteria-cover: The criteria cover the semantic qualities a Rule of this type must have.

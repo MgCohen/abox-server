@@ -44,17 +44,23 @@ Protected paths + merge-to-`main` are walled off from the agent. Order, bottom-u
 `#89 → main`, then `#90` retargets → main, then `#92`. Flip ADR 0013
 `proposed → accepted` when it lands.
 
-### 2. Migrate the real rulebooks — the actual goal (owner-gated, protected paths)
-`tests/Harness/**`, `tests/Meta/**`, `tests/**/Rulebook/**` are all protected, so
-this is one reviewed PR. Steps, applying the settled forks:
-- Reauthor each `tests/**/Rulebook/rules.md` to the engine shape — front-matter
+### 2. Migrate the real rulebooks — DONE (on `claude/docs-test-type`, owner-gated merge)
+Authored as one change touching protected paths (reviewed via PR; `ABOX_ALLOW_PROTECTED=1`
+local override at commit). What landed, applying the settled forks:
+- Each `tests/**/Rulebook/rules.md` reauthored to the engine shape — front-matter
   (`docType`/`testType`/`template`/`harness`) + `## Rules` of `### ` rules, **full
-  headers kept** (so `[Rule("…")]` strings + parity keys don't move).
-- Reauthor each `template.md` as a `test-template` instance (Summary + Criteria);
-  its schema-by-example role dies, its Criteria survive for the judge.
-- Point the `Docs` test at the real `tests/**/Rulebook/*.md`, not just `out/`.
-- Delete `RulebookFormat.cs` + `RulebookFormatTests.cs` once the engine validates
-  the real files. `ParityGuard` is unchanged.
+  headers kept** (so `[Rule("…")]` strings + parity keys didn't move).
+- Each `template.md` reauthored as a `test-template` instance (`## Summary` + `## Criteria`
+  of `### ` items); the schema-by-example example Rule dropped, Criteria kept for the judge.
+- `docs` added to the `testType` enum in both doctypes; the Docs Rulebook migrated too.
+- The `Docs` test (`Instances_validate`) now validates the real `tests/**/Rulebook/*.md`
+  (via `RepoTree.RulebookFolders()`) on top of the `out/` samples — all 16 files PASS.
+- `RulebookFormat.cs` + `RulebookFormatTests.cs` deleted; the three Meta Rules they proved
+  (*Every Rule matches its type's template* / *…holds only rules* / *…carries judge criteria*)
+  removed from the Meta Rulebook — their enforcement now lives in the doc-engine via Docs.
+  `ParityGuard` unchanged; Meta parity holds (3 facts green).
+- Stale shape docs updated: `tests/README.md`, `tests/Harness/README.md`, the `test-rulebook`
+  skill (front-matter shape, removed-guard references, the Docs type added to the catalog).
 
 ### 3. Field-kind lookup — deferred, smallest
 A documented catalog of the field-kinds (`string`/`bool`/`list`/`typespec`/

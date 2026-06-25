@@ -1,5 +1,11 @@
-Template: [template.md](./template.md)
-Harness: [Rulebook convention](../../../Harness/README.md)
+---
+docType: rulebook
+testType: docs
+template: ./template.md
+harness: ../../../Harness/README.md
+---
+
+## Rules
 
 ### The doc-engine catalog is self-consistent
 - **Why:** The meta-schema, kinds, blocks, and doctypes must conform to one another, or every authored document
@@ -7,6 +13,6 @@ Harness: [Rulebook convention](../../../Harness/README.md)
   puts that proof under `dotnet test` and ParityGuard instead of a manual step.
 
 ### Every authored doc-engine instance validates against its doctype
-- **Why:** A document in `tools/doc-engine/out/` that drifts from its doctype is silent rot. `docengine
-  validate` proves each instance still conforms to the catalog; running it per file fails the build the moment
-  one drifts.
+- **Why:** A structured document — a doc-engine sample under `tools/doc-engine/out/` or a real Rulebook under
+  `tests/**/Rulebook/` — that drifts from its doctype is silent rot. `docengine validate` proves each instance
+  still conforms to the catalog; running it per file fails the build the moment one drifts.
