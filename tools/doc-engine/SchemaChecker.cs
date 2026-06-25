@@ -73,6 +73,7 @@ public sealed class SchemaChecker
     private static void CheckFieldOrder(List<string> errs, IReadOnlyDictionary<string, object?> defn,
                                         IReadOnlyDictionary<string, object?> fields)
     {
+        // Map order == YAML file order: YamlDotNet yields an insertion-ordered Dictionary and Yaml.AsMap copies it as-is.
         var order = fields.Keys.ToList();
         var present = defn.Keys.Where(order.Contains).ToList();
         var canonical = present.OrderBy(order.IndexOf).ToList();

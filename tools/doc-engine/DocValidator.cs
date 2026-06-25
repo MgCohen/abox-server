@@ -4,10 +4,20 @@ namespace ABox.DocEngine;
 
 public static class DocValidator
 {
-    private static readonly Regex LabelBullet = new(@"^\s*-\s+\*\*(?<label>[^:*]+):\*\*", RegexOptions.Multiline);
+    private static readonly Regex LabelBullet = new(@"^-\s+\*\*(?<label>[^:*]+):\*\*");
 
-    private static HashSet<string> LabelsIn(string body) =>
-        LabelBullet.Matches(body).Select(m => m.Groups["label"].Value.Trim()).ToHashSet(StringComparer.Ordinal);
+    private static HashSet<string> LabelsIn(string body)
+    {
+        var labels = new HashSet<string>(StringComparer.Ordinal);
+        var inFence = false;
+        foreach (var line in body.Split('\n'))
+        {
+            if (line.StartsWith("```", StringComparison.Ordinal)) { inFence = !inFence; continue; }
+            if (!inFence && LabelBullet.Match(line) is { Success: true } m)
+                labels.Add(m.Groups["label"].Value.Trim());
+        }
+        return labels;
+    }
 
     public static IReadOnlyList<string> Validate(
         IReadOnlyDictionary<string, IReadOnlyDictionary<string, object?>> defs,
