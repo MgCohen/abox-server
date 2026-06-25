@@ -56,10 +56,10 @@ a guarantee is intra-document or spans artifacts.**
 
 ## Consequences
 
-- The doc-engine gains the `rule` / `links` / `criterion` blocks and `rulebook` /
-  `test-template` doctypes, plus a `labelmap` field-kind and a canonical field-order
-  check — built authoring-side in Phase 1 (PR #89), no protected path touched. The
-  "how" lives in `tools/doc-engine/planned-doctypes.md` §2 and the catalog, not here.
+- The doc-engine gains the `rule` / `links` / `criterion` vocabulary and the
+  `rulebook` / `test-template` doctypes — built authoring-side in Phase 1 (PR #89),
+  no protected path touched. The "how" lives in `tools/doc-engine/planned-doctypes.md`
+  §2 and the catalog, not here.
 - A future **`Docs` test type** can bring document enforcement under `dotnet test` +
   `ParityGuard` by shelling out to `docengine check` / `validate` (mirroring
   `Live → claude`), with no Harness dependency on the engine — "no enforcement outside
