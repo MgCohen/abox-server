@@ -27,7 +27,7 @@ internal static class Composition
     {
         var services = builder.Services;
 
-        // Transport is Tailscale-only with no app-layer auth (feature-map A8), so CORS is wide open.
+        // Public HTTPS via a Cloudflare tunnel with no app-layer auth (feature-map A8), so CORS is wide open.
         services.AddCors(o => o.AddPolicy(CorsPolicy, p => p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
 
         services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
