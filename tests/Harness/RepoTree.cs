@@ -64,6 +64,28 @@ public static class RepoTree
             .SelectMany(root => Directory.EnumerateDirectories(root, "Rulebook", SearchOption.AllDirectories))
             .Where(IsUnderFeatureTests);
 
+    // Every co-located feature's Tests/ root on disk: the `Tests` folder under a src|tools feature that holds at
+    // least one <Type>/Rulebook. The coverage guard cross-checks these against the built ABox.<Owner>.Tests
+    // assemblies, so a Tests/ folder that ships tests but no assembly (untested feature slipping the net) is
+    // caught. Disk-only, independent of what compiled — the same fail-loud surface RulebookFolders reads.
+    public static IReadOnlyList<string> FeatureTestRoots() =>
+        FeatureRoots
+            .Select(r => Path.Combine(Root, r))
+            .Where(Directory.Exists)
+            .SelectMany(root => Directory.EnumerateDirectories(root, TestsFolder, SearchOption.AllDirectories))
+            .Where(d => !IsBuildOutputPath(d))
+            .Where(HasRulebookSubfolder)
+            .OrderBy(d => d, StringComparer.Ordinal)
+            .ToList();
+
+    private static bool HasRulebookSubfolder(string testsDir) =>
+        Directory.EnumerateDirectories(testsDir)
+            .Any(t => Directory.Exists(Path.Combine(t, "Rulebook")));
+
+    private static bool IsBuildOutputPath(string dir) =>
+        Path.GetRelativePath(Root, dir).Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            .Any(s => BuildOutputDirs.Contains(s, StringComparer.OrdinalIgnoreCase));
+
     // A feature Rulebook sits inside a co-located Tests/ folder and never inside build output. Both checks read
     // the path's segments, so a Rulebook buried in src/.../Tests/Unit/Rulebook qualifies but one under bin/ does
     // not — the scan can't be fooled into validating a stale copy under artifacts.

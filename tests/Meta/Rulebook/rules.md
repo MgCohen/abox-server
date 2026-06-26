@@ -42,3 +42,16 @@ unregistered marker is a patch-when-seen event: add the name to `TestMarkers`.
 
 `TestTypes.Central` and `TestTypes.Feature` are asserted disjoint and, unioned, equal to
 `TestTypes.Registered` — the ownership split (`PLANS/test-colocation.md`) made machine-checkable.
+
+### Every co-located feature Tests folder is policed by a built assembly
+
+- **Why:** Co-location moves a feature's tests out from behind the central protected tree, so the guarantee
+  that a feature can't ship untested can no longer be "the tree is protected." It moves here: every `Tests/`
+  folder on disk must map to a built `ABox.<Owner>.Tests` assembly whose co-located Rulebook and `[Rule]` tests
+  are in lockstep. A `Tests/` folder that ships tests with no assembly — the untested-feature escape — fails,
+  and so does a co-located Rulebook drifting from the tests beside it.
+
+`Suites.Colocated()` discovers every feature test assembly from the build output (those carrying the
+`TestsSourceDir` metadata), cross-checks the set against `RepoTree.FeatureTestRoots()` on disk, then runs
+`ParityGuard.ForColocated` for each (assembly × type) — the same parity the central types get, now across every
+co-located suite, driven from outside them.
