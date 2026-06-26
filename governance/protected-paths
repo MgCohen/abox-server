@@ -21,7 +21,11 @@
 
 tests/Harness/**          | @MgCohen | critical | Test harness: the enforcement engine (ParityGuard, Rule, TestTypes).
 tests/Meta/**             | @MgCohen | critical | Meta tests that police the test taxonomy and parity.
-tests/**/Rulebook/**      | @MgCohen | critical | Rulebooks: the guarantees each test type proves.
+tests/**/Rulebook/**      | @MgCohen | critical | Central rulebooks (Arch/Structure/Docs/Meta): the guarantees each ownerless type proves.
+src/**/Tests/**/Rulebook/** | @MgCohen | critical | Co-located feature rulebooks: a feature's guarantees, still behind the wall though its test code is not.
+tools/**/Tests/**/Rulebook/** | @MgCohen | critical | Co-located tool rulebooks (e.g. the doc-engine's own).
+tests/Templates/**        | @MgCohen | critical | Per-type templates: the central criteria every rulebook is authored against.
+tests/Fixtures/**         | @MgCohen | review   | Feature-independent shared test infra (Op/OpFlow) used across suites.
 tests/Tests/Arch/**       | @MgCohen | critical | Architecture rules: the asserting test code, not just its rulebook.
 tests/Tests/Structure/**  | @MgCohen | critical | Structure/placement rules: the asserting test code, not just its rulebook.
 .github/**                | @MgCohen | critical | CI, CODEOWNERS, and repo workflow config — the server-side backstop.
