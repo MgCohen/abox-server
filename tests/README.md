@@ -5,7 +5,7 @@ The front door for this repo's tests. It routes; the detail lives one level down
 Three pieces:
 
 - **[`Harness/`](Harness/README.md)** — the shared *Rulebook* engine + vocabulary: the
-  `[Rule]` attribute, `ParityGuard`, and the `TestTypes` / `RulebookFormat` / `RepoTree`
+  `[Rule]` attribute, `ParityGuard`, and the `TestTypes` / `RepoTree`
   the Meta guards run on. Nothing product-specific lives here.
 - **[`Tests/`](Tests/README.md)** — the product suite (`ABox.Tests`): six **types**, each its
   own Rulebook with the same folder shape (`<Type>/Rulebook/`, `<Type>/Tests/`, `<Type>/Support/`).
@@ -24,7 +24,7 @@ parity mechanism that guards `src/` placement — turned on the tests themselves
 
 ## The types
 
-Six test the **product** (in `ABox.Tests`); **Meta** tests the **test system** itself, from its own
+Seven test the **product** (in `ABox.Tests`); **Meta** tests the **test system** itself, from its own
 `ABox.Tests.Meta` assembly.
 
 | Type | Guarantees | Drives | Gating |
@@ -35,6 +35,7 @@ Six test the **product** (in `ABox.Tests`); **Meta** tests the **test system** i
 | **E2E** | flow guarantees — *"claude-ping with a scripted reply → implementer reaches Completed"* | real `Composition` via `FlowHarness`, scripted provider | always |
 | **Wire** | endpoint contracts — *"GET /health → ok"* | real HTTP via `WebApplicationFactory<Program>` | always |
 | **Live** | real-CLI guarantees | the **real** `claude`/`codex` CLI + subscription | opt-in (`RUN_LIVE=1`), skipped in CI |
+| **Docs** | structured-document guarantees — *"Every authored doc-engine instance validates against its doctype"* | shells out to `docengine check` / `validate` | always |
 | **Meta** | test-system invariants — *"Parity holds for every registered type"* | reflection over the product assembly + disk over the test tree | always |
 
 Another structural surface — *namespace mirrors folder* — is not a test: it's the SDK

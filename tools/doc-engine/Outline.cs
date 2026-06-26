@@ -44,7 +44,7 @@ public static class Outline
         foreach (var status in new[] { "doing", "blocked", "todo", "done" })
         {
             var named = phases.Where(b => b.Attrs.GetValueOrDefault("status") == status)
-                              .Select(b => $"{b.Id}:{b.Title}").ToList();
+                              .Select(b => b.Title).ToList();
             if (named.Count > 0) output.Add($"  {status,-8} {string.Join("  ", named)}");
         }
         return string.Join("\n", output);

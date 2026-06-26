@@ -1,0 +1,12 @@
+docType: test-template
+description: The per-test-type schema — names the type and carries the judge criteria its Rules are graded against.
+blocks: [summary, criterion]
+required: [summary, criterion]
+attrs:
+  testType:
+    enum: [arch, structure, unit, e2e, wire, live, meta, docs]
+    required: true
+rubric:
+  criteria-cover: The criteria cover the semantic qualities a Rule of this type must have.
+  judgment-only: Criteria name qualities the mechanical guards cannot check.
+  named-type: The testType matches the Rulebook it governs.
