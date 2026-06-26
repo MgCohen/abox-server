@@ -1,0 +1,24 @@
+<Project>
+
+  <!-- Shared config for every test-bearing project, central or co-located. A feature/tool test stub imports
+       this and adds only what is its own: RootNamespace/AssemblyName (ABox.<Owner>.Tests) and the production
+       ProjectReferences it exercises. Keeps the per-feature csproj a thin stub; the scaffold writes the rest.
+       Lives outside the protected Directory.Build.props so adding test infra needs no root-config change. -->
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="ABox.Tests.Harness" />
+  </ItemGroup>
+
+</Project>

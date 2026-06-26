@@ -1,13 +1,14 @@
 using ABox.Domain.Inbox;
 using ABox.Infrastructure.Storage;
+using DomainInbox = ABox.Domain.Inbox.Inbox;
 
-namespace ABox.Tests.Unit.Tests;
+namespace ABox.Inbox.Tests.Unit;
 
 public sealed class InboxTests : IDisposable
 {
     private readonly string _dir = Directory.CreateTempSubdirectory("inbox-").FullName;
 
-    private Inbox NewInbox() => new(new JsonRepository<InboxItem>(new StorageRoot(_dir)));
+    private DomainInbox NewInbox() => new(new JsonRepository<InboxItem>(new StorageRoot(_dir)));
 
     [Rule("Inbox.Get → the item by id, or null when absent")]
     [Fact]

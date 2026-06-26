@@ -17,8 +17,8 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-      - run: dotnet build ABox.slnx -c Release
-      - run: dotnet test ABox.slnx -c Release --no-build
+      - run: dotnet build dirs.proj -c Release
+      - run: dotnet test dirs.proj -c Release --no-build
 
   policy-guard:
     if: github.event_name == 'pull_request'

@@ -30,7 +30,7 @@
        (contains ".Tests."), so ArchitectureModel's name filter still excludes it from the graph. -->
   <ItemGroup>
     <ProjectReference Include="..\Harness\ABox.Tests.Harness.csproj" />
-    <ProjectReference Include="..\..\src\**\ABox.*.csproj" />
+    <ProjectReference Include="..\..\src\**\ABox.*.csproj" Exclude="..\..\src\**\Tests\**\*.csproj" />
   </ItemGroup>
 
 </Project>

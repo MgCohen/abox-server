@@ -26,6 +26,26 @@ public sealed class ParityGuard
     public static ParityGuard ForRulebook(Assembly assembly, string scope, string rulesPath) =>
         new(assembly, scope, rulesPath);
 
+    // A co-located feature assembly (ABox.<Owner>.Tests) keeps each type's tests in the <Owner>.Tests.<Type>
+    // namespace and its Rulebook beside them under Tests/<Type>/Rulebook/rules.md. The scope is the assembly
+    // name + the type; the Rulebook is found from the source tree via the TestsSourceDir the build stamps, so
+    // parity reads the same on-disk rules.md the doc-engine validates — no copy-to-output step.
+    public static ParityGuard ForColocated(Assembly assembly, string type) =>
+        new(assembly, $"{assembly.GetName().Name}.{type}", ColocatedRulebook(assembly, type));
+
+    private const string TestsSourceDirKey = "TestsSourceDir";
+
+    private static string ColocatedRulebook(Assembly assembly, string type)
+    {
+        var sourceDir = assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+            .FirstOrDefault(a => a.Key == TestsSourceDirKey)?.Value
+            ?? throw new InvalidOperationException(
+                $"Assembly '{assembly.GetName().Name}' carries no [{TestsSourceDirKey}] metadata. A co-located " +
+                "feature test project must stamp <AssemblyMetadata Include=\"TestsSourceDir\" " +
+                "Value=\"$(MSBuildProjectDirectory)\" /> so parity can find its Rulebook in the source tree.");
+        return Path.Combine(sourceDir, type, "Rulebook", "rules.md");
+    }
+
     // Product Rulebooks are read from the source tree, not the output dir — the same surface the Meta guards
     // already read, so a separate self-suite needs no copy of the product's Rulebooks to validate them.
     private static string ProductRulebook(string type) =>
