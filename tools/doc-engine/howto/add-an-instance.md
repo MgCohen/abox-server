@@ -1,8 +1,9 @@
 # HOWTO: add a new instance (a document)
 
-An **instance** is an actual document — a Markdown file under `out/` whose structure
+An **instance** is an actual document — a Markdown file in its **home folder** in the
+repo (a Rulebook under `tests/**/Rulebook/`, a plan under `PLANS/`, …) whose structure
 conforms to a doc type's catalog of blocks. This is the artifact you produce; the
-engine checks it with `validate`.
+engine checks it with `validate`, in place. There is no global output directory.
 
 You will: pick a doc type, write the Markdown with front matter + blocks, and run
 `validate` until it passes.
@@ -26,11 +27,12 @@ dotnet run --project . -- catalog feature-plan
 Read `doctypes/<docType>.yaml` for its `blocks` (allowed), `required` (must appear),
 and `attrs` (front-matter fields).
 
-## 2. Write the file `out/<slug>.<suffix>.md`
+## 2. Write the file in its home folder, `<home>/<slug>.<suffix>.md`
 
-Name the file for the doc type, choosing `<suffix>` to match it: `feature-plan` docs
-are `out/<slug>.plan.md`, `research` docs are `out/<slug>.research.md`. (The suffix
-is a short label for the doc type, not the literal doc-type name.)
+Put the file where that kind of document belongs in the repo (e.g. a plan under
+`PLANS/`), choosing `<suffix>` to match the doc type: `feature-plan` docs are
+`<slug>.plan.md`, `research` docs are `<slug>.research.md`. (The suffix is a short
+label for the doc type, not the literal doc-type name.)
 
 ### Front matter
 
@@ -55,10 +57,12 @@ it is a singleton.
 - **Collection block** → a `## <Group>` header (the block's `group:` value), then one
   or more `### <title>` members. The member's type is inherited from the group.
 - Under each header (or sub-header), put:
-  - a stable id comment: `<!-- id: N -->` — unique across the whole document;
   - any scalar attrs as `key: value` lines — enum or free string alike
     (e.g. `status: doing`, or `source: Microsoft ConPTY docs`);
   - then a blank line and the Markdown body.
+  - optionally a stable handle comment `<!-- id: <slug> -->` — only when something
+    needs to reference this block across edits; unique within the document. Most
+    blocks omit it.
 
 A complete minimal `feature-plan` (its required blocks are `summary`, `phase`,
 `verification`):
@@ -70,47 +74,43 @@ status: draft
 ---
 
 ## Summary
-<!-- id: 1 -->
 
 One paragraph: the objective and what "done" means.
 
 ## Phases
 ### Wire the adapter
-<!-- id: 2 -->
 status: todo
 
 **Goal.** What this step delivers. **Done when.** The bar.
 
 ### Prove it end to end
-<!-- id: 3 -->
 status: todo
 
 **Goal.** ... **Done when.** ...
 
 ## Verification
-<!-- id: 4 -->
 
 The concrete checks that prove "done" — build, tests, one behaviour run.
 ```
 
-Rules the validator enforces: every block carries a unique `<!-- id -->`; only
-blocks in the doc type's catalog appear; every `required` block is present; enum
-attrs hold an allowed value; a required body is non-empty; a collection group has at
-least one member.
+Rules the validator enforces: only blocks in the doc type's catalog appear; every
+`required` block is present; enum attrs hold an allowed value; a required body is
+non-empty; a collection group has at least one member; any `<!-- id -->` handles
+present are unique.
 
 ## 3. Verify
 
 ```bash
-dotnet run --project . -- validate out/<slug>.<suffix>.md
+dotnet run --project . -- validate <home>/<slug>.<suffix>.md
 ```
 
 Expect `PASS — conforms to the catalog.` Each violation names the offending block
-(`#N (id=…)`) and the problem; fix and re-run.
+(`#N (<title>)`, or `#N (id=…)` when it carries a handle) and the problem; fix and re-run.
 
 ## 4. (Optional) generate the index
 
 ```bash
-dotnet run --project . -- outline out/<slug>.<suffix>.md --write
+dotnet run --project . -- outline <home>/<slug>.<suffix>.md --write
 ```
 
 This injects a generated outline/status board between `INDEX` markers — never
