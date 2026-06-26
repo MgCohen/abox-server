@@ -1,0 +1,27 @@
+=== Is the chat/managed session the auth source? (answering the owner's challenge) ===
+
+Test A — host, managed env STRIPPED (env -i HOME=/root PATH=... claude -p):  -> "ok"
+  Auth survived stripping ALL CLAUDE_CODE_*/ANTHROPIC_* env. So the chat ENV VARS
+  are NOT the source.
+
+Test B — fresh container, clean env, only /root/.claude.json copied in:  -> "Not logged in"
+  The same credential file alone does NOT authenticate a clean container.
+
+Forensics — where the host auth state actually lives:
+  /root/.claude/.credentials.json : ABSENT
+  /root/.claude.json              : has `oauthAccount` (account METADATA, not a token)
+  keyring                         : none
+  /root/.claude/session-env/, sessions/, remote-settings.json, policy-limits.json : managed-session state
+
+Conclusion: auth here is host-specific MANAGED-SESSION state (session-env/sessions), not
+the chat env vars and not a portable credential file. It does NOT port to a clean box.
+
+IMPLICATION FOR A.BOX (standalone, no managed session):
+- The earlier `claude -p` "real turn" proved the MECHANISM (Stop hook + JSONL read-back),
+  but its AUTH rode this environment's managed host-state -> it does NOT prove standalone
+  auth, and does NOT de-risk the "-p simplifies away the pty" idea. That stays OPEN.
+- Standalone auth must come from a PORTABLE credential the owner creates:
+  `claude setup-token` (sk-ant-oat01-, env CLAUDE_CODE_OAUTH_TOKEN) or `claude login`
+  (~/.claude/.credentials.json) — delivered into the box (the broker design, unchanged).
+- This managed sandbox CANNOT stand in for that test: it exposes no portable credential.
+  B1/B2 (standalone auth + billing path) must be run on a setup-token / claude-login host.

@@ -1,0 +1,38 @@
+=== Real claude turn validated in this environment (host subprocess, ambient auth) ===
+
+Context: a fresh isolated container can't auth (token not forwardable). But THIS
+session's claude is authenticated, so we validated a real turn here as a host
+subprocess. Container mechanics are proven separately (Stage A).
+
+--- claude -p with the Stop-hook settings (default mode, no API key => subscription) ---
+$ claude -p "Reply with exactly the word: ok" --settings <stop-hook>
+ok
+
+STOP HOOK FIRED — read-back payload written to RA_STOP_SIGNAL:
+{"session_id":"...","transcript_path":".../-tmp-tmp-0iAMHhnzX9/<id>.jsonl",
+ "cwd":"/tmp/tmp.0iAMHhnzX9","permission_mode":"default","hook_event_name":"Stop",
+ "stop_hook_active":false,"last_assistant_message":"ok",...}
+JSONL transcript written under ~/.claude/projects/.
+
+PROVEN against REAL claude: turn completes; Stop hook delivers last_assistant_message
+(exactly what ClaudeProvider.ReadFinalMessage parses); JSONL transcript produced;
+subscription path (no ANTHROPIC_API_KEY present).
+
+--- Findings from driving the interactive pty TUI (drive-turn.py) ---
+1. isatty(pty)=True under pty.fork (billing precondition) — confirmed.
+2. pty needs an explicit window size (TIOCSWINSZ 120x40) or the TUI won't draw the
+   input bar. Fixed in drive-turn.py.
+3. `bypassPermissions` (= --dangerously-skip-permissions) is REFUSED as root:
+   "cannot be used with root/sudo privileges". => the agent must run NON-ROOT in the box.
+4. A fresh claude config runs the first-run ONBOARDING wizard: theme-selection dialog,
+   then a LOGIN-METHOD dialog (subscription vs API). The login wizard needs an OAuth
+   browser flow that can't complete headlessly => the box must ship a PRE-ONBOARDED,
+   pre-authenticated config (which is exactly what the managed env does), or use `-p`.
+
+--- Strategic question for the owner (do NOT overturn the oracle unilaterally) ---
+`claude -p` with no API key authenticated AND billed subscription AND fired the Stop
+hook AND wrote JSONL — with NO pty TUI driving and NO onboarding dialogs. If subscription
+billing via `-p` holds (Tier-A oracle A1/A2 locked the pty path on an OLDER claude for
+billing reasons), the in-box driver could collapse from "port the ConPTY TUI choreography"
+to simply `claude -p --settings <hooks>`. This is a major simplification and warrants a
+fresh explicit decision against the behavioral oracle before adopting.

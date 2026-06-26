@@ -32,4 +32,17 @@ public static class Shell
         if (arg.IndexOfAny(QuoteTriggers) < 0) return arg;
         return "\"" + arg.Replace("\"", "\\\"") + "\"";
     }
+
+    // Single-quote quoting for a POSIX shell: inside '…' nothing is special, so $, `,
+    // \, ;, whitespace etc. are all inert. The only escape needed is ' itself. Use this
+    // (not QuoteArg, which is cmd.exe-shaped) for anything that lands in `bash -c`.
+    public static string QuotePosix(string arg) =>
+        arg.Length == 0 ? "''" : "'" + arg.Replace("'", "'\\''") + "'";
+
+    // Quote for whichever shell Command() spawns on this host — cmd.exe on Windows, a
+    // POSIX shell elsewhere. Use for any arg interpolated into a command string that
+    // RunCommand or the driving PTY executes; the wrong dialect leaks literal quotes
+    // (cmd keeps the '…', producing `docker: invalid reference format`).
+    public static string Quote(string arg) =>
+        OperatingSystem.IsWindows() ? QuoteArg(arg) : QuotePosix(arg);
 }

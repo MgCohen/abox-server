@@ -1,0 +1,17 @@
+=== RUNG 4b / U7 (corrected: global:: namespace) ===
+step 1: source-closure build (Utility from source, has SpikeApi) -> expect PASS, no prime
+----- SOURCE-CLOSURE build [v1-crossedit] (no prime) -----
+[resolve] source closure (3): CardMatch.CardMatch, CardMatch.Utility, External.DOTween
+Build succeeded.
+[v1-crossedit] closure EXITCODE=0
+step 2: stale path (primed Utility.dll lacks SpikeApi) -> expect FAIL = would need prime
+----- STALE-SCRIPTASSEMBLIES build [v1-stale] (references primed Utility.dll) -----
+/project/Assets/Scripts/CardMatch/Runtime/SpikeConsumer.cs(1,96): error CS0234: The type or namespace name 'SpikeApi' does not exist in the namespace 'CardMatch.Utility' (are you missing an assembly reference?) [/tmp/build-CardMatch.CardMatch/CardMatch.CardMatch.csproj]
+Build FAILED.
+/project/Assets/Scripts/CardMatch/Runtime/SpikeConsumer.cs(1,96): error CS0234: The type or namespace name 'SpikeApi' does not exist in the namespace 'CardMatch.Utility' (are you missing an assembly reference?) [/tmp/build-CardMatch.CardMatch/CardMatch.CardMatch.csproj]
+[v1-stale] stale EXITCODE=1
+step 3: EVOLVE API across boundary (Answer()->Answer(int)) -> expect PASS, still no prime
+----- SOURCE-CLOSURE build [v2-evolved] (no prime) -----
+[resolve] source closure (3): CardMatch.CardMatch, CardMatch.Utility, External.DOTween
+Build succeeded.
+[v2-evolved] closure EXITCODE=0
