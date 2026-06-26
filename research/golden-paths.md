@@ -200,13 +200,78 @@ Industry writing (2025–2026) converges on the IDP becoming the place where age
 
 ---
 
+## 14. Academic literature (focused sweep)
+
+The vendor sources above are industry positioning. There is also a **real but young and fragmented academic literature** behind the idea — it just doesn't use the words "golden path." It crystallized almost entirely in **2024–2026** and is spread across ~8 framings you have to triangulate: *deterministic workflow*, *schema/policy-gated*, *constrained decoding*, *typed holes*, *neuro-symbolic*. Two clusters are genuinely **mature and peer-reviewed** (constrained decoding; runtime guardrails); the agent-orchestration cluster that most directly mirrors the A.Box thesis is overwhelmingly **2025–2026 preprints, not yet peer-reviewed**.
+
+> **Dating note:** several citations carry 2026 arXiv IDs (e.g. `2603.x`, `2606.x`) — these are genuinely current as of this writing (June 2026), not errors. The anchor paper (2508.02721) now has a June-2026 v2.
+
+**(a) Deterministic LLM workflow / procedural fidelity — closest analogues**
+- Qiu, L., Ye, Y., Gao, Z. et al. (Alibaba) — *Blueprint First, Model Second: A Framework for Deterministic LLM Workflow* — [arXiv:2508.02721](https://arxiv.org/abs/2508.02721) (Aug 2025, rev. Jun 2026, *preprint*). Expert procedure → source-code Execution Blueprint run by a deterministic engine; LLM invoked only as a bounded tool, never to decide the path. **The single most direct academic statement of the A.Box thesis.**
+- Shi, Y., Cai, S., Xu, Z. et al. — *FlowAgent: Achieving Compliance and Flexibility for Workflow Agents* — [arXiv:2502.14345](https://arxiv.org/abs/2502.14345) (Feb 2025, *preprint*). A Procedure Description Language + controller that keeps agents on the workflow while still handling out-of-workflow queries — the "guide but rail" tension.
+- Zwerdling, N., Boaz, D., Rabinovich, E. et al. (IBM) — *Towards Enforcing Company Policy Adherence in Agentic Workflows* — [arXiv:2507.16459](https://arxiv.org/abs/2507.16459) (Jul 2025, *preprint*). Offline **buildtime** compiles policy docs → verifiable guard code bound to tools; **runtime** guards enforce before each action. Mirrors A.Box's spec-enforcement seam.
+
+**(b) DAG / graph-constrained agents, planning–execution separation**
+- *From Agent Loops to Structured Graphs: A Scheduler-Theoretic Framework for LLM Agent Execution* — [arXiv:2604.11378](https://arxiv.org/abs/2604.11378) (2026, *preprint*). "Graph Harness" lifts control flow into an explicit, immutable static DAG; separates planning / execution / recovery.
+- *Talk Freely, Execute Strictly: Schema-Gated Agentic AI for Flexible and Reproducible Scientific Workflows* — [arXiv:2603.06394](https://arxiv.org/abs/2603.06394) (2026, *preprint*). Loose conversational planning, deterministic execution; validates a machine-checkable DAG before any step runs.
+- *Constrained Process Maps for Multi-Agent Generative AI Workflows* — [arXiv:2602.02034](https://arxiv.org/abs/2602.02034) (2026, *preprint*). Regulated workflows as bounded-horizon MDPs constrained by DAGs — the formal-model framing of SOP-style constraint.
+
+**(c) Constrained / grammar-constrained decoding — token-level determinism (mature, peer-reviewed)**
+- Geng, S., Josifoski, M., Peyrard, M., West, R. — *Grammar-Constrained Decoding for Structured NLP Tasks without Finetuning* — [arXiv:2305.13971](https://arxiv.org/abs/2305.13971) (**EMNLP 2023**). The canonical "make illegal output unrepresentable" reference.
+- Park, K. et al. — *Grammar-Aligned Decoding* — [arXiv:2405.21047](https://arxiv.org/abs/2405.21047) (**NeurIPS 2024**). Enforces grammar while preserving the model's distribution — the cost of over-constraining.
+- Dong, Y. et al. — *XGrammar: Flexible and Efficient Structured Generation Engine for LLMs* — [arXiv:2411.15100](https://arxiv.org/abs/2411.15100) (**MLSys 2025**). Production-grade proof that structured output is cheap enough to be the default.
+- Beurer-Kellner, L., Fischer, M., Vechev, M. — *Guiding LLMs The Right Way: Fast, Non-Invasive Constrained Generation* — [arXiv:2403.06988](https://arxiv.org/abs/2403.06988) (**ICML 2024**). Template decoding injects fixed schema tokens; the agent fills only the holes.
+
+**(d) Program sketching / scaffolding — LLM fills bounded holes in fixed structure**
+- Blinn, A., Li, X., Kim, J.H., Omar, C. — *Statically Contextualizing LLMs with Typed Holes* — [arXiv:2409.00921](https://arxiv.org/abs/2409.00921) (**OOPSLA 2024**). Hazel hands the LLM the exact type/context of the hole to fill — the cleanest "structure defines the hole, LLM fills it."
+- *Combining LLM Code Generation with Formal Specifications and Reactive Program Synthesis* — [arXiv:2410.19736](https://arxiv.org/abs/2410.19736) (2024, *preprint*). Specs leave explicit holes for LLM code; synthesis guarantees the surrounding fragments.
+
+**(e) Guardrails / runtime verification / policy enforcement on agent actions**
+- Wang, H., Poskitt, C.M., Sun, J. — *AgentSpec: Customizable Runtime Enforcement for Safe and Reliable LLM Agents* — [arXiv:2503.18666](https://arxiv.org/abs/2503.18666) (**ICSE 2026**). Trigger/predicate/enforcement DSL constraining agents at runtime (>90% unsafe-execution prevention). **Strongest peer-reviewed "guardrails as a structured rule layer" citation.**
+- *The AI Agent Code of Conduct: Automated Guardrail Policy-as-Prompt Synthesis* — [arXiv:2509.23994](https://arxiv.org/abs/2509.23994) (2025, *preprint*). Compiles design docs → verifiable real-time least-privilege guardrails.
+- Chennabasappa, S. et al. (Meta) — *LlamaFirewall: An Open Source Guardrail System for Building Secure AI Agents* — [arXiv:2505.03574](https://arxiv.org/abs/2505.03574) (2025, *preprint*). Modular runtime defenses (PromptGuard, AlignmentCheck, CodeShield).
+
+**(f) Spec-driven / template-driven code generation**
+- *Compiled AI: Deterministic Code Generation for LLM-Based Workflow Automation* — [arXiv:2604.05150](https://arxiv.org/abs/2604.05150) (2026, *preprint*). YAML workflow specs + a Template Library an orchestrator selects from; determinism, auditability, token economics as first-class. Closely tracks A.Box's production stance.
+- *Towards Specification-Driven LLM-Based Generation of Embedded Automotive Software (spec2code)* — [arXiv:2411.13269](https://arxiv.org/abs/2411.13269) (2024, *preprint*). Spec-as-contract with verifier-enforced correctness in a safety-critical domain.
+
+**(g) Neuro-symbolic / deterministic-engine-with-LLM-as-tool**
+- *Neuro-Symbolic Agents for Regulated Process Automation: Challenges and Research Agenda* — [arXiv:2606.13405](https://arxiv.org/abs/2606.13405) (2026, *preprint*). Symbolic engine makes runtime decisions (deterministic, injection-immune); LLM relegated to NL understanding.
+
+**(h) Surveys that specifically address control/reliability**
+- *From Static Templates to Dynamic Runtime Graphs: A Survey of Workflow Optimization for LLM Agents* — [arXiv:2603.22386](https://arxiv.org/abs/2603.22386) (2026, *preprint survey*). Organizes the field along the static-structure ↔ dynamic-agent axis — the best single map.
+- *Evaluation and Benchmarking of LLM Agents: A Survey* — [arXiv:2507.21504](https://arxiv.org/abs/2507.21504) (2025, *preprint survey*). Formalizes **consistency/determinism** as a first-class evaluation dimension.
+
+**Maturity verdict:** You can ground the *idea* firmly in peer-reviewed **decoding** (EMNLP/ICML/NeurIPS/MLSys) and **guardrail** (ICSE 2026 AgentSpec) work, and cite a fast-growing **2025–2026 preprint wave** for the agent-orchestration thesis — but there is **no canonical, settled "deterministic scaffolding for agents" paper yet.** The convergence is striking (separate planning from execution; compile spec→guards at buildtime; LLM-as-bounded-tool keep recurring independently), and the space is wide open.
+
+---
+
+## 15. Aside — the "architecture card game" lens (BuilderCards → golden paths)
+
+A useful intuition pump. **AWS BuilderCards** is a deckbuilding tabletop game (created by AWS Solutions Architect **David Heidt**) where you acquire AWS-service cards and combine them into **Well-Architected** architectures for points; a digital cousin, **AWS Card Clash**, does the same on mobile. The rules constrain which card combinations are *sound* — only certain compositions score.
+
+That is structurally the **golden-path move**: a constrained catalog where only valid compositions are buildable, which then *yields a working architecture*. The mapping:
+
+| BuilderCards | Golden path / scaffolding |
+|---|---|
+| Service cards in the deck | The opinionated, supported catalog |
+| "Well-Architected points" — only some combos score | Constraint-checked composition (only sound paths are valid) |
+| Assemble cards → an architecture | Pick a path → Backstage template scaffolds a working repo |
+
+**The gap worth noting:** BuilderCards exists for *cloud infra*, but **no well-known equivalent exists for general design patterns / code architecture** — i.e. "select pattern cards → constraint-check how they compose → scaffold the codebase." The closest artifacts are GoF design-pattern *reference/flashcard* decks (learning, not building) and *Architectural Katas* (a facilitated workshop). The "pattern-catalog → constrained composition → scaffold" loop for non-cloud architecture is an **open space** — and it is essentially **golden paths expressed as a deck of design-pattern cards**, which is the same constrain-then-scaffold principle A.Box applies to agents.
+
+*Sources: [AWS BuilderCards](https://aws.amazon.com/gametech/buildercards/) · [origin story / David Heidt](https://www.aboutamazon.eu/news/aws/the-unexpected-game-designer-how-a-happy-coincidence-sparked-a-popular-aws-card-game) · [AWS Card Clash](https://aws.amazon.com/blogs/training-and-certification/introducing-aws-card-clash-mobile-learn-aws-architecture-through-strategic-gameplay/).*
+
+---
+
 ## Caveats & confidence
 
 - **PART 1 is strong:** primary-sourced (Spotify, Netflix, CNCF, Backstage) and verified 3-0 on the core definitional claims. Origin/age of the 2020–2018 sources is appropriate — they're canonical.
 - **The Dune etymology is refuted** (1-2) — don't repeat it.
 - **Golden path ≠ paved road exactly** — cousins with different emphases (opinionated-support vs non-mandated-optionality).
 - **"Enabled via IDP" is a later reframing**, not the 2020 origin.
-- **PART 2 is more tentative:** the strongest empirical claim rests on **one non-peer-reviewed preprint** (arXiv 2508.02721, 2-1 vote); the IDP/control-plane material is from reputable but **promotional vendor blogs** (Microsoft, Roadie, Harness) and a **CNCF forecast** — fetched and claim-extracted, but not all adversarially verified.
+- **PART 2's vendor layer is tentative:** the IDP/control-plane material (§9–12) is from reputable but **promotional vendor blogs** (Microsoft, Roadie, Harness) and a **CNCF forecast** — fetched and claim-extracted, not all adversarially verified.
+- **PART 2's academic layer (§14) is stronger but young:** the idea is well-grounded in **peer-reviewed** constrained-decoding (EMNLP/ICML/NeurIPS/MLSys) and runtime-guardrail (ICSE 2026) work, but the agent-orchestration thesis that most directly mirrors A.Box rests on **2025–2026 preprints, not yet peer-reviewed**. No canonical "deterministic scaffolding for agents" paper exists yet; the literature uses no shared term for it.
 
 ## Open questions / where to dig next
 
@@ -241,5 +306,9 @@ Industry writing (2025–2026) converges on the IDP becoming the place where age
 
 **Critique / anti-patterns:**
 - Nilesh — *Golden Path vs Golden Cage* · Mia-Platform — *Paved Roads, Golden Paths, Guardrails, Railroads* · Jellyfish — *Golden Paths*
+
+**Academic literature (Part 2, §14)** — full list with venues/links in §14. Peer-reviewed anchors: Geng et al. (EMNLP 2023, arXiv:2305.13971); Park et al. (NeurIPS 2024, 2405.21047); Dong et al. (MLSys 2025, 2411.15100); Beurer-Kellner et al. (ICML 2024, 2403.06988); Blinn et al. (OOPSLA 2024, 2409.00921); Wang et al. (ICSE 2026, 2503.18666). Preprint wave: 2508.02721, 2502.14345, 2507.16459, 2604.11378, 2603.06394, 2602.02034, 2410.19736, 2509.23994, 2505.03574, 2604.05150, 2411.13269, 2606.13405, 2603.22386, 2507.21504.
+
+**Architecture card-game aside (§15):** AWS BuilderCards (aws.amazon.com/gametech/buildercards) · AWS Card Clash.
 
 *Run stats: 6 search angles · 22 sources fetched · 98 claims extracted · 25 verified · 24 confirmed / 1 refuted.*
