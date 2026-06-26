@@ -12,7 +12,7 @@ kinds/*.yaml               a KIND — a category of definition (block, doctype, 
 blocks/*.yaml              a BLOCK — a reusable content unit
 doctypes/*.yaml            a DOCTYPE — an ordered catalog of blocks
         ▲
-out/*.md                   an INSTANCE — an actual document
+<home>/<doc>.md            an INSTANCE — an actual document, in its home folder
 ```
 
 - **[add-a-block.md](add-a-block.md)** — a new reusable content unit.
@@ -23,5 +23,5 @@ Verify after any change, from `tools/doc-engine`:
 
 ```bash
 dotnet run --project . -- check                              # definitions conform
-dotnet run --project . -- validate out/<file>               # an instance conforms
+dotnet run --project . -- validate <path/to/doc.md>         # an instance conforms
 ```

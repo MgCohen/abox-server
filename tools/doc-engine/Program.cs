@@ -41,7 +41,12 @@ internal static class Program
 
     private static int ValidateCmd(string root, string? rel)
     {
-        var path = ToPath(root, rel ?? Path.Combine("out", "git-feature.plan.md"));
+        if (rel is null)
+        {
+            Console.Error.WriteLine("usage: docengine validate <file>");
+            return 2;
+        }
+        var path = ToPath(root, rel);
         var lines = File.ReadAllLines(path);
         var defs = Catalog.LoadBlocks(root);
         var dt = Catalog.LoadDoctype(root, InstanceParser.DoctypeOf(path, lines));

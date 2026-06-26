@@ -1,0 +1,9 @@
+type: criterion
+collection: true
+group: Criteria
+description: One semantic rubric item the judge grades Rules of this type against.
+rubric:
+  judgment-only: A quality the mechanical guards cannot check, not a format rule.
+  one-per-criterion: Exactly one criterion per member.
+body:
+  type: markdown

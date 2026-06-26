@@ -1,0 +1,24 @@
+<Project>
+
+  <!-- MSBuild imports only the NEAREST Directory.Build.props, so this nested one must chain to the
+       repo-root props by hand or every feature project would lose net10/nullable/RootNamespace and the
+       pinned ArtifactsPath. -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!-- A feature's Api/ and Contract/ leaves are nested under the feature folder but are their own
+       assemblies (ABox.<F>.Api / ABox.<F>.Contract). A non-leaf project's **/*.cs glob would otherwise
+       swallow those folders and double-compile them; exclude them by convention so a new feature needs
+       no per-csproj edit. The leaf projects themselves carry .Api / .Contract in their name and are
+       skipped by the condition, so they still compile their own files. -->
+  <PropertyGroup Condition="!$(MSBuildProjectName.Contains('.Api')) and !$(MSBuildProjectName.Contains('.Contract'))">
+    <DefaultItemExcludes>$(DefaultItemExcludes);Api\**;Contract\**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <!-- No feature project publishes on its own: impl and Contract leaves never ship, and each Api leaf reaches
+       the client only bundled inside the single ABox.Api rollup (src/Api). The one packable project in the repo
+       is that rollup; everything here is IsPackable=false so a stray solution-wide `dotnet pack` can't leak one. -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+</Project>

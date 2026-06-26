@@ -11,12 +11,16 @@ the product's zero-dep assemblies.
 
 ```
 dump (ephemeral)  ──distill──►  instance.md (blocks)  ──validate──►  pass/fail
-   a brain-dump                    out/<slug>.plan.md          docengine validate
+   a brain-dump              <home>/<slug>.plan.md           docengine validate
         │                                  │  ▲                          ▲
         └ scratch, discarded               │  └ conforms to ─────────────┘
                                 docengine outline   doctypes/*.yaml + blocks/*.yaml
                                   (derived index / status board)
 ```
+
+An instance lives in its **home folder** in the repo — a Rulebook under
+`tests/**/Rulebook/`, an ADR under `design/adr/`, a plan under `PLANS/` — and is
+validated **in place**. The engine owns no output directory; it validates any path.
 
 ## Layout
 
@@ -33,8 +37,6 @@ dump (ephemeral)  ──distill──►  instance.md (blocks)  ──validate�
   (which doc to use) + the `blocks` catalog + a `required` set + doc-level `attrs`
   (front matter) + a `rubric` — an `id: rule` map of binary one-liners serving BOTH
   authoring and the judge (it marks each rule pass/fail by id; no criteria file).
-- **out/** — distilled instances: `git-feature.plan.md`, `claude-stop-hook.plan.md`
-  (feature-plan) and `odysseus.research.md` (research).
 - **selector.md** — the author procedure (dump → conformant instance). Wired as the
   `create-doc` agent + `/create-doc` command in `.claude/`.
 - **howto/** — step-by-step guides: add a block, an instance, or a kind.
@@ -48,11 +50,11 @@ The engine is the C# under this directory: `SchemaChecker` (floor),
 ```bash
 cd tools/doc-engine
 dotnet run --project . -- check                                # definitions conform to the meta-schema
-dotnet run --project . -- validate out/git-feature.plan.md     # instance conforms to the catalog
+dotnet run --project . -- validate <path/to/doc.md>            # an instance conforms to the catalog
 dotnet run --project . -- catalog                              # decision matrices (doc types, blocks)
 dotnet run --project . -- catalog feature-plan                 # blocks available to one doc type
-dotnet run --project . -- outline out/git-feature.plan.md      # print derived views
-dotnet run --project . -- outline out/git-feature.plan.md --write  # inject the index in place
+dotnet run --project . -- outline <path/to/doc.md>             # print derived views
+dotnet run --project . -- outline <path/to/doc.md> --write     # inject the index in place
 ```
 
 The data root is found by walking up from the working directory for
@@ -70,20 +72,18 @@ status: draft
 ---
 
 ## Context                       <- singleton: the header is the type
-<!-- id: 2 -->
 
 Markdown body — distilled prose, real files/symbols.
 
 ## Phases                        <- group header for a collection type
 ### Real GitHub adapter          <- member: ### title, type from the group
-<!-- id: 12 -->
 status: blocked
 
 **Goal.** ...
 ```
 
-- The id lives in an `<!-- id: N -->` comment — the stable handle, kept out of the
-  human header (it is agent-oriented and orthogonal to grouping).
 - `key: value` lines under the (sub)header are scalar attrs (status, lean, caveat).
+- An optional `<!-- id: <slug> -->` comment pins a stable, agent-oriented handle on a
+  block — only when something references it across edits; most blocks omit it.
 - Final on-disk syntax should match the render repo's parser — the model here is
   parser-agnostic.

@@ -6,23 +6,26 @@ fields:
   type:
     kind: string
     required: true
+  collection:
+    kind: bool
+    required: false
+  group:
+    kind: string
+    required: false
   description:
     kind: string
     required: true
   rubric:
     kind: strmap
     required: true
-  body:
-    kind: typespec
-    required: false
   attrs:
     kind: attrs
     required: false
-  collection:
-    kind: bool
+  labels:
+    kind: labelmap
     required: false
-  group:
-    kind: string
+  body:
+    kind: typespec
     required: false
 constraints:
   - rule: requires_when

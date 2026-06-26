@@ -7,7 +7,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\Domain\Flow\ABox.Domain.Flow.csproj" />
     <ProjectReference Include="..\..\..\Infrastructure\ABox.Infrastructure.csproj" />
-    <ProjectReference Include="..\Contracts\ABox.Flows.Contracts.csproj" />
+    <ProjectReference Include="..\Contract\ABox.Flows.Contract.csproj" />
     <ProjectReference Include="..\Shared\ABox.Flows.Shared.csproj" />
   </ItemGroup>
 

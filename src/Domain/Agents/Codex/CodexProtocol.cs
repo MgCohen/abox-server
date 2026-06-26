@@ -10,21 +10,20 @@ public static class CodexProtocol
         var isResume = sessionId is not null;
         var args = new List<string> { "exec" };
 
-        // `codex exec resume` rejects --cd and --sandbox: cwd comes from the recorded
-        // session and sandboxing is toggled via the bypass flag instead (structured-
-        // questions FINDINGS Issue 8). New turns set both explicitly.
+        // The confined box is the wall now (ADR 0013), so codex's own sandbox is bypassed in
+        // both cases — nested OS sandboxing inside the box is redundant and fragile. resume
+        // additionally rejects --cd (cwd comes from the recorded session); new turns set it.
         if (isResume)
         {
             args.Add("resume"); args.Add(sessionId!);
             args.Add("-o"); args.Add(lastMessageFile);
-            args.Add("--dangerously-bypass-approvals-and-sandbox");
         }
         else
         {
             args.Add("--cd"); args.Add(projectDir);
             args.Add("-o"); args.Add(lastMessageFile);
-            args.Add("--sandbox"); args.Add(DefaultSandbox());
         }
+        args.Add("--dangerously-bypass-approvals-and-sandbox");
 
         // codex refuses to run unattended in a non-git or first-seen dir without this.
         args.Add("--skip-git-repo-check");
@@ -33,12 +32,6 @@ public static class CodexProtocol
         args.Add("-");
         return args;
     }
-
-    // Capability is the host/VM's wall now, not a per-agent knob (permission-interaction-model
-    // §1), but codex still needs a valid --sandbox arg. Windows can't spawn its OS sandbox
-    // ("windows sandbox: spawn setup refresh"), so bypass there (FINDINGS Issue 1).
-    private static string DefaultSandbox()
-        => OperatingSystem.IsWindows() ? "danger-full-access" : "workspace-write";
 
     public static string? ScanSessionId(string line)
     {
