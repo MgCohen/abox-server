@@ -1,0 +1,33 @@
+# Was _schema/block.schema.yaml — now a self-describing data file.
+name: block
+description: A reusable content unit.
+defs: blocks/*.yaml
+fields:
+  type:
+    kind: string
+    required: true
+  collection:
+    kind: bool
+    required: false
+  group:
+    kind: string
+    required: false
+  description:
+    kind: string
+    required: true
+  rubric:
+    kind: strmap
+    required: true
+  attrs:
+    kind: attrs
+    required: false
+  labels:
+    kind: labelmap
+    required: false
+  body:
+    kind: typespec
+    required: false
+constraints:
+  - rule: requires_when
+    when: collection
+    then: group

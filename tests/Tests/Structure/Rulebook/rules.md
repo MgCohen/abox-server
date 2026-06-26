@@ -1,5 +1,11 @@
-Template: [template.md](./template.md)
-Harness: [Rulebook convention](../../../Harness/README.md)
+---
+docType: rulebook
+testType: structure
+template: ./template.md
+harness: ../../../Harness/README.md
+---
+
+## Rules
 
 ### Every project lives under an agreed home folder
 - **Why:** The agreed home folders (Infrastructure, Domain, Features, Host) are the only legal places

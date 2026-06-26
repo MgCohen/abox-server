@@ -1,0 +1,18 @@
+type: phase
+collection: true
+group: Phases
+description: One ordered, shippable step of the build.
+rubric:
+  reuse-first:   Lead with what the step reuses before what it adds.
+  goal-and-done: The body states the goal and the done-when bar.
+  status:        Carry `status`; for a blocked phase, list blockers as a sub-list.
+  caveat:        Use `caveat` for a short qualifier on an otherwise-done phase.
+  min-two:       At least two phases — a single step is not a plan.
+attrs:
+  status:
+    enum: [todo, doing, done, blocked]
+    default: todo
+  caveat:
+    type: string
+body:
+  type: markdown

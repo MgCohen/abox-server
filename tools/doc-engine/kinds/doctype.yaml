@@ -1,0 +1,29 @@
+# Was _schema/doctype.schema.yaml — now a self-describing data file.
+name: doctype
+description: An ordered composition of blocks into a standalone document.
+defs: doctypes/*.yaml
+fields:
+  docType:
+    kind: string
+    required: true
+  description:
+    kind: string
+    required: true
+  blocks:
+    kind: list
+    required: true
+    of: string
+  required:
+    kind: list
+    required: false
+    of: string
+  attrs:
+    kind: attrs
+    required: false
+  rubric:
+    kind: strmap
+    required: false
+constraints:
+  - rule: subset
+    of: required
+    in: blocks

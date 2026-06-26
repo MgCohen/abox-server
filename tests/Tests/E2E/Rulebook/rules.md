@@ -1,5 +1,11 @@
-Template: [template.md](./template.md)
-Harness: [Rulebook convention](../../../Harness/README.md)
+---
+docType: rulebook
+testType: e2e
+template: ./template.md
+harness: ../../../Harness/README.md
+---
+
+## Rules
 
 ### claude-ping with a scripted reply → implementer reaches Completed
 - **Why:** proves the API-down backbone — real composition, Flow engine, snapshot stream, resolver wiring —
