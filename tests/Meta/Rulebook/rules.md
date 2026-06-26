@@ -1,7 +1,7 @@
 ---
 docType: rulebook
 testType: meta
-template: ./template.md
+template: ../../Templates/meta.template.md
 harness: ../../Harness/README.md
 ---
 
@@ -32,3 +32,26 @@ Meta's own Rulebook and tests, so the self-suite holds itself to the same bar.
 Reflection over the product assembly (`ABox.Tests.SuiteAnchor`) selects `TestMarkers.Marks` methods whose
 namespace fails `TestTypes.ContainsTest`. Meta's own tests are held in scope by Meta's self-parity instead. An
 unregistered marker is a patch-when-seen event: add the name to `TestMarkers`.
+
+### Central and Feature types partition the registered types
+
+- **Why:** Co-location turns on one decision per type — does the repo own its guarantee (central) or does a
+  feature (co-located). If a type were in both lists it would have two homes; if in neither, no home — and the
+  build would silently pick one. Holding the two lists to an exact, disjoint cover of `TestTypes.Registered`
+  means every type has exactly one home, and a newly registered type can't compile until it is classified.
+
+`TestTypes.Central` and `TestTypes.Feature` are asserted disjoint and, unioned, equal to
+`TestTypes.Registered` — the ownership split (`PLANS/test-colocation.md`) made machine-checkable.
+
+### Every co-located feature Tests folder is policed by a built assembly
+
+- **Why:** Co-location moves a feature's tests out from behind the central protected tree, so the guarantee
+  that a feature can't ship untested can no longer be "the tree is protected." It moves here: every `Tests/`
+  folder on disk must map to a built `ABox.<Owner>.Tests` assembly whose co-located Rulebook and `[Rule]` tests
+  are in lockstep. A `Tests/` folder that ships tests with no assembly — the untested-feature escape — fails,
+  and so does a co-located Rulebook drifting from the tests beside it.
+
+`Suites.Colocated()` discovers every feature test assembly from the build output (those carrying the
+`TestsSourceDir` metadata), cross-checks the set against `RepoTree.FeatureTestRoots()` on disk, then runs
+`ParityGuard.ForColocated` for each (assembly × type) — the same parity the central types get, now across every
+co-located suite, driven from outside them.

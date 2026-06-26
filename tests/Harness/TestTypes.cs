@@ -10,6 +10,18 @@ public static class TestTypes
     public static readonly string[] Registered =
         { "Arch", "Structure", "Unit", "E2E", "Wire", "Live", "Docs" };
 
+    // The ownership split (PLANS/test-colocation.md): a CENTRAL type's guarantee is owned by the repo / the test
+    // system — no single feature — so it lives in the central tree; a FEATURE type's guarantee is owned by the
+    // feature under test, so it co-locates with that feature. Together they partition Registered exactly — a
+    // Meta test holds that invariant, so a new type can't be added without classifying it.
+    public static readonly string[] Central = { "Arch", "Structure", "Docs" };
+
+    public static readonly string[] Feature = { "Unit", "Wire", "E2E", "Live" };
+
+    public static bool IsCentral(string type) => Central.Contains(type, StringComparer.Ordinal);
+
+    public static bool IsFeature(string type) => Feature.Contains(type, StringComparer.Ordinal);
+
     // Non-type folders legitimately under tests/Tests/: shared doubles promoted on a genuine second consumer.
     public static readonly string[] NonType = { "Support" };
 

@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <Import Project="..\..\..\tests\TestProject.props" />
+
+  <PropertyGroup>
+    <RootNamespace>ABox.Host.Tests</RootNamespace>
+    <AssemblyName>ABox.Host.Tests</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="TestsSourceDir" Value="$(MSBuildProjectDirectory)" />
+  </ItemGroup>
+
+  <!-- The Wire suite boots the real Host over WebApplicationFactory (single assembly, so its
+       no-parallel collection still serializes Host boots). StubFlow reuses Agents' agent doubles. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="ABox.Host.Tests.Support" />
+    <Using Include="ABox.Agents.Tests.Support" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\tests\Harness\ABox.Tests.Harness.csproj" />
+    <ProjectReference Include="..\ABox.Host.csproj" />
+    <ProjectReference Include="..\..\Domain\Agents\Tests\ABox.Agents.Tests.csproj" />
+    <ProjectReference Include="..\..\Domain\Agents\ABox.Domain.Agents.csproj" />
+    <ProjectReference Include="..\..\Domain\Flow\ABox.Domain.Flow.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\ABox.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

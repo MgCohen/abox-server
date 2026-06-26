@@ -132,14 +132,20 @@ Every registered type is fully backfilled and enforced: each Rulebook is the com
 parity requires every test to cite a Rule with no going-forward exemption. A new test of any type now lands
 with its Rule or the build fails — the ratchet is closed.
 
+> **Mid-migration (PLANS/test-colocation.md):** the per-type `template.md` files now live centrally in
+> `tests/Templates/<type>.template.md`, and `rules.md` `template:` front-matter points there. The
+> `<Type>/Rulebook/template.md` shown below is the pre-move layout; this walkthrough is rewritten in full at
+> Phase 5 once test homes settle. Today's truth: templates are central, rulebooks are per-type (soon
+> per-feature), and the `template:` link is a relative path into `tests/Templates/`.
+
 ## The uniform per-type layout
 
 ```
 <Type>/
-  Rulebook/  template.md   context home: description + the Rule shape (one example) + a '## Criteria' rubric
-             rules.md      the Template:/Harness: pointer links, then the type's '### ' Rules
+  Rulebook/  rules.md      the Template:/Harness: pointer links, then the type's '### ' Rules
   Tests/                   the [Rule]-tagged facts that enforce them
   Support/                 optional, type-local: models, doubles, harnesses (no over-sharing)
+tests/Templates/<type>.template.md   the per-type criteria (one home for all types)
 ```
 
 There is no per-type parity fact — the Meta self-suite runs parity over every type at once. The Meta guards

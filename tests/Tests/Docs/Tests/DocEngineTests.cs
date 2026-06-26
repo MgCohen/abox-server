@@ -19,11 +19,7 @@ public class DocEngineTests
     [Fact]
     public void Instances_validate()
     {
-        var instances = RepoTree.RulebookFolders()
-            .SelectMany(d => new[] { Path.Combine(d, "rules.md"), Path.Combine(d, "template.md") })
-            .Where(File.Exists)
-            .OrderBy(p => p, StringComparer.Ordinal)
-            .ToList();
+        var instances = DocInstances.Discover();
         Assert.NotEmpty(instances);
 
         var failures = instances

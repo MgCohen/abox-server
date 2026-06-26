@@ -34,6 +34,15 @@ internal static class SourceTree
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToList();
 
+    // A feature's co-located tests (PLANS/test-colocation.md) live in a Tests/ subtree owned by an
+    // ABox.<Owner>.Tests project. That is test placement, not production placement, so every production-shape
+    // guard below (impl/leaf tally, verb folders, contract-type scan) skips it.
+    private const string TestsFolder = "Tests";
+
+    private static bool UnderColocatedTests(string path) =>
+        Path.GetRelativePath(FeaturesRoot, path).Split(Separators)
+            .Any(seg => string.Equals(seg, TestsFolder, StringComparison.Ordinal));
+
     // The two published leaf-folder roles a feature may carry: the external Api leaf (client-facing) and the
     // internal Contract leaf (cross-feature). Every other project folder is implementation.
     private static readonly string[] LeafFolders = { "Api", "Contract" };
@@ -46,6 +55,7 @@ internal static class SourceTree
         var root = Path.Combine(FeaturesRoot, feature);
         var projects = Directory.EnumerateFiles(root, "*.csproj", SearchOption.AllDirectories)
             .Where(NotIgnored)
+            .Where(p => !UnderColocatedTests(p))
             .ToList();
         var api = projects.Count(p => UnderRoleFolder(p, "Api"));
         var contract = projects.Count(p => UnderRoleFolder(p, "Contract"));
@@ -72,6 +82,7 @@ internal static class SourceTree
         return Directory.EnumerateDirectories(root)
             .Where(dir => !NonVerbFolders.Contains(Path.GetFileName(dir), StringComparer.Ordinal))
             .Where(dir => !RepoTree.BuildOutputDirs.Contains(Path.GetFileName(dir)!, StringComparer.OrdinalIgnoreCase))
+            .Where(dir => !UnderColocatedTests(dir))
             .Where(dir => !Directory.EnumerateFiles(dir, "*Endpoint.cs", SearchOption.AllDirectories).Any())
             .Select(dir => Path.GetFileName(dir)!)
             .OrderBy(name => name, StringComparer.Ordinal)
@@ -90,6 +101,7 @@ internal static class SourceTree
     private static IReadOnlyList<string> ContractTypeFiles(bool underLeaf) =>
         Directory.EnumerateFiles(FeaturesRoot, "*.cs", SearchOption.AllDirectories)
             .Where(NotIgnoredUnder(FeaturesRoot))
+            .Where(f => !UnderColocatedTests(f))
             .Where(IsContractTypeFile)
             .Where(f => UnderAnyLeafFolder(f) == underLeaf)
             .Select(f => Path.GetRelativePath(SrcRoot, f))

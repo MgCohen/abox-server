@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Feature-INDEPENDENT test infrastructure: generic helpers that name no feature and that any suite may use.
+       Op/OpFlow run a single domain Operation through a throwaway flow and read its result — engine-level
+       tooling over Domain.Flow + Infrastructure.Operations, not a flow-feature kernel. Kept out of Harness so
+       the zero-dependency enforcement spine (ADR 0012) stays clean; referenced by the central suite and by any
+       feature test assembly that needs to execute an Operation. Not a test project — carries no [Fact]s. -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>false</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Domain\Flow\ABox.Domain.Flow.csproj" />
+    <ProjectReference Include="..\..\src\Infrastructure\ABox.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

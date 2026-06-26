@@ -15,8 +15,11 @@
     <ProjectReference Include="..\Infrastructure\ABox.Infrastructure.csproj" />
   </ItemGroup>
 
+  <!-- Test assemblies that touch Host internals (Composition for the agent E2E harness, ClaudeBox for the
+       Live smokes, Program for the Wire WebApplicationFactory). Co-located suites are named per owner. -->
   <ItemGroup>
-    <InternalsVisibleTo Include="ABox.Tests" />
+    <InternalsVisibleTo Include="ABox.Agents.Tests" />
+    <InternalsVisibleTo Include="ABox.Host.Tests" />
   </ItemGroup>
 
 </Project>

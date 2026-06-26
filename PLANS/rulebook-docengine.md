@@ -23,12 +23,13 @@ Doctype roadmap: [`tools/doc-engine/planned-doctypes.md`](../tools/doc-engine/pl
   its intra-document checks; parity stays in `ParityGuard`).
 - **No global output dir** — the engine owns no `out/`; a document lives in its home
   folder and is validated in place.
+- **Front-matter–driven validation** — the `Docs` test discovers instances by their
+  leading `docType` front matter (`Docs/Support/DocInstances.cs`), walking the repo and
+  pruning `prototype/` + build outputs, instead of scanning `RulebookFolders()` only. Any
+  new ADR / plan / research instance is validated the moment it lands; no wiring required.
 
 ## Deferred (not blocking)
 
 - **Field-kind lookup catalog** — a documented catalog of the field-kinds
   (`string`/`bool`/`list`/`typespec`/`attrs`/`strmap`/`fieldmap`/`labelmap`) so a
   schema author can discover what's available. Self-contained; pick up any time.
-- **Front-matter–driven validation** — when the first non-rulebook instance lands
-  (likely an ADR), generalize the `Docs` test to discover any `*.md` with a `docType`
-  front-matter and validate it in place, instead of scanning `RulebookFolders()` only.
