@@ -17,21 +17,18 @@
   <ItemGroup>
     <Using Include="Xunit" />
     <Using Include="ABox.Tests.Harness" />
-    <Using Include="ABox.Tests.Support" />
-    <Using Include="ABox.Tests.Fixtures" />
   </ItemGroup>
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
-  <!-- Every production assembly by glob: the Arch model loads them all from the output dir, and the
-       runtime types (Unit/E2E/Wire/Live) exercise whichever they need. A new feature/slice is referenced
-       the moment its csproj exists — no edit here. The merged test assembly is named ABox.Tests
-       (contains ".Tests."), so ArchitectureModel's name filter still excludes it from the graph. -->
+  <!-- Every production assembly by glob: the Arch model loads them all from the output dir to assert the
+       reference graph. A new feature/slice is referenced the moment its csproj exists — no edit here. This
+       assembly is named ABox.Tests (contains ".Tests."), so ArchitectureModel's name filter excludes it
+       and the co-located feature test assemblies (also "*.Tests") from the graph. -->
   <ItemGroup>
     <ProjectReference Include="..\Harness\ABox.Tests.Harness.csproj" />
-    <ProjectReference Include="..\Fixtures\ABox.Tests.Fixtures.csproj" />
     <ProjectReference Include="..\..\src\**\ABox.*.csproj" Exclude="..\..\src\**\Tests\**\*.csproj" />
   </ItemGroup>
 
