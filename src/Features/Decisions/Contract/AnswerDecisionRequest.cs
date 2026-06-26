@@ -1,3 +1,3 @@
-namespace ABox.Features.Decisions.Contracts;
+namespace ABox.Features.Decisions.Contract;
 
 public sealed record AnswerDecisionRequest(bool? Answer, string? Note);

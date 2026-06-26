@@ -1,4 +1,4 @@
-namespace ABox.Features.Decisions.Contracts;
+namespace ABox.Features.Decisions.Contract;
 
 public sealed record DecisionView(
     Guid Id,

@@ -9,18 +9,22 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 Derived from one allow-graph (`ArchitectureModel.Layers`, each band's `MayDependOn`), not five hand-listed
 denylists, so adding a band updates every rule for free and a missed edit can't leave a silent hole. It covers
 the blanket floor/ceiling edges: Contracts-/Infrastructure-no-internal-deps, Domain ↛ Features, nothing ↛ Host.
-The Contracts band is live — `Features/Git/Contracts` is the first per-feature leaf; the Features band excludes
-it (negative lookahead in `FeaturesNs`) so the leaf isn't double-counted, and the derived rule keeps
-`WithoutRequiringPositiveResults()` so an empty band passes honestly rather than vacuously.
+The Contracts band is live and covers BOTH per-feature leaf roles — the external `Api` leaf (e.g.
+`Features/Projects/Api`, client-facing) and the internal `Contract` leaf (e.g. `Features/Git/Contract`,
+cross-feature); the Features band excludes both (negative lookahead in `FeaturesNs`) so a leaf isn't
+double-counted, and the derived rule keeps `WithoutRequiringPositiveResults()` so an empty band passes honestly
+rather than vacuously. A leaf depending on feature internals would be a forbidden Contracts→Features edge, so
+"leaves never reference internals" (the publishing split's shippability invariant) is enforced here for free.
 
 ### Features must not depend on each other
-- **Why:** Slices change independently. Cross-feature coupling goes through Contracts/events, never a direct
-  implementation reference. This is an *intra*-band decision (Feature A ↛ Feature B), so it stays its own named
-  rule rather than folding into the down-only layer graph above.
+- **Why:** Slices change independently. Cross-feature coupling goes through a peer's `Contract` leaf/events, never
+  a direct implementation reference and never its `Api` leaf. This is an *intra*-band decision (Feature A ↛ Feature
+  B), so it stays its own named rule rather than folding into the down-only layer graph above.
 
-Depending on a peer's Contracts leaf is the legal channel (Mode 2): `FeatureNamespace` excludes `<F>.Contracts`,
-so `Tasks.Create → Git.Contracts` passes while `Tasks → Git`'s implementation stays forbidden. The consumer
-binds the published interface; DI supplies the peer's impl at runtime.
+Depending on a peer's `Contract` leaf is the ONLY legal cross-feature channel: `FeatureNamespace` excludes
+`<F>.Contract`, so `Tasks.Create → Git.Contract` passes while `Tasks → Git`'s implementation — and its external
+`Api` leaf — stay forbidden (the `Api` leaf is the client's surface, not a sibling's seam). The consumer binds
+the published interface; DI supplies the peer's impl at runtime.
 
 ### Git operations depend on the floor, not on the flow engine
 - **Why:** An `Operation` is floor machinery (`Infrastructure.Operations` — the gated unit, the `internal IGate`

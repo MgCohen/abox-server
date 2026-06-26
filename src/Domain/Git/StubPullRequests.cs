@@ -1,4 +1,4 @@
-using ABox.Features.Git.Contracts;
+using ABox.Features.Git.Contract;
 
 namespace ABox.Domain.Git;
 

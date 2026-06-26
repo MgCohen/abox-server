@@ -1,11 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <!-- The Contracts leaf is its own assembly (the UI references it alone); exclude its folder so this
-         project does not double-compile it. -->
-    <DefaultItemExcludes>$(DefaultItemExcludes);Contracts/**</DefaultItemExcludes>
-  </PropertyGroup>
-
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
@@ -16,7 +10,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Domain\Decisions\ABox.Domain.Decisions.csproj" />
-    <ProjectReference Include="Contracts\ABox.Decisions.Contracts.csproj" />
+    <ProjectReference Include="Contract\ABox.Decisions.Contract.csproj" />
   </ItemGroup>
 
 </Project>
