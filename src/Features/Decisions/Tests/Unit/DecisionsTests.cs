@@ -1,8 +1,9 @@
 using ABox.Domain.Decisions;
 using ABox.Domain.Inbox;
 using ABox.Infrastructure.Storage;
+using DomainDecisions = ABox.Domain.Decisions.Decisions;
 
-namespace ABox.Tests.Unit.Tests;
+namespace ABox.Decisions.Tests.Unit;
 
 public sealed class DecisionsTests : IDisposable
 {
@@ -10,7 +11,7 @@ public sealed class DecisionsTests : IDisposable
 
     private Inbox NewInbox() => new(new JsonRepository<InboxItem>(new StorageRoot(_dir)));
 
-    private Decisions NewDecisions(Inbox inbox) =>
+    private DomainDecisions NewDecisions(Inbox inbox) =>
         new(new JsonRepository<Decision>(new StorageRoot(_dir)), inbox);
 
     [Rule("Decisions.Raise → stores the question and pushes a matching inbox item sharing its id")]
