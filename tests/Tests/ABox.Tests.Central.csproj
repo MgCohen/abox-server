@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <IsPackable>false</IsPackable>
+    <AssemblyName>ABox.Tests.Central</AssemblyName>
+    <RootNamespace>ABox.Tests</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
