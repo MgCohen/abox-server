@@ -61,16 +61,19 @@ DTOs. An assembly boundary exists only where it earns enforcement or reuse — s
 
 **Build & test:**
 ```
-dotnet build ABox.slnx
-dotnet test  ABox.slnx
+dotnet build ABox.slnx        # the product/IDE solution (src/** + central tests)
+dotnet test  dirs.proj        # the FULL suite — central + every co-located feature assembly
 ```
+`dirs.proj` (MSBuild traversal) is the test-discovery seam, not `ABox.slnx`: it globs every
+`*.Tests.csproj`, so a new feature's tests run with no solution edit. CI builds & tests `dirs.proj`.
 
-**Tests are Rulebooks.** `tests/` is organized into six types (Arch, Structure,
-Unit, E2E, Wire, Live), each a *Rulebook* whose `### ` headers are guarantees
-enforced 1:1/1:N by `[Rule]` facts and a `ParityGuard` — a test never lands without
-the Rule it proves. Adding or moving a test? Use the **`test-rulebook`** skill; the
-front door is [`tests/README.md`](tests/README.md), the plan is
-[`PLANS/test-structure.md`](PLANS/test-structure.md).
+**Tests are Rulebooks.** Each test *type* is a *Rulebook* whose `### ` headers are guarantees enforced
+1:1/1:N by `[Rule]` facts and a `ParityGuard` — a test never lands without the Rule it proves.
+**Tests are co-located with their owner** ([`PLANS/test-colocation.md`](PLANS/test-colocation.md)): a
+feature's `Unit`/`Wire`/`E2E`/`Live` live under `src/<…>/<Owner>/Tests/` in `ABox.<Owner>.Tests`; only the
+ownerless types (`Arch`/`Structure`/`Docs` + `Meta`) and the shared `Harness`/`Templates`/`Fixtures` stay
+under `tests/`. Adding a test → **`test-rulebook`** skill; standing up a feature's test assembly →
+**`new-feature-tests`** skill. Front door: [`tests/README.md`](tests/README.md).
 
 ## Repo controls (agent guardrails)
 
