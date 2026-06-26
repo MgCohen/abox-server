@@ -88,8 +88,10 @@ cross-refs land.
 Plus a canonical field-order check at `check` (`body` last), driven by each kind's
 declared field order.
 
-**Proof:** `out/arch.rulebook.md` (invariant), `out/wire.rulebook.md` (arrowed, uses
-`Outcome`), `out/arch.test-template.md` — all `validate` PASS.
+**Proof:** the real `tests/**/Rulebook/{rules,template}.md` — eight types' worth of `rulebook`
+(invariant + arrowed, the latter using `Outcome`) and `test-template` instances, all `validate`
+PASS under the Docs test. (The original `out/*.rulebook.md` samples were retired once the real
+files took over.)
 
 **Phase 2 — BUILT (owner-gated merge):** a `Docs` test type whose `[Rule]` facts shell out
 to `docengine check` / `validate` (mirroring `Live → claude`), so doc enforcement runs
