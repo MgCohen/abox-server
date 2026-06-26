@@ -1,0 +1,12 @@
+type: links
+description: Navigation pointers for the document — where its schema and conventions live.
+rubric:
+  resolves: Each link points at a real target — the type's template and the harness convention.
+  no-prose: A pure pointer list, not a place for explanation.
+labels:
+  Template:
+    required: true
+  Harness:
+    required: true
+body:
+  type: markdown

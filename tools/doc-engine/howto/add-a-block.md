@@ -31,7 +31,13 @@ Field meanings:
 | `rubric` | yes | a map of `id: rule` one-liners — the authoring + grading checks |
 | `body` | no | `type: markdown` if the block has a prose body (it almost always does) |
 | `attrs` | no | typed scalar attributes (see below) |
+| `labels` | no | required/optional `**Label:**` bullets in the body (see below) |
 | `collection` + `group` | no | for repeatable blocks (see step 3) |
+
+Fields go in a **canonical order** (`check` enforces it): `type`, `collection`,
+`group`, `description`, `rubric`, `attrs`, `labels`, `body` — `body` always last. The
+order is the kind's own field declaration in `kinds/block.yaml`; a definition must list
+its present fields as a subsequence of it.
 
 ## 2. Conventions (the engine enforces these)
 
@@ -50,6 +56,17 @@ Field meanings:
   ```
   Allowed types are `string`, `markdown`, `enum`. Scalar lists (like an enum's
   values) stay inline: `[todo, doing, done]`.
+- **`labels`** declare `**Label:**` bullets a block's body must (or may) carry. Each
+  label is a map with a `required` bool; `validate` flags a missing required label or
+  an undeclared one:
+  ```yaml
+  labels:
+    Why:
+      required: true
+    Outcome:
+      required: false
+  ```
+  An instance then writes `- **Why:** …` inside the block's body.
 
 ## 3. Singleton vs collection
 
