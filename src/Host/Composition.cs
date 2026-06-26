@@ -51,6 +51,8 @@ internal static class Composition
         services.AddSingleton<DenyResolver>();
         services.AddSingleton<AutoPolicy>();
         services.AddSingleton<ResolverSelector>();
+        services.AddSingleton(ClaudeBox.Confined());
+        services.AddSingleton(CodexBox.Confined());
         services.AddSingleton<IAgentFactory, AgentFactory>();
 
         services.AddFlows(flows);

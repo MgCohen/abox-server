@@ -5,6 +5,9 @@ namespace ABox.Tests.Unit.Tests;
 
 public class ProviderPolicyTests
 {
+    private static readonly CodexSandbox DummyBox =
+        new("abox-codex:latest", "abox-boxnet", "http://proxy:8888", new DirectoryInfo(Path.GetTempPath()));
+
     [Rule("Codex resume → reuses the prior session via bypass, without re-setting cd or sandbox")]
     [Fact]
     public void Codex_resume_omits_cd_and_sandbox_and_bypasses_instead()
@@ -17,19 +20,15 @@ public class ProviderPolicyTests
         Assert.Contains("--dangerously-bypass-approvals-and-sandbox", args);
     }
 
-    [Rule("Codex new turn → sets cd and the OS-specific sandbox default")]
+    [Rule("Codex new turn → sets cd and bypasses its own sandbox, since the box is the wall")]
     [Fact]
-    public void Codex_new_turn_sets_cd_and_the_baked_sandbox_default()
+    public void Codex_new_turn_sets_cd_and_bypasses_its_own_sandbox()
     {
-        var args = CodexProtocol.BuildArgs(null, "C:/proj", "last.txt", "gpt-5.5");
+        var args = CodexProtocol.BuildArgs(null, "/work", "last.txt", "gpt-5.5");
 
         Assert.Contains("--cd", args);
-        Assert.Contains("--sandbox", args);
-        Assert.DoesNotContain("--dangerously-bypass-approvals-and-sandbox", args);
-
-        var sandbox = args[args.IndexOf("--sandbox") + 1];
-        var expected = OperatingSystem.IsWindows() ? "danger-full-access" : "workspace-write";
-        Assert.Equal(expected, sandbox);
+        Assert.DoesNotContain("--sandbox", args);
+        Assert.Contains("--dangerously-bypass-approvals-and-sandbox", args);
     }
 
     [Rule("Codex driven with a non-bypass policy → throws an actionable NotSupportedException naming the policy")]
@@ -40,7 +39,7 @@ public class ProviderPolicyTests
         {
             Policy = PermissionPolicy.Ask,
         };
-        var provider = new CodexProvider(config);
+        var provider = new CodexProvider(config, DummyBox);
 
         var ex = await Assert.ThrowsAsync<NotSupportedException>(
             () => provider.DriveAsync(new AgentRunRequest("do it", "C:/proj"), CancellationToken.None));

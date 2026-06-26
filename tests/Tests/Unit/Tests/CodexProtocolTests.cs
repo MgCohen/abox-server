@@ -25,16 +25,17 @@ public class CodexProtocolTests
         Assert.Equal(new[] { "exec", "resume", "sess-12345678" }, args.Take(3));
     }
 
-    [Rule("BuildArgs → carries the working dir, output path, OS-aware sandbox, model, and JSON flags")]
+    [Rule("BuildArgs → carries the working dir, output path, sandbox bypass, model, and JSON flags")]
     [Fact]
     public void BuildArgs_carries_dir_output_sandbox_model_and_json()
     {
-        var args = CodexProtocol.BuildArgs(null, "C:/proj", "C:/tmp/last.txt", "gpt-5.5");
+        var args = CodexProtocol.BuildArgs(null, "/work", "/session/last.txt", "gpt-5.5");
 
-        AssertPair(args, "--cd", "C:/proj");
-        AssertPair(args, "-o", "C:/tmp/last.txt");
-        // Sandbox is a baked default, OS-aware: Windows can't spawn codex's sandbox, so it's bypassed there.
-        AssertPair(args, "--sandbox", OperatingSystem.IsWindows() ? "danger-full-access" : "workspace-write");
+        AssertPair(args, "--cd", "/work");
+        AssertPair(args, "-o", "/session/last.txt");
+        // The confined box is the wall, so codex's own sandbox is bypassed (no nested OS sandbox).
+        Assert.Contains("--dangerously-bypass-approvals-and-sandbox", args);
+        Assert.DoesNotContain("--sandbox", args);
         AssertPair(args, "--model", "gpt-5.5");
         Assert.Contains("--json", args);
         Assert.Contains("--skip-git-repo-check", args);

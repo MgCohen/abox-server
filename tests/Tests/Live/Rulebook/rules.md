@@ -31,6 +31,11 @@ harness: ../../../Harness/README.md
 - **Why:** Auto auto-approves through the same gate without a human — the write runs even though the resolver
   would have denied, and the resolver is never consulted.
 
+### a credentialed live turn → the subscription token never appears in the drive buffer
+- **Why:** the credential rides `docker run`, not the PTY-echoed `docker exec` line, so a real billed turn's
+  drive buffer (logged, surfaced to callers) must carry no `sk-ant-` token — the end-to-end proof the
+  hardening keeps the subscription credential off the agent transcript.
+
 ### a Human agent given a registry answer → resumes and completes
 - **Why:** InteractiveResolver parks the question and a registry answer resumes the live run to Completed —
   the inbox/endpoint resume loop against a real CLI.
@@ -38,3 +43,8 @@ harness: ../../../Harness/README.md
 ### a Human agent with no answer available → escalates as Needs input
 - **Why:** with no resolution a Human agent must surface NeedsInput rather than hang or guess — the
   deny-on-null escalation.
+
+### the agent-configured machine → a real commit lands as the bot, never the owner or generic default
+- **Why:** only the owner's real, agent-configured machine can prove the credential split holds — a probe
+  commit is authored as the bot and the resolved identity is never the owner or the unconfigured Claude
+  default; no scripted environment establishes which credential the live machine actually uses.

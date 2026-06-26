@@ -7,6 +7,9 @@ namespace ABox.Tests.Support;
 // for the live smoke (needs a real CLI), kept out of the production catalog.
 public sealed class CodexPingFlow(IAgentFactory agents) : Flow
 {
-    protected override Task RunAsync(FlowConfig config, FlowContext ctx, CancellationToken ct) =>
-        Run(ctx, agents.Create(Agents.Reviewer, ctx.ProjectDir), new AgentArgs("ping", ctx.Request), ct);
+    protected override async Task RunAsync(FlowConfig config, FlowContext ctx, CancellationToken ct)
+    {
+        await using var agent = agents.Create(Agents.Reviewer, ctx.ProjectDir);
+        await Run(ctx, agent, new AgentArgs("ping", ctx.Request), ct);
+    }
 }
