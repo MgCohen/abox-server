@@ -22,6 +22,15 @@ public static class RepoTree
     public static readonly string Root = LocateRoot();
     public static readonly string TestsRoot = RequireDir("the central test tree", "tests", "Tests");
     public static readonly string MetaRoot = RequireDir("the Meta self-suite", "tests", "Meta");
+    public static readonly string TemplatesRoot = RequireDir("the central per-type templates", "tests", "Templates");
+
+    // The per-type templates (test-template instances), centralized in one home so the criteria for a type live
+    // once, not once per feature that owns a rulebook of that type. The Docs type validates each against its
+    // doctype, the same way it validates every co-located rules.md.
+    public static IReadOnlyList<string> TemplateFiles() =>
+        Directory.EnumerateFiles(TemplatesRoot, "*.template.md")
+            .OrderBy(p => p, StringComparer.Ordinal)
+            .ToList();
 
     public static IReadOnlyList<string> TestTypeFolders() =>
         Directory.EnumerateDirectories(TestsRoot)

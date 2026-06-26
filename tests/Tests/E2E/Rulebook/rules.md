@@ -1,7 +1,7 @@
 ---
 docType: rulebook
 testType: e2e
-template: ./template.md
+template: ../../../Templates/e2e.template.md
 harness: ../../../Harness/README.md
 ---
 

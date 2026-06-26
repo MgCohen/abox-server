@@ -1,7 +1,7 @@
 ---
 docType: rulebook
 testType: meta
-template: ./template.md
+template: ../../Templates/meta.template.md
 harness: ../../Harness/README.md
 ---
 
@@ -32,3 +32,13 @@ Meta's own Rulebook and tests, so the self-suite holds itself to the same bar.
 Reflection over the product assembly (`ABox.Tests.SuiteAnchor`) selects `TestMarkers.Marks` methods whose
 namespace fails `TestTypes.ContainsTest`. Meta's own tests are held in scope by Meta's self-parity instead. An
 unregistered marker is a patch-when-seen event: add the name to `TestMarkers`.
+
+### Central and Feature types partition the registered types
+
+- **Why:** Co-location turns on one decision per type — does the repo own its guarantee (central) or does a
+  feature (co-located). If a type were in both lists it would have two homes; if in neither, no home — and the
+  build would silently pick one. Holding the two lists to an exact, disjoint cover of `TestTypes.Registered`
+  means every type has exactly one home, and a newly registered type can't compile until it is classified.
+
+`TestTypes.Central` and `TestTypes.Feature` are asserted disjoint and, unioned, equal to
+`TestTypes.Registered` — the ownership split (`PLANS/test-colocation.md`) made machine-checkable.

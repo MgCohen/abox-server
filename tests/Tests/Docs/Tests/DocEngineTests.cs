@@ -20,7 +20,8 @@ public class DocEngineTests
     public void Instances_validate()
     {
         var instances = RepoTree.RulebookFolders()
-            .SelectMany(d => new[] { Path.Combine(d, "rules.md"), Path.Combine(d, "template.md") })
+            .Select(d => Path.Combine(d, "rules.md"))
+            .Concat(RepoTree.TemplateFiles())
             .Where(File.Exists)
             .OrderBy(p => p, StringComparer.Ordinal)
             .ToList();

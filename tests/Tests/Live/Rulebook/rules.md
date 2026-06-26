@@ -1,7 +1,7 @@
 ---
 docType: rulebook
 testType: live
-template: ./template.md
+template: ../../../Templates/live.template.md
 harness: ../../../Harness/README.md
 ---
 

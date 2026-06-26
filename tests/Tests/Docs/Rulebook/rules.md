@@ -1,7 +1,7 @@
 ---
 docType: rulebook
 testType: docs
-template: ./template.md
+template: ../../../Templates/docs.template.md
 harness: ../../../Harness/README.md
 ---
 

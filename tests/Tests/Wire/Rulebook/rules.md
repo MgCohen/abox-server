@@ -1,7 +1,7 @@
 ---
 docType: rulebook
 testType: wire
-template: ./template.md
+template: ../../../Templates/wire.template.md
 harness: ../../../Harness/README.md
 ---
 
