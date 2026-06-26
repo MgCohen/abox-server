@@ -4,36 +4,43 @@ How the **catalog** (the block/doctype/kind vocabulary) crosses from this server
 repo to the client/render repo (`abox-client`), so the client can build renders
 that match what the engine produces.
 
+> **Transport reconciled with [`PLANS/contract-publishing.md`](../../PLANS/contract-publishing.md).**
+> The server no longer hand-copies DLLs to the client — it publishes its
+> client-facing surface as the versioned **`ABox.Api`** NuGet package (tag-driven
+> via MinVer → GitHub Packages → Dependabot PR). The catalog rides **that same
+> loop** as a packaged data asset; it is not copied by hand.
+
 ## What is shared — and what is not
 
 | Artifact | Source | Shared? | How |
 |---|---|---|---|
-| **Catalog / schema** | `kinds/` + `blocks/` + `doctypes/` | **Yes** | one generated JSON, copied beside the DLLs |
-| **Document instances** | `out/<slug>.md` (e.g. `claude-planning.md`) | **No** | runtime payload — plain markdown, sent per-document |
+| **Catalog / schema** | `kinds/` + `blocks/` + `doctypes/` | **Yes** | one generated JSON, shipped as a versioned asset on the `ABox.Api` package loop |
+| **Document instances** | a document's home `*.md` (e.g. a plan, an ADR) | **No** | runtime payload — plain markdown, sent per-document over HTTP |
 
-The schema is a **vocabulary**, shared once and updated when it changes. Instances
-are **content**, produced per-run and delivered as the already-human-readable
-markdown the engine emits — never copied like a DLL.
+The schema is a **vocabulary**, versioned with the package and updated when it
+changes. Instances are **content**, produced per-run and delivered as the
+already-human-readable markdown the engine emits — never packaged like a contract.
 
 Rule of thumb: **share the data, not the engine.** The client never takes
 `ABox.DocEngine.dll`. It takes one data file describing the vocabulary and writes
 its own renderers against it.
 
 > **The catalog is a superset.** It carries every doctype the engine knows,
-> including **internal-tooling** ones the client never renders — the repo now
-> models its own test Rulebooks as `rulebook` / `test-template` doctypes (guarded
-> by the `Docs` test type). The client builds renderers for the block types it
+> including **internal-tooling** ones the client never renders — the repo models
+> its own test Rulebooks as `rulebook` / `test-template` doctypes (guarded by the
+> `Docs` test type). The client builds renderers for the block types it
 > **actually receives instances of**, doctype by doctype — it does not enumerate
 > the whole catalog. Product doctypes (`feature-plan`, `research`, …) are render
 > targets; the tooling doctypes are not.
 
 ## Why a file, not a DLL
 
-The DLLs the client copies are compiled **behavior**. The catalog is **data** —
-the engine itself "names no kind"; blocks and doctypes are pure YAML. Shipping the
-engine DLL would hand the client a *parser* it can't render with (and drag
-YamlDotNet + the CLI into a render path). The client needs the *vocabulary*, then
-owns presentation. So we ship the vocabulary as one file.
+The DLLs in the `ABox.Api` package are compiled **behavior** (the wire DTO types).
+The catalog is **data** — the engine itself "names no kind"; blocks and doctypes
+are pure YAML. Shipping the engine DLL would hand the client a *parser* it can't
+render with (and drag YamlDotNet + the CLI into a render path). The client needs
+the *vocabulary*, then owns presentation. So we ship the vocabulary as one file,
+versioned alongside the contracts.
 
 ---
 
@@ -44,7 +51,7 @@ owns presentation. So we ship the vocabulary as one file.
 Built — `docengine catalog --json`:
 
 ```
-docengine catalog --json > doc-catalog.json
+docengine catalog --json --root tools/doc-engine > doc-catalog.json
 ```
 
 It serializes the already-loaded `kinds` + `blocks` + `doctypes` into one
@@ -55,22 +62,40 @@ data, normalizing the YAML graph to JSON.
 ### 2. A version stamp
 
 The top of the file carries a `catalogVersion`. Bump it whenever a block/doctype
-field, attr, enum, or grouping changes. This is the guard that replaces the
-version-pinning a package manager would give us — see *Drift* below.
+field, attr, enum, or grouping changes. The **package** version (MinVer tag) pins
+what the client *compiled* against; `catalogVersion` is the in-payload marker that
+also lets a **runtime instance** be checked against the client's packaged catalog —
+see *Drift* below.
 
-### 3. Drop it where the DLLs land
+### 3. Ship it on the `ABox.Api` package loop
 
-The doc-engine is **not** in `ABox.slnx`, so the catalog does not appear in the
-product DLL drop on its own — placing it there is a deliberate step. Put
-`doc-catalog.json` in the **same output folder you copy the DLLs from**, next to
-`ABox.*.Contracts.dll`. Script it into the existing copy step so it is never
-forgotten.
+The server already shares its client-facing surface as one versioned package: a tag
+`v*` fires `publish-contracts.yml`, MinVer stamps the version, `dotnet pack
+src/Api/ABox.Api.csproj` rolls every `*.Api` DLL into `ABox.Api.<ver>.nupkg`, and
+the client pulls it via a Dependabot PR (full loop in
+[`contract-publishing.md`](../../PLANS/contract-publishing.md)). The catalog rides
+this loop as a **packaged data asset** so it is versioned and fetched by the same
+automation — never hand-copied.
 
-> Alternative (zero new files): embed `doc-catalog.json` as an **embedded
-> resource** in the Contracts DLL the client already takes, and read it via
-> `Assembly.GetManifestResourceStream`. Faithful to "we just move the DLLs," at
-> the cost of build wiring + folding a tooling concern into the wire-contracts
-> assembly. Use only if "remember to copy one more file" actually bites.
+**Recommended — bundle into `ABox.Api` (least mechanism).** The client already
+references `ABox.Api`; carrying `doc-catalog.json` inside it means one package, one
+version, one Dependabot bump, and **no** new package or registry wiring. At pack
+time the rollup runs `catalog --json` and includes the output as a content asset
+(the doc-engine is not in `ABox.slnx`, so the pack target shells out to the CLI —
+the same shell-out seam the `Docs` test uses, ADR 0015). This keeps `*.Api`
+dependency-free (D6): a generated content file is not a `<dependency>`.
+
+> **Alternative — a sibling package `ABox.DocCatalog`.** A second packable project
+> published by the same workflow + a second client `PackageReference`. Cleaner
+> separation if the catalog's cadence ever diverges sharply from the wire DTOs, at
+> the cost of more machinery (another package, another Dependabot entry). Prefer
+> the bundle until that divergence is real.
+
+> **Pending wiring.** The export command exists today; folding `doc-catalog.json`
+> into `ABox.Api`'s pack step touches the **protected** `src/Api` surface and lands
+> with the publish-loop activation (the first `v*` tag is the owner's act — see
+> `contract-publishing.md` Phases 4/6). Until then the JSON is produced on demand
+> by the command above.
 
 ### `doc-catalog.json` shape
 
@@ -122,16 +147,17 @@ doctype is composed of — is in this one file.
 
 ## Consumer side — how the client reads it (`abox-client`)
 
-### 1. Copy the file
+### 1. Take it from the package
 
-Same step that copies the DLLs: pull `doc-catalog.json` from the server drop into
-the client's shared/libs folder. (Or, with the embedded-resource option, read it
-out of the Contracts DLL — nothing extra to copy.)
+`doc-catalog.json` arrives with the `ABox.Api` package the client already
+references — pulled in by the Dependabot bump that pins the version, not by a hand
+copy. Read it as a package content asset (or, if bundled as an embedded resource,
+via `Assembly.GetManifestResourceStream`).
 
 ### 2. Load it once at startup
 
-Deserialize the JSON into an in-memory catalog. Check `catalogVersion` against the
-version the client was built for (see *Drift*).
+Deserialize the JSON into an in-memory catalog. The package version is the pin;
+keep `catalogVersion` to compare against runtime instances (see *Drift*).
 
 ### 3. Build a renderer per block type
 
@@ -157,27 +183,30 @@ syntax is built to match the render repo's parser, so this stays a thin mapping.
 
 ---
 
-## Drift — the one thing manual copying does not give you for free
+## Drift — the runtime instance can outrun the packaged catalog
 
-Copying files by hand is a package manager **without** version pinning. Nothing
-stops a **stale catalog** meeting a **new instance** with a block type it has never
-seen. Guard it explicitly:
+The package loop pins the **compile-time** vocabulary: the client's
+`PackageReference` + `packages.lock.json` fix exactly which `doc-catalog.json` it
+built against, and Dependabot is the reviewed channel for moving that pin. That
+closes the drift hand-copying left open — but **not** all of it. Instances are
+**not** packaged; they arrive at runtime as markdown over HTTP. So a server ahead of
+the client's last Dependabot bump can emit an instance with a block type the
+client's packaged catalog has never seen. Guard that residual gap explicitly:
 
-- `catalogVersion` lives in the catalog file.
-- Each instance carries its `docType` (and ideally the catalog version it was
-  produced against).
+- `catalogVersion` lives in the catalog file and ideally is stamped on each instance.
 - On an unknown block type or a version mismatch, the client **fails loud or
   degrades gracefully** (render the raw block, flag it) — never silently drops it.
 
-Producer-side drift is now CI-guarded: the `Docs` test type runs `docengine
-check` under `dotnet test`, so a self-inconsistent catalog (a block/doctype that
-no longer conforms to its kind) fails the build **before** it can be exported and
-shared. The version stamp guards the consumer; `check` guards the producer.
+Producer-side drift is CI-guarded: the `Docs` test type runs `docengine check`
+under `dotnet test`, so a self-inconsistent catalog (a block/doctype that no longer
+conforms to its kind) fails the build **before** it can be exported and shared. The
+package version pins the consumer; `catalogVersion` guards the runtime instance;
+`check` guards the producer.
 
 ## Cadence
 
 | Event | Action |
 |---|---|
-| Block/doctype/attr/enum/group changes | bump `catalogVersion`, re-export, re-copy with the next DLL drop |
+| Block/doctype/attr/enum/group changes | bump `catalogVersion`, re-export; it ships on the next `v*` tag → Dependabot PR bumps the client |
 | New document produced | nothing — it ships as a runtime markdown payload |
-| Client built against an older catalog | version check catches it; update the copied file |
+| Client built against an older catalog | the lockfile pins it; merging the Dependabot PR moves the pin |
