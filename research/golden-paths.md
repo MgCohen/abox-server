@@ -200,7 +200,67 @@ Industry writing (2025–2026) converges on the IDP becoming the place where age
 
 ---
 
-## 14. Academic literature (focused sweep)
+## 14. Trusted industry sources, quoted
+
+Beyond the academic literature, the golden-paths-for-agents pattern is being articulated directly by the most credible industry voices. Each entry below carries a **verbatim quote** + a one-line summary (sources where a genuine quote couldn't be retrieved were dropped, not paraphrased).
+
+**Spotify Engineering — *How We Use Golden Paths to Solve Fragmentation in Our Software Ecosystem* (2020, Gary Niemen)** · *primary eng blog*
+> "The Golden Path — as we define it today — is the 'opinionated and supported' path to 'build something.' [...] The Golden Path tutorial is a step-by-step tutorial that walks you through this opinionated and supported path."
+— The canonical definition from the team that coined the term; the foundation everything else builds on.
+
+**Backstage / Spotify — *How Spotify Built Honk: From Backstage to Agentic Coding at Scale* (2025)** · *primary eng blog*
+> "Backstage Software Catalog — which tracks ownership, dependencies, and other component metadata across thousands of repositories — gives AI agents the structured context they need to navigate your ecosystem."
+— The IDP's structured catalog becomes the governable context layer that makes agentic coding viable at enterprise scale. [link](https://backstage.spotify.com/how-spotify-built-honk)
+
+**Microsoft / Azure DevBlogs — *Platform Engineering for the Agentic AI Era* (2026, Lheureux & Wright)** · *primary eng blog*
+> "Golden paths as blueprints: A reference architecture diagram for a workload type becomes a machine-consumable blueprint; the agent selects the pattern, fills in parameters, generates repos and config, and opens a PR with the diagram-linked justification."
+— Reframes golden paths as machine-consumable blueprints that agents select and instantiate, with policy as the guardrail. [link](https://devblogs.microsoft.com/all-things-azure/platform-engineering-for-the-agentic-ai-era/)
+
+**GitHub Blog — *Agent-Driven Development in Copilot Applied Science* (2026, Tyler McGoffin)** · *primary eng blog*
+> "Practices like strict typing ensure the agent conforms to interfaces. Robust linters impose implementation rules on the agent that keep it following good patterns and practices."
+— The same scaffolding that helps humans (types, linters, tests) constrains and self-corrects agents in an agent-first repo. [link](https://github.blog/ai-and-ml/github-copilot/agent-driven-development-in-copilot-applied-science/)
+
+**Martin Fowler / Thoughtworks — *Harness Engineering for Coding Agent Users* (2026, Birgitta Böckeler)** · *well-known practitioner blog*
+> "A well-built outer harness serves two goals: it increases the probability that the agent gets it right in the first place, and it provides a feedback loop that self-corrects as many issues as possible before they even reach human eyes."
+— Defines "harness engineering": the feedforward/feedback structure around an agent — the paved-road idea at the agent-tooling level. [link](https://martinfowler.com/articles/exploring-gen-ai/harness-engineering.html)
+
+**Thoughtworks Technology Radar — *Curated Shared Instructions for Software Teams* (Vol. 33–34, 2025–2026)** · *analyst (Thoughtworks Radar)*
+> "By placing instruction files such as `CLAUDE.md`, `AGENTS.md` or `.cursorrules` into the baseline repository used to scaffold new services, the template becomes a powerful distribution mechanism for AI guidance."
+— Service scaffolding templates become the distribution channel for paved-road AI guidance, so every new repo inherits curated agent instructions. [link](https://www.thoughtworks.com/radar/techniques/curated-shared-instructions-for-software-teams)
+
+**CNCF — *The Autonomous Enterprise and the Four Pillars of Platform Control: 2026 Forecast* (2026, Asif Awan)** · *foundation (CNCF)*
+> "Golden paths are the curated, pre-approved blueprints that make the secure, compliant choice the easiest choice for developers (e.g., standardized IaC modules, self-service portals)."
+— Frames golden paths, guardrails, safety nets, and manual review as the four platform controls bounding agent-driven infrastructure. [link](https://www.cncf.io/blog/2026/01/23/the-autonomous-enterprise-and-the-four-pillars-of-platform-control-2026-forecast/)
+
+**InfoQ / QCon AI — *Platform Engineering for AI: Scaling Agents and MCP at LinkedIn* (2025, Karthik Ramgopal)** · *analyst/news*
+> "Agents simply cannot make a code change. They can propose a code change and that code change will go through the exact same reviews and the tests."
+— LinkedIn's stance: agents route through identical review/test gates as humans — paved-road parity for human and machine contributors. [link](https://www.infoq.com/podcasts/platform-engineering-scaling-agents/)
+
+**Humanitec — *Serving Platform Engineers* (2025–2026)** · *primary vendor (IDP)*
+> "Same rules, every request — human or AI."
+— Crisp statement of the IDP-as-governance-layer thesis: one set of provisioning rules applied identically to humans and agents. [link](https://humanitec.com/)
+
+**Port — *Agentic Engineering Platform: The Evolution of IDPs* (2025, Zohar Einy)** · *primary vendor (IDP)*
+> "Golden paths, which helps developers create better, reusable workflows and pipelines to production, might also help with directing AI."
+— Positions existing golden-path workflows as the mechanism for directing/governing AI agents within the developer portal. [link](https://www.port.io/blog/port-agentic-engineering-platform)
+
+**Harness — *Agentic Coding: How IDPs Become AI Control Planes* (2026, Bri Strozewski)** · *primary vendor (IDP)*
+> "Both developers and agents start from these paths, not from scratch. [...] Agents trigger the approved flows instead of improvising their own, which is how you keep actions compliant and predictable."
+— The IDP-as-control-plane progression where golden paths + executable guardrails keep agents "on the rails." [link](https://www.harness.io/blog/agentic-coding-and-the-new-role-of-internal-developer-portals)
+
+**Roadie — *Your IDP Is an AI Goldmine: How IDPs Enable Context Engineering* (2026, David Tuite)** · *primary vendor (IDP)*
+> "Context engineering, or deciding what data populates a model's context window at inference time, treats the IDP as context infrastructure rather than a simple developer portal."
+— Reframes the IDP's structured catalog data as the context infrastructure that grounds and constrains agent behavior. [link](https://roadie.io/blog/idp-ai-goldmine-context-engineering/)
+
+**Red Hat Blog — *Why Developer Portals Matter More in the Age of AI Agents* (2026, Balaji Sivasubramanian)** · *primary eng blog*
+> "An agent deploying to production without knowing your compliance requirements isn't productivity. It's a very fast way to create very expensive problems."
+— The risk case: portals/golden paths supply the compliance context agents need to be safe rather than fast-and-dangerous. [link](https://www.redhat.com/en/blog/why-developer-portals-matter-more-age-ai-agents)
+
+> **Most directly on-theme:** the Azure DevBlogs "golden paths as machine-consumable blueprints" piece, Böckeler's "harness engineering" article, and Harness's "IDPs become AI control planes" each explain *how* platform structure constrains and scaffolds agent work. CNCF's four-pillars forecast and the Thoughtworks Radar "curated shared instructions" entry are the strongest neutral corroboration that this is an industry-wide pattern, not one vendor's pitch.
+
+---
+
+## 15. Academic literature (focused sweep)
 
 The vendor sources above are industry positioning. There is also a **real but young and fragmented academic literature** behind the idea — it just doesn't use the words "golden path." It crystallized almost entirely in **2024–2026** and is spread across ~8 framings you have to triangulate: *deterministic workflow*, *schema/policy-gated*, *constrained decoding*, *typed holes*, *neuro-symbolic*. Two clusters are genuinely **mature and peer-reviewed** (constrained decoding; runtime guardrails); the agent-orchestration cluster that most directly mirrors the A.Box thesis is overwhelmingly **2025–2026 preprints, not yet peer-reviewed**.
 
@@ -246,7 +306,7 @@ The vendor sources above are industry positioning. There is also a **real but yo
 
 ---
 
-## 15. Aside — the "architecture card game" lens (BuilderCards → golden paths)
+## 16. Aside — the "architecture card game" lens (BuilderCards → golden paths)
 
 A useful intuition pump. **AWS BuilderCards** is a deckbuilding tabletop game (created by AWS Solutions Architect **David Heidt**) where you acquire AWS-service cards and combine them into **Well-Architected** architectures for points; a digital cousin, **AWS Card Clash**, does the same on mobile. The rules constrain which card combinations are *sound* — only certain compositions score.
 
@@ -271,7 +331,7 @@ That is structurally the **golden-path move**: a constrained catalog where only 
 - **Golden path ≠ paved road exactly** — cousins with different emphases (opinionated-support vs non-mandated-optionality).
 - **"Enabled via IDP" is a later reframing**, not the 2020 origin.
 - **PART 2's vendor layer is tentative:** the IDP/control-plane material (§9–12) is from reputable but **promotional vendor blogs** (Microsoft, Roadie, Harness) and a **CNCF forecast** — fetched and claim-extracted, not all adversarially verified.
-- **PART 2's academic layer (§14) is stronger but young:** the idea is well-grounded in **peer-reviewed** constrained-decoding (EMNLP/ICML/NeurIPS/MLSys) and runtime-guardrail (ICSE 2026) work, but the agent-orchestration thesis that most directly mirrors A.Box rests on **2025–2026 preprints, not yet peer-reviewed**. No canonical "deterministic scaffolding for agents" paper exists yet; the literature uses no shared term for it.
+- **PART 2's academic layer (§15) is stronger but young:** the idea is well-grounded in **peer-reviewed** constrained-decoding (EMNLP/ICML/NeurIPS/MLSys) and runtime-guardrail (ICSE 2026) work, but the agent-orchestration thesis that most directly mirrors A.Box rests on **2025–2026 preprints, not yet peer-reviewed**. No canonical "deterministic scaffolding for agents" paper exists yet; the literature uses no shared term for it.
 
 ## Open questions / where to dig next
 
@@ -307,8 +367,10 @@ That is structurally the **golden-path move**: a constrained catalog where only 
 **Critique / anti-patterns:**
 - Nilesh — *Golden Path vs Golden Cage* · Mia-Platform — *Paved Roads, Golden Paths, Guardrails, Railroads* · Jellyfish — *Golden Paths*
 
-**Academic literature (Part 2, §14)** — full list with venues/links in §14. Peer-reviewed anchors: Geng et al. (EMNLP 2023, arXiv:2305.13971); Park et al. (NeurIPS 2024, 2405.21047); Dong et al. (MLSys 2025, 2411.15100); Beurer-Kellner et al. (ICML 2024, 2403.06988); Blinn et al. (OOPSLA 2024, 2409.00921); Wang et al. (ICSE 2026, 2503.18666). Preprint wave: 2508.02721, 2502.14345, 2507.16459, 2604.11378, 2603.06394, 2602.02034, 2410.19736, 2509.23994, 2505.03574, 2604.05150, 2411.13269, 2606.13405, 2603.22386, 2507.21504.
+**Trusted industry sources (Part 2, §14)** — 12 quoted sources (Spotify, Backstage/Honk, Microsoft, GitHub, Martin Fowler/Böckeler, Thoughtworks Radar, CNCF, InfoQ/LinkedIn, Humanitec, Port, Harness, Roadie, Red Hat) with verbatim quotes + links inline.
 
-**Architecture card-game aside (§15):** AWS BuilderCards (aws.amazon.com/gametech/buildercards) · AWS Card Clash.
+**Academic literature (Part 2, §15)** — full list with venues/links in §15. Peer-reviewed anchors: Geng et al. (EMNLP 2023, arXiv:2305.13971); Park et al. (NeurIPS 2024, 2405.21047); Dong et al. (MLSys 2025, 2411.15100); Beurer-Kellner et al. (ICML 2024, 2403.06988); Blinn et al. (OOPSLA 2024, 2409.00921); Wang et al. (ICSE 2026, 2503.18666). Preprint wave: 2508.02721, 2502.14345, 2507.16459, 2604.11378, 2603.06394, 2602.02034, 2410.19736, 2509.23994, 2505.03574, 2604.05150, 2411.13269, 2606.13405, 2603.22386, 2507.21504.
+
+**Architecture card-game aside (§16):** AWS BuilderCards (aws.amazon.com/gametech/buildercards) · AWS Card Clash.
 
 *Run stats: 6 search angles · 22 sources fetched · 98 claims extracted · 25 verified · 24 confirmed / 1 refuted.*
