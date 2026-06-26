@@ -1,6 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
-using ABox.Features.Git.Contracts;
+using ABox.Features.Git.Contract;
 using ABox.Tests.Wire.Support;
 
 namespace ABox.Tests.Wire.Tests;

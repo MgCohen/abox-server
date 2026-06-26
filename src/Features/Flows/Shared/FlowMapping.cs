@@ -1,5 +1,5 @@
 using ABox.Domain.Flow;
-using ABox.Features.Flows.Contracts;
+using ABox.Features.Flows.Contract;
 
 namespace ABox.Features.Flows.Shared;
 

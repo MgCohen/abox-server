@@ -1,6 +1,6 @@
 using FastEndpoints;
 using ABox.Domain.Decisions;
-using ABox.Features.Decisions.Contracts;
+using ABox.Features.Decisions.Contract;
 
 namespace ABox.Features.Decisions.List;
 
