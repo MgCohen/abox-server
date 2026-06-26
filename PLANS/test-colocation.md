@@ -1,6 +1,6 @@
 # Feature-co-located tests (the move from type-major to owner-major)
 
-**Status:** 🟡 proposed — 2026-06-26. Design locked; not built. Successor to
+**Status:** 🟡 proposed — 2026-06-26. Approach agreed; not yet built. Successor to
 [`test-structure.md`](test-structure.md), which stood up the type-major `tests/Tests/<Type>/` layout
 this plan re-homes. The Rulebook discipline, ParityGuard, the `Docs` type, and the Meta self-suite are
 all **kept** — only *where the tests physically live* changes. Canonical references for the machinery it
@@ -111,16 +111,11 @@ abox-server/
 │   │   ├── arch.template.md      structure.template.md   docs.template.md   meta.template.md
 │   │   └── unit.template.md      wire.template.md        e2e.template.md    live.template.md
 │   │
-│   ├── Arch/        ┐                         → ABox.Tests.Central   (no production-feature reference)
-│   │   ├── Rulebook/ rules.md                   reference-graph invariants (ArchUnitNET)
-│   │   └── Tests/
-│   ├── Structure/   │                            placement invariants (filesystem scan)
-│   │   ├── Rulebook/ rules.md
-│   │   └── Tests/
-│   ├── Docs/        ┘                            catalog `check` + `validate` EVERY rulebook, in place
-│   │   ├── Rulebook/ rules.md
-│   │   ├── Support/ DocEngine.cs                 shells to the docengine CLI (ADR 0015)
-│   │   └── Tests/   DocEngineTests.cs
+│   ├── Tests/                                 → ABox.Tests.Central   (ownerless product types; no feature ref)
+│   │   ├── Arch/       Rulebook/ rules.md   Tests/    reference-graph invariants (ArchUnitNET)
+│   │   ├── Structure/  Rulebook/ rules.md   Tests/    placement invariants (filesystem scan)
+│   │   └── Docs/       Rulebook/ rules.md   Tests/    catalog `check` + `validate` EVERY rulebook, in place
+│   │       └── Support/ DocEngine.cs                  shells to the docengine CLI (ADR 0015)
 │   │
 │   └── Meta/                                  → ABox.Tests.Meta   (reflects over ALL *.Tests assemblies)
 │       ├── Rulebook/ rules.md
@@ -163,10 +158,16 @@ The four rules that tree encodes:
 
 | Question | Answer |
 |---|---|
-| **What's central?** | only ownerless guarantees: `Arch`, `Structure`, `Docs`, `Meta` — plus the shared `Harness` and the central `Templates/`. |
+| **What's central?** | only ownerless guarantees: `Arch`, `Structure`, `Docs` (under `tests/Tests/`) + `Meta` (`tests/Meta/`) — plus the shared `tests/Harness/` and `tests/Templates/`. |
 | **Where do a feature's tests go?** | `src/Features/<F>/Tests/`, types as **internal subfolders**, one assembly `ABox.<F>.Tests`. |
 | **Standard vs. guarantees?** | doctype (catalog) + every `template.md` (`tests/Templates/`) = **central**; each feature's `rules.md` = **co-located**. |
 | **Odd cases?** | flow E2E → **Flows**; live CLI → **Agents**; `/health` → **Host** (ownerless infra). |
+
+**Assembly + namespace naming.** A feature or tool owns its assembly: `ABox.<Owner>.Tests` (`Tasks` →
+`ABox.Tasks.Tests`; the hyphenated `doc-engine` → `ABox.DocEngine.Tests`), with namespaces
+`ABox.<Owner>.Tests.<Type>`. The three **central** assemblies keep the `ABox.Tests.*` prefix —
+`ABox.Tests.Harness`, `ABox.Tests.Central` (Arch + Structure + Docs), `ABox.Tests.Meta` — because the
+test system itself, not any feature, owns them. So `ABox.Tests.*` = central; `ABox.<Owner>.Tests` = owned.
 
 ### The standard / criteria / guarantees split
 
@@ -213,10 +214,11 @@ owner-reviewed PR, carefully, *with* the move (never after).
 Adding a test, or a whole new feature's `Tests/` folder, must require **no manual wiring**. Two mechanisms
 deliver that together:
 
-1. **A traversal/glob build.** A traversal project (MSBuild `Microsoft.Build.Traversal`, or a
-   scaffold-maintained solution) globs `**/*.Tests.csproj`. A new `Tests/` folder is picked up
-   automatically; `dotnet test` over the traversal root stays **one command**. Adding a feature's tests
-   touches **no** central file (`ABox.slnx`, no harness registration).
+1. **A traversal/glob build.** A traversal project (MSBuild `Microsoft.Build.Traversal`) globs
+   `**/*.Tests.csproj` and is the `dotnet test` entry point — picking up a new `Tests/` folder
+   automatically, so the suite stays **one command**. `ABox.slnx` remains the product/IDE solution
+   (its `src/**` projects), but it is **no longer the test-discovery seam**: adding a feature's tests
+   touches no central file — not `ABox.slnx`, not a harness registration.
 2. **A scaffold skill** (`new-feature-tests`) stamps the `Tests/` folder, a ~5-line stub
    `ABox.<F>.Tests.csproj` (all real config inherited from `Directory.Build.props`), the per-type
    `rules.md` skeleton with correct front-matter (`docType: rulebook`, `template:`→`tests/Templates/<type>.template.md`,
@@ -238,7 +240,7 @@ Co-location moves protected surfaces, so `governance/protected-paths` must follo
 
 | Path | Change |
 |---|---|
-| `tests/**/Rulebook/**` | narrow to the central rulebooks (`tests/{Arch,Structure,Docs,Meta}/Rulebook/**`) |
+| `tests/**/Rulebook/**` | narrow to the central rulebooks (`tests/Tests/{Arch,Structure,Docs}/Rulebook/**` + `tests/Meta/Rulebook/**`) |
 | `tests/Templates/**` | **add** (critical) — the per-type criteria are the central standard |
 | `src/**/Tests/Rulebook/**`, `tools/**/Tests/Rulebook/**` | **add** — feature/tool `rules.md` are guarantees, still protected |
 | `tests/Harness/**`, `tests/Meta/**` | unchanged (still critical) |
@@ -311,7 +313,7 @@ wiring and lands behind the right review wall.
 | The Harness→multi-assembly Meta refactor silently weakens parity (a feature slips in untested) | The coverage Rule (Phase 3) lands **with** the move and is proven red→green; parity is asserted per assembly, not globally |
 | Assembly explosion (~25 csproj) raises maintenance | `Directory.Build.props` carries all config; each csproj is a scaffold-stamped ~5-line stub |
 | Traversal/glob misses or double-counts an assembly | Meta cross-checks the discovered set against the traversal set and fails on mismatch |
-| `Docs` (central) reaching into feature folders re-introduces a spine→engine coupling | It doesn't — `Docs` shells out to the CLI (ADR 0015); only the `Docs` Support helper touches the tool; `Harness` stays zero-dep. Verified by ADR 0015's `[det]` confirmation |
+| `Docs` (central) reaching into feature folders re-introduces a spine→engine coupling | It doesn't — `Docs` shells out to the CLI (ADR 0015); only the `Docs` Support helper touches the tool; `Harness` stays zero-dep. ADR 0015's deterministic (machine-checkable) confirmation already asserts `tests/Harness/**` references neither the doc-engine nor YamlDotNet |
 | Per-type `template.md` drifts from the central doctype | Accepted, tracked cost in ADR 0015 ("a Meta test can later assert they agree"); one central copy per type means there's exactly one to reconcile |
 | `GET /health`-style ownerless tests have no obvious home | Rule is explicit: central *only* if no feature owns it; default is the owning feature (Host) |
 
