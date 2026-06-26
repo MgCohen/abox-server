@@ -36,10 +36,8 @@ public static class DocValidator
         for (var i = 0; i < blocks.Count; i++)
         {
             var b = blocks[i];
-            var where = $"#{i + 1} (id={(b.Id.Length > 0 ? b.Id : "?")})";
-            if (b.Id.Length == 0) errs.Add($"{where}: missing `<!-- id: -->`");
-            else if (seenIds.Contains(b.Id)) errs.Add($"{where}: duplicate id '{b.Id}'");
-            seenIds.Add(b.Id);
+            var where = b.Id.Length > 0 ? $"#{i + 1} (id={b.Id})" : $"#{i + 1} ({b.Title})";
+            if (b.Id.Length > 0 && !seenIds.Add(b.Id)) errs.Add($"{where}: duplicate id '{b.Id}'");
 
             present.Add(b.Type);
             if (b.Unknown || !defs.ContainsKey(b.Type))

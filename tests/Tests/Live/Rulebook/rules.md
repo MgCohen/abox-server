@@ -1,5 +1,11 @@
-Template: [template.md](./template.md)
-Harness: [Rulebook convention](../../../Harness/README.md)
+---
+docType: rulebook
+testType: live
+template: ./template.md
+harness: ../../../Harness/README.md
+---
+
+## Rules
 
 ### a ping flow with a trivial prompt → the agent replies and the run completes
 - **Why:** the simplest real-CLI proof — a live `claude`/`codex` session drives a ping flow to a Completed

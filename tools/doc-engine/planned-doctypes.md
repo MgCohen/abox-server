@@ -32,7 +32,8 @@ so an ADR becomes an enforceable, structured instance.
 | `status` | enum `[proposed, accepted, superseded, deprecated]`, default `proposed` | the ADR lifecycle |
 | `supersedes` / `superseded-by` | (deferred) | needs the cross-ref feature (NOTES punt #3) — omit at first |
 
-The ADR number lives in the filename (`out/0001-foo.adr.md`), like the repo's ADRs.
+The ADR number lives in the filename, and the doc lives in its home folder
+(`design/adr/0001-foo.adr.md`), like the repo's ADRs.
 
 **Blocks**
 
@@ -76,25 +77,28 @@ cross-refs land.
 
 | doctype | blocks | required | front matter |
 |---|---|---|---|
-| `rulebook` | `links`, `rule` | both | `testType` enum (required) |
+| `rulebook` | `rule` | `rule` | `testType` enum, `template`, `harness` (all required) |
 | `test-template` | `summary`, `criterion` | both | `testType` enum (required) |
 
 **New blocks:** `rule` (collection "Rules") with explicit labels **Why** (required) +
-**Outcome** (optional — the `→` tail of behaviour types); `links` (Template/Harness
-pointers, both required); `criterion` (collection "Criteria").
+**Outcome** (optional — the `→` tail of behaviour types); `criterion` (collection
+"Criteria"). The rulebook's Template/Harness pointers live in front matter, not a block.
 
 **New engine capability:** a `labelmap` field-kind — a block declares required/optional
-`**Label:**` bullets in its body, enforced at `validate` (used by `rule` and `links`).
+`**Label:**` bullets in its body, enforced at `validate` (used by `rule`).
 Plus a canonical field-order check at `check` (`body` last), driven by each kind's
 declared field order.
 
-**Proof:** `out/arch.rulebook.md` (invariant), `out/wire.rulebook.md` (arrowed, uses
-`Outcome`), `out/arch.test-template.md` — all `validate` PASS.
+**Proof:** the real `tests/**/Rulebook/{rules,template}.md` — eight types' worth of `rulebook`
+(invariant + arrowed, the latter using `Outcome`) and `test-template` instances, all `validate`
+PASS under the Docs test. (The engine's former `out/` sample dir was retired once the real files
+took over — instances now live in their home folders, validated in place.)
 
-**Phase 2 (owner-gated, protected):** a `Docs` test type whose `[Rule]` facts shell out
+**Phase 2 — BUILT (owner-gated merge):** a `Docs` test type whose `[Rule]` facts shell out
 to `docengine check` / `validate` (mirroring `Live → claude`), so doc enforcement runs
-under `dotnet test` + ParityGuard with no Harness dependency on the engine; then
-front-matter/ids on the real `tests/**/Rulebook/` files. Lands via the owner's PR + an ADR.
+under `dotnet test` + ParityGuard with no Harness dependency on the engine. The real
+`tests/**/Rulebook/` files are now front-matter `rulebook`/`test-template` instances the
+Docs test validates, and the old `RulebookFormat` Meta guard is retired. Lands via the owner's PR + an ADR.
 
 ---
 

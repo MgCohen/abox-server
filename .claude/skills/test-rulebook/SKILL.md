@@ -2,8 +2,8 @@
 name: test-rulebook
 description: >-
   How to add, move, or modify a test in this repo's tests/ tree. Use when writing an
-  xUnit test, deciding which of the seven test types (Arch, Structure, Unit, E2E, Wire,
-  Live, Meta) a test belongs in, adding or editing a Rulebook (rules.md), or when a parity /
+  xUnit test, deciding which of the eight test types (Arch, Structure, Unit, E2E, Wire,
+  Live, Docs, Meta) a test belongs in, adding or editing a Rulebook (rules.md), or when a parity /
   ArchUnitNET / Structure / Meta test fails. Keeps every test paired with a Rulebook Rule so
   the parity guard stays green.
 ---
@@ -11,13 +11,15 @@ description: >-
 # Adding a test = adding (or citing) a Rule
 
 Every product test *type* lives under `tests/Tests/` as a **Rulebook**: a `<Type>/Rulebook/` folder
-with `template.md` (the type's Rule shape) and `rules.md` (a preamble + the `### ` Rules), each
-Rule enforced by a `[Rule("<header>")]` xUnit fact in `<Type>/Tests/`. The **Meta** self-suite
-(`tests/Meta`, its own assembly) runs one parity check over every product type — and over itself —
-and fails the build if a Rule has no test or a test cites no Rule. So a test never lands alone — it
-lands **with its Rule**. (Six types test the product; Meta tests the test system itself, from outside.)
+with `template.md` (`## Summary` + a `## Criteria` rubric) and `rules.md` (front-matter + a `## Rules`
+list of `### ` Rules), each Rule enforced by a `[Rule("<header>")]` xUnit fact in `<Type>/Tests/`. Both
+files are doc-engine instances (a `docType` front-matter header); the **Docs** type validates their shape
+by shelling out to the doc-engine. The **Meta** self-suite (`tests/Meta`, its own assembly) runs one parity
+check over every product type — and over itself — and fails the build if a Rule has no test or a test cites
+no Rule. So a test never lands alone — it lands **with its Rule**. (The product types test the product; Meta
+tests the test system itself, from outside.)
 
-Engine: `tests/Harness/` (`Rule.cs`, `ParityGuard.cs`, `TestTypes`, `RulebookFormat`, `RepoTree`). Detail docs:
+Engine: `tests/Harness/` (`Rule.cs`, `ParityGuard.cs`, `TestTypes`, `RepoTree`). Detail docs:
 [`tests/README.md`](../../../tests/README.md), [`tests/Tests/README.md`](../../../tests/Tests/README.md),
 [`tests/Harness/README.md`](../../../tests/Harness/README.md). The plan is
 [`PLANS/test-structure.md`](../../../PLANS/test-structure.md). Read those before
@@ -42,18 +44,20 @@ inventing structure; this skill is the *procedure*.
 | A whole flow end-to-end with a scripted (non-real) provider | **E2E** | real `Composition` via `FlowHarness` |
 | An HTTP endpoint contract | **Wire** | `WebApplicationFactory<Program>` |
 | The **real** `claude`/`codex` CLI + subscription | **Live** | real CLI, gated `[LiveFact]` / `RUN_LIVE=1` |
+| A guarantee about the repo's **structured documents** (the doc-engine catalog / instances) | **Docs** | shells out to `docengine check` / `validate` |
 | An invariant about the **test system itself** (taxonomy / Rulebook format / parity) | **Meta** | reflection over the product assembly + disk over the test tree |
 
 Rule of thumb: no real network/CLI/browser → Unit unless it spans a flow (E2E) or the
 HTTP surface (Wire). Real CLI → Live (and it **must** be `[LiveFact]`, never `[Fact]`,
-so CI skips it). Testing the *product* → one of the first six; testing the *test system* → Meta.
+so CI skips it). Testing the *product* → one of the product types; the repo's *documents* → Docs;
+the *test system* → Meta.
 
 **Need a whole new *type* (not just a Rule)?** Rare — only when no existing type can host
 the guarantee (don't fork Unit into near-twins). Follow the step-by-step in
 `tests/Harness/README.md` § *Standing up a new test type*: create `<Type>/{Rulebook,Tests,Support}/`,
 fill `template.md` + `rules.md` from the canonical skeleton (don't copy a sibling) — `template.md`
-**must** carry a `## Criteria` block or the Meta *Every template carries judge criteria* guard fails —
-register the type in `Harness/TestTypes.Registered`, and write a `### ` Rule + its `[Rule]` fact for
+**must** carry a `## Criteria` block or the doc-engine's `test-template` validation (run by the **Docs**
+type) fails — register the type in `Harness/TestTypes.Registered`, and write a `### ` Rule + its `[Rule]` fact for
 **every** test (the type ships fully cited — there is no going-forward exemption). No csproj edit and
 no parity fact — the Meta self-suite runs parity over your type once it's registered. Don't invent a new
 Rulebook *shape* — reuse the uniform one.
@@ -109,9 +113,10 @@ judge-graded (see §6), not parity-enforced.
 - **Rulebooks are read from the source tree.** The Meta guards locate the repo root (`RepoTree`, via
   the `ABox.slnx` marker) and read each `<Type>/Rulebook/rules.md` straight from disk — no copy step.
   A Rule counts only if it sits in its type's `rules.md` under `tests/Tests/<Type>/` (or `tests/Meta/`).
-- **`rules.md` holds only Rules.** The example `### ` lives in `template.md`, not `rules.md`, so
-  every `### ` in `rules.md` counts — there's no fence to skip and nothing to game. Two Meta guards
-  enforce this: every Rule matches its `template.md`, and `rules.md` carries no stray sections.
+- **`rules.md` holds only Rules.** Under `## Rules`, every `### ` counts — the example shape lives in
+  `tests/Harness/README.md`, not `rules.md`, so there's nothing to game. The doc-engine's `rulebook`
+  doctype (validated by the **Docs** type) enforces the shape: front-matter + `rule` blocks only, each
+  carrying its `**Why:**`.
 - **Arch model** auto-loads every production assembly from the output dir and excludes
   `*.Tests.*`. To add a layer band, add an `IObjectProvider<IType>` + `Layer` entry (with
   its `MayDependOn`) in `Arch/Support/ArchitectureModel` — the down-only rule covers it.
