@@ -4,7 +4,7 @@ using static ABox.Tests.Harness.Report;
 namespace ABox.Tests.Docs.Tests;
 
 // Runs the standalone doc-engine under `dotnet test` so the document catalog and every authored instance are
-// guarded by CI + ParityGuard like any other guarantee — by shelling out (ADR 0013), never referencing it.
+// guarded by CI + ParityGuard like any other guarantee — by shelling out (ADR 0015), never referencing it.
 public class DocEngineTests
 {
     [Rule("The doc-engine catalog is self-consistent")]

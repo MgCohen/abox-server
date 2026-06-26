@@ -1,11 +1,11 @@
 ---
-status: proposed
+status: accepted
 date: 2026-06-24
 supersedes:
 amends:
 ---
 
-# ADR 0013 — A test Rulebook is a doc-engine document; the test engine owns what spans artifacts
+# ADR 0015 — A test Rulebook is a doc-engine document; the test engine owns what spans artifacts
 
 ## Context
 
@@ -50,24 +50,25 @@ a guarantee is intra-document or spans artifacts.**
   = correlates a document with code or other files.
 - **The dependency arrow points out of the enforcement spine.** A test type MAY
   consume the doc-engine (test → tool; e.g. a `Docs` type that runs `docengine`), but
-  the Harness mechanism (`Rule`, `ParityGuard`, `RulebookFormat`) MUST NOT depend on
+  the Harness mechanism (`Rule`, `ParityGuard`) MUST NOT depend on
   the doc-engine — consistent with ADR 0012's failure-mode budget (the load-bearing
   spine stays zero-dependency).
 
 ## Consequences
 
-- The doc-engine gains the `rule` / `links` / `criterion` vocabulary and the
+- The doc-engine gains the `rule` / `criterion` vocabulary and the
   `rulebook` / `test-template` doctypes — built authoring-side in Phase 1 (PR #89),
   no protected path touched. The "how" lives in `tools/doc-engine/planned-doctypes.md`
   §2 and the catalog, not here.
-- A future **`Docs` test type** can bring document enforcement under `dotnet test` +
+- A **`Docs` test type** brings document enforcement under `dotnet test` +
   `ParityGuard` by shelling out to `docengine check` / `validate` (mirroring
   `Live → claude`), with no Harness dependency on the engine — "no enforcement outside
   `tests/`" without inverting the arrow.
-- Converting the real `tests/**/Rulebook/` files into instances (front-matter + ids)
-  and splitting `RulebookFormat` (generic shape → engine-expressible; per-type +
-  parity → Harness) is *enabled but deferred*; each is a protected change landing via
-  an owner-reviewed PR.
+- The real `tests/**/Rulebook/` files were converted into instances (front-matter)
+  and `RulebookFormat` was **deleted outright, not split**: its three Meta guards were
+  intra-document shape checks the `rulebook` / `test-template` doctypes now subsume
+  (validated by the `Docs` type), and parity was never in it — that lives in
+  `ParityGuard`, untouched. Shipped via owner-reviewed PRs touching protected paths.
 - Cost accepted: two expressions of one model (`template.md` and the `test-template`
   doctype) coexist until/unless unified; a Meta test can later assert they agree.
 - **Revisit if** the doc-engine ever needs cross-artifact or relational constraints

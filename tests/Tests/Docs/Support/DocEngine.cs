@@ -2,7 +2,7 @@ using System.Diagnostics;
 
 namespace ABox.Tests.Docs.Support;
 
-// Shells out to the standalone doc-engine CLI (tools/doc-engine). ADR 0013: a test type MAY run the doc-engine,
+// Shells out to the standalone doc-engine CLI (tools/doc-engine). ADR 0015: a test type MAY run the doc-engine,
 // but the Harness never depends on it — so we invoke it as a process (like Live drives the real claude CLI),
 // never as a reference. Built once per run, then invoked per command with --no-build.
 public static class DocEngine
