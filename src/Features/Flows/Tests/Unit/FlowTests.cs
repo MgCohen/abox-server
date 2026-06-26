@@ -2,7 +2,7 @@ using ABox.Domain.Flow;
 using ABox.Domain.Flow.Operations;
 using ABox.Infrastructure.Operations;
 
-namespace ABox.Tests.Unit.Tests;
+namespace ABox.Flows.Tests.Unit;
 
 public class FlowTests
 {
