@@ -5,8 +5,9 @@
 > the agent is canonical.
 
 Turn an ephemeral **dump** (a brain-dump or source plan) into a conformant,
-block-structured instance under `out/`, gated by the engine. Do NOT invent the
-format — read it from the data (catalog + per-block rubrics).
+block-structured instance, written to the document's **home folder** in the repo
+(not a global output dir) and gated by the engine. Do NOT invent the format — read
+it from the data (catalog + per-block rubrics).
 
 ## Inputs
 - **The dump material** — from any of: a file path, inline pasted text, or the
@@ -38,10 +39,12 @@ format — read it from the data (catalog + per-block rubrics).
      when a block must be referenced across edits.
    - Distill, do not transcribe. Name real files/symbols from the dump; never invent.
 5. **Front matter.** Top of the file, a `---` block: `docType`, `status: draft`,
-   `source: <dump path>`.
-6. **Gate.** `dotnet run --project . -- validate out/<slug>.plan.md`; fix every
+   `source: <dump path>`. Write the file to its home folder — where that kind of
+   document belongs in the repo (e.g. a plan under `PLANS/`, an ADR under
+   `design/adr/`), provided by the caller; there is no global output dir.
+6. **Gate.** `dotnet run --project . -- validate <path/to/doc.md>`; fix every
    violation; repeat until it PASSes.
-7. **Index.** `dotnet run --project . -- outline out/<slug>.plan.md --write`.
+7. **Index.** `dotnet run --project . -- outline <path/to/doc.md> --write`.
 8. **(Optional) grade.** The judge marks each line of the doc-type's `rubric`
    pass/fail; address fails.
 

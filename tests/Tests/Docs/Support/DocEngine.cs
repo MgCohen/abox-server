@@ -8,7 +8,6 @@ namespace ABox.Tests.Docs.Support;
 public static class DocEngine
 {
     public static readonly string ProjectDir = Path.Combine(RepoTree.Root, "tools", "doc-engine");
-    public static readonly string OutDir = Path.Combine(ProjectDir, "out");
 
     private static readonly Lazy<bool> Built = new(BuildOnce);
 

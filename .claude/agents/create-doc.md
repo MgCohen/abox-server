@@ -34,12 +34,15 @@ from that directory with `dotnet run --project . -- <command>`. The data
    - A stable `<!-- id: N -->` under each header; scalar attrs as `key: value` lines.
    - Distill, never transcribe; name real files/symbols from the dump; never invent.
 5. **Front matter.** A top `---` block with `docType`, `status: draft`, `source`.
-6. **Gate.** `dotnet run --project . -- validate <out>`; fix every violation until it PASSes.
-7. **Index.** `dotnet run --project . -- outline <out> --write`.
+6. **Gate.** `dotnet run --project . -- validate <dest>`; fix every violation until it PASSes.
+7. **Index.** `dotnet run --project . -- outline <dest> --write`.
 8. **Grade.** The judge marks each line of the doc type's `rubric` (in
    `doctypes/<docType>.yaml`) pass/fail; address fails, then re-validate.
 
-Default output: `tools/doc-engine/out/<slug>.plan.md`.
+Output path `<dest>`: the document's **home folder** in the repo — where that kind
+of document belongs (e.g. a plan under `PLANS/<slug>.plan.md`, an ADR under
+`design/adr/NNNN-<slug>.adr.md`), taken from the caller. There is no global output
+directory; a document lives where it belongs and is validated in place.
 
 ## Discipline (mirror the doc rubric)
 - The document stands alone — no "the dump" / chat / revision language.

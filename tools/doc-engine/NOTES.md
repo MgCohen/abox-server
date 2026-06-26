@@ -66,7 +66,7 @@ punted. History is preserved as the rationale behind the current design.
 | overview | engine-generated index between `INDEX` markers |
 | prose | summary/context earn full sentences; bold for labels, not emphasis |
 | grouping | nested source — collection types (`collection:true` + `group:`) as `## Group` → `### member`; singletons stay top-level; id stays in its comment |
-| examples | per-block `example` dropped; one judge-validated `exemplar` (`out/git-feature.plan.md`) on the doctype instead — matches visual-plan, kills drift |
+| examples | per-block `example` dropped; one judge-validated exemplar instance per doctype instead — matches visual-plan, kills drift |
 | index | compact grouped list (sections + member titles), not a matrix |
 | field syntax | one canonical form, **no shorthand** — agent-first, so uniform structure beats terseness. Mappings are block notation (`type:`/`enum:` on their own lines); scalar lists stay flow (`[draft, approved]`). The bare-string form (`body: markdown`) is rejected with an actionable error. `required` still defaults (body required, attrs optional) — omitting an optional is not shorthand |
 | kinds (meta-model) | `block`/`doctype` are not special-cased — each is a `kinds/*.yaml` declaring `fields` + `constraints`; one self-describing `_schema/kind.schema.yaml` is the floor. Adding a kind = adding data. Generalising *instance composition* (a kind's `medium`/`composes`) is deferred — it needs a 3rd kind with a different instance shape, and we have none |

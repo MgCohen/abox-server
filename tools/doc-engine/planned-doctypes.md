@@ -32,7 +32,8 @@ so an ADR becomes an enforceable, structured instance.
 | `status` | enum `[proposed, accepted, superseded, deprecated]`, default `proposed` | the ADR lifecycle |
 | `supersedes` / `superseded-by` | (deferred) | needs the cross-ref feature (NOTES punt #3) — omit at first |
 
-The ADR number lives in the filename (`out/0001-foo.adr.md`), like the repo's ADRs.
+The ADR number lives in the filename, and the doc lives in its home folder
+(`design/adr/0001-foo.adr.md`), like the repo's ADRs.
 
 **Blocks**
 
@@ -90,8 +91,8 @@ declared field order.
 
 **Proof:** the real `tests/**/Rulebook/{rules,template}.md` — eight types' worth of `rulebook`
 (invariant + arrowed, the latter using `Outcome`) and `test-template` instances, all `validate`
-PASS under the Docs test. (The original `out/*.rulebook.md` samples were retired once the real
-files took over.)
+PASS under the Docs test. (The engine's former `out/` sample dir was retired once the real files
+took over — instances now live in their home folders, validated in place.)
 
 **Phase 2 — BUILT (owner-gated merge):** a `Docs` test type whose `[Rule]` facts shell out
 to `docengine check` / `validate` (mirroring `Live → claude`), so doc enforcement runs

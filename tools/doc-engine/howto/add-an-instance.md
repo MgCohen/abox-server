@@ -1,8 +1,9 @@
 # HOWTO: add a new instance (a document)
 
-An **instance** is an actual document — a Markdown file under `out/` whose structure
+An **instance** is an actual document — a Markdown file in its **home folder** in the
+repo (a Rulebook under `tests/**/Rulebook/`, a plan under `PLANS/`, …) whose structure
 conforms to a doc type's catalog of blocks. This is the artifact you produce; the
-engine checks it with `validate`.
+engine checks it with `validate`, in place. There is no global output directory.
 
 You will: pick a doc type, write the Markdown with front matter + blocks, and run
 `validate` until it passes.
@@ -26,11 +27,12 @@ dotnet run --project . -- catalog feature-plan
 Read `doctypes/<docType>.yaml` for its `blocks` (allowed), `required` (must appear),
 and `attrs` (front-matter fields).
 
-## 2. Write the file `out/<slug>.<suffix>.md`
+## 2. Write the file in its home folder, `<home>/<slug>.<suffix>.md`
 
-Name the file for the doc type, choosing `<suffix>` to match it: `feature-plan` docs
-are `out/<slug>.plan.md`, `research` docs are `out/<slug>.research.md`. (The suffix
-is a short label for the doc type, not the literal doc-type name.)
+Put the file where that kind of document belongs in the repo (e.g. a plan under
+`PLANS/`), choosing `<suffix>` to match the doc type: `feature-plan` docs are
+`<slug>.plan.md`, `research` docs are `<slug>.research.md`. (The suffix is a short
+label for the doc type, not the literal doc-type name.)
 
 ### Front matter
 
@@ -99,7 +101,7 @@ present are unique.
 ## 3. Verify
 
 ```bash
-dotnet run --project . -- validate out/<slug>.<suffix>.md
+dotnet run --project . -- validate <home>/<slug>.<suffix>.md
 ```
 
 Expect `PASS — conforms to the catalog.` Each violation names the offending block
@@ -108,7 +110,7 @@ Expect `PASS — conforms to the catalog.` Each violation names the offending bl
 ## 4. (Optional) generate the index
 
 ```bash
-dotnet run --project . -- outline out/<slug>.<suffix>.md --write
+dotnet run --project . -- outline <home>/<slug>.<suffix>.md --write
 ```
 
 This injects a generated outline/status board between `INDEX` markers — never
