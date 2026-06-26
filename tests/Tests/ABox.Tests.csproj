@@ -18,6 +18,7 @@
     <Using Include="Xunit" />
     <Using Include="ABox.Tests.Harness" />
     <Using Include="ABox.Tests.Support" />
+    <Using Include="ABox.Tests.Fixtures" />
   </ItemGroup>
 
   <ItemGroup>
@@ -30,6 +31,7 @@
        (contains ".Tests."), so ArchitectureModel's name filter still excludes it from the graph. -->
   <ItemGroup>
     <ProjectReference Include="..\Harness\ABox.Tests.Harness.csproj" />
+    <ProjectReference Include="..\Fixtures\ABox.Tests.Fixtures.csproj" />
     <ProjectReference Include="..\..\src\**\ABox.*.csproj" Exclude="..\..\src\**\Tests\**\*.csproj" />
   </ItemGroup>
 

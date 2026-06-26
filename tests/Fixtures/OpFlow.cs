@@ -1,9 +1,9 @@
 using ABox.Domain.Flow;
 using ABox.Infrastructure.Operations;
 
-namespace ABox.Tests.Support;
+namespace ABox.Tests.Fixtures;
 
-internal sealed class OpFlow<TArgs, TResult>(Operation<TArgs, TResult> op, TArgs args) : Flow
+public sealed class OpFlow<TArgs, TResult>(Operation<TArgs, TResult> op, TArgs args) : Flow
     where TArgs : OperationArgs
 {
     public TResult Result { get; private set; } = default!;

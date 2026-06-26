@@ -1,9 +1,9 @@
 using ABox.Domain.Flow;
 using ABox.Infrastructure.Operations;
 
-namespace ABox.Tests.Support;
+namespace ABox.Tests.Fixtures;
 
-internal static class Op
+public static class Op
 {
     public static async Task<TResult> Exec<TArgs, TResult>(
         Operation<TArgs, TResult> op, TArgs args, string dir = ".", CancellationToken ct = default)

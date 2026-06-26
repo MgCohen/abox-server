@@ -2,11 +2,12 @@
 
   <!-- The test-discovery seam: `dotnet test dirs.proj` runs every test-bearing project, found by LOCATION
        (the colocation model — a test's home is where its owner lives), not by a project-name suffix. Central
-       suites live under tests/; a feature owns its tests under src|tools/**/Tests/. The Harness is the engine
-       those suites reference, not a test project, so it is excluded. See PLANS/test-colocation.md. -->
+       suites live under tests/; a feature owns its tests under src|tools/**/Tests/. The Harness (the engine
+       those suites reference) and Fixtures (feature-independent shared test infra) are libraries, not test
+       projects, so they are excluded. See PLANS/test-colocation.md. -->
   <ItemGroup>
     <ProjectReference Include="tests/**/*.csproj;src/**/Tests/**/*.csproj;tools/**/Tests/**/*.csproj"
-                      Exclude="tests/Harness/**/*.csproj;**/bin/**/*.csproj;**/obj/**/*.csproj" />
+                      Exclude="tests/Harness/**/*.csproj;tests/Fixtures/**/*.csproj;**/bin/**/*.csproj;**/obj/**/*.csproj" />
   </ItemGroup>
 
 </Project>
