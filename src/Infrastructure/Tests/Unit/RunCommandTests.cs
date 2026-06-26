@@ -1,6 +1,6 @@
 using ABox.Infrastructure.CommandLine;
 
-namespace ABox.Tests.Unit.Tests;
+namespace ABox.Infrastructure.Tests.Unit;
 
 public class RunCommandTests
 {

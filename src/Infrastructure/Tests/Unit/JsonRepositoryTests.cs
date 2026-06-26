@@ -1,6 +1,6 @@
 using ABox.Infrastructure.Storage;
 
-namespace ABox.Tests.Unit.Tests;
+namespace ABox.Infrastructure.Tests.Unit;
 
 public sealed class JsonRepositoryTests : IDisposable
 {
