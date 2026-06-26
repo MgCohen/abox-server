@@ -260,7 +260,61 @@ Beyond the academic literature, the golden-paths-for-agents pattern is being art
 
 ---
 
-## 15. Academic literature (focused sweep)
+## 15. Practitioner field reports (UNVERIFIED — read for signal, not authority)
+
+> ⚠️ **Different evidence class.** Every source below is **anecdotal and non-authoritative** — personal blogs, Medium/dev.to/Substack posts, individual engineers' writeups. Not peer-reviewed, not institutional; several authors are pseudonymous or have no verifiable bio, and at least two are vendor/agency blogs with marketing incentives. Quotes are fetched verbatim, nothing paraphrased into quotation marks. **Treat each as one person's lived report** — useful for spotting recurring patterns, *not* as evidence any approach works. Read for signal, weigh accordingly.
+
+**David (minatoplanb) — *I Wrote 200 Lines of Rules for Claude Code. It Ignored Them All.* (dev.to, 2026)** · `cred: self-described power user, pseudonymous, no bio`
+> "I'm a Claude Code power user. 12+ hours daily. My CLAUDE.md file — the instruction file that tells Claude how to behave — has over 200 lines of rules. It still makes the same mistakes."
+— More rules paradoxically lowered compliance; concluded enforcement-in-code beats behavioral instructions. [link](https://dev.to/minatoplanb/i-wrote-200-lines-of-rules-for-claude-code-it-ignored-them-all-4639)
+
+**Zarar Siddiqi — *Don't rely on instructions, use Agent Hooks to enforce guardrails* (zarar.dev, 2026)** · `cred: individual engineer's personal blog`
+> "The agent never gets to put a raw `<input>` on disk as the write dies and my message tells it to go use the component instead… Now the agent literally can't wrap up until the ratchet test is passing."
+— Moved from instruction files to deterministic lifecycle hooks because instructions alone failed to constrain the agent. [link](https://zarar.dev/agent-hooks-deterministic-guardrails-for-ai-generated-code/)
+
+**Cordero Core — *Your CLAUDE.md Is Making Your Agent Dumber* (Medium, 2026)** · `cred: individual Medium author, no verified bio`
+> "I spent a week convinced my agent had gotten worse after an update… Then I opened my CLAUDE.md. There it was — three months of accumulated instructions, half of which described a codebase that had moved on without them."
+— Stale, accumulated guardrails actively degraded the agent; the fix was pruning, not adding. [link](https://medium.com/@cdcore/your-claude-md-is-making-your-agent-dumber-953f6dbed308)
+
+**Kumaran Srinivasan — *My Claude Code Setup | Here's What I Learned* (Medium, 2026)** · `cred: individual practitioner, light bio`
+> "I initially dumped everything into CLAUDE.md — every pattern, every edge case, every convention for every stack… and Claude started ignoring rules."
+— A minimal CLAUDE.md improved behavior; an exhaustive one caused wholesale rule-ignoring. [link](https://medium.com/@kumaran.isk/my-claude-code-setup-heres-what-i-learned-d0403b1b1fec)
+
+**Yajin Zhou — *Claude Code's Confession: Why an AI Agent Broke Its Own Rules* (yajin.org, 2026)** · `cred: named individual, personal blog; identity unverified`
+> "The root cause isn't missing rules — the rules are already comprehensive. `.claude/rules/tdd.md` has 300+ lines covering all scenarios. The problem is that I violated them in practice."
+— Comprehensive written guardrails (300+ line TDD rules) were silently skipped in practice; rule quantity wasn't the lever. [link](https://yajin.org/blog/2026-03-22-why-ai-agents-break-rules/)
+
+**Robert Hafner (tedivm) — *Beyond the Vibes: A Rigorous Guide to AI Coding Assistants and Agents* (blog.tedivm.com, 2026)** · `cred: long-time engineer / OSS author, established blog`
+> "Without the guardrails that come with tests, the deterministic quality controls of static analysis, the structure of an existing code base, and the documentation to pull it all together your coding assistant will make a mess of things: and it will potentially do so quickly."
+— Pro-guardrails: tests, static analysis, and codebase structure are the scaffolding that keeps agents from making fast messes. [link](https://blog.tedivm.com/guides/2026/03/beyond-the-vibes-coding-assistants-and-agents/)
+
+**Dexter Horthy / HumanLayer — *Writing a good CLAUDE.md* (HumanLayer Blog, 2025)** · `cred: eng at agent-tooling startup; vendor-adjacent`
+> "At HumanLayer, our root `CLAUDE.md` file is *less than sixty lines*."
+— Their own production root instruction file is deliberately tiny — terseness over comprehensiveness. [link](https://www.humanlayer.dev/blog/writing-a-good-claude-md)
+
+**Developers Digest — *My AI Developer Workflow in 2026* (developersdigest.tech, 2026)** · `cred: individual dev blog/newsletter, light attribution`
+> "Every coding session follows the same five-step pattern. It sounds rigid, but the structure is what makes it fast… Ten minutes of CLAUDE.md saves hours of corrections."
+— A deliberately rigid, structured workflow plus an up-front context file is what makes the agent fast, not slow. [link](https://www.developersdigest.tech/blog/ai-developer-workflow-2026)
+
+**Max Woolf (minimaxir) — *An AI agent coding skeptic tries AI agent coding, in excessive detail* (minimaxir.com, 2026)** · `cred: well-known data scientist/engineer; self-identified skeptic`
+> "it adheres to every rule despite the file's length, and in the instances where I accidentally query an agent without having an AGENTS.md, it's very evident."
+— A self-described skeptic was surprised a long AGENTS.md was actually followed, and its absence was obvious. [link](https://minimaxir.com/2026/02/ai-agent-coding/)
+
+**Empyreal Infotech — *Cursor, Copilot, Claude Code: Inside a 25-Person Dev Team* (empyrealinfotech.com, 2026)** · `cred: agency blog (marketing incentive); no named author`
+> "The developers who use AI tools best have acceptance rates in the 40 to 60 percent range: high enough to indicate the tool is generating useful output, low enough to indicate genuine scrutiny is happening before acceptance."
+— Team imposed an AI-PR review checklist and AI/non-AI pairing; best users reject 40–60% of output. [link](https://www.empyrealinfotech.com/blogs/cursor-copilot-claude-code-inside-25-person-dev-team)
+
+**Anonymous (relayed via redreamality) — *CLAUDE.md and AGENTS.md, In Depth* (redreamality.com, 2025)** · `cred: experiment relayed secondhand; original author anonymous`
+> "cutting from 3,000 characters to 1,000 produced clear improvement; cutting to 800 was the sweet spot"
+— Empirically tuned an instruction file by shrinking it; found a small "sweet spot" beyond which more context hurt. [link](https://redreamality.com/blog/claude-md-agents-md-deep-dive/)
+
+> **Recurring themes (convergence = weak evidence, not proof).** (1) **Bigger instruction/guardrail files reduce compliance** — multiple unrelated authors describe a 200–300 line `CLAUDE.md` being ignored, then improving by ruthlessly pruning to dozens of lines or a measured "sweet spot." (2) **Soft guardrails (markdown rules) are unreliable; practitioners migrate to hard, deterministic enforcement** — hooks, ratchet tests, static analysis, PR checklists — because the agent reads a rule then decides it's an exception. (3) **Staleness is a failure mode** — guardrails rot, and an out-of-date map silently degrades the agent worse than no map. Skeptics (Woolf) were partly converted by seeing rules honored; pro-structure voices (Hafner) frame existing codebase structure as what makes agents *fast*. The real disagreement isn't "constrain vs. don't" — it's **terse, enforced, fresh guardrails vs. verbose advisory ones.**
+>
+> **Why this matters for A.Box:** these reports independently validate the core bet — *advisory instructions don't hold; deterministic enforcement does* — while warning against the failure mode of over-stuffing the guidance surface. The golden-path move (encode the path in executable structure, keep the prose terse) is exactly what frustrated practitioners converge on.
+
+---
+
+## 16. Academic literature (focused sweep)
 
 The vendor sources above are industry positioning. There is also a **real but young and fragmented academic literature** behind the idea — it just doesn't use the words "golden path." It crystallized almost entirely in **2024–2026** and is spread across ~8 framings you have to triangulate: *deterministic workflow*, *schema/policy-gated*, *constrained decoding*, *typed holes*, *neuro-symbolic*. Two clusters are genuinely **mature and peer-reviewed** (constrained decoding; runtime guardrails); the agent-orchestration cluster that most directly mirrors the A.Box thesis is overwhelmingly **2025–2026 preprints, not yet peer-reviewed**.
 
@@ -306,7 +360,7 @@ The vendor sources above are industry positioning. There is also a **real but yo
 
 ---
 
-## 16. Aside — the "architecture card game" lens (BuilderCards → golden paths)
+## 17. Aside — the "architecture card game" lens (BuilderCards → golden paths)
 
 A useful intuition pump. **AWS BuilderCards** is a deckbuilding tabletop game (created by AWS Solutions Architect **David Heidt**) where you acquire AWS-service cards and combine them into **Well-Architected** architectures for points; a digital cousin, **AWS Card Clash**, does the same on mobile. The rules constrain which card combinations are *sound* — only certain compositions score.
 
@@ -331,7 +385,8 @@ That is structurally the **golden-path move**: a constrained catalog where only 
 - **Golden path ≠ paved road exactly** — cousins with different emphases (opinionated-support vs non-mandated-optionality).
 - **"Enabled via IDP" is a later reframing**, not the 2020 origin.
 - **PART 2's vendor layer is tentative:** the IDP/control-plane material (§9–12) is from reputable but **promotional vendor blogs** (Microsoft, Roadie, Harness) and a **CNCF forecast** — fetched and claim-extracted, not all adversarially verified.
-- **PART 2's academic layer (§15) is stronger but young:** the idea is well-grounded in **peer-reviewed** constrained-decoding (EMNLP/ICML/NeurIPS/MLSys) and runtime-guardrail (ICSE 2026) work, but the agent-orchestration thesis that most directly mirrors A.Box rests on **2025–2026 preprints, not yet peer-reviewed**. No canonical "deterministic scaffolding for agents" paper exists yet; the literature uses no shared term for it.
+- **PART 2's academic layer (§16) is stronger but young:** the idea is well-grounded in **peer-reviewed** constrained-decoding (EMNLP/ICML/NeurIPS/MLSys) and runtime-guardrail (ICSE 2026) work, but the agent-orchestration thesis that most directly mirrors A.Box rests on **2025–2026 preprints, not yet peer-reviewed**. No canonical "deterministic scaffolding for agents" paper exists yet; the literature uses no shared term for it.
+- **PART 2's practitioner reports (§15) are explicitly NON-authoritative** — anecdotal blog posts, some pseudonymous or vendor-incentivized. They are kept in a separate, clearly-walled section and used only to surface *recurring* patterns (convergence as weak signal), never as proof.
 
 ## Open questions / where to dig next
 
@@ -369,8 +424,10 @@ That is structurally the **golden-path move**: a constrained catalog where only 
 
 **Trusted industry sources (Part 2, §14)** — 12 quoted sources (Spotify, Backstage/Honk, Microsoft, GitHub, Martin Fowler/Böckeler, Thoughtworks Radar, CNCF, InfoQ/LinkedIn, Humanitec, Port, Harness, Roadie, Red Hat) with verbatim quotes + links inline.
 
-**Academic literature (Part 2, §15)** — full list with venues/links in §15. Peer-reviewed anchors: Geng et al. (EMNLP 2023, arXiv:2305.13971); Park et al. (NeurIPS 2024, 2405.21047); Dong et al. (MLSys 2025, 2411.15100); Beurer-Kellner et al. (ICML 2024, 2403.06988); Blinn et al. (OOPSLA 2024, 2409.00921); Wang et al. (ICSE 2026, 2503.18666). Preprint wave: 2508.02721, 2502.14345, 2507.16459, 2604.11378, 2603.06394, 2602.02034, 2410.19736, 2509.23994, 2505.03574, 2604.05150, 2411.13269, 2606.13405, 2603.22386, 2507.21504.
+**Practitioner field reports (Part 2, §15 — UNVERIFIED)** — 12 anecdotal writeups (minatoplanb, Zarar Siddiqi, Cordero Core, Kumaran Srinivasan, Yajin Zhou, Robert Hafner/tedivm, HumanLayer, Developers Digest, Max Woolf/minimaxir, Empyreal Infotech, redreamality) with verbatim quotes + credibility notes inline. Read for signal, not authority.
 
-**Architecture card-game aside (§16):** AWS BuilderCards (aws.amazon.com/gametech/buildercards) · AWS Card Clash.
+**Academic literature (Part 2, §16)** — full list with venues/links in §16. Peer-reviewed anchors: Geng et al. (EMNLP 2023, arXiv:2305.13971); Park et al. (NeurIPS 2024, 2405.21047); Dong et al. (MLSys 2025, 2411.15100); Beurer-Kellner et al. (ICML 2024, 2403.06988); Blinn et al. (OOPSLA 2024, 2409.00921); Wang et al. (ICSE 2026, 2503.18666). Preprint wave: 2508.02721, 2502.14345, 2507.16459, 2604.11378, 2603.06394, 2602.02034, 2410.19736, 2509.23994, 2505.03574, 2604.05150, 2411.13269, 2606.13405, 2603.22386, 2507.21504.
+
+**Architecture card-game aside (§17):** AWS BuilderCards (aws.amazon.com/gametech/buildercards) · AWS Card Clash.
 
 *Run stats: 6 search angles · 22 sources fetched · 98 claims extracted · 25 verified · 24 confirmed / 1 refuted.*
