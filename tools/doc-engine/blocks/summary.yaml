@@ -1,0 +1,8 @@
+type: summary
+description: One-paragraph what-and-why at the very top.
+rubric:
+  outcome-first: Outcome-first — state the objective and what "done" means, concretely.
+  tight:         One tight paragraph of real prose, not a bullet skeleton or a wall.
+  standalone:    Understandable with no prior context.
+body:
+  type: markdown

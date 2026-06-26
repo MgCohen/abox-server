@@ -1,0 +1,14 @@
+type: open-question
+collection: true
+group: Open Questions
+description: A genuinely unresolved decision the reader must make.
+rubric:
+  question-and-options: State the question and the realistic options.
+  lean:                 Put the recommended default in `lean`.
+  not-decided:          If already decided, it is a decision, not an open question.
+  last:                 The group goes last.
+attrs:
+  lean:
+    type: string
+body:
+  type: markdown
