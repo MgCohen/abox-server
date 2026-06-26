@@ -37,3 +37,4 @@ Directory.Build.props     | @MgCohen | review   | Solution-wide build config (nu
 .editorconfig             | @MgCohen | review   | Mechanical style rules.
 .gitattributes            | @MgCohen | review   | Line-ending normalization that keeps the POSIX enforcers LF.
 ABox.slnx                 | @MgCohen | review   | The one unified solution definition.
+src/Api/**                | @MgCohen | review   | Published contract surface — the ABox.Api rollup shipped off-box to the client.

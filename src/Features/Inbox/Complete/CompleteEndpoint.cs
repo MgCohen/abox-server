@@ -1,6 +1,6 @@
 using FastEndpoints;
 using ABox.Domain.Inbox;
-using ABox.Features.Inbox.Contracts;
+using ABox.Features.Inbox.Api;
 
 namespace ABox.Features.Inbox.Complete;
 

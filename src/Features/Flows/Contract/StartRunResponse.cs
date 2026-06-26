@@ -1,3 +1,3 @@
-namespace ABox.Features.Flows.Contracts;
+namespace ABox.Features.Flows.Contract;
 
 public sealed record StartRunResponse(Guid Id);

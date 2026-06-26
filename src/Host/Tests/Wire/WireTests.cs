@@ -2,8 +2,8 @@ using System.Net;
 using System.Net.Http.Json;
 using Microsoft.Extensions.DependencyInjection;
 using ABox.Domain.Projects;
-using ABox.Features.Flows.Contracts;
-using ABox.Features.Projects.Contracts;
+using ABox.Features.Flows.Contract;
+using ABox.Features.Projects.Api;
 using ABox.Infrastructure.Storage;
 
 namespace ABox.Host.Tests.Wire;

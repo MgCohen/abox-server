@@ -1,6 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
-using ABox.Features.Decisions.Contracts;
+using ABox.Features.Decisions.Contract;
 
 namespace ABox.Host.Tests.Wire;
 

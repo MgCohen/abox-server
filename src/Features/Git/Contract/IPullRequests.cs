@@ -1,4 +1,4 @@
-namespace ABox.Features.Git.Contracts;
+namespace ABox.Features.Git.Contract;
 
 public interface IPullRequests
 {

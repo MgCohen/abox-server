@@ -7,7 +7,7 @@
     <Project Path="src/Domain/Projects/ABox.Domain.Projects.csproj" />
     <Project Path="src/Domain/Inbox/ABox.Domain.Inbox.csproj" />
     <Project Path="src/Domain/Decisions/ABox.Domain.Decisions.csproj" />
-    <Project Path="src/Features/Flows/Contracts/ABox.Flows.Contracts.csproj" />
+    <Project Path="src/Features/Flows/Contract/ABox.Flows.Contract.csproj" />
     <Project Path="src/Features/Flows/Shared/ABox.Flows.Shared.csproj" />
     <Project Path="src/Features/Flows/Start/ABox.Flows.Start.csproj" />
     <Project Path="src/Features/Flows/List/ABox.Flows.List.csproj" />
@@ -16,18 +16,19 @@
     <Project Path="src/Features/Flows/Watch/ABox.Flows.Watch.csproj" />
     <Project Path="src/Features/Flows/Catalog/ABox.Flows.Catalog.csproj" />
     <Project Path="src/Features/Flows/Module/ABox.Flows.Module.csproj" />
-    <Project Path="src/Features/Git/Contracts/ABox.Git.Contracts.csproj" />
+    <Project Path="src/Features/Git/Contract/ABox.Git.Contract.csproj" />
     <Project Path="src/Features/Git/ABox.Git.csproj" />
-    <Project Path="src/Features/Projects/Contracts/ABox.Projects.Contracts.csproj" />
+    <Project Path="src/Features/Projects/Api/ABox.Projects.Api.csproj" />
     <Project Path="src/Features/Projects/ABox.Projects.csproj" />
-    <Project Path="src/Features/Inbox/Contracts/ABox.Inbox.Contracts.csproj" />
+    <Project Path="src/Features/Inbox/Api/ABox.Inbox.Api.csproj" />
     <Project Path="src/Features/Inbox/ABox.Inbox.csproj" />
-    <Project Path="src/Features/Decisions/Contracts/ABox.Decisions.Contracts.csproj" />
+    <Project Path="src/Features/Decisions/Contract/ABox.Decisions.Contract.csproj" />
     <Project Path="src/Features/Decisions/ABox.Decisions.csproj" />
-    <Project Path="src/Features/Tasks/Contracts/ABox.Tasks.Contracts.csproj" />
+    <Project Path="src/Features/Tasks/Contract/ABox.Tasks.Contract.csproj" />
     <Project Path="src/Features/Tasks/Create/ABox.Tasks.Create.csproj" />
     <Project Path="src/Features/Tasks/Module/ABox.Tasks.Module.csproj" />
     <Project Path="src/Host/ABox.Host.csproj" />
+    <Project Path="src/Api/ABox.Api.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Harness/ABox.Tests.Harness.csproj" />

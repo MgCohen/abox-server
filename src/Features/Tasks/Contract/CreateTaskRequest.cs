@@ -1,3 +1,3 @@
-namespace ABox.Features.Tasks.Contracts;
+namespace ABox.Features.Tasks.Contract;
 
 public sealed record CreateTaskRequest(string Title);

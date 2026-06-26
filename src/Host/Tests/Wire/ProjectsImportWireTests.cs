@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
-using ABox.Features.Projects.Contracts;
+using ABox.Features.Projects.Api;
 using ABox.Infrastructure.Paths;
 using ABox.Infrastructure.Storage;
 

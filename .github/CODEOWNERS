@@ -21,3 +21,4 @@ Directory.Build.props @MgCohen
 .editorconfig @MgCohen
 .gitattributes @MgCohen
 ABox.slnx @MgCohen
+src/Api/** @MgCohen
