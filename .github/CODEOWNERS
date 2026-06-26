@@ -6,6 +6,10 @@
 tests/Harness/** @MgCohen
 tests/Meta/** @MgCohen
 tests/**/Rulebook/** @MgCohen
+src/**/Tests/**/Rulebook/** @MgCohen
+tools/**/Tests/**/Rulebook/** @MgCohen
+tests/Templates/** @MgCohen
+tests/Fixtures/** @MgCohen
 tests/Tests/Arch/** @MgCohen
 tests/Tests/Structure/** @MgCohen
 .github/** @MgCohen

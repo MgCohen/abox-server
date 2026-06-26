@@ -1,9 +1,14 @@
-# Tests — the product suite (six Rulebook types)
+# Tests — the central, ownerless suite (`ABox.Tests.Central`)
 
-The product test assembly (`ABox.Tests`). Every test *type* is a Rulebook with the same folder shape
+> **Co-location ([`../../PLANS/test-colocation.md`](../../PLANS/test-colocation.md)).** This tree now holds
+> only the **ownerless** types — `Arch`, `Structure`, `Docs` — in `ABox.Tests.Central`. A feature's
+> `Unit`/`Wire`/`E2E`/`Live` live with the feature under `src/<…>/<Owner>/Tests/`; the `Meta` self-suite
+> (`../Meta`) polices every assembly. Use **new-feature-tests** to add a feature's suite.
+
+The central test assembly (`ABox.Tests.Central`). Every test *type* is a Rulebook with the same folder shape
 (`<Type>/Rulebook/`, `<Type>/Tests/`, `<Type>/Support/`) — see [`../Harness/README.md`](../Harness/README.md)
-for the convention and the parity discipline. The six types coexist in one assembly because parity scopes
-`[Rule]` discovery by namespace, so each type's Rulebook is counted against its own tests only.
+for the convention and the parity discipline. The ownerless types coexist in one assembly because parity
+scopes `[Rule]` discovery by namespace, so each type's Rulebook is counted against its own tests only.
 
 These six test the **product**. The test-system's own checks live apart, in the sibling
 [`../Meta/`](../Meta/README.md) self-suite (`ABox.Tests.Meta`), which validates this suite from outside.

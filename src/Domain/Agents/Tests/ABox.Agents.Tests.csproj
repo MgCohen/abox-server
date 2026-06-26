@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <Import Project="..\..\..\..\tests\TestProject.props" />
+
+  <PropertyGroup>
+    <RootNamespace>ABox.Agents.Tests</RootNamespace>
+    <AssemblyName>ABox.Agents.Tests</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="TestsSourceDir" Value="$(MSBuildProjectDirectory)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="ABox.Tests.Fixtures" />
+    <Using Include="ABox.Agents.Tests.Support" />
+    <Using Include="ABox.Domain.Agents.Agents" Alias="DomainAgents" />
+  </ItemGroup>
+
+  <!-- FlowHarness composes the real host app for the agent E2E, so this suite references the Host and the
+       ASP.NET shared framework — the deterministic backbone test boots the same composition root the app does. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\tests\Harness\ABox.Tests.Harness.csproj" />
+    <ProjectReference Include="..\..\..\..\tests\Fixtures\ABox.Tests.Fixtures.csproj" />
+    <ProjectReference Include="..\ABox.Domain.Agents.csproj" />
+    <ProjectReference Include="..\..\Flow\ABox.Domain.Flow.csproj" />
+    <ProjectReference Include="..\..\..\Infrastructure\ABox.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\Host\ABox.Host.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,5 +1,12 @@
 # tests/ — the Rulebook discipline
 
+> **Tests are co-located ([`../PLANS/test-colocation.md`](../PLANS/test-colocation.md)).** A feature's
+> `Unit`/`Wire`/`E2E`/`Live` live with the feature under `src/<…>/<Owner>/Tests/` (`ABox.<Owner>.Tests`),
+> glob-discovered by `dirs.proj` and policed by Meta. Under `tests/` now: the ownerless types
+> (`Tests/` = `Arch`/`Structure`/`Docs` in `ABox.Tests.Central`, `Meta/`), the shared `Harness/`, the central
+> per-type `Templates/`, and feature-independent `Fixtures/`. Run the full suite with `dotnet test dirs.proj`;
+> stand up a feature's tests with the **new-feature-tests** skill.
+
 The front door for this repo's tests. It routes; the detail lives one level down.
 
 Three pieces:

@@ -48,4 +48,26 @@ public class TaxonomyTests
             Move each into a registered type's Tests/ folder.
             """);
     }
+
+    [Rule("Central and Feature types partition the registered types")]
+    [Fact]
+    public void CentralAndFeaturePartitionRegistered()
+    {
+        var overlap = TestTypes.Central.Intersect(TestTypes.Feature, StringComparer.Ordinal)
+            .OrderBy(s => s, StringComparer.Ordinal).ToList();
+        var union = TestTypes.Central.Concat(TestTypes.Feature)
+            .OrderBy(s => s, StringComparer.Ordinal).ToList();
+        var registered = TestTypes.Registered
+            .OrderBy(s => s, StringComparer.Ordinal).ToList();
+        var unclassified = registered.Except(union, StringComparer.Ordinal).ToList();
+        var stray = union.Except(registered, StringComparer.Ordinal).ToList();
+
+        Assert.True(overlap.Count == 0 && unclassified.Count == 0 && stray.Count == 0,
+            $"""
+            TestTypes.Central and TestTypes.Feature must be a disjoint cover of TestTypes.Registered:
+              In both lists (pick one home):        {Bullets(overlap)}
+              Registered but unclassified (no home): {Bullets(unclassified)}
+              Classified but not registered (stray): {Bullets(stray)}
+            """);
+    }
 }

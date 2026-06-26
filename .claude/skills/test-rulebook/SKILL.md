@@ -10,9 +10,16 @@ description: >-
 
 # Adding a test = adding (or citing) a Rule
 
-Every product test *type* lives under `tests/Tests/` as a **Rulebook**: a `<Type>/Rulebook/` folder
-with `template.md` (`## Summary` + a `## Criteria` rubric) and `rules.md` (front-matter + a `## Rules`
-list of `### ` Rules), each Rule enforced by a `[Rule("<header>")]` xUnit fact in `<Type>/Tests/`. Both
+> **Layout moved (PLANS/test-colocation.md).** A feature's `Unit`/`Wire`/`E2E`/`Live` tests now live **with
+> the feature** under `src/<…>/<Owner>/Tests/`, owned by `ABox.<Owner>.Tests`; only the ownerless types
+> (`Arch`/`Structure`/`Docs` + `Meta`) and the shared `Harness`/`Templates`/`Fixtures` stay under `tests/`.
+> Per-type `template.md` files are central in `tests/Templates/`; each feature's `rules.md` is co-located
+> beside its tests. To stand up a feature's test assembly, use the **new-feature-tests** skill. The
+> Rule/parity discipline below is unchanged — only *where the test code sits* differs.
+
+Every product test *type* is a **Rulebook**: a `<Type>/Rulebook/` folder
+with a `rules.md` (front-matter + a `## Rules` list of `### ` Rules) pointing at a central `template.md`
+(`## Summary` + a `## Criteria` rubric), each Rule enforced by a `[Rule("<header>")]` xUnit fact beside it. Both
 files are doc-engine instances (a `docType` front-matter header); the **Docs** type validates their shape
 by shelling out to the doc-engine. The **Meta** self-suite (`tests/Meta`, its own assembly) runs one parity
 check over every product type — and over itself — and fails the build if a Rule has no test or a test cites

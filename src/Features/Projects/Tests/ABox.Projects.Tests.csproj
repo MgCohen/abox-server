@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <Import Project="..\..\..\..\tests\TestProject.props" />
+
+  <PropertyGroup>
+    <RootNamespace>ABox.Projects.Tests</RootNamespace>
+    <AssemblyName>ABox.Projects.Tests</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="TestsSourceDir" Value="$(MSBuildProjectDirectory)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\tests\Harness\ABox.Tests.Harness.csproj" />
+    <ProjectReference Include="..\..\..\Domain\Projects\ABox.Domain.Projects.csproj" />
+    <ProjectReference Include="..\..\..\Infrastructure\ABox.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Flows\Start\ABox.Flows.Start.csproj" />
+  </ItemGroup>
+
+</Project>

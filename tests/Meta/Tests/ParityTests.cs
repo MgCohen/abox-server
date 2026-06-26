@@ -11,7 +11,7 @@ public class ParityTests
     public void EveryTypeKeepsItsRulebookAndTestsInSync()
     {
         var product = typeof(SuiteAnchor).Assembly;
-        foreach (var type in TestTypes.Registered)
+        foreach (var type in RepoTree.TestTypeFolders().Where(TestTypes.IsRegistered))
             ParityGuard.For(product, type).Assert();
 
         ParityGuard.ForRulebook(
