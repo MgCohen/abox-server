@@ -2,7 +2,7 @@ using ABox.Domain.Projects;
 using ABox.Features.Flows.Start;
 using ABox.Infrastructure.Storage;
 
-namespace ABox.Tests.Unit.Tests;
+namespace ABox.Projects.Tests.Unit;
 
 public sealed class ProjectResolverTests : IDisposable
 {

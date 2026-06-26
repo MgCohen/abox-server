@@ -1,7 +1,7 @@
 using ABox.Domain.Projects;
 using ABox.Infrastructure.Storage;
 
-namespace ABox.Tests.Unit.Tests;
+namespace ABox.Projects.Tests.Unit;
 
 public sealed class ProjectRepositoryTests : IDisposable
 {

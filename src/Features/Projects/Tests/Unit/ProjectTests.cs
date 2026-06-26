@@ -1,6 +1,6 @@
 using ABox.Domain.Projects;
 
-namespace ABox.Tests.Unit.Tests;
+namespace ABox.Projects.Tests.Unit;
 
 public sealed class ProjectTests
 {
