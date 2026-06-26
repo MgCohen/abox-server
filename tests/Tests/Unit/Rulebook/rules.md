@@ -1,5 +1,11 @@
-Template: [template.md](./template.md)
-Harness: [Rulebook convention](../../../Harness/README.md)
+---
+docType: rulebook
+testType: unit
+template: ./template.md
+harness: ../../../Harness/README.md
+---
+
+## Rules
 
 ### AutoPolicy on a dangerous Bash command → denied with a guardrail reason
 - **Why:** the autonomous guardrail must refuse destructive shell commands (rm -rf, force push, curl|sh, sudo,
@@ -206,14 +212,35 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 ### DetectStartupDialog given dialog text split by ANSI escapes → still classifies it
 - **Why:** the terminal interleaves color/style escape codes through the prompt text, so detection must see past the noise or it would miss real dialogs on a styled terminal.
 
+### EnvScrub maps each agent to its own billing keys → claude scrubs the Anthropic keys, codex the OpenAI key
+- **Why:** oracle A1 — each CLI bills the metered API instead of the subscription if its billing key is visible, so codex must guard OPENAI_API_KEY just as claude guards the Anthropic keys; the lists are per-agent so a stray key for one CLI never blocks the other.
+
+### BuildCredentialLauncher → reads the OAuth token from the mount file in-box and never embeds the token value
+- **Why:** the box must bill the owner's subscription, so the credential is read from a 0600 session-mount file into CLAUDE_CODE_OAUTH_TOKEN inside the box at exec time — never embedded in the launch string. That keeps the token off the PTY-echoed exec line AND out of the container's `docker inspect` env, while staying an OAuth token (not an API key) so the scrub still selects subscription billing (oracle A1).
+
+### BuildBoxEnv never carries the credential → the token never reaches the PTY-echoed exec line
+- **Why:** the exec line is typed into the host PTY, which echoes it into the drive buffer (logged, surfaced); keeping the credential out of the per-exec env is what makes the token leak-safe on the transcript, with the in-box launcher reading it from a mount file instead.
+
+### BuildBoxEnv with an egress proxy → routes the box out through HTTPS_PROXY and HTTP_PROXY
+- **Why:** the box's only sanctioned route is the allowlist proxy, so both vars must point at it or the box either can't reach Anthropic or slips the egress boundary that keeps the in-box token leak-safe.
+
+### A credentialed box with no confining network or proxy → refused before it opens
+- **Why:** the per-turn token is only safe behind the egress boundary (ADR 0013 decision 4), so a box holding it on docker's default bridge must fail closed rather than expose a silent exfil channel.
+
+### A credentialed box behind the egress network and proxy → permitted to open
+- **Why:** the sanctioned configuration — token plus confining network and proxy — must pass the guard, or every real billed turn would be blocked.
+
+### A box with no credential → permitted to open without egress confinement
+- **Why:** an unbilled turn carries nothing to exfiltrate, so the confinement requirement must apply only when a credential is present, leaving unprovisioned/dev runs workable.
+
 ### BuildArgs with no session id → a fresh exec run that reads the prompt from stdin
 - **Why:** a fresh turn must not silently inherit a prior session, and the CLI only receives the prompt if stdin ("-") is wired as the final arg.
 
 ### BuildArgs with a session id → an exec resume run that threads that session id
 - **Why:** conversation continuity depends on resume carrying the exact prior session id, or the agent loses all context from earlier turns.
 
-### BuildArgs → carries the working dir, output path, OS-aware sandbox, model, and JSON flags
-- **Why:** each flag is load-bearing for correct execution, and the Windows sandbox bypass prevents codex's sandbox from failing to spawn on a platform that can't host it.
+### BuildArgs → carries the working dir, output path, sandbox bypass, model, and JSON flags
+- **Why:** each flag is load-bearing for correct execution; codex's own sandbox is bypassed because the confined box is the wall now (ADR 0013), and nesting an OS sandbox inside the box is redundant and fragile.
 
 ### BuildArgs with a blank model → omits the --model flag entirely
 - **Why:** passing an empty --model value would override the CLI's configured default with garbage instead of falling back to it.
@@ -272,10 +299,10 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 ### Commit with an invalid input (no files or blank message) → refused with ArgumentException
 - **Why:** an empty file set or whitespace-only message yields a meaningless or empty commit, so the call must be rejected at the boundary rather than producing junk history.
 
-### ChangedFiles on a dirty tree → returns each modified and untracked path
+### Status on a dirty tree → Paths lists each modified and untracked path
 - **Why:** callers decide what to stage/commit from this list, so both already-tracked edits and brand-new files must surface or work silently gets dropped.
 
-### CheckDirty → reports whether the working tree has uncommitted changes
+### Status → IsDirty reports whether the working tree has uncommitted changes
 - **Why:** the dirty flag gates whether a commit step runs at all, so a false negative would skip persisting real work and a false positive would commit nothing.
 
 ### Commit of listed files → stages and commits them, returning the full hash and subject and leaving the tree clean
@@ -284,8 +311,11 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 ### Diff on a dirty tree → reports the changed-file count and the diff text naming each file
 - **Why:** the diff is what gets shown to the model/user for review, so the count and per-file text must reflect the real edits, not a stale or empty snapshot.
 
-### ChangedFiles after a reverting checkout → reports no changes
+### Status after a reverting checkout → reports a clean tree
 - **Why:** a revert that still showed phantom changes would trigger needless commits and mislead the dirty check, so state must reset to truly clean.
+
+### Force push to a remote that advanced since the last fetch → refused before it can overwrite
+- **Why:** the cascade force-pushes rebased branches; `--force-with-lease --force-if-includes` must reject a stale overwrite so a collaborator's pushed work is never silently lost (a lease alone is defeated by a background fetch — spike research/stacked-prs.md §9).
 
 ### Agent emitting NEEDS_INPUT → blocks on a pending decision until a human resolves it, then resumes to Completed
 - **Why:** the whole point of interactive resolution is that the run must pause for human input rather than guessing or failing, and must actually carry the human's answer forward to finish the work.
@@ -311,8 +341,8 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 ### Codex resume → reuses the prior session via bypass, without re-setting cd or sandbox
 - **Why:** a resume must continue the existing CLI session as-is; re-asserting --cd/--sandbox would fork context or re-prompt approvals, so resume relies on the already-granted bypass instead.
 
-### Codex new turn → sets cd and the OS-specific sandbox default
-- **Why:** a fresh turn has no inherited session, so it must explicitly anchor the working directory and pick the per-OS sandbox so the agent runs with correct scope on Windows vs non-Windows.
+### Codex new turn → sets cd and bypasses its own sandbox, since the box is the wall
+- **Why:** a fresh turn has no inherited session, so it must explicitly anchor the working directory; the confined box is the sandbox now (ADR 0013), so codex's own OS sandbox is bypassed rather than nested inside the box.
 
 ### Codex driven with a non-bypass policy → throws an actionable NotSupportedException naming the policy
 - **Why:** Codex only operates under full bypass; silently downgrading or running an Ask/other policy would mislead the caller, so it must fail loudly with the offending policy in the message.
@@ -430,3 +460,23 @@ Harness: [Rulebook convention](../../../Harness/README.md)
 - **Why:** the inbox holds a polymorphic item hierarchy in the shared JsonRepository, so an item written and read
   back from a fresh repository must round-trip as its concrete subtype (not the abstract base or a wrong type),
   proving the type discriminator survives persistence.
+
+### Decisions.Raise → stores the question and pushes a matching inbox item sharing its id
+- **Why:** a raised decision must both persist and surface in the inbox under the same id, so the human sees it
+  in the feed and the answer can close both sides through one identifier — the dependency points Decision → Inbox.
+
+### Decisions.Get → the decision by id, or null when absent
+- **Why:** a read is pure — fetching a decision must not change it — so it stays safe to retry; a missing id
+  returns null rather than throwing.
+
+### Decisions.List → every decision in arrival order
+- **Why:** the decision feed is flat and chronological like the inbox, so listing returns all decisions ordered by
+  creation (id as a stable tiebreaker), giving the client a deterministic order without a priority engine.
+
+### Decisions.Answer → the decision recorded with its yes/no answer once and stable on repeat, null when absent
+- **Why:** answering records the human's yes/no (with an optional note) the first time and a re-answer must not
+  move the recorded answer or its timestamp; a missing id returns null rather than minting one.
+
+### Decisions.Answer → completes the inbox item it raised
+- **Why:** resolving a decision must complete the inbox item raised under the same id, so the feed reflects the
+  decision is handled without the client reconciling two surfaces by hand.

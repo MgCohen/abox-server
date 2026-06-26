@@ -3,13 +3,23 @@
 Index for agents working in this repo. Keep it short — it routes to the
 canonical docs rather than restating them.
 
+## Talking to the owner
+
+- Direct and instructional. No prose padding, no preamble/postamble.
+- Prefer tables and diagrams over paragraphs.
+- Don't close turns with CI / policy-guard / `send_later` / PR-watching
+  boilerplate. Raise those only when asked or when actively watching a PR.
+
 ## What we're doing
 
-Re-authoring the **spine** of a .NET 10 Unity-agent orchestrator (Host + Blazor
-UI + library that drives `claude`/`codex` CLIs over ConPTY for subscription
-billing). This is a **rebuild of internals, not behavior**: if a user can't tell
-the difference in what the system *does*, the rebuild succeeded. We build in
-**12 layers (L1→L12)**, walking-skeleton-first.
+Building the server/API behind **A.Box — an agent harness workspace** (.NET 10):
+it wraps LLM agents in deterministic structure (workflows, document/spec
+enforcement, evaluators, guardrails) so agents get maximum guidance.
+**Orchestration is one capability, not the whole product.**
+
+This is a **rebuild of internals, not behavior**: if a user can't tell the
+difference in what the system *does*, the rebuild succeeded. We build in **12
+layers (L1→L12)**, walking-skeleton-first.
 
 > **The Blazor UI lives in a separate client repo — it is NOT rebuilt here.** This
 > repo is the **server/API** the existing client consumes. Don't scaffold a UI here;

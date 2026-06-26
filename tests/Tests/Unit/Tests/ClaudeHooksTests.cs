@@ -15,8 +15,8 @@ public class ClaudeHooksTests
             .GetProperty("hooks")[0].GetProperty("command").GetString();
 
         Assert.NotNull(command);
-        Assert.Contains("pwsh", command);
-        Assert.Contains("stop-shim.ps1", command);
+        Assert.StartsWith("sh ", command);
+        Assert.Contains("stop-shim.sh", command);
     }
 
     [Rule("ClaudeHooks.Create without gating → no PreToolUse hook and no permission dir")]
@@ -42,7 +42,7 @@ public class ClaudeHooksTests
         Assert.Contains("Edit", matcher);
 
         var command = group.GetProperty("hooks")[0].GetProperty("command").GetString()!;
-        Assert.Contains("perm-shim.ps1", command);
+        Assert.Contains("perm-shim.sh", command);
         Assert.NotNull(hook.PermissionDir);
     }
 
@@ -51,10 +51,10 @@ public class ClaudeHooksTests
     public void The_perm_shim_reads_payload_and_targets_the_permission_dir()
     {
         using var hook = ClaudeHooks.Create(gatePermissions: true);
-        var shim = File.ReadAllText(Path.Combine(Path.GetDirectoryName(hook.SettingsFile)!, "perm-shim.ps1"));
+        var shim = File.ReadAllText(Path.Combine(Path.GetDirectoryName(hook.SettingsFile)!, "perm-shim.sh"));
 
         Assert.Contains(ClaudeHooks.PermissionEnvVar, shim);
-        Assert.Contains("In.ReadToEnd", shim);
+        Assert.Contains("payload=$(cat)", shim);
         Assert.Contains("permissionDecision", shim);
     }
 

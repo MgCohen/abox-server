@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
-using ABox.Features.Git.Contracts;
-using ABox.Features.Tasks.Contracts;
+using ABox.Features.Git.Contract;
+using ABox.Features.Tasks.Contract;
 
 namespace ABox.Features.Tasks.Create;
 

@@ -5,20 +5,19 @@ namespace ABox.Domain.Git;
 
 public sealed class Git(string projectDir)
 {
-    public Operation<DirtyArgs, DirtyResult> CheckDirty { get; } = new DirtyOp(projectDir);
+    public Operation<StatusArgs, StatusResult> Status { get; } = new StatusOp(projectDir);
     public Operation<DiffArgs, DiffResult> Diff { get; } = new DiffOp(projectDir);
-    public Operation<ChangedFilesArgs, ChangedFilesResult> ChangedFiles { get; } = new ChangedFilesOp(projectDir);
-    public Operation<CommitArgs, GitCommitResult> Commit { get; } = new CommitOp(projectDir);
-    public Operation<PushArgs, GitPushResult> Push { get; } = new PushOp(projectDir);
-    public Operation<PullArgs, GitPullResult> Pull { get; } = new PullOp(projectDir);
+    public Operation<CommitArgs, CommitResult> Commit { get; } = new CommitOp(projectDir);
+    public Operation<PushArgs, PushResult> Push { get; } = new PushOp(projectDir);
+    public Operation<PullArgs, PullResult> Pull { get; } = new PullOp(projectDir);
 
-    private sealed class DirtyOp(string dir) : Operation<DirtyArgs, DirtyResult>
+    private sealed class StatusOp(string dir) : Operation<StatusArgs, StatusResult>
     {
-        protected override async Task<DirtyResult> Invoke(DirtyArgs args, CancellationToken ct)
+        protected override async Task<StatusResult> Invoke(StatusArgs args, CancellationToken ct)
         {
             var res = (await RunCommand.RunAsync("git status --porcelain", new RunCommandOptions(Cwd: dir), ct))
                 .EnsureOk("git status");
-            return new DirtyResult(res.Stdout.Trim().Length > 0);
+            return new StatusResult(res.Stdout.Trim().Length > 0, ParsePorcelainPaths(res.Stdout));
         }
     }
 
@@ -32,19 +31,9 @@ public sealed class Git(string projectDir)
         }
     }
 
-    private sealed class ChangedFilesOp(string dir) : Operation<ChangedFilesArgs, ChangedFilesResult>
+    private sealed class CommitOp(string dir) : Operation<CommitArgs, CommitResult>
     {
-        protected override async Task<ChangedFilesResult> Invoke(ChangedFilesArgs args, CancellationToken ct)
-        {
-            var res = (await RunCommand.RunAsync("git status --porcelain", new RunCommandOptions(Cwd: dir), ct))
-                .EnsureOk("git status");
-            return new ChangedFilesResult(ParsePorcelainPaths(res.Stdout));
-        }
-    }
-
-    private sealed class CommitOp(string dir) : Operation<CommitArgs, GitCommitResult>
-    {
-        protected override async Task<GitCommitResult> Invoke(CommitArgs args, CancellationToken ct)
+        protected override async Task<CommitResult> Invoke(CommitArgs args, CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(args.Message))
                 throw new ArgumentException("git commit: message is required", nameof(args));
@@ -62,13 +51,13 @@ public sealed class Git(string projectDir)
 
             var head = (await RunCommand.RunAsync("git rev-parse HEAD", new RunCommandOptions(Cwd: dir), ct))
                 .EnsureOk("git rev-parse");
-            return new GitCommitResult(head.Stdout.Trim(), FirstLine(args.Message));
+            return new CommitResult(head.Stdout.Trim(), FirstLine(args.Message));
         }
     }
 
-    private sealed class PushOp(string dir) : Operation<PushArgs, GitPushResult>
+    private sealed class PushOp(string dir) : Operation<PushArgs, PushResult>
     {
-        protected override async Task<GitPushResult> Invoke(PushArgs args, CancellationToken ct)
+        protected override async Task<PushResult> Invoke(PushArgs args, CancellationToken ct)
         {
             if (args.Force && IsProtected(args.Branch))
                 throw new InvalidOperationException($"git push: refusing to force-push to {args.Branch}");
@@ -78,17 +67,19 @@ public sealed class Git(string projectDir)
                 throw new InvalidOperationException($"git push: refusing to force-push to {target}");
 
             var parts = new List<string> { "git push" };
-            if (args.Force) parts.Add("--force-with-lease");
+            // --force-if-includes pairs with the lease: a lease alone is defeated by a background fetch that
+            // advances the tracking ref without integrating it (spike research/stacked-prs.md §9).
+            if (args.Force) { parts.Add("--force-with-lease"); parts.Add("--force-if-includes"); }
             parts.Add(args.Remote);
             parts.Add(target);
             (await RunCommand.RunAsync(string.Join(' ', parts), new RunCommandOptions(Cwd: dir), ct)).EnsureOk("git push");
-            return new GitPushResult(args.Remote, target);
+            return new PushResult(args.Remote, target);
         }
     }
 
-    private sealed class PullOp(string dir) : Operation<PullArgs, GitPullResult>
+    private sealed class PullOp(string dir) : Operation<PullArgs, PullResult>
     {
-        protected override async Task<GitPullResult> Invoke(PullArgs args, CancellationToken ct)
+        protected override async Task<PullResult> Invoke(PullArgs args, CancellationToken ct)
         {
             var parts = new List<string> { "git pull" };
             if (args.Rebase) parts.Add("--rebase");
@@ -97,7 +88,7 @@ public sealed class Git(string projectDir)
             var res = (await RunCommand.RunAsync(string.Join(' ', parts), new RunCommandOptions(Cwd: dir), ct))
                 .EnsureOk("git pull");
             var updated = !res.Stdout.Contains("Already up to date", StringComparison.OrdinalIgnoreCase);
-            return new GitPullResult(args.Remote, args.Branch ?? "(current)", updated);
+            return new PullResult(args.Remote, args.Branch ?? "(current)", updated);
         }
     }
 

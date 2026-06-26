@@ -1,0 +1,26 @@
+docType: feature-plan
+description: Build or change a feature — objective, scope, ordered phases, verification.
+
+# Catalog: which block types may appear. No counts — pick by each block's description.
+blocks: [summary, context, scope, decision, phase, verification, open-question]
+required: [summary, phase, verification]
+
+# Doc-level attributes — a visible `---` YAML front-matter block on the instance.
+attrs:
+  status:
+    enum: [draft, approved]
+    default: draft
+
+# Binary checks as `id: rule` — ONE list for both authoring (the selector writes to
+# them) and grading (the judge marks each pass/fail, echoing the id). The judge is
+# an AI and infers how to check each rule.
+rubric:
+  coverage:    Every load-bearing part of the dump has a block; nothing significant dropped.
+  right-type:  Each piece sits in the right block type (settled → decision, open → open-question, steps → phase).
+  no-filler:   No filler blocks — each carries real substance.
+  standalone:  The doc stands alone — no references to the dump, prior chat, or earlier drafts.
+  concrete:    Names real files and symbols, not vague gestures.
+  reuse-first: Each phase leads with what it reuses before what it adds.
+  open-lean:   Open questions are genuinely open and carry a recommended lean.
+  verify-real: Verification runs a real end-to-end behaviour, not just build/typecheck.
+  prose:       Prose is substantive where it matters; bold marks labels, not emphasis.

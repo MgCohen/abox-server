@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FastEndpoints" Version="8.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="Contract\ABox.Git.Contract.csproj" />
+    <ProjectReference Include="..\..\Domain\Git\ABox.Domain.Git.csproj" />
+  </ItemGroup>
+
+</Project>

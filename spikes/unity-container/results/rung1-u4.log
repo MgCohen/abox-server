@@ -1,0 +1,18 @@
+=== RUNG 1 / U4: compile-check has teeth ===
+step 1: valid AgentSpike.cs (expect PASS)
+----- build [valid] -----
+Build succeeded.
+Time Elapsed 00:00:10.22
+[valid] EXITCODE=0
+step 2: inject real type error into AgentSpike.cs (expect FAIL)
+----- build [broken] -----
+/project/Assets/Scripts/Bootstrap/Runtime/AgentSpike.cs(8,37): error CS0029: Cannot implicitly convert type 'UnityEngine.Vector3' to 'int' [/tmp/build-CardMatch.Bootstrap/CardMatch.Bootstrap.csproj]
+Build FAILED.
+/project/Assets/Scripts/Bootstrap/Runtime/AgentSpike.cs(8,37): error CS0029: Cannot implicitly convert type 'UnityEngine.Vector3' to 'int' [/tmp/build-CardMatch.Bootstrap/CardMatch.Bootstrap.csproj]
+Time Elapsed 00:00:09.07
+[broken] EXITCODE=1
+step 3: revert AgentSpike.cs (expect PASS)
+----- build [reverted] -----
+Build succeeded.
+Time Elapsed 00:00:08.11
+[reverted] EXITCODE=0

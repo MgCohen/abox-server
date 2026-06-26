@@ -1,6 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
-using ABox.Features.Inbox.Contracts;
+using ABox.Features.Inbox.Api;
 using ABox.Tests.Wire.Support;
 
 namespace ABox.Tests.Wire.Tests;

@@ -1,0 +1,17 @@
+=== RUNG 0: agent-in-box over the mount (U1, U2) ===
+host: file absent before? True
+[agent] running as: root (0)
+[agent] project mount:
+total 0
+drwxrwxrwx    1 root     root          4096 Mar 23 19:34 .
+drwxrwxrwx    1 root     root          4096 Mar 23 19:34 ..
+-rwxrwxrwx    1 root     root           470 Mar 23 19:34 CardMatch.Bootstrap.asmdef
+-rwxrwxrwx    1 root     root           173 Mar 23 19:34 CardMatch.Bootstrap.asmdef.meta
+[agent] writing /project/Assets/Scripts/Bootstrap/Runtime/AgentSpike.cs
+[agent] sha256 in container:
+2e0d31aff1906edfb7567f97947a799660ec8c37b84930eabd086622cb944d2f  /project/Assets/Scripts/Bootstrap/Runtime/AgentSpike.cs
+[agent] done
+
+=== HOST verification (no copy step) ===
+host sees file now? True
+host sha256: 2e0d31aff1906edfb7567f97947a799660ec8c37b84930eabd086622cb944d2f

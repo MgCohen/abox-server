@@ -112,6 +112,37 @@ public class ClaudeProtocolTests
         Assert.Equal(StartupDialog.Trust, ClaudeProtocol.DetectStartupDialog(buffer));
     }
 
+    [Rule("BuildCredentialLauncher → reads the OAuth token from the mount file in-box and never embeds the token value")]
+    [Fact]
+    public void BuildCredentialLauncher_reads_the_token_from_the_mount_file()
+    {
+        var script = ClaudeProtocol.BuildCredentialLauncher("/session/credential");
+
+        Assert.Contains("CLAUDE_CODE_OAUTH_TOKEN=\"$(cat /session/credential)\"", script);
+        Assert.Contains("exec claude \"$@\"", script);
+        Assert.DoesNotContain("ANTHROPIC_API_KEY", script);
+    }
+
+    [Rule("BuildBoxEnv never carries the credential → the token never reaches the PTY-echoed exec line")]
+    [Fact]
+    public void BuildBoxEnv_never_carries_the_credential()
+    {
+        var env = ClaudeProtocol.BuildBoxEnv("/home/box", "/session/stop-signal.json", "/session/perms", "http://proxy:8888");
+
+        Assert.False(env.ContainsKey("CLAUDE_CODE_OAUTH_TOKEN"));
+        Assert.False(env.ContainsKey("ANTHROPIC_API_KEY"));
+    }
+
+    [Rule("BuildBoxEnv with an egress proxy → routes the box out through HTTPS_PROXY and HTTP_PROXY")]
+    [Fact]
+    public void BuildBoxEnv_routes_through_the_proxy_when_set()
+    {
+        var env = ClaudeProtocol.BuildBoxEnv("/home/box", "/session/stop-signal.json", null, "http://proxy:8888");
+
+        Assert.Equal("http://proxy:8888", env["HTTPS_PROXY"]);
+        Assert.Equal("http://proxy:8888", env["HTTP_PROXY"]);
+    }
+
     private static void AssertPair(List<string> args, string flag, string value)
     {
         var i = args.IndexOf(flag);

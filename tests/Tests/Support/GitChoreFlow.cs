@@ -11,8 +11,8 @@ internal sealed class GitChoreFlow : Flow
     protected override async Task RunAsync(FlowConfig config, FlowContext ctx, CancellationToken ct)
     {
         var git = new Git(ctx.ProjectDir);
-        var changed = await Run(ctx, git.ChangedFiles, new ChangedFilesArgs(), ct);
-        await Run(ctx, git.Commit, new CommitArgs(ctx.Request, changed.Files, CoAuthor: "Bot"), ct);
+        var status = await Run(ctx, git.Status, new StatusArgs(), ct);
+        await Run(ctx, git.Commit, new CommitArgs(ctx.Request, status.Paths, CoAuthor: "Bot"), ct);
         await Run(ctx, git.Pull, new PullArgs(Rebase: true), ct);
         await Run(ctx, git.Push, new PushArgs(), ct);
     }

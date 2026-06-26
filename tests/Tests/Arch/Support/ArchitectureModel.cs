@@ -38,14 +38,18 @@ internal static class ArchitectureModel
     }
 
     // Bands keyed by namespace; the boundary anchor (\.|$) stops a prefix leaking into a same-named sibling
-    // (ABox.InfrastructureX ↛ Infrastructure). ContractsNs matches a leaf wherever it lives — flat or per-feature.
-    public const string ContractsNs = @"^ABox\.(.+\.)?Contracts(\.|$)";
+    // (ABox.InfrastructureX ↛ Infrastructure). ContractsNs matches a feature's published leaf in EITHER role —
+    // the external Api leaf (client-facing) or the internal Contract leaf (cross-feature). Both are pure-DTO
+    // leaves depending on nothing internal, so they share one band in the down-only layer graph; the Api-vs-
+    // Contract directional distinction is its own named rule (FeatureNamespace), like cross-feature isolation.
+    public const string ContractsNs = @"^ABox\.Features\.[^.]+\.(Api|Contract)(\.|$)";
     public const string InfrastructureNs = @"^ABox\.Infrastructure(\.|$)";
     public const string DomainNs = @"^ABox\.Domain\.";
 
-    // The Features band excludes the per-feature Contracts leaf (negative lookahead): the leaf is the published
-    // channel a peer may bind (Mode 2), so it belongs to the Contracts band alone — never double-counted as Features.
-    public const string FeaturesNs = @"^ABox\.Features\.(?!.*\.Contracts(\.|$)).+";
+    // The Features band excludes BOTH per-feature leaves (negative lookahead): a leaf is a published channel (the
+    // Api leaf for the client, the Contract leaf for a peer), so it belongs to the Contracts band alone — never
+    // double-counted as Features.
+    public const string FeaturesNs = @"^ABox\.Features\.(?!.*\.(Api|Contract)(\.|$)).+";
     public const string HostNs = @"^ABox\.Host(\.|$)";
 
     // Suffixed *Band so the identifiers don't collide with the same-named namespaces (Contracts,
@@ -92,14 +96,15 @@ internal static class ArchitectureModel
             .Distinct()
             .ToList();
 
-    // A peer's Contracts leaf is the legal cross-feature channel, so it is NOT part of the feature's own
-    // namespace for the "features must not depend on each other" rule — depending on it is allowed, while
-    // depending on the feature's implementation is not.
+    // A peer's Contract leaf is the ONLY legal cross-feature channel, so it alone is excluded from the feature's
+    // own namespace for the "features must not depend on each other" rule — depending on <Peer>.Contract is
+    // allowed, while depending on the peer's implementation OR its external Api leaf is not (the Api leaf is the
+    // client's surface, not a sibling's seam).
     public static string FeatureNamespace(string feature) =>
-        $@"^ABox\.Features\.{Regex.Escape(feature)}(?!\.Contracts(\.|$))(\.|$)";
+        $@"^ABox\.Features\.{Regex.Escape(feature)}(?!\.Contract(\.|$))(\.|$)";
 
-    // The HTTP endpoint classes of one feature: classes named `*Endpoint` inside the feature's own namespace (its
-    // Contracts leaf is excluded by FeatureNamespace — it holds no endpoints). The canonical shape declares each
+    // The HTTP endpoint classes of one feature: classes named `*Endpoint` inside the feature's own namespace. Its
+    // Api/Contract leaves hold only DTOs, so the `*Endpoint` filter never picks them up. The canonical shape declares each
     // `internal sealed` (ADR 0011 D3); this selector feeds both the positive visibility assertion (internal AND
     // sealed needs a Classes() chain — BeSealed is class-only) and its staleness guard.
     public static IObjectProvider<IType> FeatureEndpoints(string feature) =>
@@ -112,19 +117,20 @@ internal static class ArchitectureModel
             FeatureSegment.Match(t.FullName) is { Success: true } m
             && m.Groups[1].Value == feature
             && t.Name.EndsWith("Endpoint", StringComparison.Ordinal)
-            && !t.FullName.Contains(".Contracts.", StringComparison.Ordinal));
+            && !LeafNamespace.IsMatch(t.FullName));
 
     // The loaded implementation assemblies of one feature: every production assembly that carries a type in
-    // ABox.Features.<Feature> outside the feature's Contracts leaf. The canonical slice (ADR 0011 D2) has exactly
-    // one such assembly; a not-yet-consolidated feature still has many. The Contracts leaf is a separate assembly
-    // and is excluded so the Module-export rule reflects over the impl wall alone, never the published channel.
+    // ABox.Features.<Feature> outside the feature's Api/Contract leaves. The canonical slice (ADR 0011 D2) has
+    // exactly one such assembly; a not-yet-consolidated feature still has many. Each leaf is a separate assembly
+    // and is excluded so the Module-export rule reflects over the impl wall alone, never a published channel.
     public static IReadOnlyList<Assembly> FeatureImplAssemblies(string feature) =>
         LoadedProductionAssemblies
             .Where(a => a.GetExportedTypes().Any(t =>
                 FeatureSegment.Match(t.FullName ?? "") is { Success: true } m
                 && m.Groups[1].Value == feature
-                && !(t.Namespace ?? "").Contains(".Contracts", StringComparison.Ordinal)))
+                && !LeafNamespace.IsMatch(t.Namespace ?? "")))
             .ToList();
 
     private static readonly Regex FeatureSegment = new(@"^ABox\.Features\.([^.]+)");
+    private static readonly Regex LeafNamespace = new(ContractsNs);
 }

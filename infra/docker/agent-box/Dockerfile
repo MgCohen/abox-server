@@ -1,0 +1,25 @@
+# The agent box (ADR 0013): runs `claude` for one turn, driven from the host over
+# `docker exec -it`. Nothing secret is baked in — the per-turn sh hooks arrive on the
+# /session mount, the worktree on /work, and a non-secret onboarding skeleton on
+# /home/box (HOME). The subscription credential is NOT here: it rides the per-turn box
+# env as CLAUDE_CODE_OAUTH_TOKEN (docker exec -e). Built as `abox-claude:latest` (see
+# SandboxSettings.Image).
+#
+# .NET SDK base because the agent works a .NET worktree; node is claude's runtime.
+FROM mcr.microsoft.com/dotnet/sdk:10.0
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends nodejs npm git ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
+# claude CLI. Provisional: pin the channel/version on the real host and confirm the
+# in-box `claude --version` during the deferred credential validation (B1/B2).
+RUN npm install -g @anthropic-ai/claude-code
+
+# Non-root: bypassPermissions is refused as root (spike pty finding #3). `app` is the
+# base image's stock non-root user; the orchestrator additionally runs the box under
+# its own uid:gid (docker --user) so the bind mounts are writable. HOME is the mounted
+# /home/box at run time.
+USER app
+WORKDIR /work
+ENTRYPOINT ["/bin/sh"]

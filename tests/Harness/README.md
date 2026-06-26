@@ -1,7 +1,7 @@
 # Test Harness — the Rulebook convention
 
 The shared engine and vocabulary every test *type* is built on: the `[Rule]` attribute, the `ParityGuard`
-engine, the `TestMarkers`/`TestTypes` registries, the `RulebookFormat` parser, and the `RepoTree` disk
+engine, the `TestMarkers`/`TestTypes` registries, and the `RepoTree` disk
 locator — plus this doc. Nothing *product*-specific lives here; a type's models, doubles, and harnesses stay
 in that type's own `Support/` until a *second* type genuinely reuses them.
 
@@ -12,12 +12,13 @@ a *good* test" is a semantic judgment, not a structural one.
 
 ## Every test type is a Rulebook
 
-A **Rulebook** is a folder `<Type>/Rulebook/` holding **two files**:
+A **Rulebook** is a folder `<Type>/Rulebook/` holding **two files**, each a doc-engine instance carrying a
+`docType` front-matter header:
 
-- **`template.md`** — the type's context home: a one-paragraph description, the Rule *shape* (one example Rule,
-  header + `**Why:**` bullet — the schema, in one place), and a `## Criteria` list (the per-type semantic rubric
-  `/judge-rulebook` grades Rules against).
-- **`rules.md`** — the `Template:`/`Harness:` pointer links, then the type's **Rules**. A **Rule** is one `### ` header here.
+- **`template.md`** (`docType: test-template`) — the type's context home: a `## Summary` paragraph and a
+  `## Criteria` list of `### ` items (the per-type semantic rubric `/judge-rulebook` grades Rules against).
+- **`rules.md`** (`docType: rulebook`) — front-matter (`testType` + the `template`/`harness` pointers), then a
+  `## Rules` list of the type's **Rules**. A **Rule** is one `### ` header here.
 
 What a Rule *means* varies by type —
 
@@ -32,8 +33,9 @@ the **test system** — the taxonomy, the Rulebook format, and parity — and li
 its own `ABox.Tests.Meta` assembly, validating the product suite from *outside* (via `ABox.Tests.SuiteAnchor`)
 the way the Arch guards validate `src`. The **Rulebook shape and parity discipline are identical across every
 type**, product or Meta. Splitting the template out of `rules.md` is deliberate: `rules.md` then holds nothing
-but its pointer links and Rules (no example `### ` to skip, nothing to game), while `template.md` owns all
-context — the description, the shape, and the judge criteria. The Meta format guards enforce both files.
+but its front-matter and Rules (no example `### ` to skip, nothing to game), while `template.md` owns all
+context — the summary and the judge criteria. The **Docs** type validates both files' shape against the
+doc-engine; **Meta** owns parity (Rule ↔ test).
 
 ## The pieces
 
@@ -42,9 +44,10 @@ context — the description, the shape, and the judge criteria. The Meta format 
   `[Rule("<same header>")]` methods — see *Completeness* below.)
 - **`ParityGuard.cs`** — keeps one type's Rulebook and its `[Rule]` tests in lockstep, scoped to a single
   `ABox.Tests.<Type>.Tests` namespace so types sharing an assembly don't bleed into each other's parity.
-- **`TestTypes` / `TestMarkers` / `RulebookFormat` / `RepoTree`** — the test-system vocabulary the **Meta**
-  self-suite's guards run on: the registry of types + the completeness flag, the run-attribute names, the
-  Rulebook parser, the on-disk locator.
+- **`TestTypes` / `TestMarkers` / `RepoTree`** — the test-system vocabulary the **Meta**
+  self-suite's guards run on: the registry of types + the completeness flag, the run-attribute names, and
+  the on-disk locator. Rulebook *format* is now validated by the doc-engine (shelled out by the **Docs** type),
+  not a Harness parser.
 
 Parity is driven **once**, from the Meta self-suite — over every registered product type, then over Meta
 itself — so there is no per-type parity fact:
@@ -102,8 +105,8 @@ different risk levels:
 - **Changing the shape / template / format — most dangerous, and rarely warranted.** The `### `-heading
   scan, the `template.md` / `rules.md` split, the namespace-scoped discovery + path derivation, the
   universal completeness check (every marked test cites a Rule), the `Rulebook/` + `Tests/` + `Support/` layout, the csproj copy glob,
-  and the Meta guards (*Parity holds for every registered type*, *Every Rule matches its type's template*,
-  *Every Rulebook holds only rules*, *Every template carries judge criteria*) — these are the engine's
+  the doc-engine doctypes (`rulebook` / `test-template`) that pin each file's shape, and Meta's
+  *Parity holds for every registered type* — these are the engine's
   load-bearing assumptions, shared by **every**
   type at once. Reshaping the
   template or the parsing rules can make Rules silently stop being counted (enforcement evaporates with a
@@ -155,27 +158,35 @@ in). The skeleton is the one owner of the shape:
 
 ```markdown
 <!-- <Type>/Rulebook/template.md -->
-# <Type> Rulebook
+---
+docType: test-template
+testType: <type>
+---
 
+## Summary
 <one paragraph: what a Rule means for this type, how it's proven, and where it's enforced.>
-
-## Template
-
-### <the type's header shape — `<subject> must / must not <…>` (invariant) or `<…> → <result>` (behavioral)>
-- **Why:** <what this protects>
 
 ## Criteria
 
-- **<id>:** <one semantic check the judge grades a Rule against — judgment only, not mechanical shape>
-- **<id>:** <…>
+### <id>
+<one semantic check the judge grades a Rule against — judgment only, not mechanical shape>
+
+### <id>
+<…>
 ```
 
 ```markdown
 <!-- <Type>/Rulebook/rules.md -->
-Template: [template.md](./template.md)
-Harness: [Rulebook convention](../../../Harness/README.md)
+---
+docType: rulebook
+testType: <type>
+template: ./template.md
+harness: ../../../Harness/README.md
+---
 
-### <first Rule, in the template's header shape>
+## Rules
+
+### <first Rule — `<subject> must / must not <…>` (invariant) or `<…> → <result>` (behavioural)>
 - **Why:** <…>
 ```
 
@@ -185,10 +196,10 @@ Then:
    folder — `ABox.Tests.<Type>.Tests` for files in `<Type>/Tests/`; IDE0130 is `severity = error`, so a
    mismatch is a build error, not a warning.
 2. **Fill `template.md` + `rules.md`** from the skeleton above — pick the header shape (invariant or
-   behavioral), adapt the description, and write the first Rule. **`template.md` must carry a `## Criteria`
-   block** — at least one `- **<id>:** …` bullet of semantic judgment for the judge (as many as the type
-   needs); the Meta *Every template carries judge criteria* guard fails the build if it's missing. Don't
-   invent a new shape (see the stability contract); it's shared structure, not per-type creativity.
+   behavioural), adapt the summary, and write the first Rule. **`template.md` must carry a `## Criteria`
+   block** — at least one `### <id>` item of semantic judgment for the judge (as many as the type
+   needs); the doc-engine's `test-template` doctype requires it, so the **Docs** validation fails the build if
+   it's missing. Don't invent a new shape (see the stability contract); it's shared structure, not per-type creativity.
 3. **Register the type** in `Harness/TestTypes.Registered`. The Meta *Every folder under tests holds a
    registered test type* guard goes red the moment the folder lands unregistered — this is the deliberate gate.
 4. **Write a `### ` Rule + its `[Rule("<header>")]` fact for every test** in `<Type>/Tests/`. Completeness is

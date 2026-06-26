@@ -1,13 +1,19 @@
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Routing;
-using ABox.Features.Git.Contracts;
+using FastEndpoints;
+using ABox.Features.Git.Contract;
 
 namespace ABox.Features.Git.PrList;
 
-public static class PrListEndpoint
+internal sealed class PrListEndpoint(IPullRequests pullRequests) : EndpointWithoutRequest<IReadOnlyList<PullRequestDto>>
 {
-    public static void Map(IEndpointRouteBuilder prs) =>
-        prs.MapGet("/", (IPullRequests pullRequests, string? project) =>
-            Results.Ok(pullRequests.List(project ?? ".")));
+    public override void Configure()
+    {
+        Get("/git/prs");
+        AllowAnonymous();
+    }
+
+    public override async Task HandleAsync(CancellationToken ct)
+    {
+        var project = Query<string?>("project", isRequired: false) ?? ".";
+        await Send.OkAsync(pullRequests.List(project), ct);
+    }
 }

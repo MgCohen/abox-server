@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using ABox.Domain.Flow;
-using ABox.Features.Flows.Contracts;
+using ABox.Features.Flows.Contract;
 
 namespace ABox.Features.Flows.Catalog;
 
