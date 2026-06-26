@@ -1,0 +1,28 @@
+name: publish-contracts
+
+# Tag-driven publish of the shared wire contracts. Push a SemVer tag (v1.3.0) and MinVer stamps the
+# package version from it; the ABox.Api rollup bundles every feature's Api leaf into one .nupkg and pushes
+# it to the owner's GitHub Packages feed. Deliberate releases only — never one package per commit.
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # MinVer derives the version from the full tag history
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet pack src/Api/ABox.Api.csproj -c Release -o ./nupkg
+      - run: >
+          dotnet nuget push "./nupkg/*.nupkg"
+          --source "https://nuget.pkg.github.com/MgCohen/index.json"
+          --api-key ${{ secrets.GITHUB_TOKEN }}
+          --skip-duplicate

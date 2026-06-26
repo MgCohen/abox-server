@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The published face of the server: a packaging-only project with no code of its own. It references every
+       feature's *.Api leaf and redirects their compiled DLLs into ONE .nupkg (ABox.Api), so the client takes a
+       single PackageReference and gets all N leaves. The internal *.Contract leaves are NOT referenced here and
+       never ship off-box. -->
+
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <PackageId>ABox.Api</PackageId>
+    <Description>Public-facing wire DTOs for the A.Box server, bundled from every feature's *.Api leaf.</Description>
+    <RepositoryUrl>https://github.com/MgCohen/A.Box-server</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <IncludeBuildOutput>true</IncludeBuildOutput>
+
+    <!-- The wildcard ProjectReferences below carry PrivateAssets=all so they do not become NuGet
+         <dependency> entries; that hides their DLLs from the package, so BundleApiDlls copies them back in. -->
+    <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);BundleApiDlls</TargetsForTfmSpecificBuildOutput>
+  </PropertyGroup>
+
+  <!-- Discovery is a path+name wildcard expanded at evaluation time: a new Features/<F>/Api/ABox.<F>.Api.csproj
+       is bundled for free, with no edit here. The Phase-3 placement test fails CI if the convention drifts. -->
+  <ItemGroup>
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\Features\*\Api\*.Api.csproj" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- MinVer derives the package version from the git tag (v1.3.0 -> 1.3.0); no hand-edited <Version>. -->
+  <ItemGroup>
+    <PackageReference Include="MinVer" Version="6.0.0" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- Copy each referenced *.Api DLL (ReferenceSourceTarget=ProjectReference) into the package's lib/<tfm>/.
+       Paired with PrivateAssets=all above: one says "don't reference them externally," this says "embed them." -->
+  <Target Name="BundleApiDlls" DependsOnTargets="ResolveReferences">
+    <ItemGroup>
+      <BuildOutputInPackage Include="@(ReferenceCopyLocalPaths->WithMetadataValue('ReferenceSourceTarget','ProjectReference'))" />
+    </ItemGroup>
+  </Target>
+
+</Project>

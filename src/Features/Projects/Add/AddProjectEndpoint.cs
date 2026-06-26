@@ -1,6 +1,6 @@
 using FastEndpoints;
 using ABox.Domain.Projects;
-using ABox.Features.Projects.Contracts;
+using ABox.Features.Projects.Api;
 using ABox.Features.Projects.Get;
 
 namespace ABox.Features.Projects.Add;

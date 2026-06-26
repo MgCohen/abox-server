@@ -7,8 +7,9 @@ internal static class HomeFolders
 {
     // The agreed home folders for production code — the only legal top-level places under src/. THIS
     // LIST is the source of truth; a project or file under none of these escaped the structure. Add a
-    // home only when the structure itself grows.
-    public static readonly string[] Agreed = { "Infrastructure", "Domain", "Features", "Host" };
+    // home only when the structure itself grows. `Api` is the published-surface home: the single ABox.Api
+    // rollup that bundles every feature's Api leaf into one NuGet package (the contract-publishing split).
+    public static readonly string[] Agreed = { "Infrastructure", "Domain", "Features", "Host", "Api" };
 
     // Folders deliberately tolerated under src/ until they relocate to their own repos. Listed explicitly
     // so the structure guard passes HONESTLY: it still rejects any *new* stray, and the staleness check
