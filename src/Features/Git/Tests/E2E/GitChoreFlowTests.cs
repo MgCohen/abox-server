@@ -2,7 +2,7 @@ using ABox.Domain.Flow;
 using ABox.Domain.Git;
 using ABox.Infrastructure.CommandLine;
 
-namespace ABox.Tests.E2E.Tests;
+namespace ABox.Git.Tests.E2E;
 
 public class GitChoreFlowTests
 {
@@ -18,7 +18,7 @@ public class GitChoreFlowTests
             new FlowContext("c", "c", repo.Path, "Add work"),
             CancellationToken.None);
 
-        Assert.False((await Op.Exec(new Git(repo.Path).Status, new StatusArgs(), repo.Path)).IsDirty);
+        Assert.False((await Op.Exec(new DomainGit(repo.Path).Status, new StatusArgs(), repo.Path)).IsDirty);
 
         var remoteSubject = (await RunCommand.RunAsync(
                 $"git --git-dir=\"{repo.RemotePath}\" log -1 --pretty=%s",

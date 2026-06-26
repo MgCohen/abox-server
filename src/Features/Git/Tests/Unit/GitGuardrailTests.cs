@@ -1,6 +1,6 @@
 using ABox.Domain.Git;
 
-namespace ABox.Tests.Unit.Tests;
+namespace ABox.Git.Tests.Unit;
 
 public class GitGuardrailTests
 {
@@ -10,7 +10,7 @@ public class GitGuardrailTests
     [InlineData("master")]
     public async Task Push_force_to_protected_branch_is_refused(string branch)
     {
-        var git = new Git(".");
+        var git = new DomainGit(".");
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => Op.Exec(git.Push, new PushArgs(Branch: branch, Force: true)));
     }
@@ -19,7 +19,7 @@ public class GitGuardrailTests
     [Fact]
     public async Task Commit_with_empty_file_list_is_refused()
     {
-        var git = new Git(".");
+        var git = new DomainGit(".");
         await Assert.ThrowsAsync<ArgumentException>(
             () => Op.Exec(git.Commit, new CommitArgs("a message", Array.Empty<string>())));
     }
@@ -28,7 +28,7 @@ public class GitGuardrailTests
     [Fact]
     public async Task Commit_with_blank_message_is_refused()
     {
-        var git = new Git(".");
+        var git = new DomainGit(".");
         await Assert.ThrowsAsync<ArgumentException>(
             () => Op.Exec(git.Commit, new CommitArgs("   ", new[] { "a.txt" })));
     }

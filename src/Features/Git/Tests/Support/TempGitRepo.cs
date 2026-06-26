@@ -1,6 +1,6 @@
 using ABox.Infrastructure.CommandLine;
 
-namespace ABox.Tests.Support;
+namespace ABox.Git.Tests.Support;
 
 internal sealed class TempGitRepo : IDisposable
 {

@@ -1,7 +1,7 @@
 using ABox.Domain.Git;
 using ABox.Infrastructure.CommandLine;
 
-namespace ABox.Tests.Unit.Tests;
+namespace ABox.Git.Tests.Unit;
 
 public class GitTests
 {
@@ -13,7 +13,7 @@ public class GitTests
         await repo.RunAsync("git checkout -q -b feature");
         await repo.WriteAsync("f.txt", "v1");
         await repo.CommitAllAsync("f1");
-        var git = new Git(repo.Path);
+        var git = new DomainGit(repo.Path);
         await Op.Exec(git.Push, new PushArgs(Branch: "feature"));
 
         var clone = Path.Combine(Path.GetTempPath(), "ra-clone-" + Guid.NewGuid().ToString("N"));
@@ -54,7 +54,7 @@ public class GitTests
         await repo.WriteAsync("a.txt", "changed");
         await repo.WriteAsync("c.txt", "new");
 
-        var result = await Op.Exec(new Git(repo.Path).Status, new StatusArgs());
+        var result = await Op.Exec(new DomainGit(repo.Path).Status, new StatusArgs());
 
         Assert.Contains("a.txt", result.Paths);
         Assert.Contains("c.txt", result.Paths);
@@ -69,7 +69,7 @@ public class GitTests
         await repo.WriteAsync("a.txt", "v1");
         await repo.CommitAllAsync("init");
 
-        var git = new Git(repo.Path);
+        var git = new DomainGit(repo.Path);
         Assert.False((await Op.Exec(git.Status, new StatusArgs())).IsDirty);
 
         await repo.WriteAsync("a.txt", "v2");
@@ -85,7 +85,7 @@ public class GitTests
         await repo.CommitAllAsync("init");
 
         await repo.WriteAsync("a.txt", "v2");
-        var git = new Git(repo.Path);
+        var git = new DomainGit(repo.Path);
         var result = await Op.Exec(git.Commit, new CommitArgs("Fix the thing", new[] { "a.txt" }, CoAuthor: "Bot"));
 
         Assert.Equal(40, result.Hash.Length);
@@ -102,7 +102,7 @@ public class GitTests
         await repo.CommitAllAsync("init");
 
         await repo.WriteAsync("a.txt", "v2 changed");
-        var result = await Op.Exec(new Git(repo.Path).Diff, new DiffArgs());
+        var result = await Op.Exec(new DomainGit(repo.Path).Diff, new DiffArgs());
 
         Assert.Equal(1, result.Files);
         Assert.Contains("a.txt", result.Text);
@@ -119,7 +119,7 @@ public class GitTests
         await repo.WriteAsync("a.txt", "v2");
         await repo.RunAsync("git checkout -- a.txt");
 
-        var result = await Op.Exec(new Git(repo.Path).Status, new StatusArgs());
+        var result = await Op.Exec(new DomainGit(repo.Path).Status, new StatusArgs());
         Assert.False(result.IsDirty);
         Assert.Empty(result.Paths);
     }
