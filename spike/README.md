@@ -446,6 +446,22 @@ share a spine — a **member region** is to a type what a `Block` is to a method
     the same "don't hand-build expression nodes" itch while staying *inside* the
     type system, where a lambda steps outside it.
 
+### The type spine (item 11)
+
+11. **A "result" type above `Block`** — today `Block` is the de-facto root (the
+    recipe *is* a `Block`) and the surrounding element is hardcoded by the tool, so
+    nothing models the **end result** as a value. Question: do we want a type above
+    `Block` that names what's being produced (a method? a class? a file?), and is
+    the whole model one **containment spine** — `<result> → Block → … → Var<T>` — with
+    each tier owning the next? Overlaps #7 (the declaration tier models the
+    *member*); this asks the orthogonal question of whether there's a single root
+    node and a coherent spine all the way down to the variable handle. *Test:* is the
+    root just the top declaration node from #7, or a distinct `Result`/`Program`
+    wrapper? Is the spine pure **containment** (a result *has* blocks, a block *has*
+    statements, a statement *references* a `Var<T>`), or does any tier actually want
+    **inheritance** — and if nothing does, say so, so we don't reach for a base type
+    the structure doesn't ask for.
+
 ---
 
 ## 9. Open questions / risks
