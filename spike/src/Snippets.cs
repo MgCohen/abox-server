@@ -43,6 +43,22 @@ static class Snippets
         return value;
     }
 
+    [Snippet("lessthan")]
+    public static bool LessThan(int a, int b) => a < b;
+
+    [Snippet("ifelse")]
+    public static void IfElse(bool condition)
+    {
+        if (condition)
+        {
+            Block.Of("then");
+        }
+        else
+        {
+            Block.Of("else");
+        }
+    }
+
     // The generator reads these snippets from THIS source file (CallerFilePath captured here,
     // inside the file it refers to). Editing a snippet flows through on the next run.
     public static string SourcePath { get; } = Capture();

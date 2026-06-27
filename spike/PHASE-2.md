@@ -28,7 +28,39 @@ Retire the baseline divergences as they get in the way, not before:
 - **generics `<T>`** (drop int-only) — when a construct needs a non-int type.
 - **`Call` mode** (vs inline) — when a multi-statement snippet can't be inlined.
 
-## Done-when (2a — `If`)
+## Status — 2a (`IfElse`) DONE ✅
+
+Built `IfElse` (`bool` condition, named `then`/`else` blocks) + a `LessThan`
+comparison primitive. Sample `Samples.IfElseInLoop` (`spike/tests/IfElseTests.cs`):
+
+```csharp
+for (int i = 0; i < 5; i++)
+    if (i < 3) { acc = acc + i; acc = acc + 1; }   // multi-statement then-block
+    else       { acc = acc + 10; }
+// => 26
+```
+
+Done-when:
+1. ✅ Composes, compiles, runs → **26**. Multi-statement `then` block proven.
+2. ✅ Regression net green (5 tests).
+3. ✅ Scope question **surfaced and named** (below) — deferred to 2b.
+
+What fell out for free (the non-int dodge held): `bool condition` → `IExpr<bool>`
+and `LessThan` → `IExpr<bool>` flowed through the generator with **zero changes** —
+only the atoms (`Lit`/`Ref`) are int-pinned. Named blocks worked because
+`Block.Of("id")` already carries an id.
+
+### The scope finding (→ 2b)
+
+The `then`/`else` branches reference `acc` and `i` **by string** (`Ref("acc")`,
+`Ref("i")`). Nothing checks those names are in scope at the branch — correctness is
+caught **only at the final compile gate**, never at recipe-authoring. And a variable
+*declared inside* a block (a `DefineNode` in `then`) is a new local with no modeled
+visibility. So: **there is still no scope model** — names are stringly-typed and
+unscoped, exactly as the baseline left them. `IfElse` confirmed where this bites:
+the moment branches share outer variables. That's 2b.
+
+## Original done-when (2a — `If`)
 
 1. An `If` snippet with a multi-statement `then` body composes and the generated
    `ScriptData.cs` compiles and runs with the expected result.
