@@ -9,10 +9,20 @@ interface IStmt;
 
 interface IExpr<out T>;
 
+// A variable handle: identity + type, created once as a local and threaded into the nodes
+// that declare or reference it. Replaces stringly-typed names, so refs are typed (Ref(acc)
+// is IExpr<int>) and rename-safe. The name is chosen once, here, never re-spelled at a use.
+interface IVar
+{
+    string Name { get; }
+}
+
+sealed record Var<T>(string Name) : IVar;
+
 // Atoms — too trivial to be snippets; rendered directly by the generator.
 sealed record Lit(int Value) : IExpr<int>;
 
-sealed record Ref(string Name) : IExpr<int>;
+sealed record Ref(Var<int> Var) : IExpr<int>;
 
 // A sequence of statements. Used as the recipe root and as a block-region fill.
 sealed record Block(params IStmt[] Statements)

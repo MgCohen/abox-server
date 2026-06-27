@@ -20,8 +20,8 @@ baseline deliberately left open:
 
 | Step | Construct | Forces | Why this order |
 |------|-----------|--------|----------------|
-| 2a | **`If`** | multi-statement bodies, branch scope | cheapest construct that exercises both foundations with minimal domain noise |
-| 2b | **scope model** | variable declaration/lookup across snippets | extracted once `If` shows where stringly-typed names break |
+| 2a ✅ | **`If`** | multi-statement bodies, branch scope | cheapest construct that exercises both foundations with minimal domain noise |
+| 2b ✅ | **scope model** | variable declaration/lookup across snippets | extracted once `If` shows where stringly-typed names break |
 | 2c | **Repository fetch** | method calls, real types, async-ish shape | the real-product proof that the model survives non-toy code |
 
 Retire the baseline divergences as they get in the way, not before:
@@ -59,6 +59,48 @@ caught **only at the final compile gate**, never at recipe-authoring. And a vari
 visibility. So: **there is still no scope model** — names are stringly-typed and
 unscoped, exactly as the baseline left them. `IfElse` confirmed where this bites:
 the moment branches share outer variables. That's 2b.
+
+## Status — 2b (scope model) DONE ✅
+
+Variable names stop being strings and become typed **handles**. A declaration *binds*
+a handle; uses *reference* it. The name is chosen once, on the handle, never re-spelled
+at a use site.
+
+```csharp
+var acc = new Var<int>("acc");
+var i   = new Var<int>("i");
+
+new Block(
+    new DefineNode(new Lit(0), acc),                       // binds acc
+    new LoopNode(new Lit(5), i, new Block(                 // binds i
+        new AssignNode(acc, new AddNode(new Ref(acc), new Ref(i))))),
+    new ReturnNode(new Ref(acc)));                         // Ref(acc) : IExpr<int>
+```
+
+What changed (handles only — no binder, by decision):
+- `Var<T>` (+ `IVar`) added to `Nodes.cs`; `Ref` now takes `Var<int>`, not `string`.
+- The two marker recognizers emit `Var<T>` instead of `string`, the `T` read straight
+  from the snippet (`int @i = 0` → `Var<int>`, `ref int @target` → `Var<int>`).
+- Regenerated nodes: `DefineNode(.., Var<int> Var)`, `AssignNode(Var<int> Target, ..)`,
+  `LoopNode(.., Var<int> I, ..)`. The lowering keys markers on `IVar` and renders `.Name`.
+
+What this buys at **authoring** (the jump over strings): typed refs (can't cross types),
+rename-safety, and you can't reference a handle you never created. What stays on the
+**compile gate** (deliberately not pulled forward): use-out-of-block, a handle with no
+declaring node, and identifier collisions. Building a lexical-scope binder for those is
+the *second-use* abstraction — added only if scope-escape actually bites.
+
+Forward-compat with 2c: dependencies (`_repo`) and method params (`id`) are just handles
+from an outer tier the recipe is *given* rather than *declares* — new handle **sources**,
+not a new scope mechanism.
+
+Done-when:
+1. ✅ Recipes author variables as `Var<T>` handles; the generate → compile → run gate
+   stays green (output byte-identical — handles render to the same names).
+2. ✅ Type gate proven: `Ref` rejects a non-handle, `AddNode` rejects a handle where an
+   `IExpr<int>` is expected (the two commented lines in `Program.cs`).
+3. ✅ Regression net green (5 tests). Tests build their own throwaway recipes — the shared
+   `Samples` class is dissolved.
 
 ## Original done-when (2a — `If`)
 

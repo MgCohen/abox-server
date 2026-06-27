@@ -4,11 +4,19 @@ static class Program
 {
     static int Main()
     {
-        var recipe = Samples.LoopVarSum;
+        var acc = new Var<int>("acc");
+        var i = new Var<int>("i");
 
-        // Done-when #3 (the type gate): the next line does NOT compile — a string can't fill
-        // an IExpr<int> slot. Uncomment to see the recipe rejected at authoring time.
-        // var bad = new AddNode(new Ref("acc"), "oops");
+        var recipe = new Block(
+            new DefineNode(new Lit(0), acc),
+            new LoopNode(new Lit(5), i, new Block(
+                new AssignNode(acc, new AddNode(new Ref(acc), new Ref(i))))),
+            new ReturnNode(new Ref(acc)));
+
+        // The type gate: neither line compiles — a Var<int> handle isn't an IExpr<int>
+        // producer, and a handle can't be referenced before it's declared as a local.
+        // var bad = new AddNode(new Lit(1), acc);
+        // var unknown = new Ref(undeclared);
 
         var code = Generator.Generate(recipe);
 

@@ -22,22 +22,26 @@ sealed class ParamRecognizer : IFieldRecognizer
             .Select(p => new Field($"IExpr<{p.Type}>", Naming.Pascal(p.Identifier.ValueText), p.SpanStart));
 }
 
-// ref parameter -> marker fill (existing name, string)
+// ref parameter -> marker fill (existing variable, Var<T> typed from the param)
 sealed class RefMarkerRecognizer : IFieldRecognizer
 {
     public IEnumerable<Field> Recognize(MethodDeclarationSyntax m) =>
         m.ParameterList.Parameters
             .Where(p => p.Modifiers.Any(mod => mod.Text == "ref"))
-            .Select(p => new Field("string", Naming.Pascal(p.Identifier.ValueText), p.SpanStart));
+            .Select(p => new Field($"Var<{p.Type}>", Naming.Pascal(p.Identifier.ValueText), p.SpanStart));
 }
 
-// `@`-marked identifier declared in the body -> marker fill (new name, string)
+// `@`-marked identifier declared in the body -> marker fill (new variable, Var<T> typed
+// from the declaration: `int @i = 0` -> Var<int>)
 sealed class BodyMarkerRecognizer : IFieldRecognizer
 {
     public IEnumerable<Field> Recognize(MethodDeclarationSyntax m) =>
         (m.Body?.DescendantNodes().OfType<VariableDeclaratorSyntax>() ?? [])
             .Where(v => v.Identifier.Text.StartsWith('@'))
-            .Select(v => new Field("string", Naming.Pascal(v.Identifier.ValueText), v.SpanStart));
+            .Select(v => new Field($"Var<{DeclaredType(v)}>", Naming.Pascal(v.Identifier.ValueText), v.SpanStart));
+
+    static TypeSyntax DeclaredType(VariableDeclaratorSyntax v) =>
+        ((VariableDeclarationSyntax)v.Parent!).Type;
 }
 
 // Block.Of("id") -> block fill (Block), the field named from the id

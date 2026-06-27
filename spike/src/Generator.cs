@@ -48,7 +48,7 @@ static class Generator
     static string RenderExpr(object node) => node switch
     {
         Lit l => l.Value.ToString(),
-        Ref r => r.Name,
+        Ref r => r.Var.Name,
         _ => SubstituteExpr(Lookup(node.GetType()).ExpressionBody!.Expression, BuildFields(node)),
     };
 
@@ -64,10 +64,10 @@ static class Generator
             var value = prop.GetValue(node)!;
             var key = char.ToLowerInvariant(prop.Name[0]) + prop.Name[1..];
 
-            if (prop.PropertyType == typeof(string))
-                fields.Markers[key] = (string)value;
-            else if (prop.PropertyType == typeof(Block))
-                fields.Blocks[key] = RenderBlock((Block)value);
+            if (value is IVar variable)
+                fields.Markers[key] = variable.Name;
+            else if (value is Block block)
+                fields.Blocks[key] = RenderBlock(block);
             else
                 fields.Params[key] = RenderExpr(value);
         }
