@@ -30,8 +30,9 @@ Meta's own Rulebook and tests, so the self-suite holds itself to the same bar.
   Rule. This is the suite-wide backstop that closes that escape.
 
 Reflection over the product assembly (`ABox.Tests.SuiteAnchor`) selects `TestMarkers.Marks` methods whose
-namespace fails `TestTypes.ContainsTest`. Meta's own tests are held in scope by Meta's self-parity instead. An
-unregistered marker is a patch-when-seen event: add the name to `TestMarkers`.
+namespace fails `TestTypes.ContainsTest`. Meta's own tests are held in scope by Meta's self-parity instead. A
+marker counts if it derives from `FactAttribute` (so Fact/Theory/LiveFact need no registration); a run attribute
+that does *not* inherit is the only patch-when-seen event — add its name to `TestMarkers.ExtraMarkers`.
 
 ### Every co-located test lives inside a registered feature type
 - **Why:** Co-location moved feature tests out from behind the central protected tree, so "the tree is
