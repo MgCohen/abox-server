@@ -410,3 +410,122 @@ dedicated search is the obvious next step.
 > docs: Blockly, MathWorks, Unreal, Plasmic, FlutterFlow, OutSystems, Bubble).
 > Caveat: "readable" in vendor copy (Embedded Coder) is marketing, not proof of
 > hand-editable ownership; Blueprint Nativization docs are UE4.x (removed in UE5).
+
+---
+
+# Addendum II: filling the node-based gaps
+
+> The first node-based pass left a long tail uncovered (Rete.js & the other graph
+> libraries, the design-to-code crowd, Mendix/Retool, flow automation, the
+> engineering dataflow tools, and — the big one — the **agent-first** angle). This
+> pass targets exactly those (5 angles → 22 sources → 81 claims → 25 verified,
+> **23 confirmed / 2 killed**). **The two distinctive spike moves stay 0-for-N**,
+> but the agent-first axis is no longer "zero evidence": two real near-misses now
+> have names.
+>
+> *(Provenance note: this run's automated synthesis step degenerated to a stub; the
+> findings below are reconstructed directly from the **verified claim set** — each
+> is a 3-0 confirmation unless marked. Quotes are from the fetched primary sources.)*
+
+## The standout: a node library that *does* emit code — and round-trips
+
+**Rete.js** is the one graph library that ships a real **code-emit backend**, not
+just a graph-run engine:
+
+- Its **`code-plugin`** lowers a Rete graph to source —
+  `CodePlugin.generate(engine, editor.toJSON())` → plain **JavaScript** — via
+  **template/string emission** (3-0).
+- **Rete Studio** goes further: **round-trip** — *"transform a textual programming
+  language into a visual representation, which can then be transformed back into
+  textual language"* (3-0). Input JS → graph → JS.
+
+So a node library *can* emit owned code and even round-trip it — but still by
+**string templating**, in JS, with no typed-record schema generated from a vetted
+catalog. It's the closest *library*, and it confirms the renderer pattern rather
+than breaking it.
+
+The other libraries are **interpret-graph**: **LiteGraph.js** exports JSON for a
+runtime and *"has no code-emission"* (per-node behavior = registered JS functions);
+**Flume** is *"a React node editor paired with a runtime engine, not a code
+generator"*; **React Flow (xyflow)** is *"a UI rendering library … not a
+code-generation tool"* (all 3-0).
+
+## Classification — the gap tools
+
+| Tool | Export or interpret | Exports (lang) | Owned / round-trip? | Per-node codegen |
+|---|---|---|---|---|
+| **Rete.js** (code-plugin / Rete Studio) | **export** | JavaScript | owned; **round-trip** (Rete Studio) | string/template |
+| **Builder.io Visual Copilot** | **export** | React/Vue/Angular/Svelte/Qwik/Solid/HTML/Flutter… | owned (PR/local), one-way | AI model + **Mitosis** transpiler |
+| **Mitosis** | **export** (transpiler) | many frameworks from JSX | owned | compile/transpile |
+| **TeleportHQ** | **export** | React/Vue/Next/Angular/HTML | owned, **dependency-free** | template/codegen |
+| **Dynamo** (Code Block) | partial graph→text | DesignScript | text bridge (not full-fidelity¹) | node→DesignScript |
+| **Grasshopper** (C# Script) | **interpret** (+ embedded code) | C# you hand-write in a node | exportable to external file | compiled & run at runtime |
+| **LiteGraph.js / Flume / React Flow** | **interpret** | — (JSON / UI) | none | runtime / rendering |
+| **Mendix** (SDK "codegen") | **interpret** | TS that **rebuilds the model**² | model is the deployable, not owned source | model serialization |
+| **Framer** | **interpret** (hosted) | — *"does not support direct code export"* | none | n/a |
+| **LangFlow** | **interpret** | JSON (standalone `.py` is an open feature request) | none | runtime |
+
+¹ "one Code Block = the whole graph" full-fidelity claim **refuted 1-2**.
+² Mendix-generates-owned-Java-from-microflows claim **refuted 1-2** — the SDK emits
+a script that *reconstructs the model*, not owned app source.
+
+## The agent-first axis — from "zero evidence" to two named near-misses
+
+Both prior passes left this as inferred-from-absence. This pass found the two
+closest things that exist — and **neither closes the spike's full combo**:
+
+- **`flowise-to-langchain`** (community tool) — **EXPORT-CODE**: statically converts
+  **Flowise** visual LLM flows (JSON graphs) into *"standalone, executable LangChain
+  code"* — owned, hand-editable, **TypeScript and Python**, organized around
+  per-language `emitters/` (3-0). *Closest confirmed "node graph → owned code" in
+  the agent space.* **But:** it converts **pre-existing human-built** flows (not
+  LLM-authored), it's **one-way**, the schema isn't source-generated from a vetted
+  snippet catalog, and the emitter method (template vs. AST vs. parse-and-substitute)
+  is **unspecified** in the docs.
+- **Agint** (research, *agentic graph compiler*) — an LLM that *"converts
+  natural-language instructions into **typed, effect-aware code DAGs**"* with
+  explicit **"type floors" (text → data → spec → code)** (3-0). *Closest on the
+  LLM → typed-graph idea found anywhere across all three passes.* **But:** it is a
+  *"compiler, interpreter, and runtime"* with a **hybrid LLM/JIT runtime that
+  executes the DAG** — **interpret-graph, not owned-source emission** — and evidence
+  that invalid graphs *statically* fail to compile is thin.
+
+**Verdict:** the agent-first white space **narrows but holds.** You can now get
+*LLM → typed graph* (Agint) **or** *node graph → owned code* (flowise-to-langchain)
+— but **no tool combines them** into *LLM authors a typed graph whose schema is
+generated from a vetted catalog → lowered into owned source*, and none of the three
+passes found a tool whose renderer **parses real fragments and substitutes typed
+holes**.
+
+## Updated scorecard (all three passes)
+
+| Spike axis | Occupied by any surveyed tool? |
+|---|---|
+| Deterministic graph → code | yes (many) |
+| Owned, hand-editable artifact | yes (Plasmic, FlutterFlow, Rete Studio, Builder.io, TeleportHQ, OutSystems) |
+| Round-trip code↔graph | yes (Rete Studio; partial FlutterFlow/Plasmic) |
+| Typed node graph (real type system, not string-match) | **partial** (typed pins exist; none use the *host language's* type checker as the schema) |
+| **Renderer = parse real fragments + substitute holes** | **no — 0 of all tools, all 3 passes** |
+| **Schema source-generated from a vetted snippet catalog** | **no — 0 of all tools** |
+| Agent-first (LLM authors the graph) | **near-misses only** (Agint types it but interprets; flowise emits but is human-authored) |
+
+The bottom two rows — plus their *combination* with agent-first authoring — remain
+the spike's defensible, unoccupied ground.
+
+## Remaining gaps (still thin)
+
+- **Cables.js, Drawflow, Nodes.io** node libraries — not reached; classification
+  open.
+- **Locofy** — source returned unreliable (no verified claim); **Webflow code
+  export, Anima** — not separately verified this pass.
+- **Scratch/Snap!, Unity Bolt, Node-RED/n8n/Make/Zapier, LabVIEW C Generator,
+  Houdini/TouchDesigner/Max/vvvv, KNIME/Orange** — still unverified; treat
+  export-vs-interpret as open.
+- **Agint** is a single research source; its "typed/effect-aware" guarantees aren't
+  independently corroborated here.
+
+> **Method (addendum II):** 5 angles → 22 sources → 81 claims → 25 verified (3-vote)
+> → **23 confirmed / 2 killed**. Reconstructed from the verified claim set (the
+> run's synthesis step produced a stub). Sources primary where it matters (Rete.js
+> GitHub/docs, LiteGraph, Mendix apidocs, Dynamo primer, Builder.io); some
+> design-to-code and agent-first sources are blog/secondary and flagged thin.
