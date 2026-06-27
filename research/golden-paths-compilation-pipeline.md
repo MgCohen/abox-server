@@ -1,6 +1,6 @@
 # The A.Box Compilation Pipeline — Idea, Summary & Insights
 
-*The whole idea in prose: what it is, why it's novel, the open design questions, and how it relates to low-code/no-code. No code here — for snippets and the vendor/tool breakdown see [`golden-paths-prior-art.md`](golden-paths-prior-art.md); for the golden-paths foundations see [`golden-paths.md`](golden-paths.md).*
+*The whole idea in prose: what it is, why it's novel, the open design questions, and how it relates to low-code/no-code. No code here — for an illustrative code sketch of the four core parts see [`golden-paths-pipeline-sketch.md`](golden-paths-pipeline-sketch.md); for the vendor/tool breakdown see [`golden-paths-prior-art.md`](golden-paths-prior-art.md); for the golden-paths foundations see [`golden-paths.md`](golden-paths.md).*
 
 ---
 
@@ -105,4 +105,4 @@ Three things this comparison clarifies:
 
 ---
 
-*See [`golden-paths-prior-art.md`](golden-paths-prior-art.md) for the vendor/tool landscape with snippets and the per-stage ownership map; [`golden-paths.md`](golden-paths.md) for the golden-paths foundations (Spotify origin) and the AI-agent deterministic-scaffolding research.*
+*See [`golden-paths-pipeline-sketch.md`](golden-paths-pipeline-sketch.md) for an illustrative code sketch of the templates, LLM parse, merge engine, and final code state; [`golden-paths-prior-art.md`](golden-paths-prior-art.md) for the vendor/tool landscape with snippets and the per-stage ownership map; [`golden-paths.md`](golden-paths.md) for the golden-paths foundations (Spotify origin) and the AI-agent deterministic-scaffolding research.*
