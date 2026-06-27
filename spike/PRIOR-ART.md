@@ -28,6 +28,12 @@
 The nearest neighbors each share **some** axes and diverge on others. They cluster
 into three camps plus one outlier — detailed below.
 
+> **Read the claim precisely:** the novelty is the **combination**, not the
+> individual moves. Parse-and-substitute (Rust `parse_quote!`) and
+> schema-from-catalog (source-generated fluent builders) each exist on their own;
+> what's unoccupied is all four axes **together**, above all *agent-first*. See
+> *"The moves are not individually unprecedented"* in the node-based addendum.
+
 ---
 
 ## The field, in one table
@@ -37,7 +43,7 @@ into three camps plus one outlier — detailed below.
 | **Compile-time metaprogramming** | Metalama, Roslyn Source Generators | real-C#-as-template, staged type-safety | output is **compiler-woven / compiler-managed**, not an owned editable `.cs`; boundary drawn by `meta`-marker, not a data recipe |
 | **Staged / quasiquote metaprogramming** | MetaOCaml, Scala 3 quotes-and-splices, Squid | "a well-typed generator generates only well-typed code" — the staged form of compile-or-fail | composes **opaque typed ASTs** via in-language quote/splice combinators (not a data recipe); never emits readable source |
 | **Typed holes / projectional editing** | Hazel, Hazelnut, ChatLSP | the **"fill the typed hole"** framing; by-construction safety; (ChatLSP) agent-first | a structure editor over **their own** functional language; context-injection + post-hoc LSP feedback, not deterministic parse-and-substitute into C# |
-| **Type-constrained decoding** (outlier) | ETH Zurich type-constrained generation (OOPSLA/PLDI 2025) | "the type system **is** the constraint; illegal output can't be produced," deterministic | constrains **token decoding**, not the lowering of a typed-record recipe |
+| **Type-constrained decoding** (outlier) | ETH Zurich type-constrained generation (PLDI 2025) | "the type system **is** the constraint; illegal output can't be produced," deterministic | constrains **token decoding**, not the lowering of a typed-record recipe |
 
 ---
 
@@ -56,8 +62,9 @@ boundary with a `meta` marker rather than typed holes in a *data* recipe, and �
 decisively — it **"seamlessly merges the aspect template with your business code …
 on the fly"**: templates compile to an embedded resource and apply as
 transformations into a new compilation. That is the **inverse** of the spike's
-owned/readable/editable `.cs`. (Escape hatches — `AspectDiff` preview, "Divorce" to
-materialize — exist but aren't the default.)
+owned/readable/editable `.cs`. (Escape hatches — `AspectDiff` preview, and "Divorce"
+to permanently inject the generated code into source and drop the Metalama
+dependency — exist but aren't the default.)
 
 > Verified 3-0. Sources: [metalama.net](https://metalama.net/),
 > [template overview](https://doc.metalama.net/conceptual/aspects/templates/template-overview),
@@ -164,7 +171,7 @@ schema-validated, owned artifact."
 ## Camp 4 (outlier) — type-constrained decoding
 
 **Type-Constrained Code Generation with Language Models** (Mündler et al., ETH
-Zurich SRI Lab, OOPSLA/PLDI 2025) introduces **prefix automata + a search over
+Zurich SRI Lab, PLDI 2025) introduces **prefix automata + a search over
 inhabitable types** — "a sound approach to enforce well-typedness on LLM-generated
 code," formalized on a simply-typed language and extended to TypeScript.
 
@@ -283,9 +290,10 @@ everything else is high-confidence with a unanimous or near-unanimous vote.
 
 The export-code tools split into "owns the code" vs "owns the model" — but **none**
 of them (a) **parse-and-substitute real source fragments** per node, or (b)
-**source-generate their node schema from a vetted snippet catalog**. Those two are
-the spike's distinctive moves, and across every surveyed node tool they are
-**0-for-N**.
+**source-generate their node schema from a vetted snippet catalog**. Across the
+surveyed node/low-code tools that's **0-for-N** — though note both moves *do* exist
+outside this set (Rust `parse_quote!`; fluent-builder generators), so the real
+novelty is the **combination**, not either move alone (see below).
 
 ## Export-code vs. interpret-graph — the classification
 
@@ -354,9 +362,9 @@ parse-and-substitute · schema-from-catalog):
 4. **OutSystems** — owned C# (one-way) + typed model, compiler-emitted.
 5. **Blockly** — the reference block→code generator; weak types, string-concat.
 
-## The renderer axis — nobody parses-and-substitutes
+## The renderer axis — no *node-based* tool parses-and-substitutes
 
-The spike's distinctive move is: **parse a real, isolately-compiling snippet body
+The spike's renderer move is: **parse a real, isolately-compiling snippet body
 with Roslyn and substitute typed holes at the leaf** — never build trees, never
 string-concat. Across the verified node-based set:
 
@@ -366,22 +374,58 @@ string-concat. Across the verified node-based set:
 | Target-file / TLC template from an IR | Simulink Embedded Coder |
 | AST / compiler backend | Blueprint Nativization, OutSystems |
 | Codegen from a visual model | Plasmic, FlutterFlow |
-| **Parse real fragments + substitute holes** | **none** |
+| **Parse real fragments + substitute holes** | **none (of the node-based set)** |
 
-And on **schema origin**: every tool's node schema comes from a **visual model or
-block registry** — **none** source-generate the schema from a catalog of real
-annotated methods, the move that makes the spike's recipe unable to drift.
+And on **schema origin**: every node-based tool's schema comes from a **visual model
+or block registry** — none source-generate it from a catalog of real annotated
+methods.
+
+> **⚠️ Scope this claim correctly — see "The moves are not individually
+> unprecedented" below.** Parse-and-substitute and schema-from-catalog each *do*
+> exist outside the node-based world (Rust `parse_quote!`; source-generated fluent
+> builders). What no surveyed tool does is **combine** them — with each other, with
+> an owned `.cs`, and with agent-first authoring.
+
+## The moves are not individually unprecedented — the novelty is the *combination*
+
+The earlier passes framed the two renderer/schema moves as "0-for-N." That is only
+true **within the node/low-code set** and only as a *combination*. As individual
+techniques, both are known — naming the precedents keeps us honest:
+
+| "Distinctive" move | Already exists as | So the move alone is… |
+|---|---|---|
+| Parse a real fragment + substitute typed holes | Rust **`syn::parse_quote!`** (parse valid Rust, interpolate hygiene-checked `#holes`) — the idiomatic alternative to hand-building `syn` trees; Template Haskell typed quotes are adjacent | **precedented** (different substrate: proc-macro, compiler-resident output — not an owned `.cs`) |
+| Source-generate the authoring schema from an annotated catalog | **M31.FluentAPI**, **BuilderGenerator** — Roslyn generators that emit a typed, drift-free, IntelliSense-backed builder API from annotations | **precedented** (the *mechanism*; the spike's novelty is the *payload* — a recipe of code fragments) |
+| Emit owned, git-committed, hand-editable source from a declarative recipe | **Hygen / Plop / Yeoman** scaffolders (frontmatter + EJS body + variable substitution, source-controlled in your repo) | **precedented** (but string/EJS templating, no type-system schema, no parse-of-real-source) |
+
+**What stays genuinely unoccupied is their conjunction** — and the load-bearing
+axis is **agent-first**: an LLM authoring a typed-record recipe whose schema is
+source-generated from a vetted snippet catalog, lowered by parse-and-substitute of
+real snippets into an owned `.cs`, with the type checker validating for free. No
+surveyed tool occupies that intersection; `parse_quote!` and FluentAPI-generators
+each take one cell, scaffolders take the owned-artifact cell, but none take all of
+them at once.
+
+> Near-miss sources (added in review): Rust [`syn`/`quote`/`parse_quote!`](https://docs.rs/syn/latest/syn/macro.parse_quote.html),
+> [M31.FluentAPI](https://github.com/m31coding/M31.FluentAPI),
+> [BuilderGenerator](https://github.com/melgrubb/BuilderGenerator),
+> [Hygen](https://github.com/jondot/hygen) / [Plop](https://github.com/plopjs/plop) / Yeoman.
+> These were surfaced by an adversarial review of this doc, not the original
+> automated passes — so treat them as a deliberate honesty correction to the
+> "0-for-N moves" framing, not as fully re-verified findings.
 
 ## White space (node-based)
 
-> No surveyed node-based tool occupies the spike's exact combination. **Owned +
-> round-trip + typed-ish graph** is approximated (Plasmic, FlutterFlow) and **owned
-> one-way** exists (OutSystems, Embedded Coder) — but **parse-and-substitute of real
-> fragments = 0 tools**, and **schema-source-generated-from-snippets = 0 tools.** The
-> spike's full combo — a typed node graph whose schema is generated from a vetted
+> No surveyed tool occupies the spike's exact combination. **Owned + round-trip +
+> typed-ish graph** is approximated (Plasmic, FlutterFlow, Rete Studio) and **owned
+> one-way** exists (OutSystems, Embedded Coder); the renderer move exists in Rust
+> (`parse_quote!`) and the schema move in fluent-builder generators — but **no tool
+> combines them** into a typed recipe whose schema is generated from a vetted
 > `[Snippet]` catalog, lowered by parse-and-substitute into owned C#, authored
-> agent-first — is **unoccupied**. *(Medium confidence: synthesis from per-tool
-> contrasts, not a single "nobody does X" source.)*
+> agent-first. That intersection is **unoccupied**. *(Medium confidence: synthesis
+> from per-tool contrasts, not a single "nobody does X" source; the most plausible
+> displacer is an unsurveyed commercial "agent composes from a vetted catalog"
+> product.)*
 
 ## Coverage gaps (node-based) — be honest
 
@@ -419,9 +463,10 @@ dedicated search is the obvious next step.
 > libraries, the design-to-code crowd, Mendix/Retool, flow automation, the
 > engineering dataflow tools, and — the big one — the **agent-first** angle). This
 > pass targets exactly those (5 angles → 22 sources → 81 claims → 25 verified,
-> **23 confirmed / 2 killed**). **The two distinctive spike moves stay 0-for-N**,
-> but the agent-first axis is no longer "zero evidence": two real near-misses now
-> have names.
+> **23 confirmed / 2 killed**). **The two distinctive spike moves stay 0-for-N
+> across the node/low-code set** (both exist elsewhere — see "not individually
+> unprecedented"), but the agent-first axis is no longer "zero evidence": two real
+> near-misses now have names.
 >
 > *(Provenance note: this run's automated synthesis step degenerated to a stub; the
 > findings below are reconstructed directly from the **verified claim set** — each
@@ -467,7 +512,10 @@ code-generation tool"* (all 3-0).
 
 ¹ "one Code Block = the whole graph" full-fidelity claim **refuted 1-2**.
 ² Mendix-generates-owned-Java-from-microflows claim **refuted 1-2** — the SDK emits
-a script that *reconstructs the model*, not owned app source.
+a script that *reconstructs the model*, not owned app source. (Note: the first
+node-based pass refuted a *different* Mendix sub-claim 0-3 — the SDK-to-Java
+conversion-path framing — so the same tool carries two distinct refutations across
+passes; they are not contradictory.)
 
 ## The agent-first axis — from "zero evidence" to two named near-misses
 
@@ -493,24 +541,28 @@ closest things that exist — and **neither closes the spike's full combo**:
 **Verdict:** the agent-first white space **narrows but holds.** You can now get
 *LLM → typed graph* (Agint) **or** *node graph → owned code* (flowise-to-langchain)
 — but **no tool combines them** into *LLM authors a typed graph whose schema is
-generated from a vetted catalog → lowered into owned source*, and none of the three
-passes found a tool whose renderer **parses real fragments and substitutes typed
-holes**.
+generated from a vetted catalog → lowered into owned source*.
 
 ## Updated scorecard (all three passes)
+
+The two renderer/schema rows read "no" **within the surveyed set, and as a
+combination** — both moves exist as individual techniques elsewhere (see *"The moves
+are not individually unprecedented"* in the node-based section: Rust `parse_quote!`,
+fluent-builder generators). The honest claim is occupancy *of the conjunction*, not
+unprecedented moves.
 
 | Spike axis | Occupied by any surveyed tool? |
 |---|---|
 | Deterministic graph → code | yes (many) |
-| Owned, hand-editable artifact | yes (Plasmic, FlutterFlow, Rete Studio, Builder.io, TeleportHQ, OutSystems) |
+| Owned, hand-editable artifact | yes (Plasmic, FlutterFlow, Rete Studio, Builder.io, TeleportHQ, OutSystems; **also scaffolders** Hygen/Plop/Yeoman) |
 | Round-trip code↔graph | yes (Rete Studio; partial FlutterFlow/Plasmic) |
 | Typed node graph (real type system, not string-match) | **partial** (typed pins exist; none use the *host language's* type checker as the schema) |
-| **Renderer = parse real fragments + substitute holes** | **no — 0 of all tools, all 3 passes** |
-| **Schema source-generated from a vetted snippet catalog** | **no — 0 of all tools** |
-| Agent-first (LLM authors the graph) | **near-misses only** (Agint types it but interprets; flowise emits but is human-authored) |
+| Renderer = parse real fragments + substitute holes | **none in the surveyed set** — but precedented elsewhere (Rust `parse_quote!`); not into an owned `.cs` |
+| Schema source-generated from a vetted catalog | **none in the surveyed set** — but the *mechanism* exists (M31.FluentAPI / BuilderGenerator); novelty is the fragment-catalog payload |
+| **Agent-first (LLM authors the graph)** | **near-misses only** (Agint types it but interprets; flowise emits but is human-authored) — the genuinely near-empty axis |
 
-The bottom two rows — plus their *combination* with agent-first authoring — remain
-the spike's defensible, unoccupied ground.
+The spike's defensible, unoccupied ground is the **conjunction** of these rows —
+above all the agent-first axis, where the field is genuinely near-empty.
 
 ## Remaining gaps (still thin)
 
@@ -657,21 +709,29 @@ not the whole visual app. → `docs.flutterflow.io/concepts/custom-code/vscode-e
 
 # Appendix B: learnings to extract for our style
 
-Not survey — design pressure on the spike itself. Ranked by how much each would
-change us. (Cross-refs are to README §8 backlog items.)
+Not survey — design pressure on the spike itself. (Cross-refs are to README §8
+backlog items.) **Priority order revised after a review pass** — see *"Acting on
+this"* at the end; B1–B6 are kept distinct so each learning stays tracked.
 
-### B1. Derive hole-names from node identity, not stringly-typed fields — **do this**
-Rete's emitted `number1num` / `add4num` are **minted from node identity**
-(`<type><id><port>`), and each node receives its inputs' *already-rendered handles*.
-Variables align because the renderer threads handles through the graph — **not**
-because a human spelled two strings the same.
+### B1. Replace stringly-typed name-wiring with an identity-carrying binding — **do this**
+Rete's emitted `number1num` / `add4num` are minted from node identity, and each node
+receives its inputs' *already-rendered handles* — variables align because the
+renderer threads handles through the graph, **not** because a human spelled two
+strings the same.
 
 Our `loop+var+sum` recipe still wires by hand-matched strings
 (`Define(Var:"acc")` … `Assign(Target:"acc")` … `Ref("acc")`). That's **backlog
-#1** *and* a silent-bug class (a typo'd `"acc "` compiles to a second variable).
-The fix is mechanical: **derive the `@name` hole from the node instance, and let a
-node reference an upstream node's *output handle* rather than a string.** Rete is a
-working existence proof. **Highest-value, lowest-risk steal.**
+#1** *and* a silent-bug class (a typo'd `"acc "` compiles to a second variable;
+confirmed in `Generator.BuildHoles`, which routes every `string` into the name-holes
+and substitutes by literal text).
+
+**The fix is *not* Rete's literal move.** Auto-minting opaque names like
+`define1var` would make the owned `.cs` **less** readable — fighting the spike's
+core "owned, hand-editable" constraint. The right form (and what README #1 already
+says — `.Named("acc")`) is a **binding object**: a `Define` mints a binding that
+downstream nodes reference **by identity**, while the human still chooses the
+displayed name. That kills the string-matching *and* keeps the output legible.
+**Highest-value, lowest-risk steal — once scoped to a binding, not auto-naming.**
 
 ### B2. The owned seam (Plasmic / FlutterFlow) — **decide before the spike grows a hand-edit story**
 Plasmic never lets you edit the generated blackbox; hand-edits live in a thin
@@ -697,25 +757,47 @@ disposable** (regenerated every build). Our README asserts the opposite (owned
 You can only have both via the B2 seam. We're currently asserting "owned `.cs`"
 *and* wanting to regenerate — pick one, or build the seam.
 
-### B4. Track renderer coverage like flowise tracks converter coverage — **cheap guard**
-flowise advertises "98.5% coverage" across 130+ node types — it *measures* the gap
-between nodes-that-exist and nodes-it-can-emit. Source-gen gives us the node
-registry for free (no drift), but **nothing flags that the renderer is inline-only
-and int-specialized** — a snippet can exist that the tool silently can't lower.
-→ Add a guard: **every `[Snippet]` must be lowerable by the current renderer.**
-Catalog ≠ emittable should be an enforced, visible fact. Fits the repo's
-enforcement-surface ethos.
+### B4. Guard that the renderer can lower every snippet — **do this too (cheapest win)**
+flowise *measures* the gap between nodes-that-exist and nodes-it-can-emit ("98.5%
+coverage"). Source-gen gives us the node registry for free (no drift), but **nothing
+asserts the renderer can actually lower each one** — it's inline-only and
+int-specialized (verified: `Generator.RenderStmt` assumes `method.Body!`,
+`RenderExpr` assumes `ExpressionBody!`, no generic-`<T>` path), so a snippet can
+exist that the tool silently NREs on. For a 5-snippet spike the right mechanism is a
+**binary parity guard, not a percentage**: *every `[Snippet]` must round-trip through
+the renderer.* This converts the known int-only/inline-only divergences from prose
+caveats into **enforced facts** — exactly the repo's enforcement-surface ethos, and
+cheaper than B1 (one test, no design change).
 
 ### B5. Keep the host type system as the schema (anti-Blockly) — **defensive principle**
 The universal weakness across these tools is typing — Blockly's "type check" is
 literally string-set intersection. Our differentiator is that **C#'s type checker
 *is* the schema.** As we add axes (context variations, `Call` mode), **resist
 bolting on a stringly-typed `"kind"` tag to special-case nodes** — that reinvents
-Blockly's weakest part and regresses our core claim. Every new axis stays
-expressible in the type system, or it's a regression.
+Blockly's weakest part and regresses our core claim. (The `gen/Recognizers.cs`
+design — one typed recognizer per hole kind — already embodies this: a new axis is a
+new typed recognizer, not a `"kind"` tag.) Every new axis stays expressible in the
+type system, or it's a regression.
 
-### If we act on one thing
-**B1** (derive hole-names from node identity). It removes our most embarrassing
-stringly-typed coupling, it's already backlog #1, and Rete shows exactly how.
-**B2/B3** (the owned seam + ownership decision) are the most *strategic* — worth an
-ADR before the spike grows a hand-edit story.
+### B6. Resolve scope *at the hole*, agent-first (Hazel / ChatLSP) — **the survey's biggest unspun lesson**
+B1 fixes the *name-wiring symptom*; this is the underlying disease. Snippets compile
+in isolation, but a recipe can wire an out-of-scope name (`Ref("typo")`) that only
+fails at the **final composition gate**, with a poor error message — and README §9
+flags "error-message quality matters for agent-first" as a live risk. The entire
+**typed-holes camp (Hazel, and especially ChatLSP)** is precisely about resolving
+*the typing/binding context of the hole* so the gap is caught **at the hole**, not
+post-hoc. Concretely: make `Ref`/`Assign` reference a binding that **must already be
+in scope**, so bad wiring fails **at recipe-authoring with a located error**, not at
+the final compile. This is the single most spike-relevant learning in the whole
+survey, and it's a natural superset of B1 (the binding is the same object).
+
+### Acting on this (revised order, post-review)
+1. **B1 — do now**, scoped to an identity-binding (not Rete-style auto-naming): kills
+   the only silent-bug class; already backlog #1.
+2. **B4 — do now**, cheapest of all: one parity test turns the int-only/inline-only
+   divergences into enforced facts.
+3. **B6 — high value**: scope-at-the-hole makes bad wiring fail at authoring; the
+   binding it needs is the same object B1 introduces, so B1→B6 is one arc.
+4. **B2 + B3 — one ADR** ("ownership & the regeneration seam"): they're the same
+   decision viewed twice; settle it before the spike grows a hand-edit story.
+5. **B5 — standing principle**, no code: a guardrail to honor as new axes land.
