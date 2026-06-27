@@ -262,3 +262,151 @@ peer-reviewed venues — POPL, PLDI, OOPSLA, GPCE, Scala Symposium) and current
 (2016–2026). One ACM PDF (Squid) returned 403 but was corroborated by the project's
 official docs. The positive novelty claim is the one **medium-confidence** finding;
 everything else is high-confidence with a unanimous or near-unanimous vote.
+
+---
+
+# Addendum: the node-based / no-code / low-code lens
+
+> A second pass, from a different vantage. The PL survey above found Metalama as the
+> only close *.NET* relative — but the spike's **recipe is, structurally, a typed
+> node graph** whose nodes are vetted code fragments, lowered to owned source. So
+> the sharpest practical neighbors aren't compilers — they're **visual / node-based
+> builders that *export real, owned code*** (Blockly, FlutterFlow, Simulink, …), as
+> opposed to ones that merely *interpret the graph at runtime* (Bubble, Node-RED).
+> The "exports owned source vs. runs the graph" filter is the whole lens.
+>
+> Same harness, fresh search (6 angles → 25 sources → 108 claims → 25 verified,
+> **20 confirmed / 5 killed**). **Same verdict, stronger:** the node-based world
+> confirms the two spike moves that are genuinely unoccupied.
+
+## TL;DR of the node-based lens
+
+The export-code tools split into "owns the code" vs "owns the model" — but **none**
+of them (a) **parse-and-substitute real source fragments** per node, or (b)
+**source-generate their node schema from a vetted snippet catalog**. Those two are
+the spike's distinctive moves, and across every surveyed node tool they are
+**0-for-N**.
+
+## Export-code vs. interpret-graph — the classification
+
+| Tool | Export or interpret | Exports (lang) | Owned / round-trip? | Typed ports? | Per-node codegen |
+|---|---|---|---|---|---|
+| **Blockly** | **export** | JS / Python / Dart / Lua / PHP | owned string, **one-way** | weak — string-set intersection | **string concat** templates |
+| **Simulink + Embedded Coder** | **export** | C / C++ / HDL | readable, but **model is owned** (regenerated) | yes (typed block ports) | **TLC target-file templates** from `model.rtw` |
+| **OutSystems** | **export** ("detach") | .NET / C# | owned, **one-way, all-or-nothing** | yes (typed model) | compiler / AST backend |
+| **Plasmic** | **export** | React / TypeScript | owned **+ resync** (owned-wrapper seam) | typed visual model | codegen from visual model |
+| **FlutterFlow** | **export** | Dart / Flutter | owned **+ round-trip** (scoped to custom code) | typed widgets | widget-tree emission |
+| **Unreal Blueprint Nativization** | export → **throwaway** | C++ | **not owned/readable**, one-way, **deprecated (UE5)** | yes (typed pins) | AST → C++ backend |
+| **Bubble** | **interpret** | — (`.bubble` JSON config, non-executable) | none | n/a | n/a (runtime engine) |
+
+The spike sits off the right edge of this table: **owned C#**, schema **= the host
+type system**, renderer **= parse-and-substitute of real fragments**.
+
+## What the node tools teach us (per finding)
+
+- **Blockly** — the archetypal block→code generator. Each block has a per-language
+  generator function that **returns a string by concatenation**
+  (`left + ' ' + op + ' ' + right`). This is the *opposite* of the spike's renderer,
+  and confirms string-templating is the default in this world. Its "type checks" are
+  a **nullable array of strings**, compatible iff they share ≥1 string (null =
+  wildcard) — connect-time validation, but **not a type system**. The spike pushes
+  validation into the C# compiler; strictly stronger. *(3-0; one over-broad
+  "compatible types" sibling refuted 1-2.)*
+- **Simulink / Stateflow + Embedded Coder** — a *real* export-code, model-based tool
+  generating **readable C/C++** from a typed block diagram. But generation is
+  **TLC template/target-file emission** over the `model.rtw` IR, and the **model,
+  not the `.c`, is the owned artifact** — code is regenerated-from-model, not
+  hand-owned. Architecturally opposite to parse-and-substitute. *(3-0.)*
+- **Unreal Blueprint Nativization** — converted typed-pin graphs to C++, but output
+  was build-pipeline throwaway ("**not formatted to be reusable or reader
+  friendly**", in `Intermediate/`), one-way, and **removed in UE5**. Typed graph,
+  but fails the owned/readable filter entirely — historical prior art, not a
+  shipping capability. *(3-0.)*
+- **Plasmic** — **closest on owned + round-trip**: codegen writes React/TS **into
+  your git repo** (`git commit` the output) with a two-file split — Plasmic-owned
+  presentation files (overwritten on sync) + **developer-owned wrappers** that
+  hand-edits survive in. Shares owned-source + resync; diverges on renderer
+  (codegen, not parse-and-substitute) and schema (visual model, not from a snippet
+  catalog). *(3-0.)*
+- **FlutterFlow** — **closest on genuine round-trip**: a VS Code extension pushes
+  local edits up and pulls changes down, yielding real owned Dart. But round-trip is
+  **scoped to custom-code resources**, not the whole visual app (the "entire
+  codebase" claim was **refuted 0-3**), and pull overwrites uncommitted edits.
+  *(3-0.)*
+- **OutSystems** — customers can **detach and own** generated .NET/C#. Real, but
+  **one-way, all-or-nothing, support-gated** ("changes to the detached source are
+  not supported"). Three over-broad siblings (no proprietary runtime; clean
+  hand-edit/VCS) were **refuted 0-3** — "owned" here is cumbersome and one-way.
+  *(3-0.)*
+- **Bubble** — the opposite pole: **pure locked runtime**, "**no way of exporting
+  your application as code**"; the JSON export is config, not source. *(3-0.)*
+
+## Closest prior art (node-based shortlist)
+
+Ranked by how many spike axes each shares (owned source · round-trip · typed graph ·
+parse-and-substitute · schema-from-catalog):
+
+1. **Plasmic** — owned + resync + typed visual model. Misses parse-and-substitute &
+   schema-from-snippets.
+2. **FlutterFlow** — owned + round-trip (scoped) + typed widgets. Same two misses.
+3. **Simulink + Embedded Coder** — typed ports + readable export, but model-owned &
+   template-emitted.
+4. **OutSystems** — owned C# (one-way) + typed model, compiler-emitted.
+5. **Blockly** — the reference block→code generator; weak types, string-concat.
+
+## The renderer axis — nobody parses-and-substitutes
+
+The spike's distinctive move is: **parse a real, isolately-compiling snippet body
+with Roslyn and substitute typed holes at the leaf** — never build trees, never
+string-concat. Across the verified node-based set:
+
+| Renderer style | Tools |
+|---|---|
+| String / template concat | Blockly |
+| Target-file / TLC template from an IR | Simulink Embedded Coder |
+| AST / compiler backend | Blueprint Nativization, OutSystems |
+| Codegen from a visual model | Plasmic, FlutterFlow |
+| **Parse real fragments + substitute holes** | **none** |
+
+And on **schema origin**: every tool's node schema comes from a **visual model or
+block registry** — **none** source-generate the schema from a catalog of real
+annotated methods, the move that makes the spike's recipe unable to drift.
+
+## White space (node-based)
+
+> No surveyed node-based tool occupies the spike's exact combination. **Owned +
+> round-trip + typed-ish graph** is approximated (Plasmic, FlutterFlow) and **owned
+> one-way** exists (OutSystems, Embedded Coder) — but **parse-and-substitute of real
+> fragments = 0 tools**, and **schema-source-generated-from-snippets = 0 tools.** The
+> spike's full combo — a typed node graph whose schema is generated from a vetted
+> `[Snippet]` catalog, lowered by parse-and-substitute into owned C#, authored
+> agent-first — is **unoccupied**. *(Medium confidence: synthesis from per-tool
+> contrasts, not a single "nobody does X" source.)*
+
+## Coverage gaps (node-based) — be honest
+
+Named in the brief but **no surviving verified claim** — classification **open**,
+not established:
+
+- **Visual scripting / blocks:** Scratch/Snap!, Unity Visual Scripting (Bolt).
+- **Design-to-code:** Webflow, Anima, Locofy, Builder.io, Framer *(only Plasmic &
+  FlutterFlow verified)*.
+- **Enterprise low-code:** Mendix *(SDK claim refuted 0-3)*, Retool.
+- **Flow automation:** Node-RED, n8n, Make, Zapier.
+- **Dataflow / model:** LabVIEW, Grasshopper, Dynamo, TouchDesigner, Max/MSP, vvvv,
+  Houdini.
+- **Data-science node editors:** KNIME, Orange.
+- **Node-graph libraries (substrate):** Rete.js, LiteGraph.js, React Flow, Drawflow,
+  Cables.gl — *do any ship a code-**emit** backend, not just graph-run?* Unverified.
+
+**The highest-value gap (both passes agree):** an **AI/agent product where an LLM
+builds a *typed node graph* that is then lowered to *owned real code*** (LLM → typed
+graph → owned source, not LLM → raw code). **Zero verified evidence** in either
+survey — the spike's agent-first white space is inferred from *absence*, and a
+dedicated search is the obvious next step.
+
+> **Method (addendum):** 6 angles → 25 sources → 108 claims → 25 verified (3-vote,
+> 2/3-refute) → **20 confirmed / 5 killed** → 9 findings. Sources primary (vendor
+> docs: Blockly, MathWorks, Unreal, Plasmic, FlutterFlow, OutSystems, Bubble).
+> Caveat: "readable" in vendor copy (Embedded Coder) is marketing, not proof of
+> hand-editable ownership; Blueprint Nativization docs are UE4.x (removed in UE5).

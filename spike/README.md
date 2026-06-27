@@ -10,8 +10,10 @@ the whole idea, why it's shaped the way it is, and what we're building, without
 having seen the conversation that produced it.
 
 > **Prior art:** [`PRIOR-ART.md`](PRIOR-ART.md) maps this design against the
-> existing field (Metalama, MetaOCaml/Scala quotes/Squid, Hazel/ChatLSP, Roslyn
-> generators, type-constrained decoding) and locates the white space — §6's
+> existing field through two lenses — the **PL/metaprogramming** one (Metalama,
+> MetaOCaml/Scala quotes/Squid, Hazel/ChatLSP, Roslyn generators, type-constrained
+> decoding) and the **node-based / no-code** one (Blockly, FlutterFlow, Plasmic,
+> Simulink, Blueprint Nativization, OutSystems) — and locates the white space. §6's
 > "rejected alternatives," widened with a fact-checked survey.
 
 > **Status — Steps 1 & 2 built and passing.**
