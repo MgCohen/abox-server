@@ -42,7 +42,7 @@ public class GeneratorRegressionTests
     public void A_second_recipe_shape_compiles_and_returns_its_value()
     {
         var recipe = new Block(
-            new DefineNode("x", new Lit(7)),
+            new DefineNode(new Lit(7), "x"),
             new ReturnNode(new Ref("x")));
 
         var code = Generator.Generate(recipe);

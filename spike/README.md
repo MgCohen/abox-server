@@ -9,12 +9,24 @@ This document is written to be **cold-readable**: you should be able to understa
 the whole idea, why it's shaped the way it is, and what we're building, without
 having seen the conversation that produced it.
 
-> **Status — Step 1 built and passing** (`spike/src/`). `dotnet run` generates
-> `spike/out/ScriptData.cs`, compiles it in-memory, and runs it. All three
-> done-when criteria (§7.5) pass: returns `10`; editing a snippet flows through;
-> a mistyped recipe fails to compile. Spike divergences from the ideal design:
-> **int-specialized** (no generic `<T>` yet) and **inline-only** (no `Call` mode).
-> Source-gen of the recipe nodes (Step 2) is not built — nodes are hand-written.
+> **Status — Steps 1 & 2 built and passing.**
+> - **Step 1** (`spike/src/`): `dotnet run` generates `spike/out/ScriptData.cs`,
+>   compiles it in-memory, and runs it → returns `10`. Editing a snippet flows
+>   through; a mistyped recipe fails to compile (the 3 done-when criteria, §7.5).
+> - **Step 2** (`spike/gen/`): the recipe nodes are now **source-generated** from
+>   the `[Snippet]` methods into `spike/src/Nodes.Generated.cs` (standalone emit,
+>   decoupled hole recognizers). The hand-written nodes are gone. Adding a
+>   `[Snippet]` makes its node appear with no other edit; a **regression net**
+>   (`spike/tests/`, 3 tests) pins the output across the refactor — all green.
+>
+> Spike divergences from the ideal design: **int-specialized** (no generic `<T>`
+> yet) and **inline-only** (no `Call` mode). The emit is a console tool now (A2);
+> swapping to an in-build source generator (A1) later is just a host change.
+>
+> **What building taught us:** the base interface (`IExpr<T>` vs `IStmt`) is
+> decided by the snippet's **body kind** — expression-bodied (`=> a + b`) produces
+> a value, block-bodied (`{ return value; }`) produces statements — **not** by the
+> return type. `int Return(int value) { return value; }` is a statement snippet.
 
 ---
 
