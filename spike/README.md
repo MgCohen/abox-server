@@ -404,6 +404,48 @@ spike to keep the first cut minimal.
    class/interface. *Test:* does inheritance buy anything now that fills are
    discovered by the generator, or is it ceremony?
 
+### The declaration tier (items 7–9: grow *up* from statement bodies)
+
+Everything so far composes the **body** of a fixed shell — the tool hardcodes
+`public static class ScriptData { public static int Run() { <recipe> } }` and the
+recipe only fills the `<recipe>` statements. Items 7–9 are the same modeling move
+applied one level up: from "compose statements" to "compose declarations." They
+share a spine — a **member region** is to a type what a `Block` is to a method.
+
+7. **What the generated element *is*** — the output shell (class? method? what
+   name / return type / params?) is **not modeled** today; it's baked into the
+   generator. Model a declaration tier: a `MethodNode` (name, return type, params,
+   `Block` body) and the existing recipe becomes that method's body, not the whole
+   artifact. *Test:* does today's `Block`/`IStmt` nest cleanly as a `MethodNode`'s
+   body with zero change below it? Does the class shell stay hardcoded, or become a
+   `ClassNode` whose members are themselves nodes?
+8. **Defining new types** — a recipe can't introduce a type (`record Foo(int X)`,
+   `class Bar { … }`). Express a type definition as a `[Snippet]` whose body is a
+   type decl — `@`-marker for the type name, a region fill for its members.
+   *Test:* do the existing fill forms reach a type name + member list, or does a
+   member region need a new form distinct from `Block` (you can't drop a statement
+   where a field goes)?
+9. **Adding a field to a type** — once a type is a node, attaching a field/property
+   (`int @name;`) should be the *same* operation as adding a statement to a block:
+   fill a region. *Test:* is a member list just another `Block` (region fill), so
+   field-add ≡ statement-add — or do members need their own region type so the
+   compiler rejects a statement-in-a-field-slot?
+
+### Freer code at a position (item 10)
+
+10. **Host-language code at typed leaf positions** — some fills are tedious to model
+    as node trees but trivial to write as plain C#: the `If` condition is the
+    motivating case, authored as a lambda `() => i < 3` instead of
+    `new LessThanNode(new Ref(i), new Lit(3))`. A lambda buys real C# type-checking
+    and IntelliSense at the leaf while staying capturable. Overlaps the `Raw("…")`
+    escape hatch (#4), but is **typed** where Raw is a string blob. *Test:* can a
+    lambda body be lowered to source deterministically (`CallerArgumentExpression`
+    on the param, or expression-tree → text)? Where's the line — raw/lambda allowed
+    **only** at typed leaf-expression slots, never where a `Block` is expected? And
+    note the tension with operator sugar (see `BUILDING-STYLE.md`): `acc + i` solves
+    the same "don't hand-build expression nodes" itch while staying *inside* the
+    type system, where a lambda steps outside it.
+
 ---
 
 ## 9. Open questions / risks
