@@ -158,7 +158,7 @@ The four rules that tree encodes:
 
 | Question | Answer |
 |---|---|
-| **What's central?** | only ownerless guarantees: `Arch`, `Structure`, `Docs` (under `tests/Tests/`) + `Meta` (`tests/Meta/`) — plus the shared `tests/Harness/` and `tests/Templates/`. |
+| **What's central?** | only ownerless guarantees: `Arch`, `Structure`, `Docs` (under `tests/Tests/`) + `Meta` (`tests/Harness/Meta/`, nested with the engine it polices) — plus the shared `tests/Harness/` and `tests/Templates/`. |
 | **Where do a feature's tests go?** | `src/Features/<F>/Tests/`, types as **internal subfolders**, one assembly `ABox.<F>.Tests`. |
 | **Standard vs. guarantees?** | doctype (catalog) + every `template.md` (`tests/Templates/`) = **central**; each feature's `rules.md` = **co-located**. |
 | **Odd cases?** | flow E2E → **Flows**; live CLI → **Agents**; `/health` → **Host** (ownerless infra). |
@@ -186,8 +186,8 @@ central-per-type, guarantees local.
 ## How the harness still enforces everything
 
 Four engine changes turn the centralized harness into a **discover-and-enforce** harness. All four are in
-`tests/Harness/**` + `tests/Meta/**` — the protected enforcement surface — so they land via an
-owner-reviewed PR, carefully, *with* the move (never after).
+`tests/Harness/**` (which now also covers the nested `tests/Harness/Meta/**`) — the protected enforcement
+surface — so they land via an owner-reviewed PR, carefully, *with* the move (never after).
 
 | # | Current state (2026-06-26) | Becomes |
 |---|---|---|
@@ -242,10 +242,10 @@ Co-location moves protected surfaces, so `governance/protected-paths` must follo
 
 | Path | Change |
 |---|---|
-| `tests/**/Rulebook/**` | narrow to the central rulebooks (`tests/Tests/{Arch,Structure,Docs}/Rulebook/**` + `tests/Meta/Rulebook/**`) |
+| `tests/**/Rulebook/**` | narrow to the central rulebooks (`tests/Tests/{Arch,Structure,Docs}/Rulebook/**` + `tests/Harness/Meta/Rulebook/**`) |
 | `tests/Templates/**` | **add** (critical) — the per-type criteria are the central standard |
 | `src/**/Tests/Rulebook/**`, `tools/**/Tests/Rulebook/**` | **add** — feature/tool `rules.md` are guarantees, still protected |
-| `tests/Harness/**`, `tests/Meta/**` | unchanged (still critical) |
+| `tests/Harness/**` | unchanged (still critical) — now also covers the nested `tests/Harness/Meta/**` |
 | `tools/doc-engine/{doctypes,blocks,kinds,_schema}/**` | confirm protected — the doctypes are the standard the whole repo validates against |
 | CODEOWNERS | regenerate from the above |
 

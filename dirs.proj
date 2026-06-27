@@ -4,10 +4,11 @@
        (the colocation model — a test's home is where its owner lives), not by a project-name suffix. Central
        suites live under tests/; a feature owns its tests under src|tools/**/Tests/. The Harness (the engine
        those suites reference) and Fixtures (feature-independent shared test infra) are libraries, not test
-       projects, so they are excluded. See PLANS/test-colocation.md. -->
+       projects, so they are excluded — by the immediate `tests/Harness/*.csproj`, NOT `tests/Harness/**`, so
+       the Meta self-suite nested under tests/Harness/Meta/ still runs. See PLANS/test-colocation.md. -->
   <ItemGroup>
     <ProjectReference Include="tests/**/*.csproj;src/**/Tests/**/*.csproj;tools/**/Tests/**/*.csproj"
-                      Exclude="tests/Harness/**/*.csproj;tests/Fixtures/**/*.csproj;**/bin/**/*.csproj;**/obj/**/*.csproj" />
+                      Exclude="tests/Harness/*.csproj;tests/Fixtures/**/*.csproj;**/bin/**/*.csproj;**/obj/**/*.csproj" />
   </ItemGroup>
 
 </Project>

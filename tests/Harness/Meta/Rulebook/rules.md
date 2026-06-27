@@ -1,8 +1,8 @@
 ---
 docType: rulebook
 testType: meta
-template: ../../Templates/meta.template.md
-harness: ../../Harness/README.md
+template: ../../../Templates/meta.template.md
+harness: ../../README.md
 ---
 
 ## Rules

@@ -31,7 +31,7 @@ What a Rule *means* varies by type —
 The three structural types (Arch/Structure/Docs) are ownerless and live under `tests/Tests/` in the
 `ABox.Tests.Central` assembly; the four behavioral types (Unit/Wire/E2E/Live) are a feature's own and
 co-locate in `ABox.<Owner>.Tests` under `src/<…>/<Owner>/Tests/`. **Meta** tests the **test system** — the
-taxonomy, the Rulebook format, and parity — and lives apart, under `tests/Meta/` in its own `ABox.Tests.Meta`
+taxonomy and parity — and nests under this engine it polices, at `tests/Harness/Meta/` in its own `ABox.Tests.Meta`
 assembly, validating every suite from *outside* (via `ABox.Tests.SuiteAnchor` and `Suites.Colocated()`) the
 way the Arch guards validate `src`. The **Rulebook shape and parity discipline are identical across every
 type**, product or Meta. Splitting the template out of `rules.md` is deliberate: `rules.md` then holds nothing

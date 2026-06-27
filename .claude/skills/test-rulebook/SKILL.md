@@ -21,7 +21,7 @@ Every product test *type* is a **Rulebook**: a `<Type>/Rulebook/` folder
 with a `rules.md` (front-matter + a `## Rules` list of `### ` Rules) pointing at a central `template.md`
 (`## Summary` + a `## Criteria` rubric), each Rule enforced by a `[Rule("<header>")]` xUnit fact beside it. Both
 files are doc-engine instances (a `docType` front-matter header); the **Docs** type validates their shape
-by shelling out to the doc-engine. The **Meta** self-suite (`tests/Meta`, its own assembly) runs one parity
+by shelling out to the doc-engine. The **Meta** self-suite (`tests/Harness/Meta`, its own assembly) runs one parity
 check over every product type — and over itself — and fails the build if a Rule has no test or a test cites
 no Rule. So a test never lands alone — it lands **with its Rule**. (The product types test the product; Meta
 tests the test system itself, from outside.)
@@ -122,7 +122,7 @@ judge-graded (see §6), not parity-enforced.
   location. Don't add a project per *type*; do add one per *owner*.
 - **Rulebooks are read from the source tree.** The Meta guards locate the repo root (`RepoTree`, via
   the `ABox.slnx` marker) and read each `<Type>/Rulebook/rules.md` straight from disk — no copy step.
-  A Rule counts only if it sits in its type's `rules.md` under `tests/Tests/<Type>/` (central), `tests/Meta/`,
+  A Rule counts only if it sits in its type's `rules.md` under `tests/Tests/<Type>/` (central), `tests/Harness/Meta/`,
   or a feature's `src/<…>/<Owner>/Tests/<Type>/` (co-located).
 - **`rules.md` holds only Rules.** Under `## Rules`, every `### ` counts — the example shape lives in
   `tests/Harness/README.md`, not `rules.md`, so there's nothing to game. The doc-engine's `rulebook`

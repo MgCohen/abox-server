@@ -18,7 +18,8 @@ Three pieces:
   structural types `Arch`/`Structure`/`Docs`, each its own Rulebook with the same folder shape
   (`<Type>/Rulebook/`, `<Type>/Tests/`, `<Type>/Support/`). A feature's `Unit`/`Wire`/`E2E`/`Live` are
   **co-located** (`ABox.<Owner>.Tests`), not here.
-- **[`Meta/`](Meta/README.md)** — the **self-suite** (`ABox.Tests.Meta`): the same Rulebook shape,
+- **[`Harness/Meta/`](Harness/Meta/README.md)** — the **self-suite** (`ABox.Tests.Meta`), nested with the
+  engine it polices: the same Rulebook shape,
   but its Rules guard the *test system* — taxonomy, Rulebook format, parity — validating the product
   suite from outside, the way Arch validates `src/`.
 

@@ -33,6 +33,6 @@
   <Folder Name="/tests/">
     <Project Path="tests/Harness/ABox.Tests.Harness.csproj" />
     <Project Path="tests/Tests/ABox.Tests.Central.csproj" />
-    <Project Path="tests/Meta/ABox.Tests.Meta.csproj" />
+    <Project Path="tests/Harness/Meta/ABox.Tests.Meta.csproj" />
   </Folder>
 </Solution>

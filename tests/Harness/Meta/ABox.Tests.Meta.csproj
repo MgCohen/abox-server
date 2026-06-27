@@ -20,8 +20,8 @@
        ABox.Tests.SuiteAnchor) the way the Arch guards reflect over src. The reference makes the assembly
        loadable; Harness carries the engine. Rulebooks are read from the source tree (RepoTree), so no copy. -->
   <ItemGroup>
-    <ProjectReference Include="..\Harness\ABox.Tests.Harness.csproj" />
-    <ProjectReference Include="..\Tests\ABox.Tests.Central.csproj" />
+    <ProjectReference Include="..\ABox.Tests.Harness.csproj" />
+    <ProjectReference Include="..\..\Tests\ABox.Tests.Central.csproj" />
   </ItemGroup>
 
 </Project>

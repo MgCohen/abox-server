@@ -1,8 +1,14 @@
 # Meta — the test-system self-suite
 
 A separate assembly (`ABox.Tests.Meta`) whose Rules guard the **test system itself**, not the product. Same
-Rulebook shape as every product type (`Rulebook/`, `Tests/`) — see [`../Harness/README.md`](../Harness/README.md)
+Rulebook shape as every product type (`Rulebook/`, `Tests/`) — see [`../README.md`](../README.md)
 for the convention.
+
+It **nests under `Harness/`** because it is how the Harness enforces itself: every guard below checks that a
+test actually follows the Harness contract — cites a `[Rule]`, sits where `ParityGuard` can see it, is wired
+into coverage. It is its own assembly, not part of the engine (the engine is a library every suite references;
+this reflects over them from outside) — co-located with the engine it polices, the way a feature's tests sit
+with the feature.
 
 It validates every suite from **outside**, the way the Arch guards validate `src/`: it reflects over the
 central assembly (through `ABox.Tests.SuiteAnchor`) and over every co-located `ABox.<Owner>.Tests` (discovered

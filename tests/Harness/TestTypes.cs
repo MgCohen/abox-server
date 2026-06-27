@@ -3,7 +3,7 @@ namespace ABox.Tests.Harness;
 // The registered PRODUCT test TYPES — each a Rulebook folder under tests/Tests/ that guards the product: src,
 // or (Docs) the repo's structured documents via the doc-engine. THIS LIST is the source of truth; a folder
 // under tests/Tests/ that is none of these (and not shared Support) escaped the taxonomy. Add a type here only
-// when a genuinely new kind of guarantee is stood up. The Meta self-suite (tests/Meta, ABox.Tests.Meta)
+// when a genuinely new kind of guarantee is stood up. The Meta self-suite (tests/Harness/Meta, ABox.Tests.Meta)
 // validates this set from outside and is deliberately not a member.
 public static class TestTypes
 {
