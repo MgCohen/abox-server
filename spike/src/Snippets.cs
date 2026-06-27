@@ -3,11 +3,11 @@ using System.Runtime.CompilerServices;
 namespace Spike;
 
 // The snippet catalog. Each method is REAL, compiling, type-checked C# — the body is the
-// template. Holes are encoded so the method still compiles and the generator can find them:
-//   - value hole : a by-value parameter        (filled by a rendered child expression)
-//   - name hole  : an `@`-prefixed identifier   (filled by a name string from the recipe)
+// template. Slots are encoded so the method still compiles and the generator can find them:
+//   - value slot : a by-value parameter        (filled by a rendered child expression)
+//   - name slot  : an `@`-prefixed identifier   (filled by a name string from the recipe)
 //                  (existing variables use a `ref` param so the body compiles in isolation)
-//   - body hole  : `Slot.Of<Block>()`           (filled by rendered child statements)
+//   - body slot  : `Slot.Of<Block>()`           (filled by rendered child statements)
 //
 // Spike simplification: int-specialized (the design's generic <T> is a backlog refinement),
 // and inline-only (no Call mode yet). These methods are never invoked — they exist to be

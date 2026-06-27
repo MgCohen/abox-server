@@ -7,7 +7,7 @@ sealed class SnippetAttribute(string key) : Attribute
     public string Key { get; } = key;
 }
 
-// The body-hole marker. `Slot.Of<T>()` is real, compiling, type-checked C# at authoring
+// The body-slot marker. `Slot.Of<T>()` is real, compiling, type-checked C# at authoring
 // time; the generator replaces the call with rendered child code. It is never executed.
 static class Slot
 {

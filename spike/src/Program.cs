@@ -7,7 +7,7 @@ static class Program
         var recipe = Samples.LoopVarSum;
 
         // Done-when #3 (the type gate): the next line does NOT compile — a string can't fill
-        // an IExpr<int> hole. Uncomment to see the recipe rejected at authoring time.
+        // an IExpr<int> slot. Uncomment to see the recipe rejected at authoring time.
         // var bad = new AddNode(new Ref("acc"), "oops");
 
         var code = Generator.Generate(recipe);

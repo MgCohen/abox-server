@@ -4,49 +4,49 @@ namespace SpikeGen;
 
 // A node field discovered in a snippet, tagged with its source position so fields emit in
 // source order regardless of which recognizer found them.
-record Hole(string FieldType, string FieldName, int Position);
+record Slot(string FieldType, string FieldName, int Position);
 
-// One per hole kind. Decoupled by design: adding a new kind of hole = add a recognizer to
+// One per slot kind. Decoupled by design: adding a new kind of slot = add a recognizer to
 // the list in Program, and touch nothing else.
-interface IHoleRecognizer
+interface ISlotRecognizer
 {
-    IEnumerable<Hole> Recognize(MethodDeclarationSyntax method);
+    IEnumerable<Slot> Recognize(MethodDeclarationSyntax method);
 }
 
-// by-value parameter -> value hole (IExpr<T>)
-sealed class ValueParamRecognizer : IHoleRecognizer
+// by-value parameter -> value slot (IExpr<T>)
+sealed class ValueParamRecognizer : ISlotRecognizer
 {
-    public IEnumerable<Hole> Recognize(MethodDeclarationSyntax m) =>
+    public IEnumerable<Slot> Recognize(MethodDeclarationSyntax m) =>
         m.ParameterList.Parameters
             .Where(p => p.Modifiers.Count == 0)
-            .Select(p => new Hole($"IExpr<{p.Type}>", Naming.Pascal(p.Identifier.ValueText), p.SpanStart));
+            .Select(p => new Slot($"IExpr<{p.Type}>", Naming.Pascal(p.Identifier.ValueText), p.SpanStart));
 }
 
-// ref parameter -> existing-name hole (string)
-sealed class RefParamRecognizer : IHoleRecognizer
+// ref parameter -> existing-name slot (string)
+sealed class RefParamRecognizer : ISlotRecognizer
 {
-    public IEnumerable<Hole> Recognize(MethodDeclarationSyntax m) =>
+    public IEnumerable<Slot> Recognize(MethodDeclarationSyntax m) =>
         m.ParameterList.Parameters
             .Where(p => p.Modifiers.Any(mod => mod.Text == "ref"))
-            .Select(p => new Hole("string", Naming.Pascal(p.Identifier.ValueText), p.SpanStart));
+            .Select(p => new Slot("string", Naming.Pascal(p.Identifier.ValueText), p.SpanStart));
 }
 
-// `@`-marked identifier declared in the body -> new-name hole (string)
-sealed class BodyMarkerRecognizer : IHoleRecognizer
+// `@`-marked identifier declared in the body -> new-name slot (string)
+sealed class BodyMarkerRecognizer : ISlotRecognizer
 {
-    public IEnumerable<Hole> Recognize(MethodDeclarationSyntax m) =>
+    public IEnumerable<Slot> Recognize(MethodDeclarationSyntax m) =>
         (m.Body?.DescendantNodes().OfType<VariableDeclaratorSyntax>() ?? [])
             .Where(v => v.Identifier.Text.StartsWith('@'))
-            .Select(v => new Hole("string", Naming.Pascal(v.Identifier.ValueText), v.SpanStart));
+            .Select(v => new Slot("string", Naming.Pascal(v.Identifier.ValueText), v.SpanStart));
 }
 
-// Slot.Of<Block>() -> body hole (Block)
-sealed class SlotRecognizer : IHoleRecognizer
+// Slot.Of<Block>() -> body slot (Block)
+sealed class SlotRecognizer : ISlotRecognizer
 {
-    public IEnumerable<Hole> Recognize(MethodDeclarationSyntax m) =>
+    public IEnumerable<Slot> Recognize(MethodDeclarationSyntax m) =>
         (m.Body?.DescendantNodes().OfType<InvocationExpressionSyntax>() ?? [])
             .Where(IsSlotCall)
-            .Select(inv => new Hole("Block", "Body", inv.SpanStart));
+            .Select(inv => new Slot("Block", "Body", inv.SpanStart));
 
     static bool IsSlotCall(InvocationExpressionSyntax inv) =>
         inv.Expression is MemberAccessExpressionSyntax
@@ -58,7 +58,7 @@ sealed class SlotRecognizer : IHoleRecognizer
 
 static class Emitter
 {
-    public static string Node(MethodDeclarationSyntax m, IEnumerable<IHoleRecognizer> recognizers)
+    public static string Node(MethodDeclarationSyntax m, IEnumerable<ISlotRecognizer> recognizers)
     {
         var fields = recognizers.SelectMany(r => r.Recognize(m))
             .OrderBy(h => h.Position)

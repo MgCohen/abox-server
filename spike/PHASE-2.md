@@ -10,7 +10,7 @@
 Expand past the toy primitives and, in doing so, force the two foundations the
 baseline deliberately left open:
 
-1. **Multi-statement body holes** — the baseline only splices single-statement
+1. **Multi-statement body slots** — the baseline only splices single-statement
    bodies (`Slot.Of<Block>()` → one statement). Real constructs have blocks.
 2. **The scope / variable-wiring model** — names are still stringly-typed
    (`"acc"`, `"i"`) and only caught late by the compile gate. Real composition

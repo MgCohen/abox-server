@@ -10,7 +10,7 @@ namespace SpikeGen;
 // generator later — only the host differs.
 static class Program
 {
-    static readonly IHoleRecognizer[] Recognizers =
+    static readonly ISlotRecognizer[] Recognizers =
     [
         new ValueParamRecognizer(),
         new RefParamRecognizer(),
