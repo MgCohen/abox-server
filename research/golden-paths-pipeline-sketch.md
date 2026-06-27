@@ -203,6 +203,33 @@ class MergeEngine(Catalog catalog)
 
 `AssertTypeMatch` is the line that earns the whole "typed ports" claim: `set-field.value` is a `Value`, `get-timestamp` outputs a `Timestamp`, the binding is a `Ref("now")` → the engine confirms `Timestamp` is assignable to `Value` *before* rendering. Swap in an operation that outputs a `ClassRef` where a `Value` is wanted and it **doesn't compile the plan** — the failure is structural, not a runtime surprise.
 
+### Where does `task.CreatedAt = now` actually come from?
+
+This is the question the whole idea lives or dies on: the LLM emitted only the *data* `set-field(entity: Ref("task"), field: "CreatedAt", value: Ref("now"))` — so **who decided that "set a field" is spelled `object.x = y;` in C#?**
+
+**A human did, once, when they authored the `set-field` template.** The C# *shape* is hand-written into the template body and never leaves it. Trace the single operation end to end:
+
+```
+(a) template body — authored ONCE by a human, lives in the catalog:
+        "{{entity}}.{{field}} = {{value}};"          <-- the "x = y" knowledge is HERE
+
+(b) LLM output — pure data, no syntax, picked from the catalog:
+        set-field( entity: Ref("task"), field: Literal("CreatedAt"), value: Ref("now") )
+
+(c) engine Render — three deterministic string substitutions, no model:
+        "{{entity}}.{{field}} = {{value}};"
+          ├─ {{entity}} ← Resolve(Ref("task"))      => "task"
+          ├─ {{field}}  ← Resolve(Literal("CreatedAt")) => "CreatedAt"
+          └─ {{value}}  ← Resolve(Ref("now"))        => "now"
+
+(d) result line:
+        task.CreatedAt = now;
+```
+
+So the generation step is **substitution, not authorship.** The LLM chose *which* template (`set-field`) and *what* to bind into its holes; it never produced the `=` or the `.` or the `;`. Pull the LLM out after step (b) and the exact same line still renders. That is the entire point of the architecture — and the test of whether a future change has quietly cheated: **if any C# token in the output was decided by the model rather than copied from a template body, the LLM has leaked back into codegen.**
+
+The cost of this guarantee is exactly the moat/bottleneck the idea doc names: *every* surface form the system can emit must pre-exist as a hand-authored (or codebase-mined) template body. `set value → x = y` is in the catalog because someone put it there. An operation whose C# shape nobody authored is the ~20% tail — it lands in `Unmatched`, and the only honest options are *author a new template*, *mine one*, or *escalate* — **never** "let the model write that bit." (And `Render`'s naïve `string.Replace` is itself a sketch-grade stand-in: a real engine substitutes into a parsed syntax tree so placement, formatting, and conflicts are handled structurally — but that changes the *mechanism*, not the principle that the shape comes from the template, not the model.)
+
 ---
 
 ## Part 4 — The final code state
