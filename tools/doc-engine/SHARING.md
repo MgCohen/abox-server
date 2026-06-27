@@ -67,35 +67,38 @@ what the client *compiled* against; `catalogVersion` is the in-payload marker th
 also lets a **runtime instance** be checked against the client's packaged catalog —
 see *Drift* below.
 
-### 3. Ship it on the `ABox.Api` package loop
+### 3. Ship it embedded in the `ABox.Api` package
 
-The server already shares its client-facing surface as one versioned package: a tag
-`v*` fires `publish-contracts.yml`, MinVer stamps the version, `dotnet pack
+The server shares its client-facing surface as one versioned package: a tag `v*`
+fires `publish-contracts.yml`, MinVer stamps the version, `dotnet pack
 src/Api/ABox.Api.csproj` rolls every `*.Api` DLL into `ABox.Api.<ver>.nupkg`, and
 the client pulls it via a Dependabot PR (full loop in
-[`contract-publishing.md`](../../PLANS/contract-publishing.md)). The catalog rides
-this loop as a **packaged data asset** so it is versioned and fetched by the same
-automation — never hand-copied.
+[`contract-publishing.md`](../../PLANS/contract-publishing.md)). The package is
+**live** — the client already consumes it. The catalog rides **the same package**
+as an **embedded resource**, so it is versioned and fetched by the same automation
+with no new package, registry, or Dependabot wiring — never hand-copied.
 
-**Recommended — bundle into `ABox.Api` (least mechanism).** The client already
-references `ABox.Api`; carrying `doc-catalog.json` inside it means one package, one
-version, one Dependabot bump, and **no** new package or registry wiring. At pack
-time the rollup runs `catalog --json` and includes the output as a content asset
-(the doc-engine is not in `ABox.slnx`, so the pack target shells out to the CLI —
-the same shell-out seam the `Docs` test uses, ADR 0015). This keeps `*.Api`
-dependency-free (D6): a generated content file is not a `<dependency>`.
+How it is wired (built):
 
-> **Alternative — a sibling package `ABox.DocCatalog`.** A second packable project
-> published by the same workflow + a second client `PackageReference`. Cleaner
-> separation if the catalog's cadence ever diverges sharply from the wire DTOs, at
-> the cost of more machinery (another package, another Dependabot entry). Prefer
-> the bundle until that divergence is real.
+- `src/Api/doc-catalog.json` is the committed export, embedded into the rollup's
+  marker assembly: `<EmbeddedResource Include="doc-catalog.json">` with
+  `LogicalName` `ABox.Api.doc-catalog.json`. `IncludeBuildOutput=true` already ships
+  `ABox.Api.dll`, so the catalog travels inside it — no `lib/` content-file plumbing,
+  and `*.Api` stays dependency-free (a resource is not a `<dependency>`).
+- The committed JSON is a **generated artifact**, kept current by a `Docs` test
+  ("The shared catalog export is committed and current") that re-runs the export and
+  diffs it against the file — a stale catalog fails CI before it can ship. Regenerate
+  from `tools/doc-engine`: `dotnet run -- catalog --json > ../../src/Api/doc-catalog.json`.
 
-> **Pending wiring.** The export command exists today; folding `doc-catalog.json`
-> into `ABox.Api`'s pack step touches the **protected** `src/Api` surface and lands
-> with the publish-loop activation (the first `v*` tag is the owner's act — see
-> `contract-publishing.md` Phases 4/6). Until then the JSON is produced on demand
-> by the command above.
+> **Why embedded, not a content file.** The client is Blazor WASM; reading a
+> referenced assembly's manifest resource is reliable there, whereas a copy-to-output
+> content file means static-asset plumbing. Embedding also needs no `build/*.targets`
+> in the package.
+
+> **Alternative considered — a sibling package `ABox.DocCatalog`.** A second packable
+> project + a second client `PackageReference`. Cleaner separation if the catalog's
+> cadence ever diverges sharply from the wire DTOs, at the cost of more machinery.
+> Rejected for now (one small JSON, one consumer) — revisit if that divergence is real.
 
 ### `doc-catalog.json` shape
 
@@ -147,12 +150,17 @@ doctype is composed of — is in this one file.
 
 ## Consumer side — how the client reads it (`abox-client`)
 
-### 1. Take it from the package
+### 1. Read it from the package assembly
 
-`doc-catalog.json` arrives with the `ABox.Api` package the client already
+`doc-catalog.json` arrives inside the `ABox.Api` package the client already
 references — pulled in by the Dependabot bump that pins the version, not by a hand
-copy. Read it as a package content asset (or, if bundled as an embedded resource,
-via `Assembly.GetManifestResourceStream`).
+copy. It is an embedded resource in `ABox.Api.dll`; read it by logical name:
+
+```csharp
+using var s = System.Reflection.Assembly.Load("ABox.Api")
+    .GetManifestResourceStream("ABox.Api.doc-catalog.json")!;
+var catalog = await JsonSerializer.DeserializeAsync<Catalog>(s);
+```
 
 ### 2. Load it once at startup
 

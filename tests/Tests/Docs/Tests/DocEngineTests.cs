@@ -15,6 +15,23 @@ public class DocEngineTests
         Assert.True(r.Exit == 0, $"`docengine check` failed:\n{r.Output}");
     }
 
+    [Rule("The shared catalog export is committed and current")]
+    [Fact]
+    public void Shared_catalog_is_current()
+    {
+        var committed = Path.Combine(RepoTree.Root, "src", "Api", "doc-catalog.json");
+        Assert.True(File.Exists(committed), $"Missing the committed shared catalog: {committed}");
+
+        var exported = DocEngine.Run("catalog", "--json");
+        Assert.True(exported.Exit == 0, $"`docengine catalog --json` failed:\n{exported.Output}");
+
+        Assert.True(Normalize(File.ReadAllText(committed)) == Normalize(exported.Output),
+            "src/Api/doc-catalog.json is stale — the doc-engine catalog changed without a re-export. Regenerate it "
+            + "from tools/doc-engine: `dotnet run -- catalog --json > ../../src/Api/doc-catalog.json`.");
+    }
+
+    private static string Normalize(string s) => s.Replace("\r\n", "\n").Trim();
+
     [Rule("Every authored doc-engine instance validates against its doctype")]
     [Fact]
     public void Instances_validate()
