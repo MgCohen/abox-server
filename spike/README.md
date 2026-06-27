@@ -9,6 +9,13 @@ This document is written to be **cold-readable**: you should be able to understa
 the whole idea, why it's shaped the way it is, and what we're building, without
 having seen the conversation that produced it.
 
+> **Prior art:** [`PRIOR-ART.md`](PRIOR-ART.md) maps this design against the
+> existing field through two lenses — the **PL/metaprogramming** one (Metalama,
+> MetaOCaml/Scala quotes/Squid, Hazel/ChatLSP, Roslyn generators, type-constrained
+> decoding) and the **node-based / no-code** one (Blockly, FlutterFlow, Plasmic,
+> Simulink, Blueprint Nativization, OutSystems) — and locates the white space. §6's
+> "rejected alternatives," widened with a fact-checked survey.
+
 > **Status — Steps 1 & 2 built and passing.**
 > - **Step 1** (`spike/src/`): `dotnet run` generates `spike/out/ScriptData.cs`,
 >   compiles it in-memory, and runs it → returns `10`. Editing a snippet flows
