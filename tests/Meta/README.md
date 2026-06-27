@@ -9,18 +9,30 @@ central assembly (through `ABox.Tests.SuiteAnchor`) and over every co-located `A
 from the build output by `Suites.Colocated()`), and reads the Rulebooks straight from the source tree
 (`RepoTree`). Living apart is the point — the validator isn't inside the bag it checks.
 
-Its four guards:
+Its guards — each row is one `[Rule]` under `Tests/`. "A test" means any method carrying a marker in
+`TestMarkers.Markers` (today `FactAttribute` and everything assignable to it — Fact, Theory, LiveFact), not
+`[Fact]` specifically:
 
-- **Parity** — every central type's Rulebook headers and its `[Rule]`-cited tests stay in lockstep, then Meta
-  holds itself to the same bar.
-- **Coverage** — every co-located feature `Tests/` folder maps to a built `ABox.<Owner>.Tests` assembly, and
-  `ParityGuard.ForColocated` runs the same parity over each (assembly × type). This is the backstop that
-  replaces the central protected wall once a feature's tests live beside the feature.
-- **Taxonomy** — every folder under `tests/Tests/` is a registered type; every central test lives inside one;
-  and every co-located test lives under `ABox.<Owner>.Tests.<Type>` (not the assembly root) with each feature
-  type folder carrying a Rulebook — so none escapes a parity scope.
-- **Rulebook format** — every Rule matches its type's `template.md`, each `rules.md` holds nothing but its
-  Template/Harness pointers and Rules, and every `template.md` carries a `## Criteria` rubric for the judge.
+| File | Rule | What it holds |
+|---|---|---|
+| `ParityTests.cs` | *Parity holds for every registered type* | For each central type **and Meta itself**: every `### ` Rulebook header has a test citing it, and every cited test names a real header. |
+| `TaxonomyTests.cs` | *Every folder under tests holds a registered test type* | Every folder under `tests/Tests/` is a known type (or `Support`) — no stray folder. |
+| `TaxonomyTests.cs` | *Every test lives inside a registered test type* | Every marked test in the **central** assembly sits under `ABox.Tests.<Type>.Tests`. |
+| `TaxonomyTests.cs` | *Every co-located test lives inside a registered feature type* | Every marked test in a **feature** assembly sits under `ABox.<Owner>.Tests.<Type>`, never the assembly root. |
+| `TaxonomyTests.cs` | *Every co-located type folder is a feature type carrying a Rulebook* | Every folder in a feature's `Tests/` is a known type **with** a Rulebook (or `Support`) — none silently skipped by coverage parity. |
+| `TaxonomyTests.cs` | *Central and Feature types partition the registered types* | The `Central` and `Feature` lists are disjoint and together cover every registered type. |
+| `CoverageTests.cs` | *Every co-located feature Tests folder is policed by a built assembly* | Every `Tests/` folder on disk maps to a built `ABox.<Owner>.Tests`, and parity runs over each (assembly × type) — the backstop that replaces the central protected wall once a feature's tests live beside the feature. |
+
+`Suites.cs` here is **not** a test — it discovers the co-located assemblies from the build output for the
+guards above.
+
+Two related guards live **elsewhere**, by design:
+
+- **Rulebook *format*** (a `rules.md`/`template.md` is well-formed) is enforced by the **`Docs`** type, which
+  shells out to the doc-engine (ADR 0015) — not by Meta. Meta owns the Rule↔test correspondence; the doc-engine
+  owns intra-document shape.
+- **The harness takes no dependency on the engine it shells out to** (ADR 0015 `[det]`) is a csproj/disk check,
+  so it lives with the **`Structure`** type (`The test harness depends on nothing it shells out to`).
 
 `Meta` is deliberately **not** in `TestTypes.Registered`: that list is the product taxonomy it checks, and a
 validator doesn't enrol itself in the set it validates.
