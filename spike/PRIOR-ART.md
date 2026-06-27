@@ -529,3 +529,193 @@ the spike's defensible, unoccupied ground.
 > run's synthesis step produced a stub). Sources primary where it matters (Rete.js
 > GitHub/docs, LiteGraph, Mendix apidocs, Dynamo primer, Builder.io); some
 > design-to-code and agent-first sources are blog/secondary and flagged thin.
+
+---
+
+# Appendix A: what they actually look like
+
+Verbatim node→file examples from the closest neighbors, so the comparison is
+concrete rather than abstract. (One flowise sample is *representative*, flagged
+below — its README shows wrapper patterns, not a golden node→code output.)
+
+### Rete.js `code-plugin` — graph node → JS file
+The node *owns the code it emits*; the plugin walks the graph and threads each
+node's rendered input handles into the next.
+
+```javascript
+class NumComponent extends Rete.Component {
+    code(node, inputs, add) {
+        add('console.log("hello!")')
+        add('num', node.data.num);
+    }
+}
+const sourceCode = await CodePlugin.generate(engine, editor.toJSON());
+```
+Emitted file (two Number nodes 5 & 6 → Add nodes) — note the **auto-derived
+names**, not hand-written strings:
+```javascript
+console.log("hello!");
+const number1num = 5;
+console.log("hello!");
+const number3num = 6;
+const add4num = number3num + number1num;
+const add2num = add4num + number1num;
+```
+→ `github.com/retejs/code-plugin`, `github.com/retejs/rete-studio` (round-trips
+text↔graph↔text).
+
+### Mitosis — one component IR → many real files
+```jsx
+export default function Greet() {
+  const state = useStore({ name: "" });
+  return (<div>
+    <input value={state.name}
+      onChange={(e) => state.name = e.target.value} placeholder="Your name" />
+    <div>Hello, {state.name}!</div>
+  </div>);
+}
+```
+Emitted React (Svelte/Vue/Angular/Qwik/Solid from the same source):
+```jsx
+function Greet(props: any) {
+  const [name, setName] = useState(() => "");
+  return (<div>
+    <input placeholder="Your name" value={name}
+      onChange={(e) => setName(e.target.value)} />
+    <div>Hello, {name}!</div>
+  </div>);
+}
+```
+→ `builder.io/blog/mitosis-get-started` (the engine under Builder.io Visual Copilot).
+
+### flowise-to-langchain — Flowise JSON graph → LangChain code
+```bash
+npm run start -- convert my-flow.json output
+npm run start -- convert my-flow.json output --target python --with-monitoring
+```
+`src/converters/` (130+ per-node-type) → `src/emitters/` (TS / Python).
+*Representative* emitted TS (not a verbatim golden output):
+```typescript
+export async function runFlow(input: string): Promise<string> {
+  const tracker = performanceMonitor.track('workflow.execution');
+  try {
+    const result = await agent.call({ input });
+    tracker.measure('execution_time');
+    return result;
+  } finally { performanceMonitor.recordSnapshot(tracker.end()); }
+}
+```
+→ `github.com/iaminawe/flowise-to-langchain`.
+
+### Simulink + Embedded Coder — typed block → C file
+Verbatim generated step function (discrete state-space), MathWorks Dec 2025:
+```c
+void testCG_step(void)
+{
+  testCG_Y.y = testCG_P.C * testCG_DW.UnitDelay_DSTATE +
+               testCG_P.D * testCG_U.u;
+  testCG_DW.UnitDelay_DSTATE = testCG_P.A *
+                               testCG_DW.UnitDelay_DSTATE +
+                               testCG_P.B * testCG_U.u;
+}
+```
+"One line of code per block," emitted by `.tlc` templates over a `model.rtw` IR.
+→ `blogs.mathworks.com/simulink/2025/12/29/...`.
+
+### Plasmic — the two-file owned seam
+Tool-owned blackbox `plasmic/PlasmicButton.tsx` (overwritten each sync) +
+developer-owned wrapper `Button.tsx` (never touched by regen):
+```typescript
+import { PlasmicButton, DefaultButtonProps } from './plasmic/PlasmicButton';
+interface ButtonProps extends DefaultButtonProps {}
+function Button(props: ButtonProps) { return <PlasmicButton {...props} />; }
+export default Button;
+```
+→ `docs.plasmic.app/learn/codegen-components/`.
+
+### FlutterFlow — owned Dart project, scoped round-trip
+```
+lib/custom_code/actions/        ← one file per action
+lib/custom_code/widgets/        ← one file per widget
+lib/flutter_flow/custom_functions.dart
+```
+Round-trip via VS Code: `Download Code` · `Start Code Editing Session` ·
+`Push to FlutterFlow` · `Pull Latest Changes` — scoped to custom-code resources,
+not the whole visual app. → `docs.flutterflow.io/concepts/custom-code/vscode-extension/`.
+
+### Mapping back to the spike
+| Tool | "Node" is | Emits | Renderer |
+|---|---|---|---|
+| Rete code-plugin | graph node w/ `code()` | JS file | `add(...)` string-emit |
+| Mitosis | JSX/Lite IR | N framework files | transpile IR |
+| flowise→langchain | Flowise JSON graph | LangChain TS/Py | per-lang emitters |
+| Embedded Coder | typed block | C file | `.tlc` templates |
+| Plasmic | visual design | React (2-file) | codegen |
+| **spike** | **typed record / `[Snippet]`** | **`.cs`** | **parse real source + substitute holes** |
+
+---
+
+# Appendix B: learnings to extract for our style
+
+Not survey — design pressure on the spike itself. Ranked by how much each would
+change us. (Cross-refs are to README §8 backlog items.)
+
+### B1. Derive hole-names from node identity, not stringly-typed fields — **do this**
+Rete's emitted `number1num` / `add4num` are **minted from node identity**
+(`<type><id><port>`), and each node receives its inputs' *already-rendered handles*.
+Variables align because the renderer threads handles through the graph — **not**
+because a human spelled two strings the same.
+
+Our `loop+var+sum` recipe still wires by hand-matched strings
+(`Define(Var:"acc")` … `Assign(Target:"acc")` … `Ref("acc")`). That's **backlog
+#1** *and* a silent-bug class (a typo'd `"acc "` compiles to a second variable).
+The fix is mechanical: **derive the `@name` hole from the node instance, and let a
+node reference an upstream node's *output handle* rather than a string.** Rete is a
+working existence proof. **Highest-value, lowest-risk steal.**
+
+### B2. The owned seam (Plasmic / FlutterFlow) — **decide before the spike grows a hand-edit story**
+Plasmic never lets you edit the generated blackbox; hand-edits live in a thin
+wrapper regen **never touches**. FlutterFlow confirms the corollary: even they scope
+round-trip to a small custom-code surface, never the whole app. The lesson:
+**don't make the owned `.cs` both freely regenerable and freely hand-editable —
+that's the round-trip tar pit.** A regenerated core + a stable, preserved seam.
+
+This **reframes backlog #4 (`Raw(...)`):** the escape hatch shouldn't be arbitrary
+inline code — it should be a **named region the regenerator preserves verbatim**,
+i.e. our version of Plasmic's owned wrapper.
+
+### B3. The ownership fork — **make it an explicit decision (ADR-worthy)**
+Embedded Coder emits readable C but the **model is owned and the `.c` is
+disposable** (regenerated every build). Our README asserts the opposite (owned
+`.cs`). These are mutually exclusive once hand-edits exist:
+
+| Stance | Means | Cost |
+|---|---|---|
+| Recipe is truth (Embedded Coder/Simulink) | regenerate freely; `.cs` is output | no hand-editing the `.cs` |
+| `.cs` is truth (OutSystems detach) | generate once, then you own it | regeneration is a fork, not a refresh |
+
+You can only have both via the B2 seam. We're currently asserting "owned `.cs`"
+*and* wanting to regenerate — pick one, or build the seam.
+
+### B4. Track renderer coverage like flowise tracks converter coverage — **cheap guard**
+flowise advertises "98.5% coverage" across 130+ node types — it *measures* the gap
+between nodes-that-exist and nodes-it-can-emit. Source-gen gives us the node
+registry for free (no drift), but **nothing flags that the renderer is inline-only
+and int-specialized** — a snippet can exist that the tool silently can't lower.
+→ Add a guard: **every `[Snippet]` must be lowerable by the current renderer.**
+Catalog ≠ emittable should be an enforced, visible fact. Fits the repo's
+enforcement-surface ethos.
+
+### B5. Keep the host type system as the schema (anti-Blockly) — **defensive principle**
+The universal weakness across these tools is typing — Blockly's "type check" is
+literally string-set intersection. Our differentiator is that **C#'s type checker
+*is* the schema.** As we add axes (context variations, `Call` mode), **resist
+bolting on a stringly-typed `"kind"` tag to special-case nodes** — that reinvents
+Blockly's weakest part and regresses our core claim. Every new axis stays
+expressible in the type system, or it's a regression.
+
+### If we act on one thing
+**B1** (derive hole-names from node identity). It removes our most embarrassing
+stringly-typed coupling, it's already backlog #1, and Rete shows exactly how.
+**B2/B3** (the owned seam + ownership decision) are the most *strategic* — worth an
+ADR before the spike grows a hand-edit story.
