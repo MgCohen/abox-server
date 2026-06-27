@@ -8,14 +8,15 @@ namespace Spike;
 
 // Lowers a recipe (a typed tree of nodes) to a plain ScriptData.cs string.
 //
-// Approach (per the design doc): PARSE the real snippet source and SUBSTITUTE slots at the
-// node level — never hand-build syntax trees. Value/name slots are swapped via a Roslyn
-// rewriter; the body slot (a recognizable `Slot.Of<...>()` call) is swapped post-render.
+// Parse the real snippet source and substitute its fills at the node level:
+//   params  -> a param usage      becomes a rendered child expression
+//   markers -> an @-identifier     becomes a name from the recipe
+//   blocks  -> a Block.Of("id")    becomes a rendered child block (its statements)
 static class Generator
 {
     static Dictionary<string, MethodDeclarationSyntax>? _snippets;
 
-    static readonly Regex SlotCall = new(@"Slot\s*\.\s*Of\s*<[^>]*>\s*\(\s*\)\s*;");
+    static readonly Regex BlockCall = new(@"Block\s*\.\s*Of\s*\(\s*""(\w+)""\s*\)\s*;");
 
     public static string Generate(Block recipe)
     {
@@ -41,52 +42,50 @@ static class Generator
     static string RenderStmt(IStmt node)
     {
         var method = Lookup(node.GetType());
-        return SubstituteBlock(method.Body!, BuildSlots(node));
+        return SubstituteBlock(method.Body!, BuildFields(node));
     }
 
     static string RenderExpr(object node) => node switch
     {
         Lit l => l.Value.ToString(),
         Ref r => r.Name,
-        _ => SubstituteExpr(Lookup(node.GetType()).ExpressionBody!.Expression, BuildSlots(node)),
+        _ => SubstituteExpr(Lookup(node.GetType()).ExpressionBody!.Expression, BuildFields(node)),
     };
 
     static string RenderBlock(Block block) => string.Join("\n", block.Statements.Select(RenderStmt));
 
-    // --- slot extraction -----------------------------------------------------------------
+    // --- fill extraction -----------------------------------------------------------------
 
-    static Slots BuildSlots(object node)
+    static Fields BuildFields(object node)
     {
-        var slots = new Slots();
+        var fields = new Fields();
         foreach (var prop in node.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
         {
             var value = prop.GetValue(node)!;
             var key = char.ToLowerInvariant(prop.Name[0]) + prop.Name[1..];
 
             if (prop.PropertyType == typeof(string))
-                slots.Names[key] = (string)value;
+                fields.Markers[key] = (string)value;
             else if (prop.PropertyType == typeof(Block))
-                slots.Body = RenderBlock((Block)value);
+                fields.Blocks[key] = RenderBlock((Block)value);
             else
-                slots.Values[key] = RenderExpr(value);
+                fields.Params[key] = RenderExpr(value);
         }
-        return slots;
+        return fields;
     }
 
     // --- substitution --------------------------------------------------------------------
 
-    static string SubstituteBlock(BlockSyntax body, Slots slots)
+    static string SubstituteBlock(BlockSyntax body, Fields fields)
     {
-        var rewritten = (BlockSyntax)new SlotRewriter(slots).Visit(body)!;
+        var rewritten = (BlockSyntax)new FieldRewriter(fields).Visit(body)!;
         var text = string.Join("\n", rewritten.Statements.Select(s => s.NormalizeWhitespace().ToFullString()));
-        if (slots.Body is not null)
-            text = SlotCall.Replace(text, _ => slots.Body);
-        return text;
+        return BlockCall.Replace(text, m => fields.Blocks.GetValueOrDefault(m.Groups[1].Value, ""));
     }
 
-    static string SubstituteExpr(ExpressionSyntax expr, Slots slots)
+    static string SubstituteExpr(ExpressionSyntax expr, Fields fields)
     {
-        var rewritten = (ExpressionSyntax)new SlotRewriter(slots).Visit(expr)!;
+        var rewritten = (ExpressionSyntax)new FieldRewriter(fields).Visit(expr)!;
         return rewritten.NormalizeWhitespace().ToFullString();
     }
 
@@ -116,29 +115,29 @@ static class Generator
         }
     }
 
-    sealed class Slots
+    sealed class Fields
     {
-        public Dictionary<string, string> Values { get; } = new();
-        public Dictionary<string, string> Names { get; } = new();
-        public string? Body { get; set; }
+        public Dictionary<string, string> Params { get; } = new();
+        public Dictionary<string, string> Markers { get; } = new();
+        public Dictionary<string, string> Blocks { get; } = new();
     }
 
-    sealed class SlotRewriter(Slots slots) : CSharpSyntaxRewriter
+    sealed class FieldRewriter(Fields fields) : CSharpSyntaxRewriter
     {
-        // value slots: a by-value param usage -> the rendered child expression (whole node)
+        // params: a by-value param usage -> the rendered child expression (whole node)
         public override SyntaxNode? VisitIdentifierName(IdentifierNameSyntax node)
         {
             var id = node.Identifier;
-            if (!id.Text.StartsWith('@') && slots.Values.TryGetValue(id.ValueText, out var expr))
+            if (!id.Text.StartsWith('@') && fields.Params.TryGetValue(id.ValueText, out var expr))
                 return SyntaxFactory.ParseExpression(expr).WithTriviaFrom(node);
             return base.VisitIdentifierName(node);
         }
 
-        // name slots: any `@`-marked identifier token (declarator OR usage) -> the recipe name
+        // markers: any `@`-marked identifier token (declarator OR usage) -> the recipe name
         public override SyntaxToken VisitToken(SyntaxToken token)
         {
             if (token.IsKind(SyntaxKind.IdentifierToken) && token.Text.StartsWith('@')
-                && slots.Names.TryGetValue(token.ValueText, out var name))
+                && fields.Markers.TryGetValue(token.ValueText, out var name))
                 return SyntaxFactory.Identifier(token.LeadingTrivia, name, token.TrailingTrivia);
             return base.VisitToken(token);
         }

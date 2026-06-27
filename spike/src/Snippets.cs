@@ -3,15 +3,14 @@ using System.Runtime.CompilerServices;
 namespace Spike;
 
 // The snippet catalog. Each method is REAL, compiling, type-checked C# — the body is the
-// template. Slots are encoded so the method still compiles and the generator can find them:
-//   - value slot : a by-value parameter        (filled by a rendered child expression)
-//   - name slot  : an `@`-prefixed identifier   (filled by a name string from the recipe)
-//                  (existing variables use a `ref` param so the body compiles in isolation)
-//   - body slot  : `Slot.Of<Block>()`           (filled by rendered child statements)
+// template. A snippet's fills come in three forms:
+//   param  : a by-value parameter        (filled by a rendered child expression)
+//   marker : an `@`-prefixed identifier   (filled by a name from the recipe)
+//            (existing variables use a `ref` param so the body compiles in isolation)
+//   block  : `Block.Of("id")`             (filled by rendered child statements)
 //
-// Spike simplification: int-specialized (the design's generic <T> is a backlog refinement),
-// and inline-only (no Call mode yet). These methods are never invoked — they exist to be
-// authored/validated by the compiler and parsed by the generator.
+// Spike simplification: int-specialized and inline-only. These methods are never invoked —
+// they exist to be authored/validated by the compiler and parsed by the generator.
 static class Snippets
 {
     [Snippet("define")]
@@ -34,7 +33,7 @@ static class Snippets
     {
         for (int @i = 0; @i < count; @i++)
         {
-            Slot.Of<Block>();
+            Block.Of("body");
         }
     }
 
@@ -44,9 +43,8 @@ static class Snippets
         return value;
     }
 
-    // The generator reads these snippets from THIS source file. The CallerFilePath capture
-    // must originate inside this file, so it's an initializer here (not a method the generator
-    // calls). Editing a snippet (e.g. renaming `@i` to `@idx`) flows through on the next run.
+    // The generator reads these snippets from THIS source file (CallerFilePath captured here,
+    // inside the file it refers to). Editing a snippet flows through on the next run.
     public static string SourcePath { get; } = Capture();
 
     static string Capture([CallerFilePath] string path = "") => path;

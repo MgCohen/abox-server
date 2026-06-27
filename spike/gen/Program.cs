@@ -10,12 +10,12 @@ namespace SpikeGen;
 // generator later — only the host differs.
 static class Program
 {
-    static readonly ISlotRecognizer[] Recognizers =
+    static readonly IFieldRecognizer[] Recognizers =
     [
-        new ValueParamRecognizer(),
-        new RefParamRecognizer(),
+        new ParamRecognizer(),
+        new RefMarkerRecognizer(),
         new BodyMarkerRecognizer(),
-        new SlotRecognizer(),
+        new BlockRecognizer(),
     ];
 
     static void Main()
