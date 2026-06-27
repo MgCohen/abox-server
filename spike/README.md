@@ -9,6 +9,13 @@ This document is written to be **cold-readable**: you should be able to understa
 the whole idea, why it's shaped the way it is, and what we're building, without
 having seen the conversation that produced it.
 
+> **Status — Step 1 built and passing** (`spike/src/`). `dotnet run` generates
+> `spike/out/ScriptData.cs`, compiles it in-memory, and runs it. All three
+> done-when criteria (§7.5) pass: returns `10`; editing a snippet flows through;
+> a mistyped recipe fails to compile. Spike divergences from the ideal design:
+> **int-specialized** (no generic `<T>` yet) and **inline-only** (no `Call` mode).
+> Source-gen of the recipe nodes (Step 2) is not built — nodes are hand-written.
+
 ---
 
 ## 1. The problem
@@ -345,11 +352,15 @@ renames, snippet base-class.
 ### 7.5 Done-when
 
 1. Running the tool on the `loop + var + sum` recipe emits a `ScriptData.cs` that
-   **compiles** and, when executed, **returns `10`** (`0+1+2+3+4`).
-2. Renaming the loop index marker (`@i` → `@idx`) in the snippet flows through to the
-   output without breaking.
-3. A deliberately wrong recipe (e.g. a `string` producer into an `int` hole)
-   **fails to compile** — proving the type gate.
+   **compiles** and, when executed, **returns `10`** (`0+1+2+3+4`). ✅
+2. **Editing a snippet body** (e.g. the loop bound `<` → `<=`) **flows through** to
+   the output — proving the generator reads live snippet source, not a hardcoded
+   template. ✅ *(Note: the output variable **name** is recipe-controlled — it comes
+   from `LoopNode.I` / `Ref("i")`, not the marker. The `@i` marker is the hole's
+   identity, bound by convention to the node field `I`; in Step 2 the field is
+   generated from the marker, so they always agree.)*
+3. A deliberately wrong recipe (a `string` producer into an `int` hole) **fails to
+   compile** — `CS1503: cannot convert from 'string' to 'IExpr<int>'`. ✅
 
 ---
 
