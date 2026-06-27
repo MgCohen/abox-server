@@ -275,7 +275,82 @@ No engine ships with this code, no graph is interpreted at runtime, no platform 
 | "the LLM never decides the shape" | the engine is pure; the LLM emits data, not source |
 | "compiles the graph away" (low-code comparison) | Part 4 — plain `Task.cs` / `TaskService.cs`, no runtime graph |
 
-The honest gaps this sketch exposes (and the idea doc's open questions name): `PortType` is a toy enum — the real composition contract needs `ClrType`-aware matching; `Placement` hand-waves *where in the file* a fragment lands (real merge needs an AST edit, not string replace); and `add-field` (schema change) vs the runtime ops sit at the two different granularities insight #1 says to make nested.
+The honest gaps this sketch exposes (and the idea doc's open questions name): `PortType` is a toy enum — the real composition contract needs `ClrType`-aware matching; `Placement` hand-waves *where in the file* a fragment lands (real merge needs an AST edit, not string replace); and `add-field` (schema change) vs the runtime ops sit at the two different granularities insight #1 says to make nested. The next section retires the first two of those gaps.
+
+---
+
+## Variant: templates as type-checked C# (attributes + source generator)
+
+The Parts 1–4 sketch has a load-bearing weakness: **the template body is a string, so nothing type-checks it.** `"{{entity}}.{{field}} = {{value}};"` is opaque to the compiler — a malformed fragment or a type mismatch between the bound value and the field surfaces only *after* the output is emitted and recompiled. That pushes correctness back toward "trust the model," which is what the whole architecture is trying to avoid.
+
+The fix is to make a template a **real, compilable C# method** carrying a marker attribute, and **source-generate the descriptor (the "data packet") from its signature.** The template body is then checked by the C# compiler at authoring time, and — the headline — **insight #3's typed composition contract stops being the toy `PortType` enum and becomes the actual CLR type system.**
+
+### Expression-shaped templates compile as-is
+
+```csharp
+[Template("get-timestamp", ApplyTo.Expression)]
+static DateTimeOffset GetTimestamp() => DateTimeOffset.UtcNow;
+
+[Template("sum", ApplyTo.Expression)]
+static int Sum(int x, int y) => x + y;        // input ports = parameters; output port = return type
+```
+
+The generator harvests each `[Template]` into the descriptor Part 1 hand-wrote — but now derived, so the two **cannot drift**:
+
+```csharp
+// GENERATED from the [Template] above — no longer hand-maintained
+static readonly OperationTemplate Sum = new(
+    Id: "sum",
+    Inputs: [ new("x", typeof(int)), new("y", typeof(int)) ],
+    Output: new("result", typeof(int)),
+    Body:   /* captured method-body syntax node */);
+```
+
+`AssertTypeMatch` now compares real `Type`s (`typeof(DateTimeOffset)` assignable to the consuming port) instead of enum tags — the contract is the language's, not a re-implementation of it.
+
+### Structural templates need a placeholder type — the wall, and the way through
+
+Expression shapes are the easy half. `set-field` is the hard half: **you cannot write `entity.{{field}} = value` as compilable C#**, because the member is dynamic. This is exactly the case string templates *hide* and real C# *exposes*.
+
+The escape is a **placeholder record whose only job is to type-check and then be erased** — the "base struct/record mostly for token replacement":
+
+```csharp
+readonly record struct Field<TEntity, TValue>(string Name)
+{
+    public void Set(TEntity entity, TValue value) { }     // never executed — exists so the template compiles
+}
+
+[Template("set-field", ApplyTo.Statement)]
+static void SetField<TEntity, TValue>(TEntity entity, Field<TEntity, TValue> field, TValue value)
+    => field.Set(entity, value);                          // type-checks against the placeholder
+```
+
+`TValue` ties the field's declared type to the value's type, so binding a `DateTimeOffset` value into an `int` field is now a **compile error in the template instantiation** — the safety the string version structurally cannot give. At merge the engine **lowers** the placeholder call back to idiomatic code via a rule keyed on the placeholder type, and the `Field<,>` indirection never reaches the repo:
+
+```
+merge-time lowering (keyed on placeholder type):
+    Field<,>.Set(e, v)  ->  e.<Field.Name> = v;       // task.CreatedAt = now;
+    Field<,>.Get(e)     ->  e.<Field.Name>
+```
+
+This strengthens the leak-test from Part 3: the only C# tokens that exist were compiler-checked at authoring time; merge is mechanical lowering of type-checked syntax, not string assembly.
+
+### This rides proven machinery, not a research project
+
+| Precedent | What it already provides |
+|---|---|
+| `Expression<Func<…>>` (LINQ expression trees) | the .NET pattern for "a type-checked code fragment captured as data, not run" — the value/expression templates can *be* expression trees |
+| Roslyn incremental source generators + marker attributes | the standard harvest-attributes → emit-descriptor pipeline (`[GeneratedRegex]`, `[LoggerMessage]`, JSON source-gen) |
+| Typed quasiquotation (Template Haskell typed splices, MetaOCaml `.<e>.`, Scala quasiquotes) | the academic lineage of "code templates the compiler type-checks *before* splicing" |
+
+### What this variant moves to the open list
+
+- **Two template kinds, not one.** Expression-shaped templates compile directly; structural/metaprogramming ones (`set-field`, `add-field`) need placeholder types + lowering rules. The catalog now has two authoring modes.
+- **Compose by inlining vs by calling.** Idiomatic git-native output (the whole point) wants the method *body* spliced in, not a call to a helper left behind — that means Roslyn body-inlining with capture/rename, real work beyond `string.Replace`.
+- **Generic instantiation at merge.** The LLM binds `TValue = DateTimeOffset`; the engine must instantiate the generic template before lowering.
+- **Declaration-shaped ops stretch the frame.** `add-field` emits a *member declaration*, not a statement — `ApplyTo.Member` over a property in a template class works, but it's no longer "just a method."
+
+This variant retires the `PortType`-is-a-toy and string-replace gaps; it does **not** resolve insight #1's granularity question, which sits above the template-representation choice.
 
 ---
 
