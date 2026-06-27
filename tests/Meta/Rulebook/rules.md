@@ -31,8 +31,9 @@ Meta's own Rulebook and tests, so the self-suite holds itself to the same bar.
 
 Reflection over the product assembly (`ABox.Tests.SuiteAnchor`) selects `TestMarkers.Marks` methods whose
 namespace fails `TestTypes.ContainsTest`. Meta's own tests are held in scope by Meta's self-parity instead. A
-marker counts if it derives from `FactAttribute` (so Fact/Theory/LiveFact need no registration); a run attribute
-that does *not* inherit is the only patch-when-seen event — add its name to `TestMarkers.ExtraMarkers`.
+marker counts if it is assignable to one of `TestMarkers.Markers` — `FactAttribute` today, which covers
+Fact/Theory/LiveFact by inheritance; a run attribute that fits none is the only patch-when-seen event — add its
+`Type` to `TestMarkers.Markers`.
 
 ### Every co-located test lives inside a registered feature type
 - **Why:** Co-location moved feature tests out from behind the central protected tree, so "the tree is
