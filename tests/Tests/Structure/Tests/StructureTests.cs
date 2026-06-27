@@ -7,7 +7,7 @@ namespace ABox.Tests.Structure.Tests;
 
 // Source-placement guard: reads the project folders on disk (SourceTree), not the loaded assembly graph, so it
 // catches a stray project the moment it lands — even uncompiled or arch-excluded code. The test-system's own
-// layout (taxonomy, Rulebook format) is the Meta type's job, not this one.
+// layout (taxonomy, Rulebook format) is the harness's own tests' job, not this one.
 public class StructureTests
 {
     [Rule("Every project lives under an agreed home folder")]

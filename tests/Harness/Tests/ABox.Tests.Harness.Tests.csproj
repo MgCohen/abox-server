@@ -16,9 +16,10 @@
     <Using Include="ABox.Tests.Harness" />
   </ItemGroup>
 
-  <!-- The self-suite validates the product suite from OUTSIDE: it reflects over ABox.Tests (via
+  <!-- The harness's own tests validate every suite from OUTSIDE: they reflect over ABox.Tests (via
        ABox.Tests.SuiteAnchor) the way the Arch guards reflect over src. The reference makes the assembly
-       loadable; Harness carries the engine. Rulebooks are read from the source tree (RepoTree), so no copy. -->
+       loadable; Harness carries the engine. Product Rulebooks are read from the source tree (RepoTree), so
+       no copy. This assembly stamps no TestsSourceDir — it polices the taxonomy, it is not part of it. -->
   <ItemGroup>
     <ProjectReference Include="..\ABox.Tests.Harness.csproj" />
     <ProjectReference Include="..\..\Tests\ABox.Tests.Central.csproj" />

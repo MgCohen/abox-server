@@ -11,7 +11,7 @@ description: >-
 # A feature owns its tests — stand them up with zero central wiring
 
 Tests live **with the thing they guarantee**: a feature's tests inside the feature folder, owned by an
-`ABox.<Owner>.Tests` assembly, glob-discovered by `dirs.proj` and policed by the Meta self-suite. No central
+`ABox.<Owner>.Tests` assembly, glob-discovered by `dirs.proj` and policed by the harness's own tests. No central
 file is edited to add a feature's tests — not `ABox.slnx`, not a harness registration. You author the test
 body and its `### ` Rule (the contract); everything else is the stamp below.
 
@@ -21,8 +21,9 @@ Read first: [`PLANS/test-colocation.md`](../../../PLANS/test-colocation.md) (the
 
 ## The ownership rule
 
-- **Central** (`tests/`) is for **feature-independent** guarantees only: `Arch`, `Structure`, `Docs`, `Meta`,
-  plus the shared `Harness`, the per-type `Templates/`, and `Fixtures/` (generic engine helpers like `Op`).
+- **Central** (`tests/`) is for **feature-independent** guarantees only: `Arch`, `Structure`, `Docs`,
+  plus the shared `Harness` engine (with its own tests at `Harness/Tests/`), the per-type `Templates/`, and
+  `Fixtures/` (generic engine helpers like `Op`).
 - **A feature owns** its `Unit`/`Wire`/`E2E`/`Live` tests **and its fixtures** (fakes, harnesses). A
   cross-cutting case lives with the feature that owns *the case*, not central — "touches many features" never
   promotes a test to central.
@@ -118,6 +119,6 @@ Shared fixtures come via a per-csproj `<Using Include="ABox.<Owner>.Tests.Suppor
 ## Verify
 
 `dotnet build dirs.proj -c Release` then `dotnet test dirs.proj -c Release` — the traversal discovers the new
-assembly, its `Parity.cs` and the Meta `CoverageTests` both go green, and `Docs` validates the new `rules.md`
+assembly, the harness's `CoverageTests` and parity both go green, and `Docs` validates the new `rules.md`
 in place. No `ABox.slnx` or harness edit. If `CoverageTests` reports the folder "ships tests but no assembly",
 the csproj name/`TestsSourceDir` is wrong.

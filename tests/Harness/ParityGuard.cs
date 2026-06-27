@@ -4,7 +4,8 @@ namespace ABox.Tests.Harness;
 
 // The parity engine: it keeps one test type's Rulebook (Rulebook/rules.md) and the [Rule]-cited tests that
 // enforce it in lockstep, scoped to a single namespace so types sharing an assembly don't bleed into each
-// other's parity. The Meta self-suite drives this over every product type (For) and over itself (ForRulebook).
+// other's parity. The harness's own tests drive this over every central type (For) and every co-located
+// feature type (ForColocated).
 public sealed class ParityGuard
 {
     private const string Heading = "### ";
@@ -22,9 +23,6 @@ public sealed class ParityGuard
 
     public static ParityGuard For(Assembly assembly, string type) =>
         new(assembly, TestTypes.Namespace(type), ProductRulebook(type));
-
-    public static ParityGuard ForRulebook(Assembly assembly, string scope, string rulesPath) =>
-        new(assembly, scope, rulesPath);
 
     // A co-located feature assembly (ABox.<Owner>.Tests) keeps each type's tests in the <Owner>.Tests.<Type>
     // namespace and its Rulebook beside them under Tests/<Type>/Rulebook/rules.md. The scope is the assembly
@@ -46,8 +44,8 @@ public sealed class ParityGuard
         return Path.Combine(sourceDir, type, "Rulebook", "rules.md");
     }
 
-    // Product Rulebooks are read from the source tree, not the output dir — the same surface the Meta guards
-    // already read, so a separate self-suite needs no copy of the product's Rulebooks to validate them.
+    // Product Rulebooks are read from the source tree, not the output dir — the same surface the harness's own
+    // tests already read, so they need no copy of the product's Rulebooks to validate them.
     private static string ProductRulebook(string type) =>
         Path.Combine(RepoTree.TestsRoot, TestTypes.RulebookPath(type).Replace('/', Path.DirectorySeparatorChar));
 

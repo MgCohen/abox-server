@@ -1,14 +1,14 @@
 using static ABox.Tests.Harness.Report;
 
-namespace ABox.Tests.Meta.Tests;
+namespace ABox.Tests.Harness.Tests;
 
 // The test taxonomy holds together: every folder under tests/Tests/ is a registered type, and every test —
 // central (the product assembly) AND co-located (every ABox.<Owner>.Tests via Suites.Colocated()) — lives
 // inside a registered type's namespace, so no test escapes the namespace its ParityGuard scopes to. The
 // co-located sweeps are the backstop that replaces the central protected wall the feature tests left: a marker
 // test in an assembly's root namespace, or a feature type folder with no Rulebook, would otherwise cite no Rule
-// and go unchecked. Reads disk (RepoTree) and reflects over both surfaces. Meta's own tests are covered by
-// Meta's self-parity (ParityTests), not these sweeps.
+// and go unchecked. Reads disk (RepoTree) and reflects over both surfaces. The harness's own tests stamp no
+// TestsSourceDir, so Suites.Colocated() never sees them — the enforcer is outside the set it sweeps.
 public class TaxonomyTests
 {
     [Rule("Every folder under tests holds a registered test type")]

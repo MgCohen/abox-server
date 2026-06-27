@@ -1,15 +1,16 @@
 using System.Reflection;
 
-namespace ABox.Tests.Meta.Tests;
+namespace ABox.Tests.Harness.Tests;
 
-// Discovers the co-located feature test assemblies (ABox.<Owner>.Tests) from the build output, so the Meta
-// self-suite can police EVERY suite without a per-feature ProjectReference — that would be the manual wiring
+// Discovers the co-located feature test assemblies (ABox.<Owner>.Tests) from the build output, so the harness
+// tests can police EVERY suite without a per-feature ProjectReference — that would be the manual wiring
 // co-location exists to remove. A co-located assembly is the one carrying the TestsSourceDir metadata its stub
-// stamps; the central ABox.Tests.Central and ABox.Tests.Meta are excluded by the .Tests suffix filter plus the
-// TestsSourceDir gate (neither stamps it). Output is the repo's pinned
-// artifacts/bin/<Project>/<config>/<Project>.dll (Directory.Build.props), located from Meta's own base dir.
-// LoadFrom resolves shared deps (Harness, xunit) to the already-loaded copy by identity, so the [Rule] type
-// stays the same across assemblies and parity sees the citations.
+// stamps. ABox.Tests.Central is excluded by the .Tests suffix filter; ABox.Tests.Harness.Tests itself also ends
+// in .Tests but stamps no TestsSourceDir, so the gate excludes it (the enforcer is not part of the set it
+// checks). Output is the repo's pinned artifacts/bin/<Project>/<config>/<Project>.dll (Directory.Build.props),
+// located from this assembly's own base dir. LoadFrom resolves shared deps (Harness, xunit) to the
+// already-loaded copy by identity, so the [Rule] type stays the same across assemblies and parity sees the
+// citations.
 internal static class Suites
 {
     private const string TestsSourceDirKey = "TestsSourceDir";

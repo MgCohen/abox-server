@@ -3,19 +3,19 @@ namespace ABox.Tests.Harness;
 // The registered PRODUCT test TYPES — each a Rulebook folder under tests/Tests/ that guards the product: src,
 // or (Docs) the repo's structured documents via the doc-engine. THIS LIST is the source of truth; a folder
 // under tests/Tests/ that is none of these (and not shared Support) escaped the taxonomy. Add a type here only
-// when a genuinely new kind of guarantee is stood up. The Meta self-suite (tests/Harness/Meta, ABox.Tests.Meta)
-// validates this set from outside and is deliberately not a member.
+// when a genuinely new kind of guarantee is stood up. The harness's own tests (tests/Harness/Tests,
+// ABox.Tests.Harness.Tests) validate this set from outside and are deliberately not a member.
 public static class TestTypes
 {
-    // The doc-engine doctype enum lists these PLUS 'meta' (Meta's own Rulebook is itself a doctype instance that
-    // must validate); the two sets differ by design — don't force them equal or Meta's Rulebook stops validating.
+    // This list is exactly the doc-engine's rulebook/test-template `testType` enum — every registered type has a
+    // Rulebook the Docs type validates against that enum, and nothing else does.
     public static readonly string[] Registered =
         { "Arch", "Structure", "Unit", "E2E", "Wire", "Live", "Docs" };
 
     // The ownership split (PLANS/test-colocation.md): a CENTRAL type's guarantee is owned by the repo / the test
     // system — no single feature — so it lives in the central tree; a FEATURE type's guarantee is owned by the
-    // feature under test, so it co-locates with that feature. Together they partition Registered exactly — a
-    // Meta test holds that invariant, so a new type can't be added without classifying it.
+    // feature under test, so it co-locates with that feature. Together they partition Registered exactly — one of
+    // the harness's own tests holds that invariant, so a new type can't be added without classifying it.
     public static readonly string[] Central = { "Arch", "Structure", "Docs" };
 
     public static readonly string[] Feature = { "Unit", "Wire", "E2E", "Live" };
@@ -29,8 +29,8 @@ public static class TestTypes
 
     // The namespace conventions, one owner each. A CENTRAL type lives in the central assembly under
     // ABox.Tests.<Type>.Tests (ParityGuard.For + ContainsTest); a co-located FEATURE type lives in its own
-    // assembly under <Assembly>.<Type> (ParityGuard.ForColocated + the Meta co-located sweep). Namespace builds
-    // the central form only — never call it for a feature type.
+    // assembly under <Assembly>.<Type> (ParityGuard.ForColocated + the co-located sweep in the harness's own
+    // tests). Namespace builds the central form only — never call it for a feature type.
     public static string Namespace(string type) => $"ABox.Tests.{type}.Tests";
 
     public static string ColocatedNamespace(string assemblyName, string type) => $"{assemblyName}.{type}";
@@ -52,7 +52,7 @@ public static class TestTypes
 
     // The co-located mirror of ContainsTest: a feature method lives inside a registered type when its namespace
     // is that assembly's <Assembly>.<FeatureType> (or a sub-namespace). Anything else — the assembly root, a
-    // type's Support — slips past ParityGuard.ForColocated, which the Meta co-located sweep uses this to catch.
+    // type's Support — slips past ParityGuard.ForColocated, which the co-located sweep uses this to catch.
     public static bool ContainsColocatedTest(string assemblyName, string? ns) =>
         ns is not null && Feature.Any(t =>
             ns == ColocatedNamespace(assemblyName, t)

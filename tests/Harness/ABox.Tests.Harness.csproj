@@ -16,10 +16,10 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
-  <!-- The Meta self-suite nests here (it polices adherence to this engine), but is its own test assembly —
-       keep its sources out of this library's default compile glob. -->
+  <!-- The harness's own tests nest here (they police adherence to this engine), but are their own test
+       assembly — keep their sources out of this library's default compile glob. -->
   <ItemGroup>
-    <Compile Remove="Meta/**/*.cs" />
+    <Compile Remove="Tests/**/*.cs" />
   </ItemGroup>
 
 </Project>

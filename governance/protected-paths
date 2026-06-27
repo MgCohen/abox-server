@@ -19,8 +19,8 @@
 # shell, so the policy must parse without a YAML library. See ADR 0010 (and ADR
 # 0012 for why the non-load-bearing notifier may use a library).
 
-tests/Harness/**          | @MgCohen | critical | Test harness: the enforcement engine (ParityGuard, Rule, TestTypes) + the nested Meta self-suite (tests/Harness/Meta) that polices adherence to it.
-tests/**/Rulebook/**      | @MgCohen | critical | Central rulebooks (Arch/Structure/Docs/Meta): the guarantees each ownerless type proves.
+tests/Harness/**          | @MgCohen | critical | Test harness: the enforcement engine (ParityGuard, Rule, TestTypes) + its own tests (tests/Harness/Tests) that police adherence to it.
+tests/**/Rulebook/**      | @MgCohen | critical | Central rulebooks (Arch/Structure/Docs): the guarantees each ownerless type proves.
 src/**/Tests/**/Rulebook/** | @MgCohen | critical | Co-located feature rulebooks: a feature's guarantees, still behind the wall though its test code is not.
 tools/**/Tests/**/Rulebook/** | @MgCohen | critical | Co-located tool rulebooks (e.g. the doc-engine's own).
 tools/doc-engine/doctypes/** | @MgCohen | critical | Doc-engine doctypes: the schema every structured doc validates against.

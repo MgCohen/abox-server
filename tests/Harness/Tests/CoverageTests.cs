@@ -1,6 +1,6 @@
 using static ABox.Tests.Harness.Report;
 
-namespace ABox.Tests.Meta.Tests;
+namespace ABox.Tests.Harness.Tests;
 
 // The load-bearing backstop once a feature's tests no longer sit behind the central protected tree: every
 // co-located Tests/ folder on disk must map to a built ABox.<Owner>.Tests assembly whose co-located Rulebook

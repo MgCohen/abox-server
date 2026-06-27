@@ -395,7 +395,6 @@
             "e2e",
             "wire",
             "live",
-            "meta",
             "docs"
           ],
           "required": "true"
@@ -411,7 +410,7 @@
       },
       "rubric": {
         "coverage": "Every guarantee of this type has a Rule; nothing significant unstated.",
-        "right-type": "Each Rule matches the declared testType \u2014 behaviour (with Outcome) for wire/live/e2e, invariant for arch/structure/meta.",
+        "right-type": "Each Rule matches the declared testType \u2014 behaviour (with Outcome) for wire/live/e2e, invariant for arch/structure.",
         "one-per-rule": "Each Rule states exactly one guarantee, not a bundle or a restatement."
       }
     },
@@ -435,7 +434,6 @@
             "e2e",
             "wire",
             "live",
-            "meta",
             "docs"
           ],
           "required": "true"
