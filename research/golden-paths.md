@@ -378,6 +378,101 @@ That is structurally the **golden-path move**: a constrained catalog where only 
 
 ---
 
+# PART 3 — The A.Box Compilation Pipeline (proposed flow)
+
+> **What this part is:** PART 1–2 cover golden paths as *selection + scaffolding* (pick a path → scaffold a repo). The owner's proposed flow goes further: a **compiler model** that decomposes intent into atomic operations, maps each to a template fragment, **composes** the fragments into final code, and validates the result against both the templates and the original intent. This part records the flow, evaluates it, reality-checks its guiding analogy (Magic: The Gathering Arena), and maps the competitive/academic landscape. Research method: 4-way fan-out web search (MTGA engine internals · spec-driven codegen vendors · compositional program synthesis · action-catalog + dual-validation prior art), sources cited inline.
+
+## 18. The proposed flow
+
+```
+human discusses feature  ──▶  goal, ideas, constraints, expectations
+        │
+        ▼
+AI drafts first-pass plan
+        │
+        ▼
+AI decomposes plan into phases
+        │
+        ▼
+AI matches each phase to a catalog of templates / golden paths
+        │
+        ▼
+AI re-reviews the phase list  ──▶  does it still make sense?
+        │
+        ▼
+AI pulls the generic code from the templates and composes the output
+        │
+        ▼
+output validated against each used template          (structural conformance)
+        │
+        ▼
+output validated against the initial human definitions   (intent conformance)
+```
+
+The guiding analogy is **Magic: The Gathering Arena's effect engine**: card text is parsed into chunks, each chunk maps to an atomic effect primitive, the primitives are composed, and the engine checks they connect. Worked code example: *"add a timestamp to the task object"* decomposes into atomic operations — `get current timestamp` · `add field to object class` · `get object instance from repo` · `set field value` · `save object` — each backed by a template fragment; the AI selects and merges them under the repo's conventions.
+
+This is the **golden-path move pushed down a level**: PART 2's blueprint fixes the *workflow* path; PART 3's pipeline fixes the *code-construction* path, with the LLM filling bounded holes (the same "LLM as bounded tool, never decides the path" stance as Blueprint-First, §8).
+
+## 19. Evaluation — where the flow is strong, where it needs sharpening
+
+The shape is sound and (per §20–21) lands on genuinely unoccupied ground. Three load-bearing issues to resolve:
+
+| # | Issue | Why it matters | Resolution |
+|---|---|---|---|
+| 1 | **Two granularities are conflated** | "Match each *phase* to a template" is coarse (Backstage-scale, one template per feature); "`add a timestamp` → 5 primitives" is fine (OpenRewrite/MTG-scale). These are *different mechanisms* at different altitudes. The MTG analogy operates at the operation level; "phases" operates at the plan level. | Make it explicit and **nested**: phases decompose into operations; golden paths exist at *both* sizes. Decide the seam between them deliberately. |
+| 2 | **The parse step is romanticized** | MTGA does **not** use regex — it parses with a **PEG grammar** ([MTG PEG grammar](https://soothsilver.github.io/mtg-grammar/), [formal grammar for MTG](https://hudecekpetr.cz/a-formal-grammar-for-magic-the-gathering/)), and it only works because Oracle text is a *rigid controlled templating grammar* ([MTG Wiki: Rules text](https://mtg.fandom.com/wiki/Rules_text)). Even so, only **~80% of cards parse automatically; ~20% need hand-authoring** ([WotC, Living Breakthrough](https://magic.wizards.com/en/news/mtg-arena/on-whiteboards-naps-and-living-breakthrough)). Arbitrary English cannot be regex'd. | Honest framing: the **LLM semantically parses intent into a typed operation-AST**, not regex over English. And **budget for the ~20% tail** — novel operations with no matching template that need synthesis or escalation. Tail-handling is currently absent from the flow. |
+| 3 | **"AI merges all together" hides the hard part** | What makes two operations *connect sensibly*? MTGA composes on a **typed whiteboard** where target/cost/zone types constrain what is legal — illegal compositions don't typecheck. Component-based synthesis composes via types/SMT ([Hoogle+](https://ranjitjhala.github.io/static/hoogle_plus.pdf)). Without a connection contract, "merge" is unconstrained LLM glue with no guarantee. | Give each operation **typed inputs/outputs** (`get-timestamp : → DateTime`; `set-field(obj, field, value)` requires `value`'s type matches `field`'s) plus a **dependency DAG** (`get instance → set field → save`). This typed-composition contract is what makes the analogy *hold* rather than merely sound right. |
+
+**Validation split (steps 7–8) — the instinct is right, the gates differ in kind:**
+- **Step 7 (vs each template)** should be **deterministic structural / property conformance**, not an LLM judge — does the output satisfy each template's invariants? Closest prior art: **PropertyGPT** (per-template pre/post-conditions, formally verified — [arXiv:2405.02580](https://arxiv.org/html/2405.02580v1)).
+- **Step 8 (vs original intent)** is the genuinely-LLM-judge stage and research flags it as the **unreliable link**: **CodeJudgeBench** finds LLM-as-judge "promising… not yet fully reliable" ([arXiv:2507.10535](https://arxiv.org/pdf/2507.10535)). Strengthen it with **intent-derived tests / a formal query** (Tessl/Clover route — [Clover, arXiv:2310.17807](https://arxiv.org/abs/2310.17807); [formal verification from NL prompts, arXiv:2507.13290](https://arxiv.org/pdf/2507.13290)) rather than a raw judge.
+
+**The catalog is the moat *and* the bottleneck.** MTG's open-source engines hand-script every card from a primitive catalog ([Forge scripting API](https://github.com/Card-Forge/forge/wiki/Card-scripting-API), [XMage HOWTO](https://github.com/magefree/mage/wiki/Development-HOWTO-Guides)); WotC mechanically retemplated ~13,000 cards. Template **coverage determines how often you fall off the path** (the ~20% tail) — and maintaining it is exactly the PART-1 **cognitive-load-transfer** critique (§7), now landing on the catalog maintainer rather than vanishing.
+
+## 20. Does any vendor get close? — no one occupies the seam
+
+The market splits the proposed pipeline across **non-overlapping** tool categories. No vendor implements the full **decompose → match code-fragment → compose → dual-validate** loop.
+
+| Pipeline capability | Who owns it best | Gap vs. the proposed flow |
+|---|---|---|
+| Decompose intent → phases/tasks | **Spec Kit** (`/specify→/plan→/tasks→/implement`), **Kiro** (requirements→design→tasks), **Copilot Workspace** (discontinued May 2025), **OpenSpec** | Commoditized — nobody's differentiator |
+| Match phase → reusable **code-fragment** catalog | **Nobody.** Scaffolders (Backstage/Cortex/Port) match per-*project*; Tessl Registry matches *library docs*; Goose/Cursor/Claude Skills catalog *workflows/instructions* | No fragment-granular **code** matching |
+| **Compose final code from atomic template fragments** | **Nobody** — every tool does whole-feature LLM authoring | The core bet, unoccupied |
+| Validate output → intent | **Tessl** (test-backed: "verify the code matches the intent"), **OpenSpec** (`validate --strict`) | Not validated *per-template-used* |
+
+- **Closest analogues:** **Tessl** (spec→test validation back to intent + a 10k-spec Registry — but library-usage docs, not composable code fragments; [tessl.io](https://tessl.io/blog/how-tessls-products-pioneer-spec-driven-development/)) and **Backstage/Cortex/Port scaffolders** (a real template catalog + generation — but project-granularity, no decomposition, no output validation; [backstage.io templates](https://backstage.io/docs/features/software-templates/)). The proposed novelty is the seam *between* them.
+- **Spec-driven family** ([GitHub Spec Kit](https://github.com/github/spec-kit/blob/main/spec-driven.md), [AWS Kiro](https://kiro.dev/docs/specs/)) nails decomposition and spec-consistency checking, but its "templates" are *document* templates and generation is whole-feature LLM authoring — no code-fragment catalog, no compositional assembly.
+- **Composable-unit catalogs without the loop:** [Claude Agent Skills](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills), [Cursor Rules/Recipes](https://cursor.com/docs/rules.md), [Goose recipes](https://goose-docs.ai/docs/guides/recipes/) — composable units of *instruction/workflow*, not code fragments matched to plan phases.
+
+## 21. The pattern already exists in pieces (academic + adjacent tooling)
+
+The proposed pipeline is best read as a **novel composition of four existing lineages**, none of which is the whole thing:
+
+| Lineage | Representative work | What it contributes | What it lacks |
+|---|---|---|---|
+| **Decompose → implement-per-unit → compose-and-validate** | **Parsel** ([arXiv:2212.10561](https://arxiv.org/abs/2212.10561)) | Closest to the *front half*: NL → hierarchy of function descriptions → modular impl → search combinations against constraints | Templates are *generated*, not a fixed verified catalog |
+| **Curated/learned primitive catalog + composition** | **DreamCoder / LILO** ([arXiv:2310.19791](https://arxiv.org/abs/2310.19791)), **Voyager** skill library ([arXiv:2305.16291](https://arxiv.org/abs/2305.16291)) | The reusable-primitive catalog with NL handles; composition from it | Library is *learned*, validated by execution not intent |
+| **Typed/component-based composition** | **Hoogle+ / component synthesis** ([arXiv:2209.02752](https://arxiv.org/pdf/2209.02752)) | The rigor reference for "composition is type-checked for consistency" — illegal compositions don't compile | Input is types/examples, not NL |
+| **Dual validation (code + spec + intent)** | **Clover** ([arXiv:2310.17807](https://arxiv.org/abs/2310.17807)), **PropertyGPT** ([arXiv:2405.02580](https://arxiv.org/html/2405.02580v1)) | Closed-loop consistency among code, formal annotation, and the NL intent — directly the steps-7-and-8 gate | Clover doesn't decompose; per-template-invariant + holistic-intent as two sequential gates is unoccupied |
+
+**Strongest concrete prior art for the operation level: OpenRewrite.** Its 500+ **recipes** are explicitly "the elemental atomic unit for working on code," composable into pipelines, operating deterministically over a Lossless Semantic Tree, not text ([recipes](https://docs.openrewrite.org/concepts-and-explanations/recipes), [catalog](https://docs.openrewrite.org/recipes)). It *is* "reusable templates that mutate code, composed" — minus one thing: the selection/ordering is **human-authored, not derived from NL intent**. That missing planner — *an LLM that selects and orders catalog templates from natural-language intent, each template guaranteeing its own structural contract* — is precisely step 4 of the proposed flow. Notably, **Moderne** embeds LLMs as deterministic *tools inside* OpenRewrite recipes rather than letting the AI compose recipes from intent ([moderne.ai](https://www.moderne.ai/blog/ai-assisted-refactoring-in-the-moderne-platform)) — the inverse of the proposed model, and evidence the obvious adjacent player has *not* taken this seam.
+
+> **MTG analogy — honest scorecard.** The **primitive-composition + typecheck-the-connections** half is real and universal across every MTG engine. The **"regex parses English"** half is the romanticized part: only MTGA parses text at all, via a **PEG grammar over a controlled templating language**, with a ~20% hand-authored tail; the open-source engines skip parsing entirely and hand-script from a primitive catalog. Lead the A.Box framing with composition-and-typing (rock-solid); state the parse step as "LLM → typed operation-AST," not regex.
+
+## 22. Synthesis: the mapping (PART 3)
+
+| Proposed A.Box pipeline | Nearest existing reality | The gap A.Box fills |
+|---|---|---|
+| Decompose plan into phases | Spec Kit / Kiro / Parsel — solved | none (commoditized) |
+| Match each phase/op → template fragment | Backstage (project-scale) · OpenRewrite (human-selected) | **LLM-driven, fragment-granular matching from NL intent** |
+| Compose fragments → output | MTGA typed whiteboard · component synthesis (non-NL) | **typed-contract composition driven by NL intent** |
+| Validate vs each template | PropertyGPT (per-template invariants) | **per-template structural gate inside the pipeline** |
+| Validate vs original intent | Tessl / Clover (test/spec-backed) | **two sequential gates: template-conformance *then* intent** |
+
+**Bottom line:** the flow is coherent and its two distinctive bets — **(a) fragment-granular template matching + composition, and (b) validation against each template used *and* the original intent** — are **unoccupied by any current vendor** and only assembled *in pieces* across the research literature. The work to make it real is concentrated in three places §19 names: pick the phase/operation granularity, replace "regex parse" with typed semantic parsing (+ a tail-handling escape hatch), and specify the typed composition contract that decides when operations legally connect.
+
+---
+
 ## Caveats & confidence
 
 - **PART 1 is strong:** primary-sourced (Spotify, Netflix, CNCF, Backstage) and verified 3-0 on the core definitional claims. Origin/age of the 2020–2018 sources is appropriate — they're canonical.
@@ -430,4 +525,8 @@ That is structurally the **golden-path move**: a constrained catalog where only 
 
 **Architecture card-game aside (§17):** AWS BuilderCards (aws.amazon.com/gametech/buildercards) · AWS Card Clash.
 
-*Run stats: 6 search angles · 22 sources fetched · 98 claims extracted · 25 verified · 24 confirmed / 1 refuted.*
+**A.Box compilation pipeline (Part 3, §18–22)** — MTGA engine internals: WotC *Living Breakthrough* (GRE/GRP/CLIPS), MTG PEG grammar (soothsilver.github.io/mtg-grammar), Hudeček formal grammar, MTG Wiki rules text, Forge & XMage scripting. Spec-driven vendors: GitHub Spec Kit, AWS Kiro, Copilot Workspace (discontinued), Tessl, OpenSpec, Backstage/Cortex/Port scaffolders. Academic: Parsel (2212.10561), DreamCoder/LILO (2310.19791), Voyager (2305.16291), Hoogle+/component synthesis (2209.02752), Clover (2310.17807), PropertyGPT (2405.02580), CodeJudgeBench (2507.10535), formal-verification-from-NL (2507.13290). Adjacent tooling: OpenRewrite recipes, Moderne. Links inline in §18–22.
+
+*PART 3 confidence: vendor/tooling claims are fetched-and-claim-extracted (not 3-vote verified) — treat as well-sourced industry positions, same evidence class as PART 2 §9–12. MTGA-engine and academic claims are primary-sourced with URLs inline. The "no vendor occupies the seam" conclusion is a snapshot of June 2026 and a fast-moving space.*
+
+*Run stats: PART 1–2 — 6 search angles · 22 sources fetched · 98 claims extracted · 25 verified · 24 confirmed / 1 refuted. PART 3 — 4 search angles (MTGA internals · spec-driven vendors · compositional synthesis · action-catalog + dual-validation) · ~40 sources fetched, lightly verified.*
