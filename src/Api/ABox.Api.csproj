@@ -34,6 +34,16 @@
     <PackageReference Include="MinVer" Version="6.0.0" PrivateAssets="all" />
   </ItemGroup>
 
+  <!-- The doc-engine catalog (block/doctype/kind vocabulary) the render client builds against, embedded in this
+       rollup DLL so it rides the one package the client already references (tools/doc-engine/SHARING.md). Generated
+       by the doc-engine catalog export and committed; a Docs test regenerates and diffs to keep it fresh. The client
+       reads it via Assembly.Load("ABox.Api").GetManifestResourceStream("ABox.Api.doc-catalog.json"). -->
+  <ItemGroup>
+    <EmbeddedResource Include="doc-catalog.json">
+      <LogicalName>ABox.Api.doc-catalog.json</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
   <!-- Copy each referenced *.Api DLL (ReferenceSourceTarget=ProjectReference) into the package's lib/<tfm>/.
        Paired with PrivateAssets=all above: one says "don't reference them externally," this says "embed them." -->
   <Target Name="BundleApiDlls" DependsOnTargets="ResolveReferences">

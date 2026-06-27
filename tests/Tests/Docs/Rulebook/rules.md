@@ -16,3 +16,9 @@ harness: ../../../Harness/README.md
 - **Why:** A structured document — the real Rulebooks under `tests/**/Rulebook/` — that drifts from its
   doctype is silent rot. `docengine validate` proves each instance still conforms to the catalog, in place
   where it lives; running it per file fails the build the moment one drifts.
+
+### The shared catalog export is committed and current
+- **Why:** `src/Api/doc-catalog.json` is the vocabulary the render client builds against, embedded in the
+  `ABox.Api` package (`tools/doc-engine/SHARING.md`). It is a generated artifact committed to the repo, so it
+  rots the moment a block/doctype changes without a re-export. Regenerating the catalog and diffing it against
+  the committed file fails the build when the two drift, so a stale catalog can never ship to the client.

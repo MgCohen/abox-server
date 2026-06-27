@@ -15,6 +15,17 @@ public static class Catalog
         return blocks;
     }
 
+    public static IReadOnlyDictionary<string, IReadOnlyDictionary<string, object?>> LoadKinds(string root)
+    {
+        var kinds = new Dictionary<string, IReadOnlyDictionary<string, object?>>();
+        foreach (var file in Files(root, "kinds/*.yaml"))
+        {
+            var def = Yaml.AsMap(Yaml.Load(file))!;
+            kinds[Yaml.AsString(def["name"])!] = def;
+        }
+        return kinds;
+    }
+
     public static IReadOnlyDictionary<string, object?> LoadDoctype(string root, string name) =>
         Yaml.AsMap(Yaml.Load(Path.Combine(root, "doctypes", name + ".yaml")))!;
 
