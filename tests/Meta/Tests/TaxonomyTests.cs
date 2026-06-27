@@ -2,10 +2,13 @@ using static ABox.Tests.Harness.Report;
 
 namespace ABox.Tests.Meta.Tests;
 
-// The test taxonomy holds together: every folder under tests/Tests/ is a registered type, and every test in
-// the product suite lives inside one — so no test escapes the namespace its type's ParityGuard scopes to.
-// Reads disk (RepoTree) and reflects over the product assembly (SuiteAnchor), the two surfaces a test can hide
-// on. Meta's own tests are covered by Meta's self-parity (ParityTests), not this product-suite sweep.
+// The test taxonomy holds together: every folder under tests/Tests/ is a registered type, and every test —
+// central (the product assembly) AND co-located (every ABox.<Owner>.Tests via Suites.Colocated()) — lives
+// inside a registered type's namespace, so no test escapes the namespace its ParityGuard scopes to. The
+// co-located sweeps are the backstop that replaces the central protected wall the feature tests left: a marker
+// test in an assembly's root namespace, or a feature type folder with no Rulebook, would otherwise cite no Rule
+// and go unchecked. Reads disk (RepoTree) and reflects over both surfaces. Meta's own tests are covered by
+// Meta's self-parity (ParityTests), not these sweeps.
 public class TaxonomyTests
 {
     [Rule("Every folder under tests holds a registered test type")]
@@ -48,6 +51,56 @@ public class TaxonomyTests
             Move each into a registered type's Tests/ folder.
             """);
     }
+
+    [Rule("Every co-located test lives inside a registered feature type")]
+    [Fact]
+    public void EveryColocatedTestInsideAFeatureType()
+    {
+        var misplaced = Suites.Colocated()
+            .SelectMany(a => a.GetTypes()
+                .SelectMany(t => t.GetMethods())
+                .Where(TestMarkers.Marks)
+                .Where(m => !TestTypes.ContainsColocatedTest(a.GetName().Name!, m.DeclaringType?.Namespace))
+                .Select(m => $"{m.DeclaringType?.FullName}.{m.Name}"))
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(s => s, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.True(misplaced.Count == 0,
+            $"""
+            Co-located tests live outside the ABox.<Owner>.Tests.<Type> structure, where ParityGuard.ForColocated
+            cannot see them to require a [Rule]:
+            {Bullets(misplaced)}
+            Move each under a registered feature type's folder ({Join(TestTypes.Feature)}), not the assembly root.
+            """);
+    }
+
+    [Rule("Every co-located type folder is a feature type carrying a Rulebook")]
+    [Fact]
+    public void EveryColocatedTypeFolderIsAFeatureTypeWithRulebook()
+    {
+        var strays = Suites.Colocated()
+            .Select(a => Suites.SourceDir(a)!)
+            .SelectMany(StrayFolders)
+            .OrderBy(s => s, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.True(strays.Count == 0,
+            $"""
+            Folders under a co-located Tests/ are neither shared Support nor a registered feature type with a
+            Rulebook — a feature type folder with no Rulebook is silently skipped by coverage parity:
+            {Bullets(strays)}
+            Give the folder a Rulebook ({Join(TestTypes.Feature)}), or move helpers under Support.
+            """);
+    }
+
+    private static IEnumerable<string> StrayFolders(string sourceDir) =>
+        Directory.EnumerateDirectories(sourceDir)
+            .Where(d => !IsRegisteredTypeWithRulebook(d) && Path.GetFileName(d) != "Support")
+            .Select(d => Path.GetRelativePath(RepoTree.Root, d));
+
+    private static bool IsRegisteredTypeWithRulebook(string dir) =>
+        TestTypes.IsFeature(Path.GetFileName(dir)!) && Directory.Exists(Path.Combine(dir, "Rulebook"));
 
     [Rule("Central and Feature types partition the registered types")]
     [Fact]

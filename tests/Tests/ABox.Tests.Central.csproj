@@ -27,8 +27,8 @@
 
   <!-- Every production assembly by glob: the Arch model loads them all from the output dir to assert the
        reference graph. A new feature/slice is referenced the moment its csproj exists — no edit here. This
-       assembly is named ABox.Tests (contains ".Tests."), so ArchitectureModel's name filter excludes it
-       and the co-located feature test assemblies (also "*.Tests") from the graph. -->
+       assembly's file is ABox.Tests.Central.dll (contains ".Tests."), so ArchitectureModel's name filter
+       excludes it and the co-located feature test assemblies (*.Tests.dll) from the graph. -->
   <ItemGroup>
     <ProjectReference Include="..\Harness\ABox.Tests.Harness.csproj" />
     <ProjectReference Include="..\..\src\**\ABox.*.csproj" Exclude="..\..\src\**\Tests\**\*.csproj" />

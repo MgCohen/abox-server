@@ -34,8 +34,8 @@ public static class RepoTree
     // Every Rulebook the format guard must keep well-formed, across both homes a Rulebook may have: the central
     // tree (each type under tests/Tests/, plus Meta's own under tests/Meta/) and every feature's co-located
     // Tests/<Type>/Rulebook under src/ or tools/. Format applies uniformly, regardless of which assembly owns
-    // the type. Today no feature Tests/ exist, so this returns exactly the central set; the feature arm is the
-    // seam the colocation move (PLANS/test-colocation.md) grows into without re-wiring the scan.
+    // the type. The feature arm returns the live co-located suites (PLANS/test-colocation.md); the same scan
+    // covered the central-only set before the migration and needs no re-wiring as features are added.
     public static IReadOnlyList<string> RulebookFolders() =>
         CentralRulebooks()
             .Concat(FeatureRulebooks())

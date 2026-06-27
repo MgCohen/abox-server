@@ -7,6 +7,8 @@ namespace ABox.Tests.Harness;
 // validates this set from outside and is deliberately not a member.
 public static class TestTypes
 {
+    // The doc-engine doctype enum lists these PLUS 'meta' (Meta's own Rulebook is itself a doctype instance that
+    // must validate); the two sets differ by design — don't force them equal or Meta's Rulebook stops validating.
     public static readonly string[] Registered =
         { "Arch", "Structure", "Unit", "E2E", "Wire", "Live", "Docs" };
 
@@ -25,9 +27,13 @@ public static class TestTypes
     // Non-type folders legitimately under tests/Tests/: shared doubles promoted on a genuine second consumer.
     public static readonly string[] NonType = { "Support" };
 
-    // The convention, owned once: a type's namespace and the Rulebook path it pairs with. Both directions of the
-    // type ↔ namespace ↔ path triple (ParityGuard's scope, ContainsTest's membership) lean on these.
+    // The namespace conventions, one owner each. A CENTRAL type lives in the central assembly under
+    // ABox.Tests.<Type>.Tests (ParityGuard.For + ContainsTest); a co-located FEATURE type lives in its own
+    // assembly under <Assembly>.<Type> (ParityGuard.ForColocated + the Meta co-located sweep). Namespace builds
+    // the central form only — never call it for a feature type.
     public static string Namespace(string type) => $"ABox.Tests.{type}.Tests";
+
+    public static string ColocatedNamespace(string assemblyName, string type) => $"{assemblyName}.{type}";
 
     public static string RulebookPath(string type) => $"{type}/Rulebook/rules.md";
 
@@ -43,4 +49,12 @@ public static class TestTypes
     public static bool ContainsTest(string? ns) =>
         ns is not null && Registered.Any(t =>
             ns == Namespace(t) || ns.StartsWith(Namespace(t) + ".", StringComparison.Ordinal));
+
+    // The co-located mirror of ContainsTest: a feature method lives inside a registered type when its namespace
+    // is that assembly's <Assembly>.<FeatureType> (or a sub-namespace). Anything else — the assembly root, a
+    // type's Support — slips past ParityGuard.ForColocated, which the Meta co-located sweep uses this to catch.
+    public static bool ContainsColocatedTest(string assemblyName, string? ns) =>
+        ns is not null && Feature.Any(t =>
+            ns == ColocatedNamespace(assemblyName, t)
+            || ns.StartsWith(ColocatedNamespace(assemblyName, t) + ".", StringComparison.Ordinal));
 }

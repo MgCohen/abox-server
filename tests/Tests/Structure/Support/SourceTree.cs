@@ -166,6 +166,33 @@ internal static class SourceTree
             .OrderBy(p => p, StringComparer.Ordinal)
             .ToList();
 
+    public static readonly string HarnessCsproj =
+        Path.Combine(Root, "tests", "Harness", "ABox.Tests.Harness.csproj");
+
+    // ADR 0015 [det]: the enforcement harness must not depend on the doc-engine it shells out to, nor on a YAML
+    // library — the dependency arrow points OUT of the spine, so a Rulebook stays a doc the engine validates from
+    // outside, never a type the harness links. A ProjectReference to the engine or a YamlDotNet PackageReference
+    // would compile and silently invert that arrow; this reads the csproj text to catch it before that happens.
+    public static IReadOnlyList<string> HarnessForbiddenReferences()
+    {
+        if (!File.Exists(HarnessCsproj))
+            throw new FileNotFoundException(
+                $"Harness csproj not found at '{HarnessCsproj}'. The ADR 0015 dependency guard would be " +
+                "vacuously green — fix the path or the repo-root locator.");
+
+        return File.ReadAllLines(HarnessCsproj)
+            .Where(IsForbiddenHarnessReference)
+            .Select(line => line.Trim())
+            .OrderBy(line => line, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    private static bool IsForbiddenHarnessReference(string line) =>
+        (line.Contains("<ProjectReference", StringComparison.Ordinal)
+            && line.Contains("DocEngine", StringComparison.Ordinal))
+        || (line.Contains("<PackageReference", StringComparison.Ordinal)
+            && line.Contains("YamlDotNet", StringComparison.Ordinal));
+
     private static IEnumerable<string> FeatureCsprojs() =>
         Directory.EnumerateFiles(FeaturesRoot, "*.csproj", SearchOption.AllDirectories).Where(NotIgnored);
 

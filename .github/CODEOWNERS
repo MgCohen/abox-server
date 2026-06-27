@@ -8,6 +8,10 @@ tests/Meta/** @MgCohen
 tests/**/Rulebook/** @MgCohen
 src/**/Tests/**/Rulebook/** @MgCohen
 tools/**/Tests/**/Rulebook/** @MgCohen
+tools/doc-engine/doctypes/** @MgCohen
+tools/doc-engine/blocks/** @MgCohen
+tools/doc-engine/kinds/** @MgCohen
+tools/doc-engine/_schema/** @MgCohen
 tests/Templates/** @MgCohen
 tests/Fixtures/** @MgCohen
 tests/Tests/Arch/** @MgCohen

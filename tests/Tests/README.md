@@ -10,8 +10,10 @@ The central test assembly (`ABox.Tests.Central`). Every test *type* is a Ruleboo
 for the convention and the parity discipline. The ownerless types coexist in one assembly because parity
 scopes `[Rule]` discovery by namespace, so each type's Rulebook is counted against its own tests only.
 
-These six test the **product**. The test-system's own checks live apart, in the sibling
-[`../Meta/`](../Meta/README.md) self-suite (`ABox.Tests.Meta`), which validates this suite from outside.
+These three structural types are ownerless and live here. The behavioral types (`Unit`/`Wire`/`E2E`/`Live`)
+are a feature's own and co-locate in `ABox.<Owner>.Tests` under `src/<…>/<Owner>/Tests/`. The test-system's
+own checks live apart, in the sibling [`../Meta/`](../Meta/README.md) self-suite (`ABox.Tests.Meta`), which
+validates every suite from outside.
 
 - **`Arch/`** — the **reference graph** (who depends on whom), via ArchUnitNET over the *loaded* assemblies.
   `Support/ArchitectureModel` defines the layer bands + the allow-graph the down-only rule is derived from.
@@ -19,10 +21,8 @@ These six test the **product**. The test-system's own checks live apart, in the 
   merged assembly excludes itself.
 - **`Structure/`** — **source placement** on disk, via a filesystem scan. `Support/SourceTree` sees every
   project folder under `src/`/`tests/` (compiled or not); `Support/HomeFolders` is the agreed-folder model.
-- **`Unit/`** — isolated behavior of one type or a small cluster.
-- **`E2E/`** — a flow driven end to end through an injectable provider (`Support/FlowHarness`).
-- **`Wire/`** — HTTP smoke over `WebApplicationFactory<Program>`.
-- **`Live/`** — real-CLI smoke, gated behind `[LiveFact]` / `RUN_LIVE=1`.
+- **`Docs/`** — **structured-document** guarantees, by shelling out to the `docengine` CLI (ADR 0015 — the
+  harness runs the engine, never links it).
 
 The **test system's own** invariants (parity, taxonomy, Rulebook format) are not here — they live in the
 sibling [`../Meta/`](../Meta/README.md) self-suite, which reflects over this assembly from outside.
@@ -42,7 +42,7 @@ enforced at compile time (`/.editorconfig`, scoped to `src/` and `tests/`).
 |----------|---------|
 | Add an Arch rule | append a `###` block to `Arch/Rulebook/rules.md` + a `[Rule("<header>")]` test in `Arch/Tests/RuleTests.cs` |
 | Add a Structure rule | append a `###` block to `Structure/Rulebook/rules.md` + a `[Rule("<header>")]` test in `Structure/Tests/StructureTests.cs` (source placement only) |
-| Add a behavioral rule (Unit/E2E/Wire/Live) | append a `###` block to that type's `Rulebook/rules.md` + a `[Rule("<header>")]` test under its `Tests/` (1:N — several cases per Rule allowed) |
+| Add a behavioral rule (Unit/E2E/Wire/Live) | **co-located, not here** — append a `###` block to the feature's `src/<…>/<Owner>/Tests/<Type>/Rulebook/rules.md` + a `[Rule("<header>")]` test beside it (1:N allowed); Meta polices it. Stand up a new feature's suite with **new-feature-tests** |
 | Add a test-system invariant (Meta) | rare — append a `###` block to [`../Meta/Rulebook/rules.md`](../Meta/Rulebook/rules.md) + a `[Rule("<header>")]` test in `../Meta/Tests/`; these guard the taxonomy/Rulebooks/parity, not the product |
 | Add a whole new test *type* | rare — only when no existing type fits. Follow [`../Harness/README.md`](../Harness/README.md) § *Standing up a new test type*: create `<Type>/{Rulebook,Tests,Support}/`, fill `template.md` + `rules.md` from the canonical skeleton, register it in `Harness/TestTypes`, write ≥1 Rule. No csproj edit, no parity fact (the Meta self-suite runs parity once registered). |
 | Add a production assembly / feature / slice | **nothing** — the csproj globs `src\**\ABox.*.csproj`, so a new `ABox.*` project is referenced and governed automatically |

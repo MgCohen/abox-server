@@ -28,10 +28,12 @@ What a Rule *means* varies by type —
 - **E2E / Wire / Live** Rule = a flow / endpoint / real-CLI guarantee
 - **Meta** Rule = an invariant about the *test system itself*: *"Parity holds for every registered type"*
 
-The first six test the **product** and live under `tests/Tests/` in the `ABox.Tests` assembly. **Meta** tests
-the **test system** — the taxonomy, the Rulebook format, and parity — and lives apart, under `tests/Meta/` in
-its own `ABox.Tests.Meta` assembly, validating the product suite from *outside* (via `ABox.Tests.SuiteAnchor`)
-the way the Arch guards validate `src`. The **Rulebook shape and parity discipline are identical across every
+The three structural types (Arch/Structure/Docs) are ownerless and live under `tests/Tests/` in the
+`ABox.Tests.Central` assembly; the four behavioral types (Unit/Wire/E2E/Live) are a feature's own and
+co-locate in `ABox.<Owner>.Tests` under `src/<…>/<Owner>/Tests/`. **Meta** tests the **test system** — the
+taxonomy, the Rulebook format, and parity — and lives apart, under `tests/Meta/` in its own `ABox.Tests.Meta`
+assembly, validating every suite from *outside* (via `ABox.Tests.SuiteAnchor` and `Suites.Colocated()`) the
+way the Arch guards validate `src`. The **Rulebook shape and parity discipline are identical across every
 type**, product or Meta. Splitting the template out of `rules.md` is deliberate: `rules.md` then holds nothing
 but its front-matter and Rules (no example `### ` to skip, nothing to game), while `template.md` owns all
 context — the summary and the judge criteria. The **Docs** type validates both files' shape against the
@@ -43,14 +45,17 @@ doc-engine; **Meta** owns parity (Rule ↔ test).
   A test can't enforce a Rule without citing it. (A guarantee realized by several cases is several
   `[Rule("<same header>")]` methods — see *Completeness* below.)
 - **`ParityGuard.cs`** — keeps one type's Rulebook and its `[Rule]` tests in lockstep, scoped to a single
-  `ABox.Tests.<Type>.Tests` namespace so types sharing an assembly don't bleed into each other's parity.
+  namespace so types sharing an assembly don't bleed into each other's parity: `ABox.Tests.<Type>.Tests` for a
+  central type (`For`), `ABox.<Owner>.Tests.<Type>` for a co-located feature type (`ForColocated`, which finds
+  the Rulebook in the source tree via the assembly's `TestsSourceDir` metadata).
 - **`TestTypes` / `TestMarkers` / `RepoTree`** — the test-system vocabulary the **Meta**
   self-suite's guards run on: the registry of types + the completeness flag, the run-attribute names, and
   the on-disk locator. Rulebook *format* is now validated by the doc-engine (shelled out by the **Docs** type),
   not a Harness parser.
 
-Parity is driven **once**, from the Meta self-suite — over every registered product type, then over Meta
-itself — so there is no per-type parity fact:
+Parity is driven **once**, from the Meta self-suite — over every central type, every co-located feature suite
+(`Suites.Colocated()` → `ParityGuard.ForColocated`), then over Meta itself — so there is no per-type or
+per-feature parity fact:
 
   ```csharp
   // Meta/Tests/ParityTests.cs
@@ -158,12 +163,22 @@ silently drift — and parity derives each Rulebook path from that namespace.
 
 A new type is rarer and weightier than a new Rule — it's a new *kind* of guarantee, so add one only when an
 existing type genuinely can't host it (don't fork Unit into near-twins). Adding a Rule to an existing type
-is almost always the right move instead. When a new type really is warranted, **fill the canonical skeleton**
-below — don't copy a sibling and edit (that's how two `Why:` stylings and six near-identical preambles crept
-in). The skeleton is the one owner of the shape:
+is almost always the right move instead.
+
+> **Two homes.** A new **central, ownerless** structural type (like Arch/Structure/Docs — guarantee owned by
+> the repo) follows the steps below under `tests/Tests/<Type>/`, registered in `TestTypes.Registered` and
+> classified `Central`. A new **behavioral** type owned by a feature (Unit/Wire/E2E/Live-shaped) co-locates in
+> the feature's `ABox.<Owner>.Tests` under `src/<…>/<Owner>/Tests/<Type>/`, with namespace
+> `ABox.<Owner>.Tests.<Type>` and a csproj that stamps `TestsSourceDir` — use the **new-feature-tests** skill,
+> which `ParityGuard.ForColocated` + Meta's coverage/taxonomy sweeps then police automatically. The skeleton
+> below is shared by both; only the home, namespace, and (co-located) the csproj differ.
+
+When a new type really is warranted, **fill the canonical skeleton** below — don't copy a sibling and edit
+(that's how two `Why:` stylings and six near-identical preambles crept in). The skeleton is the one owner of
+the shape:
 
 ```markdown
-<!-- <Type>/Rulebook/template.md -->
+<!-- tests/Templates/<type>.template.md  (central — one home for every type's criteria) -->
 ---
 docType: test-template
 testType: <type>
@@ -186,7 +201,7 @@ testType: <type>
 ---
 docType: rulebook
 testType: <type>
-template: ./template.md
+template: ../../../Templates/<type>.template.md
 harness: ../../../Harness/README.md
 ---
 

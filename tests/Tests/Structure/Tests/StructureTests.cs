@@ -162,6 +162,22 @@ public class StructureTests
             """);
     }
 
+    [Rule("The test harness depends on nothing it shells out to")]
+    [Fact]
+    public void HarnessTakesNoDependencyOnTheDocEngine()
+    {
+        var forbidden = SourceTree.HarnessForbiddenReferences();
+        Assert.True(forbidden.Count == 0,
+            $"""
+            The enforcement harness ('{Path.GetRelativePath(SourceTree.Root, SourceTree.HarnessCsproj)}') declares a
+            reference it must not (ADR 0015 [det]) — the dependency arrow points OUT of the spine, so a Rulebook
+            stays a doc the engine validates from outside, never a type the harness links:
+            {Bullets(forbidden)}
+            Drop the ProjectReference to ABox.DocEngine / the YamlDotNet PackageReference; the harness shells out
+            to the engine CLI instead.
+            """);
+    }
+
     [Rule("No build output lives under src or tests")]
     [Fact]
     public void NoBuildOutputUnderSource()

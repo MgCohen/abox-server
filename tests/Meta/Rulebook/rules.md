@@ -33,6 +33,27 @@ Reflection over the product assembly (`ABox.Tests.SuiteAnchor`) selects `TestMar
 namespace fails `TestTypes.ContainsTest`. Meta's own tests are held in scope by Meta's self-parity instead. An
 unregistered marker is a patch-when-seen event: add the name to `TestMarkers`.
 
+### Every co-located test lives inside a registered feature type
+- **Why:** Co-location moved feature tests out from behind the central protected tree, so "the tree is
+  protected" no longer guarantees every test is cited. A marker test placed in an assembly's root namespace
+  (`ABox.<Owner>.Tests`, not under a `<Type>` sub-namespace) is seen by neither the central reflection (it
+  scopes the product assembly only) nor `ParityGuard.ForColocated` (it scopes `<Assembly>.<Type>`) — so it runs
+  citing no Rule. This sweep is the backstop that closes that escape.
+
+Reflection over every `Suites.Colocated()` assembly selects `TestMarkers.Marks` methods whose namespace fails
+`TestTypes.ContainsColocatedTest` — i.e. is not `<Assembly>.<FeatureType>` or a sub-namespace. Each must move
+under a registered feature type's folder, not the assembly root.
+
+### Every co-located type folder is a feature type carrying a Rulebook
+- **Why:** Coverage parity (`ParityGuard.ForColocated`) only runs for type folders that already carry a
+  `Rulebook`, so a feature type folder shipped without one — e.g. a `Wire/` added without its Rulebook — is
+  silently skipped: its tests run with their `[Rule]` citations unchecked. This holds every child of a
+  co-located `Tests/` to being either shared `Support` or a registered feature type with a Rulebook beside it.
+
+For each `Suites.Colocated()` assembly, the children of its `TestsSourceDir` are checked: every folder is
+`Support` or a `TestTypes.Feature` type containing a `Rulebook/`. A feature folder missing its Rulebook, or a
+folder that is no registered type, fails — so a new type can't slip in uncovered.
+
 ### Central and Feature types partition the registered types
 
 - **Why:** Co-location turns on one decision per type — does the repo own its guarantee (central) or does a

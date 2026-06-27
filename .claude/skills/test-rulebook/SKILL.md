@@ -29,7 +29,7 @@ tests the test system itself, from outside.)
 Engine: `tests/Harness/` (`Rule.cs`, `ParityGuard.cs`, `TestTypes`, `RepoTree`). Detail docs:
 [`tests/README.md`](../../../tests/README.md), [`tests/Tests/README.md`](../../../tests/Tests/README.md),
 [`tests/Harness/README.md`](../../../tests/Harness/README.md). The plan is
-[`PLANS/test-structure.md`](../../../PLANS/test-structure.md). Read those before
+[`PLANS/test-colocation.md`](../../../PLANS/test-colocation.md). Read those before
 inventing structure; this skill is the *procedure*.
 
 > **Rules are a ratchet — add liberally, change rarely.** *Adding* a Rule is the everyday, safe
@@ -80,7 +80,8 @@ Rulebook *shape* — reuse the uniform one.
 2. **Write the fact** in `<Type>/Tests/` carrying both the xUnit run attribute and a
    `[Rule("<exact header>")]` citation — they compose (`[Fact]` + `[Rule]`), the Rule is
    not derived from `FactAttribute`. Live tests use `[LiveFact]` + `[Rule("<header>")]`.
-3. **Keep the namespace = folder** — `ABox.Tests.<Type>.Tests` for a file in `<Type>/Tests/`. IDE0130 is
+3. **Keep the namespace = folder** — `ABox.Tests.<Type>.Tests` for a central type in `tests/Tests/<Type>/`,
+   or `ABox.<Owner>.Tests.<Type>` for a co-located feature type in `src/<…>/<Owner>/Tests/<Type>/`. IDE0130 is
    `severity = error`, so a mismatch is a **build error, not a warning**.
    - **Failure messages are fix instructions.** Active voice, name the file/type, say what to do
      ("Move X to Y", "Add a [Rule] citing Z") — not "X is wrong". One direct line, no essays.
@@ -115,11 +116,14 @@ judge-graded (see §6), not parity-enforced.
 
 ## 5. Things that bite
 
-- **No new test csproj.** `tests/Tests/ABox.Tests.csproj` globs `src\**\ABox.*.csproj` — a new
-  feature/slice is picked up automatically. Don't add a project per type.
+- **Adding a Rule needs no new csproj; a new feature *suite* does.** Adding a Rule to an existing suite is a
+  Rulebook + test edit, nothing more. Standing up a **new feature's** tests is one `ABox.<Owner>.Tests.csproj`
+  (stamping `TestsSourceDir`), created by the **new-feature-tests** skill — `dirs.proj` then discovers it by
+  location. Don't add a project per *type*; do add one per *owner*.
 - **Rulebooks are read from the source tree.** The Meta guards locate the repo root (`RepoTree`, via
   the `ABox.slnx` marker) and read each `<Type>/Rulebook/rules.md` straight from disk — no copy step.
-  A Rule counts only if it sits in its type's `rules.md` under `tests/Tests/<Type>/` (or `tests/Meta/`).
+  A Rule counts only if it sits in its type's `rules.md` under `tests/Tests/<Type>/` (central), `tests/Meta/`,
+  or a feature's `src/<…>/<Owner>/Tests/<Type>/` (co-located).
 - **`rules.md` holds only Rules.** Under `## Rules`, every `### ` counts — the example shape lives in
   `tests/Harness/README.md`, not `rules.md`, so there's nothing to game. The doc-engine's `rulebook`
   doctype (validated by the **Docs** type) enforces the shape: front-matter + `rule` blocks only, each
@@ -132,7 +136,7 @@ judge-graded (see §6), not parity-enforced.
 
 ```
 dotnet build ABox.slnx   # warning-free; IDE0130 + parity compile-time checks
-dotnet test  ABox.slnx   # parity facts + your new test green (Live stays skipped)
+dotnet test  dirs.proj   # FULL suite — central + every co-located feature assembly (Live stays skipped)
 ```
 
 To grade a Rule's *wording* against its type's `## Criteria` use `judge-rulebook`; to grade a test's

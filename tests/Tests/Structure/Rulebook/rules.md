@@ -77,6 +77,16 @@ Checked on disk (`SourceTree.MisplacedApiLeaves` + `ApiLeavesWithDependencies`):
 `Features/<F>/Api/ABox.<F>.Api.csproj` (so the wildcard catches it) and declare no `<ProjectReference>`/
 `<PackageReference>`. Projects' `Api` leaf satisfies it positively, so the rule is non-vacuous from day one.
 
+### The test harness depends on nothing it shells out to
+- **Why:** ADR 0015 makes the enforcement spine acyclic by pointing its dependency arrow OUT: the Docs type
+  shells out to the doc-engine CLI, so a Rulebook stays a document the engine validates from outside — never a
+  type the harness links. A `ProjectReference` to `ABox.DocEngine` or a `YamlDotNet` `PackageReference` in
+  `tests/Harness` would compile and silently invert that arrow, coupling the harness to the thing it polices.
+
+A text scan of `tests/Harness/ABox.Tests.Harness.csproj` (`SourceTree.HarnessForbiddenReferences`) reports any
+`<ProjectReference>` naming the engine or `<PackageReference>` naming YamlDotNet. Decidable on disk before
+compile, so the `[det]` claim in ADR 0015 is enforced, not just asserted.
+
 ### No build output lives under src or tests
 - **Why:** `UseArtifactsOutput` + a pinned `ArtifactsPath` centralize every project's bin/obj into the repo-root
   `/artifacts`. A `bin`, `obj`, or `artifacts` folder under `src/` or `tests/` means a project escaped the root

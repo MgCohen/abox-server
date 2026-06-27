@@ -31,7 +31,7 @@ public sealed class ParityGuard
     // name + the type; the Rulebook is found from the source tree via the TestsSourceDir the build stamps, so
     // parity reads the same on-disk rules.md the doc-engine validates — no copy-to-output step.
     public static ParityGuard ForColocated(Assembly assembly, string type) =>
-        new(assembly, $"{assembly.GetName().Name}.{type}", ColocatedRulebook(assembly, type));
+        new(assembly, TestTypes.ColocatedNamespace(assembly.GetName().Name!, type), ColocatedRulebook(assembly, type));
 
     private const string TestsSourceDirKey = "TestsSourceDir";
 
