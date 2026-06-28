@@ -408,9 +408,17 @@ spike to keep the first cut minimal.
 5. **Rename the interfaces** — *partially overtaken*: `IExpr<T>`→`Expr<T>` and `IStmt`→`Stmt`
    (the interface→record flips), though not semantically renamed. The names are still opaque;
    find clearer, domain-fit ones. *Test:* what reads best in a real recipe.
-6. **Snippet base class vs attribute** — revisit `[Snippet]` attribute vs a base
-   class/interface. *Test:* does inheritance buy anything now that fills are
-   discovered by the generator, or is it ceremony?
+6. **Snippet base class vs attribute** — *sharpened (see `BUILDING-STYLE.md`).* A snippet could be a
+   **class** — `class Loop(int count) : Snippet { public override void Body() {…} }` — instead of an
+   annotated method: fills as ctor params (still *inner*-typed, so the template in `Body()` still
+   compiles and the gen tool still lifts them), metadata (`Name`, `Style`) as overrides, no attribute.
+   It **keeps** the compiling-template breakthrough and does **not** unify snippet with node (the node
+   still needs *outer* `Expr<T>` types to compose, so `LoopNode`/factory stay generated). Real wins:
+   key derived from the class name (kills the `"loop"` duplication), produced type explicit via the
+   base (`Snippet` vs `Snippet<int>`) instead of the body-kind gotcha, and `Style` as a typed override
+   that scales as metadata grows. *Decision:* keep methods now (terser, tiny catalog, Inline-only);
+   switch to class-based snippets when metadata grows past key+style, a base needs shared behavior, or
+   the declaration tier (#7) brings structured method/type snippets.
 
 ### The declaration tier (items 7–9: grow *up* from statement bodies)
 
