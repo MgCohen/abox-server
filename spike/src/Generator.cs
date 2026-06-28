@@ -39,7 +39,7 @@ static class Generator
 
     // --- rendering -----------------------------------------------------------------------
 
-    static string RenderStmt(IStmt node)
+    static string RenderStmt(Stmt node)
     {
         var method = Lookup(node.GetType());
         return SubstituteBlock(method.Body!, BuildFields(node));
@@ -47,10 +47,14 @@ static class Generator
 
     static string RenderExpr(object node) => node switch
     {
-        Lit l => l.Value.ToString(),
-        Ref r => r.Var.Name,
+        IVar v => v.Name,
+        ILit l => FormatLit(l.Value),
         _ => SubstituteExpr(Lookup(node.GetType()).ExpressionBody!.Expression, BuildFields(node)),
     };
+
+    static string FormatLit(object value) =>
+        SymbolDisplay.FormatPrimitive(value, quoteStrings: true, useHexadecimalNumbers: false)
+            ?? value.ToString()!;
 
     static string RenderBlock(Block block) => string.Join("\n", block.Statements.Select(RenderStmt));
 
@@ -64,15 +68,19 @@ static class Generator
             var value = prop.GetValue(node)!;
             var key = char.ToLowerInvariant(prop.Name[0]) + prop.Name[1..];
 
-            if (value is IVar variable)
-                fields.Markers[key] = variable.Name;
-            else if (value is Block block)
-                fields.Blocks[key] = RenderBlock(block);
+            // Route by the FIELD type, not the value: a Var<T>-typed field is a binding marker,
+            // but a Var used at an Expr<T>-typed site is an expression (its bare name).
+            if (IsVar(prop.PropertyType))
+                fields.Markers[key] = ((IVar)value).Name;
+            else if (prop.PropertyType == typeof(Block))
+                fields.Blocks[key] = RenderBlock((Block)value);
             else
                 fields.Params[key] = RenderExpr(value);
         }
         return fields;
     }
+
+    static bool IsVar(Type t) => t.IsGenericType && t.GetGenericTypeDefinition() == typeof(Var<>);
 
     // --- substitution --------------------------------------------------------------------
 

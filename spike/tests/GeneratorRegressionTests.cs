@@ -1,4 +1,5 @@
 using Xunit;
+using static Spike.Recipe;
 
 namespace Spike.Tests;
 
@@ -42,9 +43,7 @@ public class GeneratorRegressionTests
     public void A_second_recipe_shape_compiles_and_returns_its_value()
     {
         var x = new Var<int>("x");
-        var recipe = new Block(
-            new DefineNode(new Lit(7), x),
-            new ReturnNode(new Ref(x)));
+        Block recipe = [Define(x, 7), Return(x)];
 
         var code = Generator.Generate(recipe);
 
@@ -55,11 +54,10 @@ public class GeneratorRegressionTests
     {
         var acc = new Var<int>("acc");
         var i = new Var<int>("i");
-        return new Block(
-            new DefineNode(new Lit(0), acc),
-            new LoopNode(new Lit(5), i, new Block(
-                new AssignNode(acc, new AddNode(new Ref(acc), new Ref(i))))),
-            new ReturnNode(new Ref(acc)));
+        return [
+            Define(acc, 0),
+            Loop(i, 5, Assign(acc, acc + i)),
+            Return(acc)];
     }
 
     static string Normalize(string s) => s.Replace("\r\n", "\n").TrimEnd();

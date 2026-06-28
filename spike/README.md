@@ -105,6 +105,11 @@ Two **separate** generation steps — do not conflate them:
 
 ## 4. The model
 
+> **Note:** §4–§5 describe the *original* model and use its API (`string` markers, `Ref`,
+> `IExpr<T>`/`IStmt`). The mechanism is unchanged, but the authoring surface has moved on —
+> `Var<T>` handles, `Expr<T>`/`Stmt` record bases, generic `Lit<T>`, factories, operators, and
+> collection-expression blocks. For the current API and authoring styles, see `BUILDING-STYLE.md`.
+
 ### 4.1 A snippet is a real compiling method
 
 ```csharp
@@ -302,7 +307,9 @@ recipe, against the contract each snippet publishes:
   `Define`; the addition is a *separate* `Add`. Each snippet is ignorant of the
   others; the recipe is the wiring.
 
-(Making those names instance-derived instead of stringly-typed is backlog item #1.)
+(This §4–§5 API — `string` markers, `Ref("acc")`, `IExpr<T>`/`IStmt` — is the **original** design.
+It has since been superseded: names are instance-derived `Var<T>` handles (backlog #1, done), and the
+bases are `Expr<T>`/`Stmt` records. The current authoring surface is in `BUILDING-STYLE.md`.)
 
 ---
 
@@ -386,23 +393,90 @@ renames, snippet base-class.
 Revisit each **against running code**, once the Step-1 slice works. Kept out of the
 spike to keep the first cut minimal.
 
-1. **Variable names on the instance, not a recipe field** — derive the `@var` name
-   from the instance (binding / fluent `.Named("acc")`) instead of a `string`
-   field. *Test:* readability vs a positional field; survives nesting?
-2. **Implicit conversion operators for literals** — `new LoopNode(5)` via
-   `implicit operator IExpr<int>(int) => new Lit(...)`. *Test:* how far it composes;
-   does implicit wrapping ever hide a type error we'd want to see?
+1. ✅ **DONE — Variable names on the instance, not a recipe field** — shipped as `Var<T>`
+   handles (Phase 2b); a declaration binds a handle, a use references it, the name is chosen once.
+2. ✅ **DONE — Implicit conversion operators for literals** — shipped as lever D
+   (`implicit operator Expr<T>(T)` + generic `Lit<T>`). The "does it hide a type error?" test is
+   answered in `BUILDING-STYLE.md` (the generic-`Lit<T>` fix keeps it exactly typed). One known
+   trap fell out: the `==` operator does record-equality — see that doc.
 3. **Recipe variations by context** — same recipe → different output by context
    (target framework, flags, config). *Test:* where the branch lives — recipe, a
    context object, or composition.
 4. **Custom code without a recipe** — an escape hatch (`Raw("…")` node / passthrough
    block) for code not modeled as snippets. *Test:* coexistence with typed nodes;
    effect on the final-compile gate.
-5. **Rename the interfaces** — `IStmt`/`IExpr<T>` are opaque. Find clearer,
-   domain-fit names. *Test:* what reads best in a real recipe.
-6. **Snippet base class vs attribute** — revisit `[Snippet]` attribute vs a base
-   class/interface. *Test:* does inheritance buy anything now that fills are
-   discovered by the generator, or is it ceremony?
+5. **Rename the interfaces** — *partially overtaken*: `IExpr<T>`→`Expr<T>` and `IStmt`→`Stmt`
+   (the interface→record flips), though not semantically renamed. The names are still opaque;
+   find clearer, domain-fit ones. *Test:* what reads best in a real recipe.
+6. **Snippet base class vs attribute** — *sharpened (see `BUILDING-STYLE.md`).* A snippet could be a
+   **class** — `class Loop(int count) : Snippet { public override void Body() {…} }` — instead of an
+   annotated method: fills as ctor params (still *inner*-typed, so the template in `Body()` still
+   compiles and the gen tool still lifts them), metadata (`Name`, `Style`) as overrides, no attribute.
+   It **keeps** the compiling-template breakthrough and does **not** unify snippet with node (the node
+   still needs *outer* `Expr<T>` types to compose, so `LoopNode`/factory stay generated). Real wins:
+   key derived from the class name (kills the `"loop"` duplication), produced type explicit via the
+   base (`Snippet` vs `Snippet<int>`) instead of the body-kind gotcha, and `Style` as a typed override
+   that scales as metadata grows. *Decision:* keep methods now (terser, tiny catalog, Inline-only);
+   switch to class-based snippets when metadata grows past key+style, a base needs shared behavior, or
+   the declaration tier (#7) brings structured method/type snippets.
+
+### The declaration tier (items 7–9: grow *up* from statement bodies)
+
+Everything so far composes the **body** of a fixed shell — the tool hardcodes
+`public static class ScriptData { public static int Run() { <recipe> } }` and the
+recipe only fills the `<recipe>` statements. Items 7–9 are the same modeling move
+applied one level up: from "compose statements" to "compose declarations." They
+share a spine — a **member region** is to a type what a `Block` is to a method.
+
+7. **What the generated element *is*** — the output shell (class? method? what
+   name / return type / params?) is **not modeled** today; it's baked into the
+   generator. Model a declaration tier: a `MethodNode` (name, return type, params,
+   `Block` body) and the existing recipe becomes that method's body, not the whole
+   artifact. *Test:* does today's `Block`/`IStmt` nest cleanly as a `MethodNode`'s
+   body with zero change below it? Does the class shell stay hardcoded, or become a
+   `ClassNode` whose members are themselves nodes?
+8. **Defining new types** — a recipe can't introduce a type (`record Foo(int X)`,
+   `class Bar { … }`). Express a type definition as a `[Snippet]` whose body is a
+   type decl — `@`-marker for the type name, a region fill for its members.
+   *Test:* do the existing fill forms reach a type name + member list, or does a
+   member region need a new form distinct from `Block` (you can't drop a statement
+   where a field goes)?
+9. **Adding a field to a type** — once a type is a node, attaching a field/property
+   (`int @name;`) should be the *same* operation as adding a statement to a block:
+   fill a region. *Test:* is a member list just another `Block` (region fill), so
+   field-add ≡ statement-add — or do members need their own region type so the
+   compiler rejects a statement-in-a-field-slot?
+
+### Freer code at a position (item 10)
+
+10. **Host-language code at typed leaf positions** — some fills are tedious to model
+    as node trees but trivial to write as plain C#: the `If` condition is the
+    motivating case, authored as a lambda `() => i < 3` instead of
+    `new LessThanNode(new Ref(i), new Lit(3))`. A lambda buys real C# type-checking
+    and IntelliSense at the leaf while staying capturable. Overlaps the `Raw("…")`
+    escape hatch (#4), but is **typed** where Raw is a string blob. *Test:* can a
+    lambda body be lowered to source deterministically (`CallerArgumentExpression`
+    on the param, or expression-tree → text)? Where's the line — raw/lambda allowed
+    **only** at typed leaf-expression slots, never where a `Block` is expected? And
+    note the tension with operator sugar (see `BUILDING-STYLE.md`): `acc + i` solves
+    the same "don't hand-build expression nodes" itch while staying *inside* the
+    type system, where a lambda steps outside it.
+
+### The type spine (item 11)
+
+11. **A "result" type above `Block`** — today `Block` is the de-facto root (the
+    recipe *is* a `Block`) and the surrounding element is hardcoded by the tool, so
+    nothing models the **end result** as a value. Question: do we want a type above
+    `Block` that names what's being produced (a method? a class? a file?), and is
+    the whole model one **containment spine** — `<result> → Block → … → Var<T>` — with
+    each tier owning the next? Overlaps #7 (the declaration tier models the
+    *member*); this asks the orthogonal question of whether there's a single root
+    node and a coherent spine all the way down to the variable handle. *Test:* is the
+    root just the top declaration node from #7, or a distinct `Result`/`Program`
+    wrapper? Is the spine pure **containment** (a result *has* blocks, a block *has*
+    statements, a statement *references* a `Var<T>`), or does any tier actually want
+    **inheritance** — and if nothing does, say so, so we don't reach for a base type
+    the structure doesn't ask for.
 
 ---
 

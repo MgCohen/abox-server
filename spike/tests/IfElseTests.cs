@@ -1,4 +1,5 @@
 using Xunit;
+using static Spike.Recipe;
 
 namespace Spike.Tests;
 
@@ -25,21 +26,48 @@ public class IfElseTests
         Assert.Contains("acc = acc + 10;", code);     // else block
     }
 
+    [Fact]
+    public void GreaterThan_renders_as_authored_not_a_flipped_lessthan()
+    {
+        var acc = new Var<int>("acc");
+        var i = new Var<int>("i");
+        Block recipe = [
+            Define(acc, 0),
+            Loop(i, 5, IfElse(i > 3, Assign(acc, acc + 1), Assign(acc, acc + 2))),
+            Return(acc)];
+
+        var code = Generator.Generate(recipe);
+
+        Assert.Contains("if (i > 3)", code);
+        Assert.DoesNotContain("3 < i", code);
+    }
+
+    [Fact]
+    public void Eq_is_the_equality_path_and_renders_double_equals()
+    {
+        var acc = new Var<int>("acc");
+        var i = new Var<int>("i");
+        Block recipe = [
+            Define(acc, 0),
+            Loop(i, 5, IfElse(Eq(i, 3), Assign(acc, acc + 1), Assign(acc, acc + 2))),
+            Return(acc)];
+
+        var code = Generator.Generate(recipe);
+
+        Assert.Contains("if (i == 3)", code);
+    }
+
     // for i in 0..4: if (i < 3) { acc += i; acc += 1; } else { acc += 10; }  => 26
     static Block IfElseInLoop()
     {
         var acc = new Var<int>("acc");
         var i = new Var<int>("i");
-        return new Block(
-            new DefineNode(new Lit(0), acc),
-            new LoopNode(new Lit(5), i, new Block(
-                new IfElseNode(
-                    new LessThanNode(new Ref(i), new Lit(3)),
-                    new Block(
-                        new AssignNode(acc, new AddNode(new Ref(acc), new Ref(i))),
-                        new AssignNode(acc, new AddNode(new Ref(acc), new Lit(1)))),
-                    new Block(
-                        new AssignNode(acc, new AddNode(new Ref(acc), new Lit(10))))))),
-            new ReturnNode(new Ref(acc)));
+        return [
+            Define(acc, 0),
+            Loop(i, 5,
+                IfElse(i < 3,
+                    [Assign(acc, acc + i), Assign(acc, acc + 1)],
+                    Assign(acc, acc + 10))),
+            Return(acc)];
     }
 }
