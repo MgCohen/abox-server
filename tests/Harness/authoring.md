@@ -28,14 +28,14 @@ The deciding axis is **who controls the dependency** (Khorikov, *When to Mock*):
 
 Mocking the repository couples the test to *how* the endpoint queries and re-creates the tautology in
 rule 4. Reserve mocks for the unmanaged seam — the CLI provider is already faked this way
-(`ScriptedProvider`). Hand-rolled fakes (`FakeProjects`, `StubFlow`) over a mocking framework; no
+(`ScriptedProvider`). Hand-rolled fakes (`FakeProvider`, `StubFlow`) over a mocking framework; no
 NSubstitute/Moq dependency.
 
 ### Three kinds of stand-in (don't blur them)
 
 - **Provisional production impl** — *real* code that ships and gets upgraded later (`JsonRepository`,
-  `ProjectSeeder`, the `StorageRoot` default). From a test's view it **is** "the real thing."
-- **Test double** — test-only code in `tests/.../Support/`, never ships (`FakeProjects`, `StubFlow`,
+  the `StorageRoot` default). From a test's view it **is** "the real thing."
+- **Test double** — test-only code in `src/<…>/<Owner>/Tests/Support/`, never ships (`FakeProvider`, `StubFlow`,
   `ScriptedProvider`).
 - **Test-env config of a real service** — the real service pointed somewhere safe (`WireApp`'s temp
   `StorageRoot`), not a double.

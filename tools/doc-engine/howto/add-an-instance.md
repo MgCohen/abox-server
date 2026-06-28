@@ -1,7 +1,7 @@
 # HOWTO: add a new instance (a document)
 
 An **instance** is an actual document — a Markdown file in its **home folder** in the
-repo (a Rulebook under `tests/**/Rulebook/`, a plan under `PLANS/`, …) whose structure
+repo (a Rulebook under `tests/**/Rulebook.md`, a plan under `PLANS/`, …) whose structure
 conforms to a doc type's catalog of blocks. This is the artifact you produce; the
 engine checks it with `validate`, in place. There is no global output directory.
 

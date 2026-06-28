@@ -18,7 +18,7 @@ public sealed class SchemaChecker
 
         var floorDefs = Yaml.AsString(floor.GetValueOrDefault("defs"));
         if (floorDefs is null) return errs;
-        foreach (var kindFile in Catalog.Files(_root, floorDefs))
+        foreach (var kindFile in RequireFiles(errs, floorDefs))
         {
             var kind = LoadMap(errs, kindFile);
             if (kind is null) continue;
@@ -26,13 +26,24 @@ public sealed class SchemaChecker
 
             var kindDefs = Yaml.AsString(kind.GetValueOrDefault("defs"));
             if (kindDefs is null) continue;
-            foreach (var defFile in Catalog.Files(_root, kindDefs))
+            foreach (var defFile in RequireFiles(errs, kindDefs))
             {
                 var def = LoadMap(errs, defFile);
                 if (def is not null) Conform(errs, def, kind, defFile);
             }
         }
         return errs;
+    }
+
+    // A definition glob (kinds/*, blocks/*, doctypes/*) that yields nothing means the directory was renamed or
+    // emptied — and an empty loop validates zero definitions and returns PASS. Fail loud so a missing catalog
+    // dir can't go vacuously green; none of the three collections is ever legitimately empty.
+    private IReadOnlyList<string> RequireFiles(List<string> errs, string spec)
+    {
+        var files = Catalog.Files(_root, spec);
+        if (files.Count == 0)
+            errs.Add($"no definition files match '{spec}' under '{_root}' — the catalog directory is missing or empty");
+        return files;
     }
 
     private IReadOnlyDictionary<string, object?>? LoadMap(List<string> errs, string path)

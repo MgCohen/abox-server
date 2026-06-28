@@ -1,6 +1,8 @@
 # Feature-co-located tests (the move from type-major to owner-major)
 
-**Status:** 🟡 proposed — 2026-06-26. Approach agreed; not yet built. Successor to
+**Status:** 🟢 implemented — 2026-06-27. The migration shipped: central suites live in `ABox.Tests.Central`,
+every feature owns a co-located `ABox.<Owner>.Tests` (including the doc-engine's own `ABox.DocEngine.Tests`),
+and the Meta self-suite — `CoverageTests` plus the co-located taxonomy sweeps — polices them. Successor to
 [`test-structure.md`](test-structure.md), which stood up the type-major `tests/Tests/<Type>/` layout
 this plan re-homes. The Rulebook discipline, ParityGuard, the `Docs` type, and the Meta self-suite are
 all **kept** — only *where the tests physically live* changes. Canonical references for the machinery it
@@ -123,24 +125,22 @@ abox-server/
 │
 └── src/
     ├── Features/
-    │   ├── Tasks/
+    │   ├── Tasks/                              ← illustrative shape (Tasks has no Tests/ yet; Flows below is live)
     │   │   ├── Create/  Module/  Contracts/      …feature code…
-    │   │   └── Tests/                          → ABox.Tasks.Tests   (co-located, glob-discovered)
+    │   │   └── Tests/                          → ABox.Tasks.Tests   (co-located, discovered by dirs.proj)
     │   │       ├── Unit/
     │   │       │   ├── Rulebook/ rules.md         a `rulebook` instance — THIS feature's guarantees;
     │   │       │   └── TaskCreateTests.cs          front-matter template→ tests/Templates/unit.template.md
-    │   │       ├── Wire/
-    │   │       │   ├── Rulebook/ rules.md
-    │   │       │   └── TasksEndpointTests.cs
-    │   │       └── Parity.cs                       ParityGuard.For(thisAsm,"Unit").Assert(); …("Wire")…
+    │   │       └── Wire/
+    │   │           ├── Rulebook/ rules.md         parity is enforced centrally by Meta (CoverageTests +
+    │   │           └── TasksEndpointTests.cs       the co-located taxonomy sweeps) — no per-feature Parity.cs
     │   │
     │   ├── Flows/
     │   │   ├── Start/ List/ Get/ Cancel/ Watch/ Catalog/ Module/ Shared/ Contracts/
     │   │   └── Tests/                          → ABox.Flows.Tests
     │   │       ├── Unit/   Rulebook/ rules.md   <…>Tests.cs
     │   │       ├── Wire/   Rulebook/ rules.md   <…>Tests.cs
-    │   │       ├── E2E/    Rulebook/ rules.md   FlowPingTests.cs   ← flow E2E lives HERE (Flows owns it)
-    │   │       └── Parity.cs
+    │   │       └── E2E/    Rulebook/ rules.md   FlowPingTests.cs   ← flow E2E lives HERE (Flows owns it)
     │   │
     │   ├── Git/        … └── Tests/ → ABox.Git.Tests
     │   ├── Projects/   … └── Tests/ → ABox.Projects.Tests
@@ -158,7 +158,7 @@ The four rules that tree encodes:
 
 | Question | Answer |
 |---|---|
-| **What's central?** | only ownerless guarantees: `Arch`, `Structure`, `Docs` (under `tests/Tests/`) + `Meta` (`tests/Meta/`) — plus the shared `tests/Harness/` and `tests/Templates/`. |
+| **What's central?** | only ownerless guarantees: `Arch`, `Structure`, `Docs` (under `tests/Tests/`) + `Meta` (`tests/Harness/Meta/`, nested with the engine it polices) — plus the shared `tests/Harness/` and `tests/Templates/`. |
 | **Where do a feature's tests go?** | `src/Features/<F>/Tests/`, types as **internal subfolders**, one assembly `ABox.<F>.Tests`. |
 | **Standard vs. guarantees?** | doctype (catalog) + every `template.md` (`tests/Templates/`) = **central**; each feature's `rules.md` = **co-located**. |
 | **Odd cases?** | flow E2E → **Flows**; live CLI → **Agents**; `/health` → **Host** (ownerless infra). |
@@ -186,8 +186,8 @@ central-per-type, guarantees local.
 ## How the harness still enforces everything
 
 Four engine changes turn the centralized harness into a **discover-and-enforce** harness. All four are in
-`tests/Harness/**` + `tests/Meta/**` — the protected enforcement surface — so they land via an
-owner-reviewed PR, carefully, *with* the move (never after).
+`tests/Harness/**` (which now also covers the nested `tests/Harness/Meta/**`) — the protected enforcement
+surface — so they land via an owner-reviewed PR, carefully, *with* the move (never after).
 
 | # | Current state (2026-06-26) | Becomes |
 |---|---|---|
@@ -220,9 +220,11 @@ deliver that together:
    (its `src/**` projects), but it is **no longer the test-discovery seam**: adding a feature's tests
    touches no central file — not `ABox.slnx`, not a harness registration.
 2. **A scaffold skill** (`new-feature-tests`) stamps the `Tests/` folder, a ~5-line stub
-   `ABox.<F>.Tests.csproj` (all real config inherited from `Directory.Build.props`), the per-type
-   `rules.md` skeleton with correct front-matter (`docType: rulebook`, `template:`→`tests/Templates/<type>.template.md`,
-   `harness:`→Harness README), and the one-line `Parity.cs`.
+   `ABox.<F>.Tests.csproj` (all real config inherited from `Directory.Build.props`) that stamps the
+   `TestsSourceDir` metadata, and the per-type `rules.md` skeleton with correct front-matter
+   (`docType: rulebook`, `template:`→`tests/Templates/<type>.template.md`, `harness:`→Harness README).
+   No per-feature parity file is needed: Meta's `CoverageTests` drives `ParityGuard.ForColocated` over
+   every discovered assembly × type, so a feature's parity is enforced centrally, not by local boilerplate.
 
 So wiring *exists* but **no human types it** — the agent-first resolution. The only thing a human authors
 is the test body and its `### ` Rule, which is the contract, not wiring.
@@ -240,10 +242,10 @@ Co-location moves protected surfaces, so `governance/protected-paths` must follo
 
 | Path | Change |
 |---|---|
-| `tests/**/Rulebook/**` | narrow to the central rulebooks (`tests/Tests/{Arch,Structure,Docs}/Rulebook/**` + `tests/Meta/Rulebook/**`) |
+| `tests/**/Rulebook/**` | narrow to the central rulebooks (`tests/Tests/{Arch,Structure,Docs}/Rulebook/**` + `tests/Harness/Meta/Rulebook/**`) |
 | `tests/Templates/**` | **add** (critical) — the per-type criteria are the central standard |
 | `src/**/Tests/Rulebook/**`, `tools/**/Tests/Rulebook/**` | **add** — feature/tool `rules.md` are guarantees, still protected |
-| `tests/Harness/**`, `tests/Meta/**` | unchanged (still critical) |
+| `tests/Harness/**` | unchanged (still critical) — now also covers the nested `tests/Harness/Meta/**` |
 | `tools/doc-engine/{doctypes,blocks,kinds,_schema}/**` | confirm protected — the doctypes are the standard the whole repo validates against |
 | CODEOWNERS | regenerate from the above |
 
@@ -277,9 +279,9 @@ is asserted by a Meta test.
 
 **Phase 2 — Move one feature, prove the pattern end-to-end.**
 Pick one in-solution feature (e.g. `Tasks`). Create `src/Features/Tasks/Tests/` with the internal type
-subfolders, its co-located `rules.md` per type (front-matter pointing at the central template), the
-one-line `Parity.cs`; migrate its existing Unit/Wire tests out of the central tree (git-rename, namespaces
-→ `ABox.Tasks.Tests.<Type>`).
+subfolders and its co-located `rules.md` per type (front-matter pointing at the central template); migrate
+its existing Unit/Wire tests out of the central tree (git-rename, namespaces → `ABox.Tasks.Tests.<Type>`).
+Parity is enforced centrally by Meta — no per-feature parity file.
 *Done when:* `ABox.Tasks.Tests` builds via the scaffold stub, its parity is green per type, `Docs`
 validates the relocated `rules.md` **in place**, the traversal picks it up with no `ABox.slnx`/harness
 edit, and the central tree no longer holds Tasks tests.
