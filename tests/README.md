@@ -12,9 +12,10 @@ The front door for this repo's tests. It routes; the detail lives one level down
 
 Three pieces:
 
-- **[`Harness/`](Harness/README.md)** — the shared *Rulebook* engine + vocabulary: the
-  `[Rule]` attribute, `ParityGuard`, and the `TestTypes` / `RepoTree`
-  the harness's own tests run on. Nothing product-specific lives here.
+- **[`Harness/`](Harness/README.md)** — the shared base every suite builds on: the `[Rule]` / `[LiveFact]`
+  attributes, the `Report` helpers, and the `RepoTree` locator. The enforcement engine
+  (`ParityGuard` / `TestTypes` / `TestMarkers`) lives with its only consumer in `Harness/Tests/`, not here.
+  Nothing product-specific lives here.
 - **[`Tests/`](Tests/README.md)** — the central, ownerless suite (`ABox.Tests.Central`): the three
   structural types `Arch`/`Structure`/`Docs`, each its own Rulebook with the same folder shape
   (`<Type>/Rulebook.md`, the test `.cs`, `<Type>/Support/`). A feature's `Unit`/`Wire`/`E2E`/`Live` are

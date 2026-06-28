@@ -1,9 +1,11 @@
 # Test Harness — the Rulebook convention
 
-The shared engine and vocabulary every test *type* is built on: the `[Rule]` attribute, the `ParityGuard`
-engine, the `TestMarkers`/`TestTypes` registries, and the `RepoTree` disk
-locator — plus this doc. Nothing *product*-specific lives here; a type's models, doubles, and harnesses stay
-in that type's own `Support/` until a *second* type genuinely reuses them.
+The **shared base** every test assembly is built on: the `[Rule]` and `[LiveFact]` attributes, the `Report`
+helpers, and the `RepoTree` disk locator — plus this doc. The *enforcement engine* itself (`ParityGuard`,
+`TestTypes`, `TestMarkers`) is **not** here — it has exactly one consumer, the harness's own tests, so it lives
+with them in [`Tests/`](Tests/README.md) (the repo's own rule: promote to the shared base only on a genuine
+second consumer). Nothing *product*-specific lives here either; a type's models, doubles, and harnesses stay in
+that type's own `Support/` until a *second* type genuinely reuses them.
 
 This doc is the **framework** layer — where a test lives and that parity enforces it. The **craft** layer —
 what a test *body* should look like and check (substitute-by-ownership, AAA, assert-against-arranged-state)
@@ -39,16 +41,21 @@ harness's own tests own parity (Rule ↔ test).
 
 ## The pieces
 
+**Shared base** — `tests/Harness/`, referenced by every test assembly:
 - **`Rule.cs`** — `[Rule("<header>")]`, sits on an xUnit `[Fact]` and names the Rulebook header it enforces.
   A test can't enforce a Rule without citing it. (A guarantee realized by several cases is several
   `[Rule("<same header>")]` methods — see *Completeness* below.)
+- **`LiveFactAttribute.cs`** — `[LiveFact]`, the gated real-CLI run attribute (skipped unless `RUN_LIVE=1`).
+- **`Report.cs`** — the `Bullets`/`Join` failure-message helpers.
+- **`RepoTree.cs`** — the on-disk locator (repo root, the central tree, the rulebooks, the feature test roots).
+
+**Enforcement engine** — `tests/Harness/Tests/`, used only by the harness's own tests (its one consumer):
 - **`ParityGuard.cs`** — keeps one type's Rulebook and its `[Rule]` tests in lockstep, scoped to a single
   namespace so types sharing an assembly don't bleed into each other's parity: `ABox.Tests.<Type>` for a
-  central type (`For`), `ABox.<Owner>.Tests.<Type>` for a co-located type (`ForColocated`, which finds
-  the Rulebook in the source tree via the assembly's `TestsSourceDir` metadata).
-- **`TestTypes` / `TestMarkers` / `RepoTree`** — the test-system vocabulary the **harness's own tests**
-  run on: the registry of types + the completeness flag, the run-attribute names, and
-  the on-disk locator. Rulebook *format* is now validated by the doc-engine (shelled out by the **Docs** type),
+  central type (`For`), `ABox.<Owner>.Tests.<Type>` for a co-located type (`ForColocated`), and the harness's
+  own namespace (`ForRulebook`, self-parity).
+- **`TestTypes` / `TestMarkers`** — the registry of types (the single source of truth) + completeness flag, and
+  the run-attribute names. Rulebook *format* is validated by the doc-engine (shelled out by the **Docs** type),
   not a Harness parser.
 
 Parity is driven **once**, from the harness's own tests — over every central type and every co-located feature

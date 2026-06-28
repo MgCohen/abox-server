@@ -1,6 +1,6 @@
 using System.Reflection;
 
-namespace ABox.Tests.Harness;
+namespace ABox.Tests.Harness.Tests;
 
 // What counts as a repo test that must cite a [Rule]: a method carrying an attribute assignable to one of the
 // Markers. The match is by assignability, so a base marker covers its subclasses — FactAttribute alone catches

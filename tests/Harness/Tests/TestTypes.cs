@@ -1,4 +1,4 @@
-namespace ABox.Tests.Harness;
+namespace ABox.Tests.Harness.Tests;
 
 // The registered PRODUCT test TYPES — each a Rulebook folder under tests/Tests/ that guards the product: src,
 // or (Docs) the repo's structured documents via the doc-engine. THIS LIST is the source of truth; a folder

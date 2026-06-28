@@ -1,6 +1,6 @@
 using System.Reflection;
 
-namespace ABox.Tests.Harness;
+namespace ABox.Tests.Harness.Tests;
 
 // The parity engine: it keeps one test type's Rulebook (Rulebook.md) and the [Rule]-cited tests that
 // enforce it in lockstep, scoped to a single namespace so types sharing an assembly don't bleed into each

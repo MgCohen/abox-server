@@ -4,9 +4,9 @@
 test cites a `[Rule]`, sits where `ParityGuard` can see it, and is wired into coverage. They guard the **test
 system itself**, not the product.
 
-They sit beside the engine they police — `tests/Harness/` holds the engine (`Rule`, `ParityGuard`, `TestTypes`,
-`RepoTree`, `TestMarkers`), `tests/Harness/Tests/` holds the tests of it — the same code-plus-`Tests/` shape a
-feature has. It is its own assembly (the engine is a library every suite references; these reflect over the
+They sit beside the **shared base** they build on — `tests/Harness/` holds it (`Rule`, `LiveFact`, `Report`,
+`RepoTree`, referenced by every suite) — and **own the enforcement engine themselves** (`ParityGuard`,
+`TestTypes`, `TestMarkers`), since they are its only consumer. It is its own assembly (it reflects over the
 suites from *outside*), validating every suite the way the Arch guards validate `src/`: it reflects over the
 central assembly (through `ABox.Tests.SuiteAnchor`) and over every co-located `ABox.<Owner>.Tests` (discovered
 from the build output by `Suites.Colocated()`), and reads the Rulebooks straight from the source tree

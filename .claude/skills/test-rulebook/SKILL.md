@@ -27,7 +27,8 @@ parity check over every product type and fail the build if a Rule has no test or
 no Rule. So a test never lands alone — it lands **with its Rule**. (The product types test the product; the
 harness's own tests test the test system itself, from outside — they are the enforcer, not a Rulebook type.)
 
-Engine: `tests/Harness/` (`Rule.cs`, `ParityGuard.cs`, `TestTypes`, `RepoTree`). Detail docs:
+Shared base: `tests/Harness/` (`Rule`, `LiveFact`, `Report`, `RepoTree`); the enforcement engine
+(`ParityGuard` / `TestTypes` / `TestMarkers`) lives with the harness's own tests in `tests/Harness/Tests/`. Detail docs:
 [`tests/README.md`](../../../tests/README.md), [`tests/Tests/README.md`](../../../tests/Tests/README.md),
 [`tests/Harness/README.md`](../../../tests/Harness/README.md). The plan is
 [`PLANS/test-colocation.md`](../../../PLANS/test-colocation.md). Read those before
