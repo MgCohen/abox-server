@@ -58,7 +58,23 @@ Design calls settled by building it:
 | What's the gate? | **compile + reflect-shape**, not `Run()` | a bare entity has nothing to run; correctness = it compiles and the loaded `Type` has the expected kind + members. |
 | One node or four? | **four distinct nodes** (`RecordNode`/`ClassNode`/`StructNode`/`EnumNode`) under `abstract record TypeDecl` | makes illegal states unrepresentable — an enum can't carry typed fields. `record`/`class`/`struct` currently share `(Name, Field[])`; the `TypeEmitter` switch is the only place they converge. **Collapse-watch:** if they never diverge they fold to one node with a kind; they will diverge (class gains methods, record value-eq, struct value semantics), so kept apart. |
 | The new primitive | `TypeRef` (a named type, implicit from `string`) | member/return/base types all *reference* a type; the int-only dodge ends here. |
-| Generic field? | **both** — `Field<T>` sugar over a `TypeRef`-based `Field` | `Field<Guid>("Id")` reads better + is compiler-checked for *real* types; but a field's type is often one a sibling recipe is still generating (a Service's `IRepository`), which has no CLR type to point at — so the name-based `Field("repo", "IFavoriteArtistRepository")` stays the fundamental form. Unlike `Var<T>`/`Lit<T>` (whose `T` is always a real value), a `Field`'s `T` can be a forward reference, so generic can't be the *only* form. Byte-identical output (`Field<string>` → `string` via a keyword map). |
+| Generic field? | **both** — `Field<T>` sugar over a `TypeRef`-based `Field` | `Field<Guid>("Id")` reads better + is compiler-checked for *real* types; the name-based `Field("repo", "IFavoriteArtistRepository")` names a type a sibling recipe is still generating. Byte-identical (`Field<string>` → `string` via a keyword map). **General, not Field-specific — see the forward-reference note below.** |
+
+### Forward references — the limit of borrowing C#'s type system
+
+The generic-handle design (`Var<T>`, `Lit<T>`, `Field<T>`, `Expr<T>`) gets compose-time type safety
+*for free* by borrowing C#'s own type system. That only works for types that **already exist as CLR
+types in the recipe's compilation**. A type a sibling recipe *generates* (`FavoriteArtist`) lives in a
+different compilation (the output assembly) — it is never `typeof`-able from the recipe, no matter the
+order recipes run in. So `Var<FavoriteArtist>` is exactly as impossible as `Field<FavoriteArtist>`;
+the limit is general, not Field-specific.
+
+Conclusion: **`TypeRef` (a value-level type *name*) is the fundamental representation; `<T>` is sugar
+for the known-type subset**, uniformly across every typed node. `Var`/`Lit` haven't needed the
+name-based form only because the catalog is int-only; the first recipe that declares a variable of a
+generated type forces `Var(name, TypeRef)`. Cross-use safety for generated types can't come from C#
+generics — it either defers to the generate → compile gate (the spike's existing stance for scope,
+PHASE-2 2b) or, if ever needed, a recipe-level validator over `TypeRef`s. Deferred (YAGNI).
 
 Deferred from this step (YAGNI until a component forces them): `using`-derivation (hardcoded
 `using System;` for now), modifiers/base lists, members beyond fields (methods/ctors — that's where
