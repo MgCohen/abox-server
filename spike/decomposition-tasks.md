@@ -26,17 +26,18 @@
 
 Ordered roughly by how much they de-risk the middle. Each is a spike-sized step.
 
-1. **Formalize the Projects breakdown as a concrete task list** — render Round-0→2 (milestone → phase →
-   task) for Projects as a structured artifact (plain table/JSON for now, no doc engine), so the match
-   stage has a real input. Proves the breakdown *content*, not just the design.
-2. **Extract the feature-tier recipe catalog from plan 08** — write R1–R8 as a catalog with, per recipe:
-   name, kind, what it produces, fills, and the **Projects file it must reproduce**. This is the
-   manifest the match stage consumes (the seam to the recipe session).
-3. **Stub the match** — map each Projects task → R1–R8 by kind, surface any gap. Fixed mapping, no
-   model; proves select + bind + gap.
-4. **Probe D6** — can an agent reliably emit a recipe in a given channel? throwaway, records the answer.
-5. **Coverage check** — a deterministic check that every reconciled-spec element has a task, and every
-   task has a recipe-or-gap. The task-list validator, minus the doc engine.
+1. ✅ **DONE — Formalize the Projects breakdown as a concrete task list** + ✅ **the recipe catalog** +
+   ✅ **the match** + ✅ **coverage check** — all landed in `projects-worked-instance.md`: the full
+   10-task tree, the R1–R8 catalog with fills, the task→recipe match (the 5-verbs→3-recipes collapse),
+   and the deterministic coverage check. The earlier separate backlog items 1/2/3/5 are subsumed by it.
+2. **Probe D6** *(now the top open item)* — can an agent reliably emit a recipe in a given channel
+   (direct C# / structured→lower / constructive tools)? Throwaway probes, #109-style. The one genuine
+   technical unknown; leans on the recipe surface the other session owns.
+3. **Extract R5's fills from the plan, not the code** — the worked instance read R5's uniqueness/success
+   fills straight from the shipped code; the real pipeline must get them from the *plan's prose* (D4).
+   Prove the breakdown can extract them into the task so match has a typed source.
+4. **A test-recipe catalog** — the worked instance flagged tests as out of scope; decomposing the
+   Unit/Wire tests into their own recipe set is a separate pass.
 
 ## Explicitly out of scope (parked)
 
