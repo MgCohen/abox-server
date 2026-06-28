@@ -10,7 +10,7 @@ public class DeclarationTests
     public void Record_emits_a_positional_record_with_typed_fields()
     {
         var code = TypeEmitter.Emit(new RecordNode("FavoriteArtist",
-            new Field("Id", "Guid"), new Field("ArtistId", "string"), new Field("FavoritedAt", "DateTime")));
+            new Field<Guid>("Id"), new Field<string>("ArtistId"), new Field<DateTime>("FavoritedAt")));
 
         Assert.Equal(Normalize("""
             using System;
@@ -21,6 +21,24 @@ public class DeclarationTests
         var type = Runtime.CompileType(code, "FavoriteArtist");
         Assert.False(type.IsValueType);
         Assert.Equal(["ArtistId", "FavoritedAt", "Id"], Props(type));
+    }
+
+    [Fact]
+    public void Generic_field_lowers_to_a_named_type_ref()
+    {
+        Field generic = new Field<Guid>("Id");
+
+        Assert.Equal("Id", generic.Name);
+        Assert.Equal(new TypeRef("Guid"), generic.Type);
+    }
+
+    [Fact]
+    public void String_field_names_a_forward_reference_to_a_not_yet_generated_type()
+    {
+        var code = TypeEmitter.Emit(new ClassNode("FavoriteArtistService",
+            new Field("repo", "IFavoriteArtistRepository")));
+
+        Assert.Contains("public IFavoriteArtistRepository repo { get; set; }", code);
     }
 
     [Fact]

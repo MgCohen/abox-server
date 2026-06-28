@@ -60,15 +60,15 @@ static class Program
         var types = new (string Label, TypeDecl Decl, string TypeName, Func<Type, bool> Shape)[]
         {
             ("record", new RecordNode("FavoriteArtist",
-                    new Field("Id", "Guid"), new Field("ArtistId", "string"), new Field("FavoritedAt", "DateTime")),
+                    new Field<Guid>("Id"), new Field<string>("ArtistId"), new Field<DateTime>("FavoritedAt")),
                 "FavoriteArtist",
                 t => !t.IsValueType && Props(t).SequenceEqual(["ArtistId", "FavoritedAt", "Id"])),
             ("class", new ClassNode("FavoriteArtist",
-                    new Field("Id", "Guid"), new Field("ArtistId", "string"), new Field("FavoritedAt", "DateTime")),
+                    new Field<Guid>("Id"), new Field<string>("ArtistId"), new Field<DateTime>("FavoritedAt")),
                 "FavoriteArtist",
                 t => !t.IsValueType && t.GetProperty("ArtistId")!.CanWrite),
             ("struct", new StructNode("FavoriteKey",
-                    new Field("UserId", "Guid"), new Field("ArtistId", "string")),
+                    new Field<Guid>("UserId"), new Field<string>("ArtistId")),
                 "FavoriteKey",
                 t => t is { IsValueType: true, IsEnum: false } && Props(t).SequenceEqual(["ArtistId", "UserId"])),
             ("enum", new EnumNode("FavoriteSource", "Search", "Profile", "Recommendation"),
