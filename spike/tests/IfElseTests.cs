@@ -1,4 +1,5 @@
 using Xunit;
+using static Spike.Recipe;
 
 namespace Spike.Tests;
 
@@ -30,16 +31,12 @@ public class IfElseTests
     {
         var acc = new Var<int>("acc");
         var i = new Var<int>("i");
-        return new Block(
-            new DefineNode(new Lit(0), acc),
-            new LoopNode(new Lit(5), i, new Block(
-                new IfElseNode(
-                    new LessThanNode(new Ref(i), new Lit(3)),
-                    new Block(
-                        new AssignNode(acc, new AddNode(new Ref(acc), new Ref(i))),
-                        new AssignNode(acc, new AddNode(new Ref(acc), new Lit(1)))),
-                    new Block(
-                        new AssignNode(acc, new AddNode(new Ref(acc), new Lit(10))))))),
-            new ReturnNode(new Ref(acc)));
+        return [
+            Define(0, acc),
+            Loop(5, i, [
+                IfElse(i < 3,
+                    [Assign(acc, acc + i), Assign(acc, acc + 1)],
+                    [Assign(acc, acc + 10)])]),
+            Return(acc)];
     }
 }

@@ -2,10 +2,10 @@
 #nullable enable
 namespace Spike;
 
-sealed record AddNode(IExpr<int> A, IExpr<int> B) : IExpr<int>;
-sealed record AssignNode(Var<int> Target, IExpr<int> Value) : IStmt;
-sealed record DefineNode(IExpr<int> Value, Var<int> Var) : IStmt;
-sealed record IfElseNode(IExpr<bool> Condition, Block Then, Block Else) : IStmt;
-sealed record LessThanNode(IExpr<int> A, IExpr<int> B) : IExpr<bool>;
-sealed record LoopNode(IExpr<int> Count, Var<int> I, Block Body) : IStmt;
-sealed record ReturnNode(IExpr<int> Value) : IStmt;
+sealed record AddNode(Expr<int> A, Expr<int> B) : Expr<int>;
+sealed record AssignNode(Var<int> Target, Expr<int> Value) : IStmt;
+sealed record DefineNode(Expr<int> Value, Var<int> Var) : IStmt;
+sealed record IfElseNode(Expr<bool> Condition, Block Then, Block Else) : IStmt;
+sealed record LessThanNode(Expr<int> A, Expr<int> B) : Expr<bool>;
+sealed record LoopNode(Expr<int> Count, Var<int> I, Block Body) : IStmt;
+sealed record ReturnNode(Expr<int> Value) : IStmt;

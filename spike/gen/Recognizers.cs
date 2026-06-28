@@ -13,13 +13,13 @@ interface IFieldRecognizer
     IEnumerable<Field> Recognize(MethodDeclarationSyntax method);
 }
 
-// by-value parameter -> param fill (IExpr<T>)
+// by-value parameter -> param fill (Expr<T>)
 sealed class ParamRecognizer : IFieldRecognizer
 {
     public IEnumerable<Field> Recognize(MethodDeclarationSyntax m) =>
         m.ParameterList.Parameters
             .Where(p => p.Modifiers.Count == 0)
-            .Select(p => new Field($"IExpr<{p.Type}>", Naming.Pascal(p.Identifier.ValueText), p.SpanStart));
+            .Select(p => new Field($"Expr<{p.Type}>", Naming.Pascal(p.Identifier.ValueText), p.SpanStart));
 }
 
 // ref parameter -> marker fill (existing variable, Var<T> typed from the param)
@@ -67,18 +67,37 @@ static class Emitter
 {
     public static string Node(MethodDeclarationSyntax m, IEnumerable<IFieldRecognizer> recognizers)
     {
-        var fields = recognizers.SelectMany(r => r.Recognize(m))
-            .OrderBy(f => f.Position)
-            .Select(f => $"{f.FieldType} {f.FieldName}");
-        var name = m.Identifier.ValueText + "Node";
-        // An expression-bodied snippet (=> a + b) produces a value; a block-bodied one
-        // ({ return value; }) produces statements — the body KIND, not the return type.
-        var baseType = m.ExpressionBody is not null ? $"IExpr<{m.ReturnType}>" : "IStmt";
-        return $"sealed record {name}({string.Join(", ", fields)}) : {baseType};";
+        var fields = Fields(m, recognizers).Select(f => $"{f.FieldType} {f.FieldName}");
+        return $"sealed record {m.Identifier.ValueText}Node({string.Join(", ", fields)}) : {BaseType(m)};";
     }
+
+    public static string Factory(MethodDeclarationSyntax m, IEnumerable<IFieldRecognizer> recognizers)
+    {
+        var fields = Fields(m, recognizers).ToList();
+        var ps = string.Join(", ", fields.Select(f => $"{f.FieldType} {Naming.Camel(f.FieldName)}"));
+        var args = string.Join(", ", fields.Select(f => Naming.Camel(f.FieldName)));
+        var name = m.Identifier.ValueText;
+        return $"    public static {BaseType(m)} {name}({ps}) => new {name}Node({args});";
+    }
+
+    static IEnumerable<Field> Fields(MethodDeclarationSyntax m, IEnumerable<IFieldRecognizer> recognizers) =>
+        recognizers.SelectMany(r => r.Recognize(m)).OrderBy(f => f.Position);
+
+    // An expression-bodied snippet (=> a + b) produces a value; a block-bodied one
+    // ({ return value; }) produces statements — the body KIND, not the return type.
+    static string BaseType(MethodDeclarationSyntax m) =>
+        m.ExpressionBody is not null ? $"Expr<{m.ReturnType}>" : "IStmt";
 }
 
 static class Naming
 {
     public static string Pascal(string s) => char.ToUpperInvariant(s[0]) + s[1..];
+
+    public static string Camel(string s)
+    {
+        var name = char.ToLowerInvariant(s[0]) + s[1..];
+        return Keywords.Contains(name) ? "@" + name : name;
+    }
+
+    static readonly HashSet<string> Keywords = ["var", "else", "ref", "int", "bool", "for", "if", "return"];
 }

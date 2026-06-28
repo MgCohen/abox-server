@@ -1,38 +1,62 @@
+using System.Collections;
+using System.Runtime.CompilerServices;
+
 namespace Spike;
 
 // The normalized contract (the Func/Action analogue):
-//   IExpr<T> — produces a value of type T
-//   IStmt    — produces statement(s)
-// Recipe fills are typed against these, so composition is checked at authoring time:
-// an IExpr<int> param rejects anything that isn't an int producer.
+//   Expr<T> — produces a value of type T
+//   IStmt   — produces statement(s)
+// Recipe fills are typed against these, so composition is checked at authoring time.
 interface IStmt;
 
-interface IExpr<out T>;
+// Expr is a base CLASS, not an interface, so it can host the implicit literal conversion
+// (a user-defined conversion can't target an interface — CS0552). `out T` covariance is given
+// up by the flip, but it is inert for the value-typed T this models (int/bool), so nothing is lost.
+abstract record Expr<T>
+{
+    public static implicit operator Expr<T>(T value) => new Lit<T>(value);
+}
 
-// A variable handle: identity + type, created once as a local and threaded into the nodes
-// that declare or reference it. Replaces stringly-typed names, so refs are typed (Ref(acc)
-// is IExpr<int>) and rename-safe. The name is chosen once, here, never re-spelled at a use.
+// A typed constant. Generic, mirroring Var<T>: 0 -> Lit<int>, true -> Lit<bool>. ILit lets the
+// generator read the value without knowing T.
+interface ILit
+{
+    object Value { get; }
+}
+
+sealed record Lit<T>(T Value) : Expr<T>, ILit
+{
+    object ILit.Value => Value!;
+}
+
+// A variable handle: identity + type, created once as a local and threaded into the nodes that
+// declare or reference it. It is itself an Expr<T>, so a use site is the bare handle — there is
+// no Ref wrapper. Binding vs use is told apart by the FIELD type (Var<T> binds, Expr<T> uses).
 interface IVar
 {
     string Name { get; }
 }
 
-sealed record Var<T>(string Name) : IVar;
+sealed record Var<T>(string Name) : Expr<T>, IVar;
 
-// Atoms — too trivial to be snippets; rendered directly by the generator.
-sealed record Lit(int Value) : IExpr<int>;
-
-sealed record Ref(Var<int> Var) : IExpr<int>;
-
-// A sequence of statements. Used as the recipe root and as a block-region fill.
-sealed record Block(params IStmt[] Statements)
+// A sequence of statements. The recipe root and a block-region fill. [CollectionBuilder] lets a
+// recipe author a block as a collection expression [...]; the public ctor (new Block(...)) still works.
+[CollectionBuilder(typeof(Blocks), nameof(Blocks.Create))]
+sealed record Block(params IStmt[] Statements) : IEnumerable<IStmt>
 {
-    // Snippet-side marker: "a block region goes here", identified by id. The generator
-    // replaces the call with the rendered block; it is never executed.
     public static Block Of(string id) =>
         throw new InvalidOperationException($"Block.Of(\"{id}\") is a compile-time placeholder; never executed.");
+
+    public IEnumerator<IStmt> GetEnumerator() => ((IEnumerable<IStmt>)Statements).GetEnumerator();
+
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }
 
-// The snippet-backed recipe nodes (DefineNode, AddNode, LoopNode, …) are SOURCE-GENERATED
-// from the [Snippet] methods into Nodes.Generated.cs. Regenerate with:
-//   dotnet run --project spike/gen
+static class Blocks
+{
+    public static Block Create(ReadOnlySpan<IStmt> statements) => new(statements.ToArray());
+}
+
+// The snippet-backed recipe nodes (DefineNode, AddNode, …) and their factories (Recipe.Loop, …)
+// are SOURCE-GENERATED from the [Snippet] methods into Nodes.Generated.cs / Factories.Generated.cs.
+// Regenerate with: dotnet run --project spike/gen
