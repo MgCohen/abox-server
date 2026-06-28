@@ -1,7 +1,7 @@
 ---
 docType: rulebook
 testType: unit
-template: ../../../../../tests/Templates/unit.template.md
+rubric: ../../../../../tests/Rubrics/Unit.md
 harness: ../../../../../tests/Harness/README.md
 ---
 

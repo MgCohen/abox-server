@@ -5,7 +5,7 @@ description: >-
   its Tests/ folder, the thin csproj stub, per-type Rulebook + Parity.cs. Use when a feature under
   src/ (or a tool under tools/) gains its first test, adds a new test type (Unit/Wire/E2E/Live),
   or when ABox.<Owner>.Tests needs creating. Tests live with their owner; one central harness still
-  enforces templates + parity. See PLANS/test-colocation.md.
+  enforces rubrics + parity. See PLANS/test-colocation.md.
 ---
 
 # A feature owns its tests — stand them up with zero central wiring
@@ -22,7 +22,7 @@ Read first: [`PLANS/test-colocation.md`](../../../PLANS/test-colocation.md) (the
 ## The ownership rule
 
 - **Central** (`tests/`) is for **feature-independent** guarantees only: `Arch`, `Structure`, `Docs`,
-  plus the shared `Harness` engine (with its own tests at `Harness/Tests/`), the per-type `Templates/`, and
+  plus the shared `Harness` engine (with its own tests at `Harness/Tests/`), the per-type `Rubrics/`, and
   `Fixtures/` (generic engine helpers like `Op`).
 - **A feature owns** its `Unit`/`Wire`/`E2E`/`Live` tests **and its fixtures** (fakes, harnesses). A
   cross-cutting case lives with the feature that owns *the case*, not central — "touches many features" never
@@ -84,14 +84,14 @@ public class Parity
 }
 ```
 
-**3. `<Type>/Rulebook/rules.md`** — a `rulebook` instance pointing at the central template. The `../` depth
+**3. `<Type>/Rulebook/rules.md`** — a `rulebook` instance pointing at the central rubric. The `../` depth
 to `tests/` matches the csproj's; for `src/Features/<F>/Tests/<Type>/Rulebook` it is six levels:
 
 ```markdown
 ---
 docType: rulebook
 testType: unit
-template: ../../../../../../tests/Templates/unit.template.md
+rubric: ../../../../../../tests/Rubrics/Unit.md
 harness: ../../../../../../tests/Harness/README.md
 ---
 

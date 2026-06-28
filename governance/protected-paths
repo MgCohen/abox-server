@@ -27,7 +27,7 @@ tools/doc-engine/doctypes/** | @MgCohen | critical | Doc-engine doctypes: the sc
 tools/doc-engine/blocks/**   | @MgCohen | critical | Doc-engine block definitions: the building blocks doctypes compose.
 tools/doc-engine/kinds/**    | @MgCohen | critical | Doc-engine kinds: the meta-layer that defines what a block/doctype is.
 tools/doc-engine/_schema/**  | @MgCohen | critical | Doc-engine meta-schema: the floor the whole catalog conforms to.
-tests/Templates/**        | @MgCohen | critical | Per-type templates: the central criteria every rulebook is authored against.
+tests/Rubrics/**          | @MgCohen | critical | Per-type rubrics: the central criteria every rulebook is authored against.
 tests/Fixtures/**         | @MgCohen | review   | Feature-independent shared test infra (Op/OpFlow) used across suites.
 tests/Tests/Arch/**       | @MgCohen | critical | Architecture rules: the asserting test code, not just its rulebook.
 tests/Tests/Structure/**  | @MgCohen | critical | Structure/placement rules: the asserting test code, not just its rulebook.

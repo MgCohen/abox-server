@@ -1,4 +1,4 @@
-docType: test-template
+docType: rubric
 description: The per-test-type schema — names the type and carries the judge criteria its Rules are graded against.
 blocks: [summary, criterion]
 required: [summary, criterion]

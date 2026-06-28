@@ -4,7 +4,7 @@
 > `Unit`/`Wire`/`E2E`/`Live` live with the feature under `src/<…>/<Owner>/Tests/` (`ABox.<Owner>.Tests`),
 > glob-discovered by `dirs.proj` and policed by the harness's own tests. Under `tests/` now: the ownerless
 > types (`Tests/` = `Arch`/`Structure`/`Docs` in `ABox.Tests.Central`), the shared `Harness/` engine with its
-> own tests at `Harness/Tests/`, the central per-type `Templates/`, and feature-independent `Fixtures/`. Run
+> own tests at `Harness/Tests/`, the central per-type `Rubrics/`, and feature-independent `Fixtures/`. Run
 > the full suite with `dotnet test dirs.proj`;
 > stand up a feature's tests with the **new-feature-tests** skill.
 

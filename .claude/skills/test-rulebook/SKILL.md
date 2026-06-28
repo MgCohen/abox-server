@@ -13,13 +13,13 @@ description: >-
 > **Layout moved (PLANS/test-colocation.md).** A feature's `Unit`/`Wire`/`E2E`/`Live` tests now live **with
 > the feature** under `src/<…>/<Owner>/Tests/`, owned by `ABox.<Owner>.Tests`; only the ownerless types
 > (`Arch`/`Structure`/`Docs`) and the shared `Harness` engine (with its own tests at `Harness/Tests/`) /
-> `Templates` / `Fixtures` stay under `tests/`.
-> Per-type `template.md` files are central in `tests/Templates/`; each feature's `rules.md` is co-located
+> `Rubrics` / `Fixtures` stay under `tests/`.
+> Per-type `<Type>.md` files are central in `tests/Rubrics/`; each feature's `rules.md` is co-located
 > beside its tests. To stand up a feature's test assembly, use the **new-feature-tests** skill. The
 > Rule/parity discipline below is unchanged — only *where the test code sits* differs.
 
 Every product test *type* is a **Rulebook**: a `<Type>/Rulebook/` folder
-with a `rules.md` (front-matter + a `## Rules` list of `### ` Rules) pointing at a central `template.md`
+with a `rules.md` (front-matter + a `## Rules` list of `### ` Rules) pointing at a central `<Type>.md`
 (`## Summary` + a `## Criteria` rubric), each Rule enforced by a `[Rule("<header>")]` xUnit fact beside it. Both
 files are doc-engine instances (a `docType` front-matter header); the **Docs** type validates their shape
 by shelling out to the doc-engine. The **harness's own tests** (`tests/Harness/Tests`, their own assembly) run one
@@ -36,8 +36,8 @@ inventing structure; this skill is the *procedure*.
 > **Rules are a ratchet — add liberally, change rarely.** *Adding* a Rule is the everyday, safe
 > move; it only tightens guarantees. *Editing, re-wording, or removing* an existing Rule is a
 > **design decision** — each encodes a hard-won invariant, and parity keeps the header/test in
-> lockstep but can't tell you the guarantee got weaker. *Reshaping the template/format/shape* (the
-> `### ` scan, the `template.md`/`rules.md` split, layout, the completeness knob, the source-tree Rulebook read) is the most dangerous: it can make
+> lockstep but can't tell you the guarantee got weaker. *Reshaping the rubric/format/shape* (the
+> `### ` scan, the `<Type>.md`/`rules.md` split, layout, the completeness knob, the source-tree Rulebook read) is the most dangerous: it can make
 > Rules silently stop being enforced across **every** type at once, with a green build. When a change
 > isn't a plain add, stop and confirm — don't quietly edit. Full contract: `tests/Harness/README.md`
 > § *Stability contract*.
@@ -67,8 +67,8 @@ the *test system* → the harness's own tests.
 **Need a whole new *type* (not just a Rule)?** Rare — only when no existing type can host
 the guarantee (don't fork Unit into near-twins). Follow the step-by-step in
 `tests/Harness/README.md` § *Standing up a new test type*: create `<Type>/{Rulebook,Tests,Support}/`,
-fill `template.md` + `rules.md` from the canonical skeleton (don't copy a sibling) — `template.md`
-**must** carry a `## Criteria` block or the doc-engine's `test-template` validation (run by the **Docs**
+fill `<Type>.md` + `rules.md` from the canonical skeleton (don't copy a sibling) — `<Type>.md`
+**must** carry a `## Criteria` block or the doc-engine's `rubric` validation (run by the **Docs**
 type) fails — register the type in `Harness/TestTypes.Registered`, and write a `### ` Rule + its `[Rule]` fact for
 **every** test (the type ships fully cited — there is no going-forward exemption). No csproj edit and
 no parity fact — the harness's own tests run parity over your type once it's registered. Don't invent a new
@@ -77,7 +77,7 @@ Rulebook *shape* — reuse the uniform one.
 ## 2. Add the test
 
 1. **Write the `### ` Rule** in that type's `Rulebook/rules.md`, phrased as the
-   guarantee itself and matching the type's `template.md`: Arch/Structure use an invariant
+   guarantee itself and matching the type's `<Type>.md`: Arch/Structure use an invariant
    header (no arrow) — *"Dependencies flow down the layer graph only"*; behavioral types end
    in a `→` result — *"claude-ping with a scripted reply → implementer reaches Completed"*.
    Exactly one `**Why:**` bullet; any extra note is plain prose under the Rule, never another

@@ -1,5 +1,5 @@
 ---
-docType: test-template
+docType: rubric
 testType: live
 ---
 

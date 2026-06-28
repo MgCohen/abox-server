@@ -53,9 +53,9 @@ per-type, the guarantees are co-located with the feature they protect:
 
 | Layer | What it is | Doc-engine role | Home |
 |---|---|---|---|
-| **Doctype** (`rulebook`, `test-template`) | the schema — what *any* rulebook/template must look like | the catalog | **central** — `tools/doc-engine/doctypes/` |
-| **`<type>.template.md`** | the per-*type* criteria ("what a Unit test is") | a `test-template` **instance** | **central** — `tests/Templates/`, one per type |
-| **`rules.md`** | this *feature's* guarantees | a `rulebook` **instance**, `template:`→central template | **co-located** with the feature under `src/<…>/<Owner>/Tests/<Type>/` |
+| **Doctype** (`rulebook`, `rubric`) | the schema — what *any* rulebook/rubric must look like | the catalog | **central** — `tools/doc-engine/doctypes/` |
+| **`<type>.md`** | the per-*type* criteria ("what a Unit test is") | a `rubric` **instance** | **central** — `tests/Rubrics/`, one per type |
+| **`rules.md`** | this *feature's* guarantees | a `rulebook` **instance**, `rubric:`→central rubric | **co-located** with the feature under `src/<…>/<Owner>/Tests/<Type>/` |
 
 The engine validates every instance against its doctype **wherever it lives**;
 `ParityGuard` (test-side) bridges the `### ` headers in a co-located `rules.md` to

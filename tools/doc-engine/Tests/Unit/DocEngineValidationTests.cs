@@ -39,10 +39,10 @@ public sealed class DocEngineValidationTests
     public void Validate_rejects_a_missing_required_attr()
     {
         var lines = File.ReadAllLines(GoldenInstance)
-            .Where(l => !l.StartsWith("template:", StringComparison.Ordinal))
+            .Where(l => !l.StartsWith("rubric:", StringComparison.Ordinal))
             .ToArray();
 
-        Assert.Contains(Validate(lines), e => e.Contains("template", StringComparison.Ordinal));
+        Assert.Contains(Validate(lines), e => e.Contains("rubric", StringComparison.Ordinal));
     }
 
     [Rule("SchemaChecker.Run → no errors for the shipped catalog")]

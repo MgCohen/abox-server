@@ -377,37 +377,8 @@
         "prose": "Prose is substantive; bold marks labels, not emphasis."
       }
     },
-    "rulebook": {
-      "docType": "rulebook",
-      "description": "A test type\u0027s Rulebook \u2014 a list of Rules, each a guarantee proven by tests.",
-      "blocks": [
-        "rule"
-      ],
-      "required": [
-        "rule"
-      ],
-      "attrs": {
-        "testType": {
-          "type": "string",
-          "required": "true"
-        },
-        "template": {
-          "type": "string",
-          "required": "true"
-        },
-        "harness": {
-          "type": "string",
-          "required": "true"
-        }
-      },
-      "rubric": {
-        "coverage": "Every guarantee of this type has a Rule; nothing significant unstated.",
-        "right-type": "Each Rule matches the declared testType \u2014 behaviour (with Outcome) for wire/live/e2e, invariant for arch/structure.",
-        "one-per-rule": "Each Rule states exactly one guarantee, not a bundle or a restatement."
-      }
-    },
-    "test-template": {
-      "docType": "test-template",
+    "rubric": {
+      "docType": "rubric",
       "description": "The per-test-type schema \u2014 names the type and carries the judge criteria its Rules are graded against.",
       "blocks": [
         "summary",
@@ -427,6 +398,35 @@
         "criteria-cover": "The criteria cover the semantic qualities a Rule of this type must have.",
         "judgment-only": "Criteria name qualities the mechanical guards cannot check.",
         "named-type": "The testType matches the Rulebook it governs."
+      }
+    },
+    "rulebook": {
+      "docType": "rulebook",
+      "description": "A test type\u0027s Rulebook \u2014 a list of Rules, each a guarantee proven by tests.",
+      "blocks": [
+        "rule"
+      ],
+      "required": [
+        "rule"
+      ],
+      "attrs": {
+        "testType": {
+          "type": "string",
+          "required": "true"
+        },
+        "rubric": {
+          "type": "string",
+          "required": "true"
+        },
+        "harness": {
+          "type": "string",
+          "required": "true"
+        }
+      },
+      "rubric": {
+        "coverage": "Every guarantee of this type has a Rule; nothing significant unstated.",
+        "right-type": "Each Rule matches the declared testType \u2014 behaviour (with Outcome) for wire/live/e2e, invariant for arch/structure.",
+        "one-per-rule": "Each Rule states exactly one guarantee, not a bundle or a restatement."
       }
     }
   }

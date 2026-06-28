@@ -11,7 +11,7 @@ tools/doc-engine/doctypes/** @MgCohen
 tools/doc-engine/blocks/** @MgCohen
 tools/doc-engine/kinds/** @MgCohen
 tools/doc-engine/_schema/** @MgCohen
-tests/Templates/** @MgCohen
+tests/Rubrics/** @MgCohen
 tests/Fixtures/** @MgCohen
 tests/Tests/Arch/** @MgCohen
 tests/Tests/Structure/** @MgCohen

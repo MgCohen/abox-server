@@ -6,7 +6,7 @@ attrs:
   testType:
     type: string
     required: true
-  template:
+  rubric:
     type: string
     required: true
   harness:
