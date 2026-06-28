@@ -86,7 +86,7 @@ Rulebook *shape* — reuse the uniform one.
    `[Rule("<exact header>")]` citation — they compose (`[Fact]` + `[Rule]`), the Rule is
    not derived from `FactAttribute`. Live tests use `[LiveFact]` + `[Rule("<header>")]`.
 3. **Keep the namespace = folder** — `ABox.Tests.<Type>` for a central type in `tests/Tests/<Type>/`,
-   or `ABox.<Owner>.Tests.<Type>` for a co-located feature type in `src/<…>/<Owner>/Tests/<Type>/`. IDE0130 is
+   or `ABox.<Owner>.Tests.<Type>` for a co-located type in `src/<…>/<Owner>/Tests/<Type>/`. IDE0130 is
    `severity = error`, so a mismatch is a **build error, not a warning**.
    - **Failure messages are fix instructions.** Active voice, name the file/type, say what to do
      ("Move X to Y", "Add a [Rule] citing Z") — not "X is wrong". One direct line, no essays.

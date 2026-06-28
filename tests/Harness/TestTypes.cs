@@ -13,17 +13,10 @@ public static class TestTypes
     public static readonly string[] Registered =
         { "Arch", "Structure", "Unit", "E2E", "Wire", "Live", "Docs" };
 
-    // The ownership split (PLANS/test-colocation.md): a CENTRAL type's guarantee is owned by the repo / the test
-    // system — no single feature — so it lives in the central tree; a FEATURE type's guarantee is owned by the
-    // feature under test, so it co-locates with that feature. Together they partition Registered exactly — one of
-    // the harness's own tests holds that invariant, so a new type can't be added without classifying it.
-    public static readonly string[] Central = { "Arch", "Structure", "Docs" };
-
-    public static readonly string[] Feature = { "Unit", "Wire", "E2E", "Live" };
-
-    public static bool IsCentral(string type) => Central.Contains(type, StringComparer.Ordinal);
-
-    public static bool IsFeature(string type) => Feature.Contains(type, StringComparer.Ordinal);
+    // Central vs co-located is a per-INSTANCE ownership call, not a per-type cap: a type's guarantee may be owned
+    // by the repo (central, tests/Tests/) or by a feature (co-located, src/<…>/<Owner>/Tests/). The structural
+    // types happen to sit central and the behavioral ones co-locate today — that's where the cases are, not a
+    // constraint the harness enforces.
 
     // Non-type folders legitimately under tests/Tests/: shared doubles promoted on a genuine second consumer.
     public static readonly string[] NonType = { "Support" };
@@ -31,7 +24,7 @@ public static class TestTypes
     // The namespace conventions, one owner each. A CENTRAL type lives in the central assembly under
     // ABox.Tests.<Type> (ParityGuard.For + ContainsTest); a co-located FEATURE type lives in its own
     // assembly under <Assembly>.<Type> (ParityGuard.ForColocated + the co-located sweep in the harness's own
-    // tests). Namespace builds the central form only — never call it for a feature type.
+    // tests). Namespace builds the central form only — never call it for a co-located type.
     public static string Namespace(string type) => $"ABox.Tests.{type}";
 
     public static string ColocatedNamespace(string assemblyName, string type) => $"{assemblyName}.{type}";
@@ -51,11 +44,11 @@ public static class TestTypes
         ns is not null && Registered.Any(t =>
             ns == Namespace(t) || ns.StartsWith(Namespace(t) + ".", StringComparison.Ordinal));
 
-    // The co-located mirror of ContainsTest: a feature method lives inside a registered type when its namespace
-    // is that assembly's <Assembly>.<FeatureType> (or a sub-namespace). Anything else — the assembly root, a
-    // type's Support — slips past ParityGuard.ForColocated, which the co-located sweep uses this to catch.
+    // The co-located mirror of ContainsTest: a co-located method lives inside a registered type when its namespace
+    // is that assembly's <Assembly>.<Type> (or a sub-namespace). Anything else — the assembly root, a type's
+    // Support — slips past ParityGuard.ForColocated, which the co-located sweep uses this to catch.
     public static bool ContainsColocatedTest(string assemblyName, string? ns) =>
-        ns is not null && Feature.Any(t =>
+        ns is not null && Registered.Any(t =>
             ns == ColocatedNamespace(assemblyName, t)
             || ns.StartsWith(ColocatedNamespace(assemblyName, t) + ".", StringComparison.Ordinal));
 }

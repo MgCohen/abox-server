@@ -44,7 +44,7 @@ harness's own tests own parity (Rule ↔ test).
   `[Rule("<same header>")]` methods — see *Completeness* below.)
 - **`ParityGuard.cs`** — keeps one type's Rulebook and its `[Rule]` tests in lockstep, scoped to a single
   namespace so types sharing an assembly don't bleed into each other's parity: `ABox.Tests.<Type>` for a
-  central type (`For`), `ABox.<Owner>.Tests.<Type>` for a co-located feature type (`ForColocated`, which finds
+  central type (`For`), `ABox.<Owner>.Tests.<Type>` for a co-located type (`ForColocated`, which finds
   the Rulebook in the source tree via the assembly's `TestsSourceDir` metadata).
 - **`TestTypes` / `TestMarkers` / `RepoTree`** — the test-system vocabulary the **harness's own tests**
   run on: the registry of types + the completeness flag, the run-attribute names, and

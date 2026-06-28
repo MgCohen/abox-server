@@ -6,7 +6,7 @@ namespace ABox.Tests.Harness.Tests;
 // central (the product assembly) AND co-located (every ABox.<Owner>.Tests via Suites.Colocated()) — lives
 // inside a registered type's namespace, so no test escapes the namespace its ParityGuard scopes to. The
 // co-located sweeps are the backstop that replaces the central protected wall the feature tests left: a marker
-// test in an assembly's root namespace, or a feature type folder with no Rulebook, would otherwise cite no Rule
+// test in an assembly's root namespace, or a co-located type folder with no Rulebook, would otherwise cite no Rule
 // and go unchecked. Reads disk (RepoTree) and reflects over both surfaces. The harness's own tests stamp no
 // TestsSourceDir, so Suites.Colocated() never sees them — the enforcer is outside the set it sweeps.
 public class TaxonomyTests
@@ -52,9 +52,9 @@ public class TaxonomyTests
             """);
     }
 
-    [Rule("Every co-located test lives inside a registered feature type")]
+    [Rule("Every co-located test lives inside a registered type")]
     [Fact]
-    public void EveryColocatedTestInsideAFeatureType()
+    public void EveryColocatedTestInsideARegisteredType()
     {
         var misplaced = Suites.Colocated()
             .SelectMany(a => a.GetTypes()
@@ -71,13 +71,13 @@ public class TaxonomyTests
             Co-located tests live outside the ABox.<Owner>.Tests.<Type> structure, where ParityGuard.ForColocated
             cannot see them to require a [Rule]:
             {Bullets(misplaced)}
-            Move each under a registered feature type's folder ({Join(TestTypes.Feature)}), not the assembly root.
+            Move each under a registered type's folder ({Join(TestTypes.Registered)}), not the assembly root.
             """);
     }
 
-    [Rule("Every co-located type folder is a feature type carrying a Rulebook")]
+    [Rule("Every co-located type folder is a registered type carrying a Rulebook")]
     [Fact]
-    public void EveryColocatedTypeFolderIsAFeatureTypeWithRulebook()
+    public void EveryColocatedTypeFolderIsARegisteredTypeWithRulebook()
     {
         var strays = Suites.Colocated()
             .Select(a => Suites.SourceDir(a)!)
@@ -87,10 +87,10 @@ public class TaxonomyTests
 
         Assert.True(strays.Count == 0,
             $"""
-            Folders under a co-located Tests/ are neither shared Support nor a registered feature type with a
-            Rulebook — a feature type folder with no Rulebook is silently skipped by coverage parity:
+            Folders under a co-located Tests/ are neither shared Support nor a registered type with a
+            Rulebook — a type folder with no Rulebook is silently skipped by coverage parity:
             {Bullets(strays)}
-            Give the folder a Rulebook ({Join(TestTypes.Feature)}), or move helpers under Support.
+            Give the folder a Rulebook ({Join(TestTypes.Registered)}), or move helpers under Support.
             """);
     }
 
@@ -100,29 +100,7 @@ public class TaxonomyTests
             .Select(d => Path.GetRelativePath(RepoTree.Root, d));
 
     private static bool IsRegisteredTypeWithRulebook(string dir) =>
-        TestTypes.IsFeature(Path.GetFileName(dir)!) && File.Exists(Path.Combine(dir, "Rulebook.md"));
-
-    [Rule("Central and Feature types partition the registered types")]
-    [Fact]
-    public void CentralAndFeaturePartitionRegistered()
-    {
-        var overlap = TestTypes.Central.Intersect(TestTypes.Feature, StringComparer.Ordinal)
-            .OrderBy(s => s, StringComparer.Ordinal).ToList();
-        var union = TestTypes.Central.Concat(TestTypes.Feature)
-            .OrderBy(s => s, StringComparer.Ordinal).ToList();
-        var registered = TestTypes.Registered
-            .OrderBy(s => s, StringComparer.Ordinal).ToList();
-        var unclassified = registered.Except(union, StringComparer.Ordinal).ToList();
-        var stray = union.Except(registered, StringComparer.Ordinal).ToList();
-
-        Assert.True(overlap.Count == 0 && unclassified.Count == 0 && stray.Count == 0,
-            $"""
-            TestTypes.Central and TestTypes.Feature must be a disjoint cover of TestTypes.Registered:
-              In both lists (pick one home):        {Bullets(overlap)}
-              Registered but unclassified (no home): {Bullets(unclassified)}
-              Classified but not registered (stray): {Bullets(stray)}
-            """);
-    }
+        TestTypes.IsRegistered(Path.GetFileName(dir)!) && File.Exists(Path.Combine(dir, "Rulebook.md"));
 
     [Fact]
     public void EveryRulebookDeclaresItsFolderAsTestType()
