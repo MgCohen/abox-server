@@ -38,6 +38,10 @@ ladder of LLM steps with typed artifacts between them, and only the last rung is
 | 3 | **Match** | LLM | no | each Task → a **Recipe** (or small composition) from the catalog | — |
 | 4 | **Compose** | **deterministic** | **yes** | Recipe[] → **Feature** (real source) | the **compiler** |
 
+> The **middle** of this pipeline — `Plan → breakdown → Task[] → match → Recipe[]` (stages 2–3) — is
+> designed in depth in [`PLAN-TO-RECIPES.md`](PLAN-TO-RECIPES.md), with a validated sample plan
+> (`favorite-artist.plan.md`) as the worked input.
+
 Read top-down, the structure tightens at each rung: free-form intent → an approved structured plan →
 an ordered task list → catalog recipes → owned code. **Each artifact is more constrained than the one
 above it**, and the agent's freedom shrinks accordingly — exactly the "wrap the agent in deterministic
