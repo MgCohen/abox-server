@@ -5,7 +5,7 @@ namespace ABox.Tests.Harness;
 // stay independent. ParityGuard pairs these names with the '### ' headers in the type's Rulebook, requires
 // every test to carry one, and requires every citation to sit on a real test.
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
-public sealed class Rule(string name) : Attribute
+public sealed class RuleAttribute(string name) : Attribute
 {
     public string Name { get; } = name;
 }

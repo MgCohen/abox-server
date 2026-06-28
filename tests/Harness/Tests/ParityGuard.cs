@@ -61,7 +61,7 @@ public sealed class ParityGuard
         var methods = ScopedMethods();
 
         var enforced = methods
-            .Select(m => m.GetCustomAttribute<Rule>())
+            .Select(m => m.GetCustomAttribute<RuleAttribute>())
             .Where(a => a is not null)
             .Select(a => a!.Name)
             .ToList();
@@ -69,11 +69,11 @@ public sealed class ParityGuard
         var unenforced = declared.Except(enforced).ToList();
         var undocumented = enforced.Except(declared).ToList();
         var orphaned = methods
-            .Where(m => m.GetCustomAttribute<Rule>() is not null && !TestMarkers.Marks(m))
+            .Where(m => m.GetCustomAttribute<RuleAttribute>() is not null && !TestMarkers.Marks(m))
             .Select(m => m.Name)
             .ToList();
         var uncited = methods.Where(TestMarkers.Marks)
-            .Where(m => m.GetCustomAttribute<Rule>() is null).Select(m => m.Name).ToList();
+            .Where(m => m.GetCustomAttribute<RuleAttribute>() is null).Select(m => m.Name).ToList();
 
         Xunit.Assert.True(
             unenforced.Count == 0 && undocumented.Count == 0 && orphaned.Count == 0 && uncited.Count == 0,
