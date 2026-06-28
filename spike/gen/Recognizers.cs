@@ -1,3 +1,4 @@
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace SpikeGen;
@@ -19,7 +20,7 @@ sealed class ParamRecognizer : IFieldRecognizer
     public IEnumerable<Field> Recognize(MethodDeclarationSyntax m) =>
         m.ParameterList.Parameters
             .Where(p => p.Modifiers.Count == 0)
-            .Select(p => new Field($"Expr<{p.Type}>", Naming.Pascal(p.Identifier.ValueText), p.SpanStart));
+            .Select(p => new Field($"Expr<{p.Type}>", Naming.Pascal(p.Identifier.ValueText), Body.UsePosition(m, p)));
 }
 
 // ref parameter -> marker fill (existing variable, Var<T> typed from the param)
@@ -28,7 +29,20 @@ sealed class RefMarkerRecognizer : IFieldRecognizer
     public IEnumerable<Field> Recognize(MethodDeclarationSyntax m) =>
         m.ParameterList.Parameters
             .Where(p => p.Modifiers.Any(mod => mod.Text == "ref"))
-            .Select(p => new Field($"Var<{p.Type}>", Naming.Pascal(p.Identifier.ValueText), p.SpanStart));
+            .Select(p => new Field($"Var<{p.Type}>", Naming.Pascal(p.Identifier.ValueText), Body.UsePosition(m, p)));
+}
+
+// A parameter's field sorts by where it's first USED in the body, so fields read in template
+// order: `int @var = value` -> var before value, `for (int @i …; @i < count …)` -> i before count.
+static class Body
+{
+    public static int UsePosition(MethodDeclarationSyntax m, ParameterSyntax p)
+    {
+        SyntaxNode? body = (SyntaxNode?)m.Body ?? m.ExpressionBody;
+        var use = body?.DescendantNodes().OfType<IdentifierNameSyntax>()
+            .FirstOrDefault(n => n.Identifier.ValueText == p.Identifier.ValueText);
+        return use?.SpanStart ?? p.SpanStart;
+    }
 }
 
 // `@`-marked identifier declared in the body -> marker fill (new variable, Var<T> typed

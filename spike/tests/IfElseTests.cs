@@ -32,8 +32,8 @@ public class IfElseTests
         var acc = new Var<int>("acc");
         var i = new Var<int>("i");
         return [
-            Define(0, acc),
-            Loop(5, i, [
+            Define(acc, 0),
+            Loop(i, 5, [
                 IfElse(i < 3,
                     [Assign(acc, acc + i), Assign(acc, acc + 1)],
                     [Assign(acc, acc + 10)])]),

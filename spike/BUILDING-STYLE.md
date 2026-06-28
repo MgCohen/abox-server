@@ -27,27 +27,32 @@ bare number. None of it is the recipe's *intent* — it's the cost of expressing
 
 ```csharp
 // 1 — explicit ctors
-new Block(new DefineNode(new Lit<int>(0), acc),
-    new LoopNode(new Lit<int>(5), i, new Block(
+new Block(new DefineNode(acc, new Lit<int>(0)),
+    new LoopNode(i, new Lit<int>(5), new Block(
         new AssignNode(acc, new AddNode(acc, i)))),
     new ReturnNode(acc))
 
 // 2 — brackets (A)
-[ new DefineNode(new Lit<int>(0), acc),
-  new LoopNode(new Lit<int>(5), i, [
+[ new DefineNode(acc, new Lit<int>(0)),
+  new LoopNode(i, new Lit<int>(5), [
       new AssignNode(acc, new AddNode(acc, i))]),
   new ReturnNode(acc) ]
 
 // 3 — factories (C) + literals (D) + bare handles (B)
-[ Define(0, acc),
-  Loop(5, i, [ Assign(acc, Add(acc, i)) ]),
+[ Define(acc, 0),
+  Loop(i, 5, [ Assign(acc, Add(acc, i)) ]),
   Return(acc) ]
 
 // 4 — + operators (E)
-[ Define(0, acc),
-  Loop(5, i, [ Assign(acc, acc + i) ]),
+[ Define(acc, 0),
+  Loop(i, 5, [ Assign(acc, acc + i) ]),
   Return(acc) ]
 ```
+
+Fields read in **template order** — a fill sorts by where it appears in the snippet body, so the
+variable a construct introduces comes first: `Define(acc, 0)` (`acc = 0`), `Loop(i, 5, …)`
+(`for i … < 5`). This replaced the original signature-position-for-params rule, which read
+`Define(0, acc)` value-first.
 
 ## The keystone that wasn't — verified empirically
 
@@ -92,9 +97,6 @@ committed `out/ScriptData.cs` (zero diff across this change).
 
 ## Open / deferred
 
-- **Factory arg order** — `Define(0, acc)` reads value-first ("define 0 … acc") because the `Define`
-  snippet lists the `value` param before the `@var` marker. Reordering the snippet's params makes it
-  read `Define(acc, 0)` ("acc = 0"). Correct either way; a readability call.
 - **Hiding the ctor** (forcing `[...]` / factory-only, no `new`) — needs an **assembly boundary**
   (non-public ctors + public factories + recipes in a separate assembly), not a spike toggle. Worth
   it only once a factory enforces an invariant the ctor doesn't; the product's existing assembly

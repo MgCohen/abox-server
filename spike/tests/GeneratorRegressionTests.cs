@@ -43,7 +43,7 @@ public class GeneratorRegressionTests
     public void A_second_recipe_shape_compiles_and_returns_its_value()
     {
         var x = new Var<int>("x");
-        Block recipe = [Define(7, x), Return(x)];
+        Block recipe = [Define(x, 7), Return(x)];
 
         var code = Generator.Generate(recipe);
 
@@ -55,8 +55,8 @@ public class GeneratorRegressionTests
         var acc = new Var<int>("acc");
         var i = new Var<int>("i");
         return [
-            Define(0, acc),
-            Loop(5, i, [
+            Define(acc, 0),
+            Loop(i, 5, [
                 Assign(acc, acc + i)]),
             Return(acc)];
     }
