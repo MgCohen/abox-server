@@ -88,6 +88,13 @@ door: [`governance/README.md`](governance/README.md); the why: [`ADR 0010`](desi
 session was given. A permission wall — protected path, required review, blocked merge to
 `main` — is by design: stop and ask the owner to act, don't work around it.
 
+**Reading public repos outside session scope.** `git clone` and the GitHub tools are
+routed through the scoped Git Proxy and 401/403 on any repo but the one in scope — that's
+the *authenticated* path and it stays scoped. To read a **public** repo for reference, use
+`scripts/fetch-public-repo.sh <owner/repo>[:<path>] [ref]`: it pulls over codeload/raw,
+which ride the general egress proxy, so no scope change is needed. Don't try to widen the
+Git Proxy scope to read public code.
+
 ## Code standards
 
 Judgment-call rules we operate by. Mechanical style (formatting, naming) moves
