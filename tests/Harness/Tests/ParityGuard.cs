@@ -77,7 +77,7 @@ public sealed class ParityGuard
     }
 
     private IReadOnlyList<MethodInfo> ScopedMethods() =>
-        assembly.GetTypes()
+        Suites.TypesOf(assembly)
             .Where(t => InScope(t.Namespace))
             .SelectMany(t => t.GetMethods())
             .ToList();

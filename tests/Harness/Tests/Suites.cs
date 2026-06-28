@@ -24,16 +24,50 @@ internal static class Suites
             ?? throw new InvalidOperationException(
                 $"Could not locate the build-output root (artifacts/bin) from '{AppContext.BaseDirectory}'.");
 
-        return binRoot.GetDirectories()
-            .Where(d => TestAssemblies.IsFeatureTestAssembly(d.Name))
-            .Select(d => Path.Combine(d.FullName, config, d.Name + ".dll"))
-            .Where(File.Exists)
+        // Discover by recursive glob, not by reconstructing <Project>/<config>/<Project>.dll: a layout tweak
+        // (an extra TFM subfolder, a renamed dir) would otherwise silently zero the set. Keep only the running
+        // config's copy — the glob also sees the other config's bin, and LoadFrom-ing two copies of one assembly
+        // name clashes by identity — and dedup by name so a single assembly loads once.
+        return binRoot.GetFiles("*.dll", SearchOption.AllDirectories)
+            .Where(f => TestAssemblies.IsFeatureTestAssembly(Path.GetFileNameWithoutExtension(f.Name)))
+            .Where(f => InConfig(f, binRoot, config))
+            .GroupBy(f => f.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.First().FullName)
             .Select(Assembly.LoadFrom)
             .Where(a => SourceDir(a) is not null)
             .ToList();
     }
 
+    // A dll belongs to the running config when some path segment between it and artifacts/bin is that config —
+    // robust to an extra TFM subfolder (<config>/net10.0/) while still excluding the other config's tree.
+    private static bool InConfig(FileInfo dll, DirectoryInfo binRoot, string config)
+    {
+        for (var d = dll.Directory; d is not null && d.FullName != binRoot.FullName; d = d.Parent)
+            if (string.Equals(d.Name, config, StringComparison.OrdinalIgnoreCase))
+                return true;
+        return false;
+    }
+
     public static string? SourceDir(Assembly assembly) =>
         assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
             .FirstOrDefault(m => m.Key == TestsSourceDirKey)?.Value;
+
+    // GetTypes over a discovered/loaded suite, turning a ReflectionTypeLoadException into one named, actionable
+    // failure instead of a raw wall of loader exceptions — a missing/stale dependency reads as "clean rebuild",
+    // not a mystery. The guards reflecting over the suites all funnel through here.
+    public static IReadOnlyList<Type> TypesOf(Assembly assembly)
+    {
+        try
+        {
+            return assembly.GetTypes();
+        }
+        catch (ReflectionTypeLoadException ex)
+        {
+            var detail = string.Join("; ", ex.LoaderExceptions
+                .Where(e => e is not null).Select(e => e!.Message).Distinct(StringComparer.Ordinal));
+            throw new InvalidOperationException(
+                $"Could not load all types from '{assembly.GetName().Name}' — a referenced assembly is missing or " +
+                $"stale; try a clean rebuild (dotnet build after clearing artifacts/). Loader errors: {detail}", ex);
+        }
+    }
 }

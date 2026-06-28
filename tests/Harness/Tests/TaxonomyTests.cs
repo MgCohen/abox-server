@@ -37,7 +37,7 @@ public class TaxonomyTests
     {
         var product = typeof(SuiteAnchor).Assembly;
         var name = product.GetName().Name!;
-        var misplaced = product.GetTypes()
+        var misplaced = Suites.TypesOf(product)
             .SelectMany(t => t.GetMethods())
             .Where(TestMarkers.Marks)
             .Where(m => !TestTypes.ContainsTest(name, m.DeclaringType?.Namespace))
@@ -60,7 +60,7 @@ public class TaxonomyTests
     public void EveryColocatedTestInsideARegisteredType()
     {
         var misplaced = Suites.Colocated()
-            .SelectMany(a => a.GetTypes()
+            .SelectMany(a => Suites.TypesOf(a)
                 .SelectMany(t => t.GetMethods())
                 .Where(TestMarkers.Marks)
                 .Where(m => !TestTypes.ContainsTest(a.GetName().Name!, m.DeclaringType?.Namespace))
