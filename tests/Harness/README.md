@@ -142,24 +142,18 @@ Every registered type is fully backfilled and enforced: each Rulebook is the com
 parity requires every test to cite a Rule with no going-forward exemption. A new test of any type now lands
 with its Rule or the build fails — the ratchet is closed.
 
-> **Mid-migration (PLANS/test-colocation.md):** the per-type `<Type>.md` files now live centrally in
-> `tests/Rubrics/<Type>.md`, and `Rulebook.md` `rubric:` front-matter points there. The
-> `<Type>/Rulebook/<Type>.md` shown below is the pre-move layout; this walkthrough is rewritten in full at
-> Phase 5 once test homes settle. Today's truth: rubrics are central, rulebooks are per-type (soon
-> per-feature), and the `rubric:` link is a relative path into `tests/Rubrics/`.
-
 ## The uniform per-type layout
 
 ```
 <Type>/
-  Rulebook.md       the Rubric:/Harness: pointer links, then the type's '### ' Rules
-  Tests/                   the [Rule]-tagged facts that enforce them
-  Support/                 optional, type-local: models, doubles, harnesses (no over-sharing)
+  Rulebook.md       front-matter (rubric:/harness: pointers), then the type's '### ' Rules
+  *Tests.cs         the [Rule]-tagged facts that enforce them
+  Support/          optional, type-local: models, doubles, harnesses (no over-sharing)
 tests/Rubrics/<Type>.md   the per-type criteria (one home for all types)
 ```
 
 There is no per-type parity fact — the harness's own tests run parity over every type at once. They
-read both Rulebook files straight from the **source tree** (`RepoTree` walks up to the `ABox.slnx` marker), so
+read the Rulebook straight from the **source tree** (`RepoTree` walks up to the `ABox.slnx` marker), so
 no csproj copy step is needed and a new type wires in with zero csproj edits. Namespace mirrors folder,
 enforced at compile time by IDE0130 (`/.editorconfig`, scoped to `tests/`), so the type-folder taxonomy can't
 silently drift — and parity derives each Rulebook path from that namespace.

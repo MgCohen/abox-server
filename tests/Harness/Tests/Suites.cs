@@ -27,15 +27,28 @@ internal static class Suites
         // Discover by recursive glob, not by reconstructing <Project>/<config>/<Project>.dll: a layout tweak
         // (an extra TFM subfolder, a renamed dir) would otherwise silently zero the set. Keep only the running
         // config's copy — the glob also sees the other config's bin, and LoadFrom-ing two copies of one assembly
-        // name clashes by identity — and dedup by name so a single assembly loads once.
+        // name clashes by identity — and dedup by name, preferring each suite's own canonical dir so the pick is
+        // deterministic (a sibling suite that references it carries a second copy under its own dir).
         return binRoot.GetFiles("*.dll", SearchOption.AllDirectories)
             .Where(f => TestAssemblies.IsFeatureTestAssembly(Path.GetFileNameWithoutExtension(f.Name)))
             .Where(f => InConfig(f, binRoot, config))
             .GroupBy(f => f.Name, StringComparer.OrdinalIgnoreCase)
-            .Select(g => g.First().FullName)
+            .Select(g => g.OrderByDescending(f => InOwnProjectDir(f, binRoot)).First().FullName)
             .Select(Assembly.LoadFrom)
             .Where(a => SourceDir(a) is not null)
             .ToList();
+    }
+
+    // The canonical copy of a suite's dll lives at artifacts/bin/<Name>/<config>/<Name>.dll; a sibling suite that
+    // references it carries a second copy under that sibling's dir. Prefer the canonical one in the dedup so a
+    // stale nested copy can't silently win — if it ever diverges, TypesOf surfaces it as a named error instead.
+    private static bool InOwnProjectDir(FileInfo dll, DirectoryInfo binRoot)
+    {
+        var name = Path.GetFileNameWithoutExtension(dll.Name);
+        for (var d = dll.Directory; d?.Parent is not null; d = d.Parent)
+            if (d.Parent.FullName == binRoot.FullName)
+                return string.Equals(d.Name, name, StringComparison.OrdinalIgnoreCase);
+        return false;
     }
 
     // A dll belongs to the running config when some path segment between it and artifacts/bin is that config —

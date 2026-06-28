@@ -83,7 +83,7 @@ Checked on disk (`SourceTree.MisplacedApiLeaves` + `ApiLeavesWithDependencies`):
   type the harness links. A `ProjectReference` to `ABox.DocEngine` or a `YamlDotNet` `PackageReference` in
   `tests/Harness` would compile and silently invert that arrow, coupling the harness to the thing it polices.
 
-A text scan of `tests/Harness/ABox.Tests.Harness.csproj` (`SourceTree.HarnessForbiddenReferences`) reports any
+A text scan of every `*.csproj` under `tests/Harness/` (`SourceTree.HarnessForbiddenReferences`) reports any
 `<ProjectReference>` naming the engine or `<PackageReference>` naming YamlDotNet. Decidable on disk before
 compile, so the `[det]` claim in ADR 0015 is enforced, not just asserted.
 

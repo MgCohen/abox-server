@@ -8,6 +8,26 @@ T2 (`tools/doc-engine/*.cs` root).
 
 **Ordering:** T3 lands before/with T7 (same files). Everything else independent.
 
+## Status — COMPLETE
+
+All items landed and verified (warning-free build, full suite green, mutation-probed where a new guard was added):
+
+- **Tier 1:** T1, T2, T3, T4, T5, T6, T10, T11, T12 — done.
+- **Tier 2:** T7 (two predicates + agreement guard), T9 (build-state-tolerant discovery + `TypesOf`) — done.
+- **T8:** killed (see below).
+
+Two adversarial review passes (T7/T9 focused + whole-branch holistic) returned SHIP. Their follow-ups:
+
+- **Done:** doc drift — `Structure/Rulebook.md` ADR-0015 prose (now "every csproj under `tests/Harness/`"),
+  `Harness/README.md` mid-migration note + layout block; `Suites.Colocated()` dedup now prefers each suite's
+  canonical dir (deterministic).
+- **Declined (recorded):** TFM-tolerant `binRoot` derivation — YAGNI, no TFM-nested layout exists for these
+  single-TFM projects. A production-side classification guard — the literal form is tautological (the production
+  set is *defined* by `!IsTestAssembly`); a real form needs an independent production-name source, disproportionate
+  to a low/latent risk the feature-side guard already half-covers.
+- **Resolved:** `PLANS/test-authoring.md` is a superseded decision record (author against `tests/Harness/authoring.md`),
+  so its point-in-time paths are correct-as-history.
+
 ---
 
 ## Tier 1 — low code-risk, thermonuclear-verified SAFE
