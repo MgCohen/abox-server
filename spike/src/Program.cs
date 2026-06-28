@@ -53,26 +53,25 @@ static class Program
         Directory.CreateDirectory(outDir);
         File.WriteAllText(Path.Combine(outDir, "ScriptData.cs"), canonical);
 
-        // Recipe catalog (M2): the hardcoded type trees are now named, parameterized recipes — the
-        // recipe's final shape (a class carrying name + params). CreateModel built twice with
-        // different entities proves it is genuinely parameterized, not a literal tree. The gate is
-        // compile + reflect (a bare type has nothing to Run()).
-        Console.WriteLine("recipe catalog (M2) — named + parameterized:\n");
-        var recipes = new IRecipe[]
+        // Recipes ARE the nodes — already parameterized (a node takes its name + fields as args), so
+        // they are authored directly with no wrapper layer. A named catalog + metadata (the matcher
+        // seam) is M3; a "Model" base that generated types inherit from waits for the inheritance
+        // pass. Gate: compile + reflect (a bare type has nothing to Run()).
+        Console.WriteLine("type recipes — nodes, parameterized:\n");
+        var decls = new TypeDecl[]
         {
-            new CreateModel("FavoriteArtist",
+            new RecordNode("FavoriteArtist",
                 new Field<Guid>("Id"), new Field<string>("ArtistId"), new Field<DateTime>("FavoritedAt")),
-            new CreateModel("Playlist",
+            new RecordNode("Playlist",
                 new Field<Guid>("Id"), new Field<string>("Name"), new Field<int>("TrackCount")),
-            new CreateEnum("FavoriteSource", "Search", "Profile", "Recommendation"),
+            new EnumNode("FavoriteSource", "Search", "Profile", "Recommendation"),
         };
-        foreach (var recipe in recipes)
+        foreach (var decl in decls)
         {
-            var decl = recipe.Build();
             var code = TypeEmitter.Emit(decl);
             var ok = Runtime.CompileType(code, decl.Name).Name == decl.Name;
             failed |= !ok;
-            Console.WriteLine($"===== {recipe.Name} => {decl.Name} {(ok ? "PASS" : "FAIL")} =====");
+            Console.WriteLine($"===== {decl.Name} {(ok ? "PASS" : "FAIL")} =====");
             Console.WriteLine(code);
             File.WriteAllText(Path.Combine(outDir, $"{decl.Name}.cs"), code);
         }

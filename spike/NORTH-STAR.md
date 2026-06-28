@@ -85,16 +85,25 @@ Two output modes; the second is the hard one:
 
 ## The recipe — final shape
 
-A **named, parameterized, component-targeting catalog unit** that lowers to owned code, authored
-as a **class** (it must carry the catalog metadata the matcher binds to). The **snippet stays a
-method** — its body must compile; the **recipe** is the class around it (backlog #6, finally
-earning its keep).
+**A recipe is any node.** The whole typed tree, from a primitive (`RecordNode`, `LoopNode`, `Var`,
+`Lit`) up to a composite that builds a subtree (a future `ScaffoldService`). They differ by *level*,
+not kind. A node is **already a parameterized recipe** — `new RecordNode("FavoriteArtist", fields)`
+takes its name and fields as args; there is no separate "recipe class" wrapper. Composition is
+native: `Block` holds `Stmt[]`, a type holds `Field[]` — the tree *is* recipes composing recipes,
+with the slots **typed** so illegal nesting can't compile.
+
+What's *not* intrinsic to a recipe, and lands later:
+
+| Facet | What it is | Lands at |
+|---|---|---|
+| catalog name / description / param **schema** | the matcher's contract — lets an LLM select + parameterize | **M3** (when a consumer needs uniform handling; an `IRecipe` marker may join here) |
+| **composite** `Build()` — expand to a subtree | only when a recipe needs *more* than one node (a service: class + repo + DI) | when a multi-node recipe forces it (`ScaffoldService`) |
+| **inheritance** — a generated type declaring a base (`record User : Model`) | `Model` becomes the base others inherit; needs emitter base-list support | the **inheritance pass** (before/with M4) |
 
 | Facet | What it is | Spike today |
 |---|---|---|
-| name / key | catalog id the matcher selects | the snippet key |
-| params (typed) | the matcher's contract — `entity`, `fields`, `deps` | ❌ recipes are fully concrete |
-| target | which component shape it emits | ❌ toy shell only |
+| params (typed) | a node's ctor args — `entity`, `fields`, `deps` | ✅ nodes take params |
+| target | which component shape it emits | record/class/struct/enum ✅ |
 | slots | where custom logic drops in | `Block.Of("id")` ✅ |
 | output mode | emit-new vs merge-into-existing | emit-new only |
 
@@ -116,8 +125,9 @@ What the Feature demands vs. what the spike has proven:
 | The Feature needs… | Proven? | Milestone |
 |---|---|---|
 | Recipe emits a **whole file** (class/entity), not a body in a toy shell | ✅ | **M1 — declaration / file tier** (the `DECLARATION-TIER.md` work) |
-| Recipes are **parameterized** (`entity = "FavoriteArtist"`), not concrete | ✅ | **M2 — recipe params** (`IRecipe` + the recipe class) |
-| **Catalog metadata** (name + description + param schema) for the matcher | partial — `Name`/`Description` on `IRecipe`; schema still implicit in the ctor | **M3 — catalog surface** (the seam to the LLM half) |
+| Recipes are **parameterized** (`entity = "FavoriteArtist"`) | ✅ | **free with the node model (M1)** — a node *is* a parameterized recipe; no wrapper layer |
+| Generated types **inherit a base** (a `Model` base class) | ❌ | the **inheritance pass** (before/with M4) |
+| **Catalog metadata** (name + description + param schema) for the matcher | ❌ | **M3 — catalog surface** (the `IRecipe` marker + metadata land here, when a consumer needs them) |
 | Recipe declares its **output target** (namespace + folder) | ❌ | **M4** — couples to cross-references (a using needs a namespace) |
 | **Several recipes → one Feature**, cross-referenced (service names the model's type) | partial — merge proven on one tree | **M4 — multi-file composition + cross-references** |
 | Real types / method calls (`Task<T>`, the repo dependency) | ❌ int-only | folds into M1/M4 (retire int-only + inline-only) |
