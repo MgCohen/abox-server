@@ -69,6 +69,25 @@ public sealed class DocEngineValidationTests
         }
     }
 
+    [Rule("SchemaChecker.Run → fails loud when a catalog definition directory is missing")]
+    [Fact]
+    public void SchemaChecker_rejects_a_missing_definition_directory()
+    {
+        var root = Directory.CreateTempSubdirectory("docengine-schema-").FullName;
+        try
+        {
+            foreach (var dir in new[] { "_schema", "kinds", "blocks", "doctypes" })
+                CopyDir(Path.Combine(EngineRoot, dir), Path.Combine(root, dir));
+            Directory.Delete(Path.Combine(root, "blocks"), recursive: true);
+
+            Assert.Contains(new SchemaChecker(root).Run(), e => e.Contains("blocks", StringComparison.Ordinal));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     private static void CopyDir(string from, string to)
     {
         Directory.CreateDirectory(to);

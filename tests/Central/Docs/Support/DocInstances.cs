@@ -7,7 +7,8 @@ namespace ABox.Tests.Central.Docs.Support;
 // behavioral reference and is never enforced; build outputs and .git hold no authored docs.
 public static class DocInstances
 {
-    private static readonly string[] SkipDirs = { ".git", "bin", "obj", "artifacts", "prototype" };
+    private static readonly string[] SkipDirs =
+        RepoTree.BuildOutputDirs.Concat(new[] { ".git", "prototype" }).ToArray();
 
     public static IReadOnlyList<string> Discover()
     {

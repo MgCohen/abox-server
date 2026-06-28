@@ -1,7 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <Import Project="..\TestProject.props" />
+
   <PropertyGroup>
-    <IsPackable>false</IsPackable>
     <AssemblyName>ABox.Tests.Central</AssemblyName>
     <RootNamespace>ABox.Tests.Central</RootNamespace>
   </PropertyGroup>
@@ -12,19 +13,12 @@
     <AssemblyMetadata Include="TestsSourceDir" Value="$(MSBuildProjectDirectory)" />
   </ItemGroup>
 
+  <!-- Central-only extras beyond the shared TestProject.props: the web-test host (Wire/E2E) and ArchUnitNET
+       (the Arch reference graph). The coverlet / Test.Sdk / xunit packages and the global usings come from props. -->
   <ItemGroup>
-    <PackageReference Include="coverlet.collector" Version="6.0.4" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.3" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
-    <PackageReference Include="xunit" Version="2.9.3" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
     <PackageReference Include="TngTech.ArchUnitNET" Version="0.13.1" />
     <PackageReference Include="TngTech.ArchUnitNET.xUnit" Version="0.13.1" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Using Include="Xunit" />
-    <Using Include="ABox.Tests.Harness" />
   </ItemGroup>
 
   <ItemGroup>

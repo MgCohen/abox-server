@@ -28,3 +28,8 @@ harness: ../../../../tests/Harness/README.md
 ### SchemaChecker.Run → flags a definition file that is not a YAML map
 - **Why:** a definition that is not a YAML map is structurally broken; the checker must report it rather than
   skip or throw, so a corrupted block/doctype can never silently weaken the standard.
+
+### SchemaChecker.Run → fails loud when a catalog definition directory is missing
+- **Why:** a renamed or emptied `kinds`/`blocks`/`doctypes` directory makes the checker validate zero
+  definitions and return PASS — a vacuous green. The checker must report the missing collection so a broken
+  catalog layout can never look sound.

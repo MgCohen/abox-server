@@ -169,7 +169,7 @@ public class StructureTests
         var forbidden = SourceTree.HarnessForbiddenReferences();
         Assert.True(forbidden.Count == 0,
             $"""
-            The enforcement harness ('{Path.GetRelativePath(SourceTree.Root, SourceTree.HarnessCsproj)}') declares a
+            The enforcement harness (under '{Path.GetRelativePath(SourceTree.Root, SourceTree.HarnessRoot)}') declares a
             reference it must not (ADR 0015 [det]) — the dependency arrow points OUT of the spine, so a Rulebook
             stays a doc the engine validates from outside, never a type the harness links:
             {Bullets(forbidden)}

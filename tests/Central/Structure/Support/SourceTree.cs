@@ -166,21 +166,31 @@ internal static class SourceTree
             .OrderBy(p => p, StringComparer.Ordinal)
             .ToList();
 
-    public static readonly string HarnessCsproj =
-        Path.Combine(Root, "tests", "Harness", "ABox.Tests.Harness.csproj");
+    public static readonly string HarnessRoot = Path.Combine(Root, "tests", "Harness");
 
     // ADR 0015 [det]: the enforcement harness must not depend on the doc-engine it shells out to, nor on a YAML
     // library — the dependency arrow points OUT of the spine, so a Rulebook stays a doc the engine validates from
     // outside, never a type the harness links. A ProjectReference to the engine or a YamlDotNet PackageReference
     // would compile and silently invert that arrow; this reads the csproj text to catch it before that happens.
+    // The rule covers the whole tests/Harness/ tree, so it scans EVERY csproj there (the shared base AND the
+    // harness's own tests) — not just the base — closing the hole where the engine ref is most tempting to add.
     public static IReadOnlyList<string> HarnessForbiddenReferences()
     {
-        if (!File.Exists(HarnessCsproj))
-            throw new FileNotFoundException(
-                $"Harness csproj not found at '{HarnessCsproj}'. The ADR 0015 dependency guard would be " +
+        if (!Directory.Exists(HarnessRoot))
+            throw new DirectoryNotFoundException(
+                $"Harness tree not found at '{HarnessRoot}'. The ADR 0015 dependency guard would be " +
                 "vacuously green — fix the path or the repo-root locator.");
 
-        return File.ReadAllLines(HarnessCsproj)
+        var csprojs = Directory.EnumerateFiles(HarnessRoot, "*.csproj", SearchOption.AllDirectories)
+            .Where(NotIgnoredUnder(HarnessRoot))
+            .ToList();
+        if (csprojs.Count == 0)
+            throw new FileNotFoundException(
+                $"No *.csproj under '{HarnessRoot}'. The ADR 0015 dependency guard would be vacuously green — " +
+                "fix the path or the repo-root locator.");
+
+        return csprojs
+            .SelectMany(File.ReadAllLines)
             .Where(IsForbiddenHarnessReference)
             .Select(line => line.Trim())
             .OrderBy(line => line, StringComparer.Ordinal)

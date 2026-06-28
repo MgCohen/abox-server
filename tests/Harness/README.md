@@ -42,7 +42,7 @@ harness's own tests own parity (Rule ↔ test).
 ## The pieces
 
 **Shared base** — `tests/Harness/`, referenced by every test assembly:
-- **`Rule.cs`** — `[Rule("<header>")]`, sits on an xUnit `[Fact]` and names the Rulebook header it enforces.
+- **`RuleAttribute.cs`** — `[Rule("<header>")]`, sits on an xUnit `[Fact]` and names the Rulebook header it enforces.
   A test can't enforce a Rule without citing it. (A guarantee realized by several cases is several
   `[Rule("<same header>")]` methods — see *Completeness* below.)
 - **`LiveFactAttribute.cs`** — `[LiveFact]`, the gated real-CLI run attribute (skipped unless `RUN_LIVE=1`).

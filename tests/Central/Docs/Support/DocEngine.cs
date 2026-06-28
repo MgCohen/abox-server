@@ -9,6 +9,14 @@ public static class DocEngine
 {
     public static readonly string ProjectDir = Path.Combine(RepoTree.Root, "tools", "doc-engine");
 
+    // Build and run the engine in the SAME configuration as this test assembly, derived from its own output dir
+    // (artifacts/bin/<Project>/<config>) — independent of the spawned process's WorkingDirectory. A pinned -c
+    // would build/run a different config than the suite (an extra build + a stale binary risk).
+    private static readonly string Config = new DirectoryInfo(
+        AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)).Name;
+
+    private static readonly TimeSpan Timeout = TimeSpan.FromMinutes(5);
+
     private static readonly Lazy<bool> Built = new(BuildOnce);
 
     public sealed record Result(int Exit, string Output);
@@ -16,12 +24,12 @@ public static class DocEngine
     public static Result Run(params string[] args)
     {
         _ = Built.Value;
-        return Exec(new[] { "run", "--project", ProjectDir, "--no-build", "-c", "Debug", "--" }.Concat(args).ToArray());
+        return Exec(new[] { "run", "--project", ProjectDir, "--no-build", "-c", Config, "--" }.Concat(args).ToArray());
     }
 
     private static bool BuildOnce()
     {
-        var r = Exec(new[] { "build", ProjectDir, "-c", "Debug" });
+        var r = Exec(new[] { "build", ProjectDir, "-c", Config });
         if (r.Exit != 0)
             throw new InvalidOperationException($"Could not build the doc-engine at {ProjectDir}:\n{r.Output}");
         return true;
@@ -40,7 +48,13 @@ public static class DocEngine
         using var p = Process.Start(psi) ?? throw new InvalidOperationException("could not start dotnet");
         var stdout = p.StandardOutput.ReadToEndAsync();
         var stderr = p.StandardError.ReadToEndAsync();
-        p.WaitForExit();
+        if (!p.WaitForExit((int)Timeout.TotalMilliseconds))
+        {
+            try { p.Kill(entireProcessTree: true); } catch { /* already gone — nothing to reap */ }
+            throw new TimeoutException(
+                $"doc-engine did not exit within {Timeout.TotalMinutes:n0}m: dotnet {string.Join(' ', args)}. " +
+                "A hung engine would otherwise deadlock the test run.");
+        }
         return new Result(p.ExitCode, (stdout.Result + stderr.Result).Trim());
     }
 }

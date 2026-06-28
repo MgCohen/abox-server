@@ -13,7 +13,7 @@ harness: ../../Harness/README.md
   puts that proof under `dotnet test` and ParityGuard instead of a manual step.
 
 ### Every authored doc-engine instance validates against its doctype
-- **Why:** A structured document — the real Rulebooks under `tests/**/Rulebook/` — that drifts from its
+- **Why:** A structured document — the real Rulebooks under `tests/**/Rulebook.md` — that drifts from its
   doctype is silent rot. `docengine validate` proves each instance still conforms to the catalog, in place
   where it lives; running it per file fails the build the moment one drifts.
 

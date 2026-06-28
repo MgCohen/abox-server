@@ -4,7 +4,7 @@ testType: unit
 ---
 
 ## Summary
-Each Unit Rule is one behavioural guarantee about a single type or small cluster tested with local fakes. Every test cites a Rule; enforced in `Unit/Tests/`.
+Each Unit Rule is one behavioural guarantee about a single type or small cluster tested with local fakes. Every test cites a Rule; enforced in each feature's co-located `Tests/Unit/`.
 
 ## Criteria
 

@@ -13,7 +13,7 @@ outside the product taxonomy it polices. It is checked by `ParityGuard.ForRulebo
   itself to the same bar — or the enforcer is the one suite nothing enforces.
 
 ### Every folder under tests holds a registered test type
-- **Why:** a folder under `tests/Tests/` that is no registered type (and not shared Support) runs its tests
+- **Why:** a folder under `tests/Central/` that is no registered type (and not shared Support) runs its tests
   citing no Rule — it escaped the taxonomy.
 
 ### Every test lives inside a registered test type

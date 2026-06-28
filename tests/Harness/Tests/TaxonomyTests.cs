@@ -99,7 +99,7 @@ public class TaxonomyTests
 
     private static IEnumerable<string> StrayFolders(string sourceDir) =>
         Directory.EnumerateDirectories(sourceDir)
-            .Where(d => !IsRegisteredTypeWithRulebook(d) && Path.GetFileName(d) != "Support")
+            .Where(d => !IsRegisteredTypeWithRulebook(d) && !TestTypes.IsNonType(Path.GetFileName(d)!))
             .Select(d => Path.GetRelativePath(RepoTree.Root, d));
 
     private static bool IsRegisteredTypeWithRulebook(string dir) =>

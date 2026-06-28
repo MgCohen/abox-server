@@ -13,7 +13,7 @@ namespace ABox.Tests.Harness.Tests;
 // citations.
 internal static class Suites
 {
-    private const string TestsSourceDirKey = "TestsSourceDir";
+    internal const string TestsSourceDirKey = "TestsSourceDir";
 
     public static IReadOnlyList<Assembly> Colocated()
     {

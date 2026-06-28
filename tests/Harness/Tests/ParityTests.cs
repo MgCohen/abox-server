@@ -17,7 +17,8 @@ public class ParityTests
         foreach (var type in RepoTree.TestTypeFolders().Where(TestTypes.IsRegistered))
             ParityGuard.For(product, type).Assert();
 
-        ParityGuard.ForRulebook(typeof(ParityTests).Assembly, "ABox.Tests.Harness.Tests",
+        var self = typeof(ParityTests).Assembly;
+        ParityGuard.ForRulebook(self, self.GetName().Name!,
             Path.Combine(RepoTree.HarnessTestsRoot, "Rulebook.md")).Assert();
     }
 }

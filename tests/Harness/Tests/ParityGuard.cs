@@ -33,14 +33,12 @@ public sealed class ParityGuard
     public static ParityGuard ForRulebook(Assembly assembly, string scope, string rulesPath) =>
         new(assembly, scope, rulesPath);
 
-    private const string TestsSourceDirKey = "TestsSourceDir";
-
     private static string Rulebook(Assembly assembly, string type)
     {
         var sourceDir = assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
-            .FirstOrDefault(a => a.Key == TestsSourceDirKey)?.Value
+            .FirstOrDefault(a => a.Key == Suites.TestsSourceDirKey)?.Value
             ?? throw new InvalidOperationException(
-                $"Assembly '{assembly.GetName().Name}' carries no [{TestsSourceDirKey}] metadata. Every test project " +
+                $"Assembly '{assembly.GetName().Name}' carries no [{Suites.TestsSourceDirKey}] metadata. Every test project " +
                 "(central or co-located) must stamp <AssemblyMetadata Include=\"TestsSourceDir\" " +
                 "Value=\"$(MSBuildProjectDirectory)\" /> so parity can find its Rulebook in the source tree.");
         return Path.Combine(sourceDir, type, "Rulebook.md");
