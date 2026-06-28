@@ -34,7 +34,7 @@ public class CoverageTests
 
         foreach (var assembly in assemblies)
             foreach (var type in TypeFolders(Suites.SourceDir(assembly)!))
-                ParityGuard.ForColocated(assembly, type).Assert();
+                ParityGuard.For(assembly, type).Assert();
     }
 
     private static IEnumerable<string> TypeFolders(string sourceDir) =>

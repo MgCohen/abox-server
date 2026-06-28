@@ -29,7 +29,7 @@ harness's own tests test the test system itself, from outside — they are the e
 
 Shared base: `tests/Harness/` (`Rule`, `LiveFact`, `Report`, `RepoTree`); the enforcement engine
 (`ParityGuard` / `TestTypes` / `TestMarkers`) lives with the harness's own tests in `tests/Harness/Tests/`. Detail docs:
-[`tests/README.md`](../../../tests/README.md), [`tests/Tests/README.md`](../../../tests/Tests/README.md),
+[`tests/README.md`](../../../tests/README.md), [`tests/Central/README.md`](../../../tests/Central/README.md),
 [`tests/Harness/README.md`](../../../tests/Harness/README.md). The plan is
 [`PLANS/test-colocation.md`](../../../PLANS/test-colocation.md). Read those before
 inventing structure; this skill is the *procedure*.
@@ -86,13 +86,13 @@ Rulebook *shape* — reuse the uniform one.
 2. **Write the fact** in `<Type>/` carrying both the xUnit run attribute and a
    `[Rule("<exact header>")]` citation — they compose (`[Fact]` + `[Rule]`), the Rule is
    not derived from `FactAttribute`. Live tests use `[LiveFact]` + `[Rule("<header>")]`.
-3. **Keep the namespace = folder** — `ABox.Tests.<Type>` for a central type in `tests/Tests/<Type>/`,
+3. **Keep the namespace = folder** — `ABox.Tests.Central.<Type>` for a central type in `tests/Central/<Type>/`,
    or `ABox.<Owner>.Tests.<Type>` for a co-located type in `src/<…>/<Owner>/Tests/<Type>/`. IDE0130 is
    `severity = error`, so a mismatch is a **build error, not a warning**.
    - **Failure messages are fix instructions.** Active voice, name the file/type, say what to do
      ("Move X to Y", "Add a [Rule] citing Z") — not "X is wrong". One direct line, no essays.
 4. Put any test-only double/harness in `<Type>/Support/`; promote to the shared
-   `tests/Tests/Support/` only on a genuine **second** consumer.
+   `tests/Central/Support/` only on a genuine **second** consumer.
 
 ## 3. Completeness (universal and mandatory)
 
@@ -128,7 +128,7 @@ judge-graded (see §6), not parity-enforced.
   location. Don't add a project per *type*; do add one per *owner*.
 - **Rulebooks are read from the source tree.** The harness's own tests locate the repo root (`RepoTree`, via
   the `ABox.slnx` marker) and read each `<Type>/Rulebook.md` straight from disk — no copy step.
-  A Rule counts only if it sits in its type's `Rulebook.md` under `tests/Tests/<Type>/` (central) or a feature's
+  A Rule counts only if it sits in its type's `Rulebook.md` under `tests/Central/<Type>/` (central) or a feature's
   `src/<…>/<Owner>/Tests/<Type>/` (co-located).
 - **`Rulebook.md` holds only Rules.** Under `## Rules`, every `### ` counts — the example shape lives in
   `tests/Harness/README.md`, not `Rulebook.md`, so there's nothing to game. The doc-engine's `rulebook`

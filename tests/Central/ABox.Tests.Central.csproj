@@ -3,8 +3,14 @@
   <PropertyGroup>
     <IsPackable>false</IsPackable>
     <AssemblyName>ABox.Tests.Central</AssemblyName>
-    <RootNamespace>ABox.Tests</RootNamespace>
+    <RootNamespace>ABox.Tests.Central</RootNamespace>
   </PropertyGroup>
+
+  <!-- Central obeys the same two conventions every co-located suite does — RootNamespace == AssemblyName, and a
+       stamped source dir — so one ParityGuard.For path serves both. -->
+  <ItemGroup>
+    <AssemblyMetadata Include="TestsSourceDir" Value="$(MSBuildProjectDirectory)" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4" />

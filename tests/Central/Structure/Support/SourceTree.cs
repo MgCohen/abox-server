@@ -1,4 +1,4 @@
-namespace ABox.Tests.Structure.Support;
+namespace ABox.Tests.Central.Structure.Support;
 
 // The physical source layout on disk — the placement guards' input, independent of what compiled. ArchUnitNET
 // only sees loaded assemblies; this sees every project folder under src/ the moment it exists, so placement

@@ -29,8 +29,8 @@ tools/doc-engine/kinds/**    | @MgCohen | critical | Doc-engine kinds: the meta-
 tools/doc-engine/_schema/**  | @MgCohen | critical | Doc-engine meta-schema: the floor the whole catalog conforms to.
 tests/Rubrics/**          | @MgCohen | critical | Per-type rubrics: the central criteria every rulebook is authored against.
 tests/Fixtures/**         | @MgCohen | review   | Feature-independent shared test infra (Op/OpFlow) used across suites.
-tests/Tests/Arch/**       | @MgCohen | critical | Architecture rules: the asserting test code, not just its rulebook.
-tests/Tests/Structure/**  | @MgCohen | critical | Structure/placement rules: the asserting test code, not just its rulebook.
+tests/Central/Arch/**       | @MgCohen | critical | Architecture rules: the asserting test code, not just its rulebook.
+tests/Central/Structure/**  | @MgCohen | critical | Structure/placement rules: the asserting test code, not just its rulebook.
 .github/**                | @MgCohen | critical | CI, CODEOWNERS, and repo workflow config — the server-side backstop.
 .githooks/**              | @MgCohen | critical | Local git-hook enforcers.
 governance/**             | @MgCohen | critical | The policy itself and its enforcers — cannot be quietly weakened.

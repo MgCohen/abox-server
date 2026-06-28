@@ -4,7 +4,7 @@ using ArchUnitNET.Loader;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
 using Assembly = System.Reflection.Assembly;
 
-namespace ABox.Tests.Arch.Support;
+namespace ABox.Tests.Central.Arch.Support;
 
 // Single source of truth for the architecture under test: production assemblies are discovered from the output
 // dir (not hand-listed), and a band is one IObjectProvider keyed by namespace, so a new feature needs no edit here.

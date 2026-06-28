@@ -1,4 +1,4 @@
-namespace ABox.Tests.Structure.Support;
+namespace ABox.Tests.Central.Structure.Support;
 
 // The csproj tally of one feature folder, split by role. The canonical slice (ADR 0011 D2, as amended by the
 // contract-publishing split) is exactly one implementation project (verbs as folders, Module folded in) plus its

@@ -35,7 +35,7 @@ Read first: [`PLANS/test-colocation.md`](../../../PLANS/test-colocation.md) (the
 ```
 src/<…>/<Owner>/Tests/                 → ABox.<Owner>.Tests   (Domain owner → src/Domain/<Owner>/Tests)
 ├── ABox.<Owner>.Tests.csproj           the thin stub (below)
-├── Parity.cs                           ParityGuard.ForColocated per type it holds
+├── Parity.cs                           ParityGuard.For per type it holds
 ├── Support/                            this feature's fixtures (only if it has any)
 └── <Type>/                             one folder per type: Unit | Wire | E2E | Live
     ├── Rulebook.md              a `rulebook` instance — THIS feature's guarantees
@@ -79,7 +79,7 @@ public class Parity
     public void RulebooksAndTestsAgree()
     {
         foreach (var type in new[] { "Unit" })   // add "Wire"/"E2E"/"Live" as the feature grows them
-            ParityGuard.ForColocated(typeof(Parity).Assembly, type).Assert();
+            ParityGuard.For(typeof(Parity).Assembly, type).Assert();
     }
 }
 ```

@@ -4,8 +4,8 @@ namespace ABox.Tests.Harness.Tests;
 
 // The parity engine: it keeps one test type's Rulebook (Rulebook.md) and the [Rule]-cited tests that
 // enforce it in lockstep, scoped to a single namespace so types sharing an assembly don't bleed into each
-// other's parity. The harness's own tests drive this over every central type (For) and every
-// co-located type (ForColocated).
+// other's parity. The harness's own tests drive this over every suite (For — central and co-located alike,
+// since both stamp TestsSourceDir and follow RootNamespace == AssemblyName) and over themselves (ForRulebook).
 public sealed class ParityGuard
 {
     private const string Heading = "### ";
@@ -21,15 +21,11 @@ public sealed class ParityGuard
         this.rulesPath = rulesPath;
     }
 
+    // One factory for every suite: scope is <AssemblyName>.<Type> (read off the assembly), the Rulebook is found
+    // in the source tree via the TestsSourceDir the build stamps — so parity reads the same on-disk Rulebook.md
+    // the doc-engine validates, with no copy-to-output step, for central and co-located alike.
     public static ParityGuard For(Assembly assembly, string type) =>
-        new(assembly, TestTypes.Namespace(type), ProductRulebook(type));
-
-    // A co-located feature assembly (ABox.<Owner>.Tests) keeps each type's tests in the <Owner>.Tests.<Type>
-    // namespace and its Rulebook beside them under Tests/<Type>/Rulebook.md. The scope is the assembly
-    // name + the type; the Rulebook is found from the source tree via the TestsSourceDir the build stamps, so
-    // parity reads the same on-disk Rulebook.md the doc-engine validates — no copy-to-output step.
-    public static ParityGuard ForColocated(Assembly assembly, string type) =>
-        new(assembly, TestTypes.ColocatedNamespace(assembly.GetName().Name!, type), ColocatedRulebook(assembly, type));
+        new(assembly, TestTypes.Namespace(assembly.GetName().Name!, type), Rulebook(assembly, type));
 
     // The harness eats its own dog food: a self-Rulebook beside its own tests (tests/Harness/Tests/Rulebook.md —
     // a plain Rulebook, not a doc-engine instance) checked against the [Rule]s in their namespace. The enforcer
@@ -39,21 +35,16 @@ public sealed class ParityGuard
 
     private const string TestsSourceDirKey = "TestsSourceDir";
 
-    private static string ColocatedRulebook(Assembly assembly, string type)
+    private static string Rulebook(Assembly assembly, string type)
     {
         var sourceDir = assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
             .FirstOrDefault(a => a.Key == TestsSourceDirKey)?.Value
             ?? throw new InvalidOperationException(
-                $"Assembly '{assembly.GetName().Name}' carries no [{TestsSourceDirKey}] metadata. A co-located " +
-                "feature test project must stamp <AssemblyMetadata Include=\"TestsSourceDir\" " +
+                $"Assembly '{assembly.GetName().Name}' carries no [{TestsSourceDirKey}] metadata. Every test project " +
+                "(central or co-located) must stamp <AssemblyMetadata Include=\"TestsSourceDir\" " +
                 "Value=\"$(MSBuildProjectDirectory)\" /> so parity can find its Rulebook in the source tree.");
         return Path.Combine(sourceDir, type, "Rulebook.md");
     }
-
-    // Product Rulebooks are read from the source tree, not the output dir — the same surface the harness's own
-    // tests already read, so they need no copy of the product's Rulebooks to validate them.
-    private static string ProductRulebook(string type) =>
-        Path.Combine(RepoTree.TestsRoot, TestTypes.RulebookPath(type).Replace('/', Path.DirectorySeparatorChar));
 
     public void Assert()
     {

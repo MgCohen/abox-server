@@ -1,7 +1,7 @@
 using System.Reflection;
-using static ABox.Tests.Arch.Support.ArchitectureModel;
+using static ABox.Tests.Central.Arch.Support.ArchitectureModel;
 
-namespace ABox.Tests.Arch.Support;
+namespace ABox.Tests.Central.Arch.Support;
 
 // The endpoint-visibility model: which features have endpoint types that already match the canonical shape
 // (ADR 0011 — every `*Endpoint` is `internal sealed`, and the impl assembly exports only its `<F>Module`). A

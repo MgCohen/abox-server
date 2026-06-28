@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace ABox.Tests.Docs.Support;
+namespace ABox.Tests.Central.Docs.Support;
 
 // Shells out to the standalone doc-engine CLI (tools/doc-engine). ADR 0015: a test type MAY run the doc-engine,
 // but the Harness never depends on it — so we invoke it as a process (like Live drives the real claude CLI),

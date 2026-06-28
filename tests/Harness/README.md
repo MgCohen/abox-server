@@ -26,12 +26,12 @@ What a Rule *means* varies by type —
 - **Unit** Rule = an expected result: *"Reverse of empty → empty"*
 - **E2E / Wire / Live** Rule = a flow / endpoint / real-CLI guarantee
 
-The three structural types (Arch/Structure/Docs) are ownerless and live under `tests/Tests/` in the
+The three structural types (Arch/Structure/Docs) are ownerless and live under `tests/Central/` in the
 `ABox.Tests.Central` assembly; the four behavioral types (Unit/Wire/E2E/Live) are a feature's own and
 co-locate in `ABox.<Owner>.Tests` under `src/<…>/<Owner>/Tests/`. The **harness's own tests**
 (`ABox.Tests.Harness.Tests`, at `tests/Harness/Tests/`) make sure every suite follows this contract — the
 taxonomy and parity — nesting beside the engine they police and validating every suite from *outside* (via
-`ABox.Tests.SuiteAnchor` and `Suites.Colocated()`) the way the Arch guards validate `src`. They are **not** a
+`ABox.Tests.Central.SuiteAnchor` and `Suites.Colocated()`) the way the Arch guards validate `src`. They are **not** a
 Rulebook type themselves — they are the enforcer, not part of the taxonomy they enforce (see
 [`Tests/README.md`](Tests/README.md)). The **Rulebook shape and parity discipline are identical across every
 product type**. Splitting the rubric out of `Rulebook.md` is deliberate: `Rulebook.md` then holds nothing but its
@@ -51,15 +51,15 @@ harness's own tests own parity (Rule ↔ test).
 
 **Enforcement engine** — `tests/Harness/Tests/`, used only by the harness's own tests (its one consumer):
 - **`ParityGuard.cs`** — keeps one type's Rulebook and its `[Rule]` tests in lockstep, scoped to a single
-  namespace so types sharing an assembly don't bleed into each other's parity: `ABox.Tests.<Type>` for a
-  central type (`For`), `ABox.<Owner>.Tests.<Type>` for a co-located type (`ForColocated`), and the harness's
+  namespace so types sharing an assembly don't bleed into each other's parity: `ABox.Tests.Central.<Type>` for a
+  central type (`For`), `ABox.<Owner>.Tests.<Type>` for a co-located type (`For`), and the harness's
   own namespace (`ForRulebook`, self-parity).
 - **`TestTypes` / `TestMarkers`** — the registry of types (the single source of truth) + completeness flag, and
   the run-attribute names. Rulebook *format* is validated by the doc-engine (shelled out by the **Docs** type),
   not a Harness parser.
 
 Parity is driven **once**, from the harness's own tests — over every central type and every co-located feature
-suite (`Suites.Colocated()` → `ParityGuard.ForColocated`) — so there is no per-type or per-feature parity fact:
+suite (`Suites.Colocated()` → `ParityGuard.For`) — so there is no per-type or per-feature parity fact:
 
   ```csharp
   // Tests/ParityTests.cs
@@ -69,7 +69,7 @@ suite (`Suites.Colocated()` → `ParityGuard.ForColocated`) — so there is no p
   ```
 
 `ParityGuard.For` maps a product type to its namespace and Rulebook path through `TestTypes`
-(`<Type>` → `ABox.Tests.<Type>` + `tests/Tests/<Type>/Rulebook.md`), reads the Rulebook's `### `
+(`<Type>` → `ABox.Tests.Central.<Type>` + `tests/Central/<Type>/Rulebook.md`), reads the Rulebook's `### `
 headers **from the source tree** (`RepoTree`, not the output dir), and compares them to the `[Rule]`s in that
 namespace — failing the build on any mismatch. The harness's own tests then check themselves the same way: a
 self-Rulebook (`Tests/Rulebook.md`, plain markdown — not a doc-engine instance) parity-checked over their own
@@ -171,11 +171,11 @@ existing type genuinely can't host it (don't fork Unit into near-twins). Adding 
 is almost always the right move instead.
 
 > **Two homes.** A new **central, ownerless** structural type (like Arch/Structure/Docs — guarantee owned by
-> the repo) follows the steps below under `tests/Tests/<Type>/`, registered in `TestTypes.Registered` and
+> the repo) follows the steps below under `tests/Central/<Type>/`, registered in `TestTypes.Registered` and
 > classified `Central`. A new **behavioral** type owned by a feature (Unit/Wire/E2E/Live-shaped) co-locates in
 > the feature's `ABox.<Owner>.Tests` under `src/<…>/<Owner>/Tests/<Type>/`, with namespace
 > `ABox.<Owner>.Tests.<Type>` and a csproj that stamps `TestsSourceDir` — use the **new-feature-tests** skill,
-> which `ParityGuard.ForColocated` + the harness's coverage/taxonomy sweeps then police automatically. The skeleton
+> which `ParityGuard.For` + the harness's coverage/taxonomy sweeps then police automatically. The skeleton
 > below is shared by both; only the home, namespace, and (co-located) the csproj differ.
 
 When a new type really is warranted, **fill the canonical skeleton** below — don't copy a sibling and edit
@@ -218,8 +218,8 @@ harness: ../../../Harness/README.md
 
 Then:
 
-1. **Create `tests/Tests/<Type>/`** with `Rulebook.md`, the test `.cs`, and (if needed) `Support/`. Namespace mirrors
-   folder — `ABox.Tests.<Type>` for files in `<Type>/`; IDE0130 is `severity = error`, so a
+1. **Create `tests/Central/<Type>/`** with `Rulebook.md`, the test `.cs`, and (if needed) `Support/`. Namespace mirrors
+   folder — `ABox.Tests.Central.<Type>` for files in `<Type>/`; IDE0130 is `severity = error`, so a
    mismatch is a build error, not a warning.
 2. **Fill `<Type>.md` + `Rulebook.md`** from the skeleton above — pick the header shape (invariant or
    behavioural), adapt the summary, and write the first Rule. **`<Type>.md` must carry a `## Criteria`
@@ -235,5 +235,5 @@ Then:
    harness's own tests read your Rulebook straight from the source tree and run parity over your new type the
    moment it's registered. Rebuild; the harness's parity + the Docs format guards prove it's wired and well-formed.
 
-Parity scopes by the `ABox.Tests.<Type>` namespace, so the new type's Rules never bleed into another
+Parity scopes by the `ABox.Tests.Central.<Type>` namespace, so the new type's Rules never bleed into another
 type's parity — registering the type is all the wiring there is.

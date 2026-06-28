@@ -8,7 +8,7 @@ They sit beside the **shared base** they build on — `tests/Harness/` holds it 
 `RepoTree`, referenced by every suite) — and **own the enforcement engine themselves** (`ParityGuard`,
 `TestTypes`, `TestMarkers`), since they are its only consumer. It is its own assembly (it reflects over the
 suites from *outside*), validating every suite the way the Arch guards validate `src/`: it reflects over the
-central assembly (through `ABox.Tests.SuiteAnchor`) and over every co-located `ABox.<Owner>.Tests` (discovered
+central assembly (through `ABox.Tests.Central.SuiteAnchor`) and over every co-located `ABox.<Owner>.Tests` (discovered
 from the build output by `Suites.Colocated()`), and reads the Rulebooks straight from the source tree
 (`RepoTree`). Living apart is the point — the validator isn't inside the bag it checks.
 
@@ -23,8 +23,8 @@ assignable to it — Fact, Theory, LiveFact), not `[Fact]` specifically.
 | File | What it holds |
 |---|---|
 | `ParityTests.cs` | For each central type **and the harness's own tests**: every `### ` Rulebook header has a test citing it, and every cited test names a real header. |
-| `TaxonomyTests.cs` | Every folder under `tests/Tests/` is a known type (or `Support`) — no stray folder. |
-| `TaxonomyTests.cs` | Every marked test in the **central** assembly sits under `ABox.Tests.<Type>`. |
+| `TaxonomyTests.cs` | Every folder under `tests/Central/` is a known type (or `Support`) — no stray folder. |
+| `TaxonomyTests.cs` | Every marked test in the **central** assembly sits under `ABox.Tests.Central.<Type>`. |
 | `TaxonomyTests.cs` | Every marked test in a **feature** assembly sits under `ABox.<Owner>.Tests.<Type>`, never the assembly root. |
 | `TaxonomyTests.cs` | Every folder in a feature's `Tests/` is a known type **with** a `Rulebook.md` (or `Support`) — none silently skipped by coverage parity. |
 | `TaxonomyTests.cs` | Every rulebook's `testType` front-matter equals its folder — the harness owns the type set, the doc-engine no longer pins it to a list. |

@@ -1,3 +1,5 @@
+using ABox.Tests.Central;
+
 namespace ABox.Tests.Harness.Tests;
 
 // Parity for the whole repo, driven from outside the suites it checks: every product type's Rulebook and its

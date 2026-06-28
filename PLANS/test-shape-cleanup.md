@@ -159,9 +159,15 @@ passes *vacuously*:
   self-Rulebook is not a doc-engine instance, and no product scanner sees it. This keeps the enforcer/enforced
   distinction while honoring "enforcers check themselves." (SSOT-by-removal already dropped the doctype `testType`
   enum, so the earlier "add `harness` to both enums" cost is moot anyway.)
-- **Bigger question (parked as possible ADR):** is the whole location/discovery model over-built — `For` vs
-  `ForColocated`, the `TestsSourceDir` stamp, the `Suites` `LoadFrom` dance? The friction this cleanup surfaced is
-  weak evidence it might be. Not now.
+- **Location/discovery model — PARTLY DONE.** The `For` vs `ForColocated` fork *was* over-built: it existed only
+  because the central assembly broke two conventions every co-located one followed (`RootNamespace == AssemblyName`,
+  stamp `TestsSourceDir`). Fixed by making central conform — renamed folder `tests/Tests/` → `tests/Central/`,
+  `RootNamespace`/namespaces → `ABox.Tests.Central.<Type>`, stamped `TestsSourceDir`. Collapsed `For`+`ForColocated`
+  → one `For(assembly, type)`, two namespace builders → one `Namespace(asm, type)`, two membership tests → one
+  `ContainsTest(asm, ns)`, deleted `ProductRulebook`/`RulebookPath`. `ForRulebook` (self-parity) stays — it's not
+  part of the fork. The two *drivers* (central `SuiteAnchor` loop vs `Suites.Colocated()` discovery + the
+  every-folder-maps-to-an-assembly backstop) stay separate — they answer different questions, and that's the part
+  that earns its keep. The `Suites` `LoadFrom` dance is untouched and still justified.
 
 ## Validation record
 

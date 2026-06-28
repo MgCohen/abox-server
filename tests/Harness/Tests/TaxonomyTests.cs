@@ -1,8 +1,9 @@
 using static ABox.Tests.Harness.Report;
+using ABox.Tests.Central;
 
 namespace ABox.Tests.Harness.Tests;
 
-// The test taxonomy holds together: every folder under tests/Tests/ is a registered type, and every test —
+// The test taxonomy holds together: every folder under tests/Central/ is a registered type, and every test —
 // central (the product assembly) AND co-located (every ABox.<Owner>.Tests via Suites.Colocated()) — lives
 // inside a registered type's namespace, so no test escapes the namespace its ParityGuard scopes to. The
 // co-located sweeps are the backstop that replaces the central protected wall the feature tests left: a marker
@@ -22,7 +23,7 @@ public class TaxonomyTests
 
         Assert.True(strays.Count == 0,
             $"""
-            Folders under tests/Tests/ are not a registered test type:
+            Folders under tests/Central/ are not a registered test type:
             {Bullets(strays)}
             Registered test types:
             {Bullets(TestTypes.Registered)}
@@ -34,10 +35,12 @@ public class TaxonomyTests
     [Fact]
     public void EveryTestInsideARegisteredType()
     {
-        var misplaced = typeof(SuiteAnchor).Assembly.GetTypes()
+        var product = typeof(SuiteAnchor).Assembly;
+        var name = product.GetName().Name!;
+        var misplaced = product.GetTypes()
             .SelectMany(t => t.GetMethods())
             .Where(TestMarkers.Marks)
-            .Where(m => !TestTypes.ContainsTest(m.DeclaringType?.Namespace))
+            .Where(m => !TestTypes.ContainsTest(name, m.DeclaringType?.Namespace))
             .Select(m => $"{m.DeclaringType?.FullName}.{m.Name}")
             .Distinct(StringComparer.Ordinal)
             .OrderBy(s => s, StringComparer.Ordinal)
@@ -45,7 +48,7 @@ public class TaxonomyTests
 
         Assert.True(misplaced.Count == 0,
             $"""
-            Tests live outside the ABox.Tests.<Type> structure, where the per-type ParityGuard
+            Tests live outside the {name}.<Type> structure, where the per-type ParityGuard
             cannot see them to require a [Rule]:
             {Bullets(misplaced)}
             Move each into a registered type's folder.
@@ -60,7 +63,7 @@ public class TaxonomyTests
             .SelectMany(a => a.GetTypes()
                 .SelectMany(t => t.GetMethods())
                 .Where(TestMarkers.Marks)
-                .Where(m => !TestTypes.ContainsColocatedTest(a.GetName().Name!, m.DeclaringType?.Namespace))
+                .Where(m => !TestTypes.ContainsTest(a.GetName().Name!, m.DeclaringType?.Namespace))
                 .Select(m => $"{m.DeclaringType?.FullName}.{m.Name}"))
             .Distinct(StringComparer.Ordinal)
             .OrderBy(s => s, StringComparer.Ordinal)
@@ -68,7 +71,7 @@ public class TaxonomyTests
 
         Assert.True(misplaced.Count == 0,
             $"""
-            Co-located tests live outside the ABox.<Owner>.Tests.<Type> structure, where ParityGuard.ForColocated
+            Co-located tests live outside the ABox.<Owner>.Tests.<Type> structure, where ParityGuard.For
             cannot see them to require a [Rule]:
             {Bullets(misplaced)}
             Move each under a registered type's folder ({Join(TestTypes.Registered)}), not the assembly root.

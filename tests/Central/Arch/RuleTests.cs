@@ -1,9 +1,9 @@
 using ArchUnitNET.xUnit;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
-using static ABox.Tests.Arch.Support.ArchitectureModel;
-using static ABox.Tests.Arch.Support.EndpointConformance;
+using static ABox.Tests.Central.Arch.Support.ArchitectureModel;
+using static ABox.Tests.Central.Arch.Support.EndpointConformance;
 
-namespace ABox.Tests.Arch;
+namespace ABox.Tests.Central.Arch;
 
 // One enforcing test per block in the Arch Rulebook, linked by the [Rule] id. The header carries the
 // rule itself + its rationale; this carries the executable assertion. ParityTests keeps them in sync.

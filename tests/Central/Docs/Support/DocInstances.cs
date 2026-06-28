@@ -1,4 +1,4 @@
-namespace ABox.Tests.Docs.Support;
+namespace ABox.Tests.Central.Docs.Support;
 
 // Finds every structured document in the repo by its leading front matter, never by path: any *.md whose first
 // line opens a `---` block carrying a `docType:` key is an instance the doc-engine must validate (ADR 0015). So a

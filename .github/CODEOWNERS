@@ -13,8 +13,8 @@ tools/doc-engine/kinds/** @MgCohen
 tools/doc-engine/_schema/** @MgCohen
 tests/Rubrics/** @MgCohen
 tests/Fixtures/** @MgCohen
-tests/Tests/Arch/** @MgCohen
-tests/Tests/Structure/** @MgCohen
+tests/Central/Arch/** @MgCohen
+tests/Central/Structure/** @MgCohen
 .github/** @MgCohen
 .githooks/** @MgCohen
 governance/** @MgCohen
