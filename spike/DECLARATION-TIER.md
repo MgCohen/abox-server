@@ -1,9 +1,10 @@
-# Spike — Declaration Tier
+# Spike — Declaration Tier (M1)
 
 > Branch `claude/csharp-snippet-merge-decl`, stacked on the building-style PR (#109).
+> **Reframed:** this is **M1** of the north star (`NORTH-STAR.md`) — the file-tier step that lets a
+> recipe emit a *whole owned file* (a component), not a body in a toy shell. The forks below (F1–F4)
+> are the mechanism for M1; read `NORTH-STAR.md` first for *why* and *toward what*.
 > The next frontier: compose the *element that holds a body*, not just the body.
-> This doc is the **opening plan** — the design gets sketched here before any code, the way
-> `BUILDING-STYLE.md` opened the last pass.
 
 ## The frontier
 
