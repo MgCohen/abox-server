@@ -9,7 +9,7 @@ public sealed class DocEngineValidationTests
     private static readonly string EngineRoot = Path.Combine(RepoTree.Root, "tools", "doc-engine");
 
     private static readonly string GoldenInstance =
-        Path.Combine(RepoTree.Root, "tests", "Tests", "Structure", "Rulebook", "rules.md");
+        Path.Combine(RepoTree.Root, "tests", "Tests", "Structure", "Rulebook.md");
 
     private static IReadOnlyList<string> Validate(string[] lines)
     {

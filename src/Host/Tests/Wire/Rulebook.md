@@ -1,8 +1,8 @@
 ---
 docType: rulebook
 testType: wire
-rubric: ../../../../../tests/Rubrics/Wire.md
-harness: ../../../../../tests/Harness/README.md
+rubric: ../../../../tests/Rubrics/Wire.md
+harness: ../../../../tests/Harness/README.md
 ---
 
 ## Rules

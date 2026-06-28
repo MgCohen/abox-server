@@ -39,7 +39,7 @@ public class CoverageTests
 
     private static IEnumerable<string> TypeFolders(string sourceDir) =>
         Directory.EnumerateDirectories(sourceDir)
-            .Where(d => Directory.Exists(Path.Combine(d, "Rulebook")))
+            .Where(d => File.Exists(Path.Combine(d, "Rulebook.md")))
             .Select(d => Path.GetFileName(d)!)
             .OrderBy(t => t, StringComparer.Ordinal);
 

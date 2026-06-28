@@ -1,8 +1,8 @@
 ---
 docType: rulebook
 testType: e2e
-rubric: ../../../../../../tests/Rubrics/E2E.md
-harness: ../../../../../../tests/Harness/README.md
+rubric: ../../../../../tests/Rubrics/E2E.md
+harness: ../../../../../tests/Harness/README.md
 ---
 
 ## Rules

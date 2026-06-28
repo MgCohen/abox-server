@@ -1,8 +1,8 @@
 ---
 docType: rulebook
 testType: unit
-rubric: ../../../../../../tests/Rubrics/Unit.md
-harness: ../../../../../../tests/Harness/README.md
+rubric: ../../../../../tests/Rubrics/Unit.md
+harness: ../../../../../tests/Harness/README.md
 ---
 
 ## Rules

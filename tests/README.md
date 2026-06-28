@@ -17,7 +17,7 @@ Three pieces:
   the harness's own tests run on. Nothing product-specific lives here.
 - **[`Tests/`](Tests/README.md)** — the central, ownerless suite (`ABox.Tests.Central`): the three
   structural types `Arch`/`Structure`/`Docs`, each its own Rulebook with the same folder shape
-  (`<Type>/Rulebook/`, `<Type>/Tests/`, `<Type>/Support/`). A feature's `Unit`/`Wire`/`E2E`/`Live` are
+  (`<Type>/Rulebook.md`, `<Type>/Tests/`, `<Type>/Support/`). A feature's `Unit`/`Wire`/`E2E`/`Live` are
   **co-located** (`ABox.<Owner>.Tests`), not here.
 - **[`Harness/Tests/`](Harness/Tests/README.md)** — the **harness's own tests** (`ABox.Tests.Harness.Tests`),
   beside the engine they police: they guard the *test system* — taxonomy and parity — validating every suite
@@ -27,7 +27,7 @@ Three pieces:
 ## The discipline in one paragraph
 
 Every test type states its guarantees as natural-language **Rules** — the `### `
-headers in `<Type>/Rulebook/rules.md` — and each Rule is enforced by a
+headers in `<Type>/Rulebook.md` — and each Rule is enforced by a
 `[Rule("<header>")]` xUnit fact beside it. The **harness's own tests** run one parity
 check over every central type and every co-located feature suite, and fail the build if a Rule
 has no test, or a test cites no Rule.
@@ -62,7 +62,7 @@ analyzer **IDE0130** (`/.editorconfig`, `severity = error`, scoped to `src/` + `
 
 Use the **`test-rulebook`** skill (`.claude/skills/test-rulebook/`) — it carries the
 decision table (which type) and the add-a-Rule procedure. In short: pick the type, add a
-`### ` Rule to its `rules.md`, add the `[Rule("<header>")]` fact, keep namespace = folder,
+`### ` Rule to its `Rulebook.md`, add the `[Rule("<header>")]` fact, keep namespace = folder,
 build + test. Adding a Rule to an existing suite needs no new csproj; standing up a **new feature's**
 suite stamps one `ABox.<Owner>.Tests.csproj` via the **new-feature-tests** skill. The harness's own tests read
 Rulebooks straight from the source tree.

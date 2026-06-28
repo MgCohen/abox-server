@@ -100,7 +100,7 @@ public class TaxonomyTests
             .Select(d => Path.GetRelativePath(RepoTree.Root, d));
 
     private static bool IsRegisteredTypeWithRulebook(string dir) =>
-        TestTypes.IsFeature(Path.GetFileName(dir)!) && Directory.Exists(Path.Combine(dir, "Rulebook"));
+        TestTypes.IsFeature(Path.GetFileName(dir)!) && File.Exists(Path.Combine(dir, "Rulebook.md"));
 
     [Rule("Central and Feature types partition the registered types")]
     [Fact]
@@ -127,13 +127,13 @@ public class TaxonomyTests
     [Fact]
     public void EveryRulebookDeclaresItsFolderAsTestType()
     {
-        var rulebooks = RepoTree.RulebookFolders();
+        var rulebooks = RepoTree.Rulebooks();
         Assert.NotEmpty(rulebooks);
 
         var mismatches = rulebooks
             .Select(rb => (
                 Folder: Path.GetFileName(Path.GetDirectoryName(rb))!,
-                Declared: DeclaredTestType(Path.Combine(rb, "rules.md")),
+                Declared: DeclaredTestType(rb),
                 Where: Path.GetRelativePath(RepoTree.Root, rb)))
             .Where(x => !string.Equals(x.Folder, x.Declared, StringComparison.OrdinalIgnoreCase))
             .Select(x => $"{x.Where}: testType '{x.Declared}' ≠ folder '{x.Folder}'")

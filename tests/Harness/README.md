@@ -12,13 +12,10 @@ a *good* test" is a semantic judgment, not a structural one.
 
 ## Every test type is a Rulebook
 
-A **Rulebook** is a folder `<Type>/Rulebook/` holding **two files**, each a doc-engine instance carrying a
-`docType` front-matter header:
-
-- **`<Type>.md`** (`docType: rubric`) — the type's context home: a `## Summary` paragraph and a
-  `## Criteria` list of `### ` items (the per-type semantic rubric `/judge-rulebook` grades Rules against).
-- **`rules.md`** (`docType: rulebook`) — front-matter (`testType` + the `rubric`/`harness` pointers), then a
-  `## Rules` list of the type's **Rules**. A **Rule** is one `### ` header here.
+A **Rulebook** is a single file `<Type>/Rulebook.md` (`docType: rulebook`) — front-matter (`testType` + the
+`rubric`/`harness` pointers), then a `## Rules` list of the type's **Rules**. A **Rule** is one `### ` header.
+It is graded against its type's **rubric** — the central `tests/Rubrics/<Type>.md` (`docType: rubric`), a
+`## Summary` paragraph and a `## Criteria` list `/judge-rulebook` grades Rules against.
 
 What a Rule *means* varies by type —
 
@@ -35,7 +32,7 @@ taxonomy and parity — nesting beside the engine they police and validating eve
 `ABox.Tests.SuiteAnchor` and `Suites.Colocated()`) the way the Arch guards validate `src`. They are **not** a
 Rulebook type themselves — they are the enforcer, not part of the taxonomy they enforce (see
 [`Tests/README.md`](Tests/README.md)). The **Rulebook shape and parity discipline are identical across every
-product type**. Splitting the rubric out of `rules.md` is deliberate: `rules.md` then holds nothing but its
+product type**. Splitting the rubric out of `Rulebook.md` is deliberate: `Rulebook.md` then holds nothing but its
 front-matter and Rules (no example `### ` to skip, nothing to game), while `<Type>.md` owns all context — the
 summary and the judge criteria. The **Docs** type validates both files' shape against the doc-engine; the
 harness's own tests own parity (Rule ↔ test).
@@ -65,7 +62,7 @@ suite (`Suites.Colocated()` → `ParityGuard.ForColocated`) — so there is no p
   ```
 
 `ParityGuard.For` maps a product type to its namespace and Rulebook path through `TestTypes`
-(`<Type>` → `ABox.Tests.<Type>.Tests` + `tests/Tests/<Type>/Rulebook/rules.md`), reads the Rulebook's `### `
+(`<Type>` → `ABox.Tests.<Type>.Tests` + `tests/Tests/<Type>/Rulebook.md`), reads the Rulebook's `### `
 headers **from the source tree** (`RepoTree`, not the output dir), and compares them to the `[Rule]`s in that
 namespace — failing the build on any mismatch. The harness's own tests carry no Rulebook and cite no `[Rule]` —
 they are the enforcer, outside the taxonomy they enforce.
@@ -105,8 +102,8 @@ different risk levels:
   here is a **design decision**, not a cleanup: justify why the invariant no longer holds (or moved),
   the same bar as changing the thing the Rule protects. When in doubt, ask — don't quietly edit.
 - **Changing the shape / rubric / format — most dangerous, and rarely warranted.** The `### `-heading
-  scan, the `<Type>.md` / `rules.md` split, the namespace-scoped discovery + path derivation, the
-  universal completeness check (every marked test cites a Rule), the `Rulebook/` + `Tests/` + `Support/` layout, the csproj copy glob,
+  scan, the `<Type>.md` / `Rulebook.md` split, the namespace-scoped discovery + path derivation, the
+  universal completeness check (every marked test cites a Rule), the `Rulebook.md` + `Tests/` + `Support/` layout, the csproj copy glob,
   the doc-engine doctypes (`rulebook` / `rubric`) that pin each file's shape, and the harness's own
   parity-over-every-registered-type — these are the engine's
   load-bearing assumptions, shared by **every**
@@ -136,7 +133,7 @@ parity requires every test to cite a Rule with no going-forward exemption. A new
 with its Rule or the build fails — the ratchet is closed.
 
 > **Mid-migration (PLANS/test-colocation.md):** the per-type `<Type>.md` files now live centrally in
-> `tests/Rubrics/<Type>.md`, and `rules.md` `rubric:` front-matter points there. The
+> `tests/Rubrics/<Type>.md`, and `Rulebook.md` `rubric:` front-matter points there. The
 > `<Type>/Rulebook/<Type>.md` shown below is the pre-move layout; this walkthrough is rewritten in full at
 > Phase 5 once test homes settle. Today's truth: rubrics are central, rulebooks are per-type (soon
 > per-feature), and the `rubric:` link is a relative path into `tests/Rubrics/`.
@@ -145,7 +142,7 @@ with its Rule or the build fails — the ratchet is closed.
 
 ```
 <Type>/
-  Rulebook/  rules.md      the Rubric:/Harness: pointer links, then the type's '### ' Rules
+  Rulebook.md       the Rubric:/Harness: pointer links, then the type's '### ' Rules
   Tests/                   the [Rule]-tagged facts that enforce them
   Support/                 optional, type-local: models, doubles, harnesses (no over-sharing)
 tests/Rubrics/<Type>.md   the per-type criteria (one home for all types)
@@ -195,7 +192,7 @@ testType: <type>
 ```
 
 ```markdown
-<!-- <Type>/Rulebook/rules.md -->
+<!-- <Type>/Rulebook.md -->
 ---
 docType: rulebook
 testType: <type>
@@ -211,10 +208,10 @@ harness: ../../../Harness/README.md
 
 Then:
 
-1. **Create `tests/Tests/<Type>/`** with `Rulebook/`, `Tests/`, and (if needed) `Support/`. Namespace mirrors
+1. **Create `tests/Tests/<Type>/`** with `Rulebook.md`, `Tests/`, and (if needed) `Support/`. Namespace mirrors
    folder — `ABox.Tests.<Type>.Tests` for files in `<Type>/Tests/`; IDE0130 is `severity = error`, so a
    mismatch is a build error, not a warning.
-2. **Fill `<Type>.md` + `rules.md`** from the skeleton above — pick the header shape (invariant or
+2. **Fill `<Type>.md` + `Rulebook.md`** from the skeleton above — pick the header shape (invariant or
    behavioural), adapt the summary, and write the first Rule. **`<Type>.md` must carry a `## Criteria`
    block** — at least one `### <id>` item of semantic judgment for the judge (as many as the type
    needs); the doc-engine's `rubric` doctype requires it, so the **Docs** validation fails the build if

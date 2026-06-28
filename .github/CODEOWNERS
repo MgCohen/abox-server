@@ -4,9 +4,9 @@
 # branch ruleset requires code-owner review (see governance/README.md).
 
 tests/Harness/** @MgCohen
-tests/**/Rulebook/** @MgCohen
-src/**/Tests/**/Rulebook/** @MgCohen
-tools/**/Tests/**/Rulebook/** @MgCohen
+tests/**/Rulebook.md @MgCohen
+src/**/Tests/**/Rulebook.md @MgCohen
+tools/**/Tests/**/Rulebook.md @MgCohen
 tools/doc-engine/doctypes/** @MgCohen
 tools/doc-engine/blocks/** @MgCohen
 tools/doc-engine/kinds/** @MgCohen

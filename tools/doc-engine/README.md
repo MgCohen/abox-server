@@ -19,7 +19,7 @@ dump (ephemeral)  ──distill──►  instance.md (blocks)  ──validate�
 ```
 
 An instance lives in its **home folder** in the repo — a Rulebook under
-`tests/**/Rulebook/`, an ADR under `design/adr/`, a plan under `PLANS/` — and is
+`tests/**/Rulebook.md`, an ADR under `design/adr/`, a plan under `PLANS/` — and is
 validated **in place**. The engine owns no output directory; it validates any path.
 
 ## Layout
@@ -55,10 +55,10 @@ per-type, the guarantees are co-located with the feature they protect:
 |---|---|---|---|
 | **Doctype** (`rulebook`, `rubric`) | the schema — what *any* rulebook/rubric must look like | the catalog | **central** — `tools/doc-engine/doctypes/` |
 | **`<type>.md`** | the per-*type* criteria ("what a Unit test is") | a `rubric` **instance** | **central** — `tests/Rubrics/`, one per type |
-| **`rules.md`** | this *feature's* guarantees | a `rulebook` **instance**, `rubric:`→central rubric | **co-located** with the feature under `src/<…>/<Owner>/Tests/<Type>/` |
+| **`Rulebook.md`** | this *feature's* guarantees | a `rulebook` **instance**, `rubric:`→central rubric | **co-located** with the feature under `src/<…>/<Owner>/Tests/<Type>/` |
 
 The engine validates every instance against its doctype **wherever it lives**;
-`ParityGuard` (test-side) bridges the `### ` headers in a co-located `rules.md` to
+`ParityGuard` (test-side) bridges the `### ` headers in a co-located `Rulebook.md` to
 the `[Rule]` tests beside it. There is no `add-a-doctype` howto: a new doctype is a
 rare, owner-reviewed change to the protected catalog — add a `kinds`/`doctypes`
 entry by following the existing files, not a routine procedure.

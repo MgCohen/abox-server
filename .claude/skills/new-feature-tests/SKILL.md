@@ -38,7 +38,7 @@ src/<…>/<Owner>/Tests/                 → ABox.<Owner>.Tests   (Domain owner 
 ├── Parity.cs                           ParityGuard.ForColocated per type it holds
 ├── Support/                            this feature's fixtures (only if it has any)
 └── <Type>/                             one folder per type: Unit | Wire | E2E | Live
-    ├── Rulebook/ rules.md              a `rulebook` instance — THIS feature's guarantees
+    ├── Rulebook.md              a `rulebook` instance — THIS feature's guarantees
     └── <Name>Tests.cs                  the [Rule]-cited facts, namespace ABox.<Owner>.Tests.<Type>
 ```
 
@@ -84,7 +84,7 @@ public class Parity
 }
 ```
 
-**3. `<Type>/Rulebook/rules.md`** — a `rulebook` instance pointing at the central rubric. The `../` depth
+**3. `<Type>/Rulebook.md`** — a `rulebook` instance pointing at the central rubric. The `../` depth
 to `tests/` matches the csproj's; for `src/Features/<F>/Tests/<Type>/Rulebook` it is six levels:
 
 ```markdown
@@ -119,6 +119,6 @@ Shared fixtures come via a per-csproj `<Using Include="ABox.<Owner>.Tests.Suppor
 ## Verify
 
 `dotnet build dirs.proj -c Release` then `dotnet test dirs.proj -c Release` — the traversal discovers the new
-assembly, the harness's `CoverageTests` and parity both go green, and `Docs` validates the new `rules.md`
+assembly, the harness's `CoverageTests` and parity both go green, and `Docs` validates the new `Rulebook.md`
 in place. No `ABox.slnx` or harness edit. If `CoverageTests` reports the folder "ships tests but no assembly",
 the csproj name/`TestsSourceDir` is wrong.

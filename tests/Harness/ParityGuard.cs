@@ -2,7 +2,7 @@ using System.Reflection;
 
 namespace ABox.Tests.Harness;
 
-// The parity engine: it keeps one test type's Rulebook (Rulebook/rules.md) and the [Rule]-cited tests that
+// The parity engine: it keeps one test type's Rulebook (Rulebook.md) and the [Rule]-cited tests that
 // enforce it in lockstep, scoped to a single namespace so types sharing an assembly don't bleed into each
 // other's parity. The harness's own tests drive this over every central type (For) and every co-located
 // feature type (ForColocated).
@@ -25,9 +25,9 @@ public sealed class ParityGuard
         new(assembly, TestTypes.Namespace(type), ProductRulebook(type));
 
     // A co-located feature assembly (ABox.<Owner>.Tests) keeps each type's tests in the <Owner>.Tests.<Type>
-    // namespace and its Rulebook beside them under Tests/<Type>/Rulebook/rules.md. The scope is the assembly
+    // namespace and its Rulebook beside them under Tests/<Type>/Rulebook.md. The scope is the assembly
     // name + the type; the Rulebook is found from the source tree via the TestsSourceDir the build stamps, so
-    // parity reads the same on-disk rules.md the doc-engine validates — no copy-to-output step.
+    // parity reads the same on-disk Rulebook.md the doc-engine validates — no copy-to-output step.
     public static ParityGuard ForColocated(Assembly assembly, string type) =>
         new(assembly, TestTypes.ColocatedNamespace(assembly.GetName().Name!, type), ColocatedRulebook(assembly, type));
 
@@ -41,7 +41,7 @@ public sealed class ParityGuard
                 $"Assembly '{assembly.GetName().Name}' carries no [{TestsSourceDirKey}] metadata. A co-located " +
                 "feature test project must stamp <AssemblyMetadata Include=\"TestsSourceDir\" " +
                 "Value=\"$(MSBuildProjectDirectory)\" /> so parity can find its Rulebook in the source tree.");
-        return Path.Combine(sourceDir, type, "Rulebook", "rules.md");
+        return Path.Combine(sourceDir, type, "Rulebook.md");
     }
 
     // Product Rulebooks are read from the source tree, not the output dir — the same surface the harness's own
@@ -94,7 +94,7 @@ public sealed class ParityGuard
     {
         if (!File.Exists(rulesPath))
             throw new FileNotFoundException(
-                $"Rulebook not found at '{rulesPath}'. Parity reads rules.md from the source tree (RepoTree); " +
+                $"Rulebook not found at '{rulesPath}'. Parity reads Rulebook.md from the source tree (RepoTree); " +
                 "check the type's folder layout or the repo-root locator.");
 
         return File.ReadAllLines(rulesPath)

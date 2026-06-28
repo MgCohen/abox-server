@@ -36,7 +36,7 @@ public static class TestTypes
 
     public static string ColocatedNamespace(string assemblyName, string type) => $"{assemblyName}.{type}";
 
-    public static string RulebookPath(string type) => $"{type}/Rulebook/rules.md";
+    public static string RulebookPath(string type) => $"{type}/Rulebook.md";
 
     public static bool IsRegistered(string folder) =>
         Registered.Contains(folder, StringComparer.Ordinal);

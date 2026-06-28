@@ -30,12 +30,11 @@ public static class RepoTree
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToList();
 
-    // Every Rulebook the format guard must keep well-formed, across both homes a Rulebook may have: the central
-    // tree (each type under tests/Tests/) and every feature's co-located Tests/<Type>/Rulebook under src/ or
-    // tools/. Format applies uniformly, regardless of which assembly owns the type. The feature arm returns the
-    // live co-located suites (PLANS/test-colocation.md); the same scan covered the central-only set before the
-    // migration and needs no re-wiring as features are added.
-    public static IReadOnlyList<string> RulebookFolders() =>
+    // Every Rulebook.md the harness's own tests read, across both homes a Rulebook may have: the central tree
+    // (each type's Rulebook.md under tests/Tests/) and every feature's co-located Tests/<Type>/Rulebook.md under
+    // src/ or tools/. The feature arm returns the live co-located suites (PLANS/test-colocation.md); the same
+    // scan covered the central-only set before the migration and needs no re-wiring as features are added.
+    public static IReadOnlyList<string> Rulebooks() =>
         CentralRulebooks()
             .Concat(FeatureRulebooks())
             .OrderBy(d => d, StringComparer.Ordinal)
@@ -43,40 +42,40 @@ public static class RepoTree
 
     private static IEnumerable<string> CentralRulebooks() =>
         Directory.EnumerateDirectories(TestsRoot)
-            .Select(t => Path.Combine(t, "Rulebook"))
-            .Where(Directory.Exists);
+            .Select(t => Path.Combine(t, "Rulebook.md"))
+            .Where(File.Exists);
 
     private static IEnumerable<string> FeatureRulebooks() =>
         FeatureRoots
             .Select(r => Path.Combine(Root, r))
             .Where(Directory.Exists)
-            .SelectMany(root => Directory.EnumerateDirectories(root, "Rulebook", SearchOption.AllDirectories))
+            .SelectMany(root => Directory.EnumerateFiles(root, "Rulebook.md", SearchOption.AllDirectories))
             .Where(IsUnderFeatureTests);
 
     // Every co-located feature's Tests/ root on disk: the `Tests` folder under a src|tools feature that holds at
     // least one <Type>/Rulebook. The coverage guard cross-checks these against the built ABox.<Owner>.Tests
     // assemblies, so a Tests/ folder that ships tests but no assembly (untested feature slipping the net) is
-    // caught. Disk-only, independent of what compiled — the same fail-loud surface RulebookFolders reads.
+    // caught. Disk-only, independent of what compiled — the same fail-loud surface Rulebooks() reads.
     public static IReadOnlyList<string> FeatureTestRoots() =>
         FeatureRoots
             .Select(r => Path.Combine(Root, r))
             .Where(Directory.Exists)
             .SelectMany(root => Directory.EnumerateDirectories(root, TestsFolder, SearchOption.AllDirectories))
             .Where(d => !IsBuildOutputPath(d))
-            .Where(HasRulebookSubfolder)
+            .Where(HasRulebook)
             .OrderBy(d => d, StringComparer.Ordinal)
             .ToList();
 
-    private static bool HasRulebookSubfolder(string testsDir) =>
+    private static bool HasRulebook(string testsDir) =>
         Directory.EnumerateDirectories(testsDir)
-            .Any(t => Directory.Exists(Path.Combine(t, "Rulebook")));
+            .Any(t => File.Exists(Path.Combine(t, "Rulebook.md")));
 
     private static bool IsBuildOutputPath(string dir) =>
         Path.GetRelativePath(Root, dir).Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
             .Any(s => BuildOutputDirs.Contains(s, StringComparer.OrdinalIgnoreCase));
 
     // A feature Rulebook sits inside a co-located Tests/ folder and never inside build output. Both checks read
-    // the path's segments, so a Rulebook buried in src/.../Tests/Unit/Rulebook qualifies but one under bin/ does
+    // the path's segments, so a Rulebook.md buried in src/.../Tests/Unit qualifies but one under bin/ does
     // not — the scan can't be fooled into validating a stale copy under artifacts.
     private static bool IsUnderFeatureTests(string dir)
     {

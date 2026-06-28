@@ -3,7 +3,7 @@ name: test-rulebook
 description: >-
   How to add, move, or modify a test in this repo's tests/ tree. Use when writing an
   xUnit test, deciding which of the seven test types (Arch, Structure, Unit, E2E, Wire,
-  Live, Docs) a test belongs in, adding or editing a Rulebook (rules.md), or when a parity /
+  Live, Docs) a test belongs in, adding or editing a Rulebook (Rulebook.md), or when a parity /
   ArchUnitNET / Structure / harness test fails. Keeps every test paired with a Rulebook Rule so
   the parity guard stays green.
 ---
@@ -14,12 +14,12 @@ description: >-
 > the feature** under `src/<…>/<Owner>/Tests/`, owned by `ABox.<Owner>.Tests`; only the ownerless types
 > (`Arch`/`Structure`/`Docs`) and the shared `Harness` engine (with its own tests at `Harness/Tests/`) /
 > `Rubrics` / `Fixtures` stay under `tests/`.
-> Per-type `<Type>.md` files are central in `tests/Rubrics/`; each feature's `rules.md` is co-located
+> Per-type `<Type>.md` files are central in `tests/Rubrics/`; each feature's `Rulebook.md` is co-located
 > beside its tests. To stand up a feature's test assembly, use the **new-feature-tests** skill. The
 > Rule/parity discipline below is unchanged — only *where the test code sits* differs.
 
-Every product test *type* is a **Rulebook**: a `<Type>/Rulebook/` folder
-with a `rules.md` (front-matter + a `## Rules` list of `### ` Rules) pointing at a central `<Type>.md`
+Every product test *type* is a **Rulebook**: a `<Type>/Rulebook.md` file
+with a `Rulebook.md` (front-matter + a `## Rules` list of `### ` Rules) pointing at a central `<Type>.md`
 (`## Summary` + a `## Criteria` rubric), each Rule enforced by a `[Rule("<header>")]` xUnit fact beside it. Both
 files are doc-engine instances (a `docType` front-matter header); the **Docs** type validates their shape
 by shelling out to the doc-engine. The **harness's own tests** (`tests/Harness/Tests`, their own assembly) run one
@@ -37,7 +37,7 @@ inventing structure; this skill is the *procedure*.
 > move; it only tightens guarantees. *Editing, re-wording, or removing* an existing Rule is a
 > **design decision** — each encodes a hard-won invariant, and parity keeps the header/test in
 > lockstep but can't tell you the guarantee got weaker. *Reshaping the rubric/format/shape* (the
-> `### ` scan, the `<Type>.md`/`rules.md` split, layout, the completeness knob, the source-tree Rulebook read) is the most dangerous: it can make
+> `### ` scan, the `<Type>.md`/`Rulebook.md` split, layout, the completeness knob, the source-tree Rulebook read) is the most dangerous: it can make
 > Rules silently stop being enforced across **every** type at once, with a green build. When a change
 > isn't a plain add, stop and confirm — don't quietly edit. Full contract: `tests/Harness/README.md`
 > § *Stability contract*.
@@ -67,7 +67,7 @@ the *test system* → the harness's own tests.
 **Need a whole new *type* (not just a Rule)?** Rare — only when no existing type can host
 the guarantee (don't fork Unit into near-twins). Follow the step-by-step in
 `tests/Harness/README.md` § *Standing up a new test type*: create `<Type>/{Rulebook,Tests,Support}/`,
-fill `<Type>.md` + `rules.md` from the canonical skeleton (don't copy a sibling) — `<Type>.md`
+fill `<Type>.md` + `Rulebook.md` from the canonical skeleton (don't copy a sibling) — `<Type>.md`
 **must** carry a `## Criteria` block or the doc-engine's `rubric` validation (run by the **Docs**
 type) fails — register the type in `Harness/TestTypes.Registered`, and write a `### ` Rule + its `[Rule]` fact for
 **every** test (the type ships fully cited — there is no going-forward exemption). No csproj edit and
@@ -76,7 +76,7 @@ Rulebook *shape* — reuse the uniform one.
 
 ## 2. Add the test
 
-1. **Write the `### ` Rule** in that type's `Rulebook/rules.md`, phrased as the
+1. **Write the `### ` Rule** in that type's `Rulebook.md`, phrased as the
    guarantee itself and matching the type's `<Type>.md`: Arch/Structure use an invariant
    header (no arrow) — *"Dependencies flow down the layer graph only"*; behavioral types end
    in a `→` result — *"claude-ping with a scripted reply → implementer reaches Completed"*.
@@ -126,11 +126,11 @@ judge-graded (see §6), not parity-enforced.
   (stamping `TestsSourceDir`), created by the **new-feature-tests** skill — `dirs.proj` then discovers it by
   location. Don't add a project per *type*; do add one per *owner*.
 - **Rulebooks are read from the source tree.** The harness's own tests locate the repo root (`RepoTree`, via
-  the `ABox.slnx` marker) and read each `<Type>/Rulebook/rules.md` straight from disk — no copy step.
-  A Rule counts only if it sits in its type's `rules.md` under `tests/Tests/<Type>/` (central) or a feature's
+  the `ABox.slnx` marker) and read each `<Type>/Rulebook.md` straight from disk — no copy step.
+  A Rule counts only if it sits in its type's `Rulebook.md` under `tests/Tests/<Type>/` (central) or a feature's
   `src/<…>/<Owner>/Tests/<Type>/` (co-located).
-- **`rules.md` holds only Rules.** Under `## Rules`, every `### ` counts — the example shape lives in
-  `tests/Harness/README.md`, not `rules.md`, so there's nothing to game. The doc-engine's `rulebook`
+- **`Rulebook.md` holds only Rules.** Under `## Rules`, every `### ` counts — the example shape lives in
+  `tests/Harness/README.md`, not `Rulebook.md`, so there's nothing to game. The doc-engine's `rulebook`
   doctype (validated by the **Docs** type) enforces the shape: front-matter + `rule` blocks only, each
   carrying its `**Why:**`.
 - **Arch model** auto-loads every production assembly from the output dir and excludes
