@@ -52,11 +52,9 @@ static class Generator
         _ => SubstituteExpr(Lookup(node.GetType()).ExpressionBody!.Expression, BuildFields(node)),
     };
 
-    static string FormatLit(object value) => value switch
-    {
-        bool b => b ? "true" : "false",
-        _ => value.ToString()!,
-    };
+    static string FormatLit(object value) =>
+        SymbolDisplay.FormatPrimitive(value, quoteStrings: true, useHexadecimalNumbers: false)
+            ?? value.ToString()!;
 
     static string RenderBlock(Block block) => string.Join("\n", block.Statements.Select(RenderStmt));
 

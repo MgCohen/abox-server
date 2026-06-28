@@ -46,6 +46,12 @@ static class Snippets
     [Snippet("lessthan")]
     public static bool LessThan(int a, int b) => a < b;
 
+    [Snippet("greaterthan")]
+    public static bool GreaterThan(int a, int b) => a > b;
+
+    [Snippet("eq")]
+    public static bool Eq(int a, int b) => a == b;
+
     [Snippet("ifelse")]
     public static void IfElse(bool condition)
     {

@@ -1,4 +1,5 @@
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace SpikeGen;
@@ -110,8 +111,8 @@ static class Naming
     public static string Camel(string s)
     {
         var name = char.ToLowerInvariant(s[0]) + s[1..];
-        return Keywords.Contains(name) ? "@" + name : name;
+        var keyword = SyntaxFacts.GetKeywordKind(name) != SyntaxKind.None
+            || SyntaxFacts.GetContextualKeywordKind(name) != SyntaxKind.None;
+        return keyword ? "@" + name : name;
     }
-
-    static readonly HashSet<string> Keywords = ["var", "else", "ref", "int", "bool", "for", "if", "return"];
 }

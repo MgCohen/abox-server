@@ -76,10 +76,13 @@ come from an interface (`CS0552`):
 D was first judged *drop it* — the only conversion that compiled (`implicit operator Expr<T>(T)`)
 was leaky: with an int-only `Lit`, `Expr<string> s = "hi"` compiled and threw at runtime. The fix:
 make the literal node **generic**, mirroring `Var<T>`. Then the conversion is `T → Expr<T>`,
-*exactly typed* — verified: `5`/`true`/`3.14` resolve to `Lit<int>`/`Lit<bool>`/`Lit<double>`, while
-`Expr<int> = "hi"` and `= true` are hard compile errors (`CS0029`/`CS1503`). The "leak" was never
-the type system failing — it was an int-only node impersonating all literals. No footgun: an
-already-`Expr` value (a `Var`) outranks the conversion, so handles are never wrapped.
+*exactly typed* — verified: `5` and `true` resolve to `Lit<int>`/`Lit<bool>`, while `Expr<int> = "hi"`
+and `= true` are hard compile errors (`CS0029`/`CS1503`). `Lit<T>` is generic for any `T`, but only
+`int`/`bool` are *reachable* through the current int-only snippet catalog (no slot accepts an
+`Expr<double>`/`Expr<string>`); rendering goes through Roslyn's invariant-culture literal formatter
+so a future non-int literal emits valid C#. The "leak" was never the type system failing — it was an
+int-only node impersonating all literals. No footgun: an already-`Expr` value (a `Var`) outranks the
+conversion, so handles are never wrapped.
 
 ### What the flip costs
 
@@ -94,10 +97,32 @@ Block` / else and renders statements via `RenderStmt`), so the blast radius was 
 
 The generator routes a fill by its **field type**, not its value: a `Var<T>`-typed field is a
 binding marker (`@var`), a `Var` at an `Expr<T>`-typed site is an expression (its bare name).
-`RenderExpr` renders `IVar` → name and `ILit` → the literal text (bool formatted as `true`/`false`).
-So every style collapses to the same node tree and the same source. Enforcement: the regression
-golden in `GeneratorRegressionTests`, the driver's four-styles `byte-identical=True` check, and the
-committed `out/ScriptData.cs` (zero diff across this change).
+`RenderExpr` renders `IVar` → name and `ILit` → the literal text (via Roslyn
+`SymbolDisplay.FormatPrimitive`, invariant culture). So every style collapses to the same node tree
+and the same source. Enforcement: the regression golden in `GeneratorRegressionTests`, the driver's
+four-styles `byte-identical=True` check, and the committed `out/ScriptData.cs` (zero diff across this
+change).
+
+## Known sharp edges (from review)
+
+- **The `==` operator is a trap — use `Eq(...)`.** `IfElse(i == 3, …)` does *not* error: `Expr<T>`
+  is a record, so `==` is record value-equality run at author time, yielding a `bool` that the
+  `bool → Expr<bool>` conversion absorbs into `Lit<bool>(false)` → `if (false)`, a silently wrong
+  program. It can't be blocked cleanly (records synthesize `==`; the conversion is needed for generic
+  literals), so the **`Eq(a, b)`** factory is the sanctioned equality path and `==` is documented as
+  a trap.
+- **Operator coverage is deliberately small.** Modeled operators are `+`, `<`, `>` only — each a
+  faithful node (`>` renders `a > b`, not a flipped `<`). Equality is `Eq(...)`. Anything else
+  (`-`, `*`, `<=`, `!=`) is *not* modeled: no operator and no factory until a snippet is added.
+- **Non-associative substitution is unparenthesized (deferred).** `SubstituteExpr` splices a child
+  expression without protective parens, so a future `Sub`/`Div` snippet would mis-group
+  (`Sub(x, Sub(x, 1))` → `x - x - 1`). Safe today because `+` is the only binary op and it's
+  associative. Add paren-aware substitution when the **second binary operator** lands.
+- **Handle name is spelled twice (language-blocked).** `var acc = new Var<int>("acc")` — the C#
+  identifier and the string can diverge silently (the generator emits the string).
+  `CallerArgumentExpression` reads arguments, not the assignment target, so this can't be auto-derived.
+- **`out`/`in` snippet params are dropped silently** — recognizers handle by-value and `ref` only.
+  Out of scope; would need an explicit "unsupported modifier" error.
 
 ## Open / deferred
 

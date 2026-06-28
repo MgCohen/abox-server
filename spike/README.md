@@ -105,6 +105,11 @@ Two **separate** generation steps — do not conflate them:
 
 ## 4. The model
 
+> **Note:** §4–§5 describe the *original* model and use its API (`string` markers, `Ref`,
+> `IExpr<T>`/`IStmt`). The mechanism is unchanged, but the authoring surface has moved on —
+> `Var<T>` handles, `Expr<T>`/`Stmt` record bases, generic `Lit<T>`, factories, operators, and
+> collection-expression blocks. For the current API and authoring styles, see `BUILDING-STYLE.md`.
+
 ### 4.1 A snippet is a real compiling method
 
 ```csharp
@@ -302,7 +307,9 @@ recipe, against the contract each snippet publishes:
   `Define`; the addition is a *separate* `Add`. Each snippet is ignorant of the
   others; the recipe is the wiring.
 
-(Making those names instance-derived instead of stringly-typed is backlog item #1.)
+(This §4–§5 API — `string` markers, `Ref("acc")`, `IExpr<T>`/`IStmt` — is the **original** design.
+It has since been superseded: names are instance-derived `Var<T>` handles (backlog #1, done), and the
+bases are `Expr<T>`/`Stmt` records. The current authoring surface is in `BUILDING-STYLE.md`.)
 
 ---
 
@@ -386,20 +393,21 @@ renames, snippet base-class.
 Revisit each **against running code**, once the Step-1 slice works. Kept out of the
 spike to keep the first cut minimal.
 
-1. **Variable names on the instance, not a recipe field** — derive the `@var` name
-   from the instance (binding / fluent `.Named("acc")`) instead of a `string`
-   field. *Test:* readability vs a positional field; survives nesting?
-2. **Implicit conversion operators for literals** — `new LoopNode(5)` via
-   `implicit operator IExpr<int>(int) => new Lit(...)`. *Test:* how far it composes;
-   does implicit wrapping ever hide a type error we'd want to see?
+1. ✅ **DONE — Variable names on the instance, not a recipe field** — shipped as `Var<T>`
+   handles (Phase 2b); a declaration binds a handle, a use references it, the name is chosen once.
+2. ✅ **DONE — Implicit conversion operators for literals** — shipped as lever D
+   (`implicit operator Expr<T>(T)` + generic `Lit<T>`). The "does it hide a type error?" test is
+   answered in `BUILDING-STYLE.md` (the generic-`Lit<T>` fix keeps it exactly typed). One known
+   trap fell out: the `==` operator does record-equality — see that doc.
 3. **Recipe variations by context** — same recipe → different output by context
    (target framework, flags, config). *Test:* where the branch lives — recipe, a
    context object, or composition.
 4. **Custom code without a recipe** — an escape hatch (`Raw("…")` node / passthrough
    block) for code not modeled as snippets. *Test:* coexistence with typed nodes;
    effect on the final-compile gate.
-5. **Rename the interfaces** — `IStmt`/`IExpr<T>` are opaque. Find clearer,
-   domain-fit names. *Test:* what reads best in a real recipe.
+5. **Rename the interfaces** — *partially overtaken*: `IExpr<T>`→`Expr<T>` and `IStmt`→`Stmt`
+   (the interface→record flips), though not semantically renamed. The names are still opaque;
+   find clearer, domain-fit ones. *Test:* what reads best in a real recipe.
 6. **Snippet base class vs attribute** — revisit `[Snippet]` attribute vs a base
    class/interface. *Test:* does inheritance buy anything now that fills are
    discovered by the generator, or is it ceremony?

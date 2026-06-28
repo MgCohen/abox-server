@@ -62,6 +62,10 @@ the moment branches share outer variables. That's 2b.
 
 ## Status — 2b (scope model) DONE ✅
 
+> **Superseded by the building-style pass** (`BUILDING-STYLE.md`): `Ref` is gone (a `Var` is now an
+> `Expr`, used bare), `Lit` is generic, field order is variable-first, and the bases are
+> `Expr<T>`/`Stmt`. The snippet below shows the 2b-era API and no longer matches the code.
+
 Variable names stop being strings and become typed **handles**. A declaration *binds*
 a handle; uses *reference* it. The name is chosen once, on the handle, never re-spelled
 at a use site.

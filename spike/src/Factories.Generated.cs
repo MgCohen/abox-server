@@ -7,6 +7,8 @@ static partial class Recipe
     public static Expr<int> Add(Expr<int> a, Expr<int> b) => new AddNode(a, b);
     public static Stmt Assign(Var<int> target, Expr<int> value) => new AssignNode(target, value);
     public static Stmt Define(Var<int> @var, Expr<int> value) => new DefineNode(@var, value);
+    public static Expr<bool> Eq(Expr<int> a, Expr<int> b) => new EqNode(a, b);
+    public static Expr<bool> GreaterThan(Expr<int> a, Expr<int> b) => new GreaterThanNode(a, b);
     public static Stmt IfElse(Expr<bool> condition, Block then, Block @else) => new IfElseNode(condition, then, @else);
     public static Expr<bool> LessThan(Expr<int> a, Expr<int> b) => new LessThanNode(a, b);
     public static Stmt Loop(Var<int> i, Expr<int> count, Block body) => new LoopNode(i, count, body);
