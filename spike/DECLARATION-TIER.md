@@ -36,6 +36,33 @@ calls and real types, which can't be expressed as a bare statement body.
 2. **Build the smallest forcing recipe** — a method that calls a repository and returns a real type (`2c`), proving the model survives non-toy code.
 3. **Let F2–F4 fall out** as the recipe demands them, not before (YAGNI).
 
+## Status — type-declaration tier DONE ✅
+
+The first M1 step: a recipe emits a **whole owned type**, not a body in a shell. Built the four basic
+kinds to validate the model — `record`, `class`, `struct`, `enum` (`src/Declarations.cs`,
+`src/TypeEmitter.cs`). Each emits clean owned C# (`spike/out/*.cs`), compiles, and passes a shape
+assertion. Driver `PASS`; `DeclarationTests` green (4 facts).
+
+```csharp
+TypeEmitter.Emit(new RecordNode("FavoriteArtist",
+    new Field("Id", "Guid"), new Field("ArtistId", "string"), new Field("FavoritedAt", "DateTime")))
+// => using System;
+//    public record FavoriteArtist(Guid Id, string ArtistId, DateTime FavoritedAt);
+```
+
+Design calls settled by building it:
+
+| Call | Decision | Why |
+|------|----------|-----|
+| Where do type nodes come from? | **hand-authored, structural** (like `Block`/`Var`/`Lit`) — *not* snippet-generated | a type declaration is the *container*; snippets model the constructs that go *inside* a body. The two-tier split stays clean. |
+| What's the gate? | **compile + reflect-shape**, not `Run()` | a bare entity has nothing to run; correctness = it compiles and the loaded `Type` has the expected kind + members. |
+| One node or four? | **four distinct nodes** (`RecordNode`/`ClassNode`/`StructNode`/`EnumNode`) under `abstract record TypeDecl` | makes illegal states unrepresentable — an enum can't carry typed fields. `record`/`class`/`struct` currently share `(Name, Field[])`; the `TypeEmitter` switch is the only place they converge. **Collapse-watch:** if they never diverge they fold to one node with a kind; they will diverge (class gains methods, record value-eq, struct value semantics), so kept apart. |
+| The new primitive | `TypeRef` (a named type, implicit from `string`) | member/return/base types all *reference* a type; the int-only dodge ends here. |
+
+Deferred from this step (YAGNI until a component forces them): `using`-derivation (hardcoded
+`using System;` for now), modifiers/base lists, members beyond fields (methods/ctors — that's where
+the body tier re-enters), enum underlying type + explicit values.
+
 ## Carry-overs to revisit here
 
 - **Class-based snippets (backlog #6)** — a "method" or "type" snippet is naturally class-shaped; the

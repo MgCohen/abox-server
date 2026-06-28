@@ -53,9 +53,43 @@ static class Program
         Directory.CreateDirectory(outDir);
         File.WriteAllText(Path.Combine(outDir, "ScriptData.cs"), canonical);
 
+        // Declaration tier (M1): a recipe emits a whole owned type, not a body in a shell. The gate
+        // is compile + reflect-shape — a bare type has nothing to Run(). The four basics validate
+        // the model: record/class/struct share typed fields, enum carries named constants.
+        Console.WriteLine("declaration tier — four type kinds:\n");
+        var types = new (string Label, TypeDecl Decl, string TypeName, Func<Type, bool> Shape)[]
+        {
+            ("record", new RecordNode("FavoriteArtist",
+                    new Field("Id", "Guid"), new Field("ArtistId", "string"), new Field("FavoritedAt", "DateTime")),
+                "FavoriteArtist",
+                t => !t.IsValueType && Props(t).SequenceEqual(["ArtistId", "FavoritedAt", "Id"])),
+            ("class", new ClassNode("FavoriteArtist",
+                    new Field("Id", "Guid"), new Field("ArtistId", "string"), new Field("FavoritedAt", "DateTime")),
+                "FavoriteArtist",
+                t => !t.IsValueType && t.GetProperty("ArtistId")!.CanWrite),
+            ("struct", new StructNode("FavoriteKey",
+                    new Field("UserId", "Guid"), new Field("ArtistId", "string")),
+                "FavoriteKey",
+                t => t is { IsValueType: true, IsEnum: false } && Props(t).SequenceEqual(["ArtistId", "UserId"])),
+            ("enum", new EnumNode("FavoriteSource", "Search", "Profile", "Recommendation"),
+                "FavoriteSource",
+                t => t.IsEnum && Enum.GetNames(t).SequenceEqual(["Search", "Profile", "Recommendation"])),
+        };
+        foreach (var (label, decl, typeName, shape) in types)
+        {
+            var code = TypeEmitter.Emit(decl);
+            var ok = shape(Runtime.CompileType(code, typeName));
+            failed |= !ok;
+            Console.WriteLine($"===== {label}  =>  {typeName} {(ok ? "PASS" : "FAIL")} =====");
+            Console.WriteLine(code);
+            File.WriteAllText(Path.Combine(outDir, $"{label}.{typeName}.cs"), code);
+        }
+
         Console.WriteLine(failed ? "FAIL" : "PASS");
         return failed ? 1 : 0;
     }
+
+    static string[] Props(Type t) => t.GetProperties().Select(p => p.Name).OrderBy(n => n).ToArray();
 
     // --- loop + var + sum, one recipe in four styles -> 10 -------------------------------------
 
