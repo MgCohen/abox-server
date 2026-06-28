@@ -2,7 +2,7 @@
 name: new-feature-tests
 description: >-
   How to stand up a feature/tool's co-located test assembly (ABox.<Owner>.Tests) in this repo —
-  its Tests/ folder, the thin csproj stub, per-type Rulebook + Parity.cs. Use when a feature under
+  its Tests/ folder, the thin csproj stub, and per-type Rulebooks. Use when a feature under
   src/ (or a tool under tools/) gains its first test, adds a new test type (Unit/Wire/E2E/Live),
   or when ABox.<Owner>.Tests needs creating. Tests live with their owner; one central harness still
   enforces rubrics + parity. See PLANS/test-colocation.md.
@@ -35,7 +35,6 @@ Read first: [`PLANS/test-colocation.md`](../../../PLANS/test-colocation.md) (the
 ```
 src/<…>/<Owner>/Tests/                 → ABox.<Owner>.Tests   (Domain owner → src/Domain/<Owner>/Tests)
 ├── ABox.<Owner>.Tests.csproj           the thin stub (below)
-├── Parity.cs                           ParityGuard.For per type it holds
 ├── Support/                            this feature's fixtures (only if it has any)
 └── <Type>/                             one folder per type: Unit | Wire | E2E | Live
     ├── Rulebook.md              a `rulebook` instance — THIS feature's guarantees
@@ -66,25 +65,12 @@ folder (`src/Features/<F>/Tests` → `..\..\..\..`; `src/Domain/<F>/Tests` → `
 </Project>
 ```
 
-**2. `Parity.cs`** — the feature owns its parity; list the type subfolders it holds.
+The feature needs **no parity file**: the harness's own `CoverageTests` runs `ParityGuard.For` over every
+co-located suite × type it discovers (`Suites.Colocated()`), so parity is driven centrally — `ParityGuard` lives
+in the engine assembly the feature never references. You stamp the csproj, the Rulebook, and the tests; the
+harness does the rest.
 
-```csharp
-using ABox.Tests.Harness;
-
-namespace ABox.<Owner>.Tests;
-
-public class Parity
-{
-    [Fact]
-    public void RulebooksAndTestsAgree()
-    {
-        foreach (var type in new[] { "Unit" })   // add "Wire"/"E2E"/"Live" as the feature grows them
-            ParityGuard.For(typeof(Parity).Assembly, type).Assert();
-    }
-}
-```
-
-**3. `<Type>/Rulebook.md`** — a `rulebook` instance pointing at the central rubric. The `../` depth
+**2. `<Type>/Rulebook.md`** — a `rulebook` instance pointing at the central rubric. The `../` depth
 to `tests/` matches the csproj's; for `src/Features/<F>/Tests/<Type>/Rulebook` it is six levels:
 
 ```markdown
@@ -101,7 +87,7 @@ harness: ../../../../../../tests/Harness/README.md
 - **Why:** <the invariant this guarantees>
 ```
 
-**4. The test** — `namespace ABox.<Owner>.Tests.<Type>;`, each fact `[Rule("<exact header>")]` + `[Fact]`.
+**3. The test** — `namespace ABox.<Owner>.Tests.<Type>;`, each fact `[Rule("<exact header>")]` + `[Fact]`.
 Shared fixtures come via a per-csproj `<Using Include="ABox.<Owner>.Tests.Support" />` (and
 `ABox.Tests.Fixtures` for `Op`).
 
