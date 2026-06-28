@@ -115,13 +115,21 @@ What the Feature demands vs. what the spike has proven:
 
 | The Feature needs… | Proven? | Milestone |
 |---|---|---|
-| Recipe emits a **whole file** (class/entity), not a body in a toy shell | ❌ | **M1 — declaration / file tier** (the `DECLARATION-TIER.md` work) |
-| Recipes are **parameterized** (`entity = "FavoriteArtist"`), not concrete | ❌ | **M2 — recipe params** (the recipe class + the match contract) |
-| **Catalog metadata** (name + description + param schema) for the matcher | ❌ | **M3 — catalog surface** (the seam to the LLM half) |
+| Recipe emits a **whole file** (class/entity), not a body in a toy shell | ✅ | **M1 — declaration / file tier** (the `DECLARATION-TIER.md` work) |
+| Recipes are **parameterized** (`entity = "FavoriteArtist"`), not concrete | ✅ | **M2 — recipe params** (`IRecipe` + the recipe class) |
+| **Catalog metadata** (name + description + param schema) for the matcher | partial — `Name`/`Description` on `IRecipe`; schema still implicit in the ctor | **M3 — catalog surface** (the seam to the LLM half) |
+| Recipe declares its **output target** (namespace + folder) | ❌ | **M4** — couples to cross-references (a using needs a namespace) |
 | **Several recipes → one Feature**, cross-referenced (service names the model's type) | partial — merge proven on one tree | **M4 — multi-file composition + cross-references** |
 | Real types / method calls (`Task<T>`, the repo dependency) | ❌ int-only | folds into M1/M4 (retire int-only + inline-only) |
 | Tasks that **edit existing files** (DI, csproj) | ❌ | **M5 — merge-into-existing** (kept in mind, built last) |
 | Deterministic, type-safe, owned files | ✅ | — |
+
+**Output target (namespace + folder) — deferred to M4.** A type name alone doesn't say *where* the
+file lands or *what namespace* it declares. It's deliberately deferred because it only becomes
+load-bearing when recipes reference each other across files (a Service `using` the Model's namespace)
+— exactly M4's cross-reference problem. It's a *wrapper* on the emitted type, not a change to the
+`TypeDecl` model, so M2 stays forward-compatible: a recipe later gains a target (namespace + path)
+and the emitter wraps the type in `namespace X;`.
 
 ```
 M1 file-tier → M2 params → M3 catalog → M4 multi-file+refs → M5 merge-into-existing

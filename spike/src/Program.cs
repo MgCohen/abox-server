@@ -53,43 +53,33 @@ static class Program
         Directory.CreateDirectory(outDir);
         File.WriteAllText(Path.Combine(outDir, "ScriptData.cs"), canonical);
 
-        // Declaration tier (M1): a recipe emits a whole owned type, not a body in a shell. The gate
-        // is compile + reflect-shape — a bare type has nothing to Run(). The four basics validate
-        // the model: record/class/struct share typed fields, enum carries named constants.
-        Console.WriteLine("declaration tier — four type kinds:\n");
-        var types = new (string Label, TypeDecl Decl, string TypeName, Func<Type, bool> Shape)[]
+        // Recipe catalog (M2): the hardcoded type trees are now named, parameterized recipes — the
+        // recipe's final shape (a class carrying name + params). CreateModel built twice with
+        // different entities proves it is genuinely parameterized, not a literal tree. The gate is
+        // compile + reflect (a bare type has nothing to Run()).
+        Console.WriteLine("recipe catalog (M2) — named + parameterized:\n");
+        var recipes = new IRecipe[]
         {
-            ("record", new RecordNode("FavoriteArtist",
-                    new Field<Guid>("Id"), new Field<string>("ArtistId"), new Field<DateTime>("FavoritedAt")),
-                "FavoriteArtist",
-                t => !t.IsValueType && Props(t).SequenceEqual(["ArtistId", "FavoritedAt", "Id"])),
-            ("class", new ClassNode("FavoriteArtist",
-                    new Field<Guid>("Id"), new Field<string>("ArtistId"), new Field<DateTime>("FavoritedAt")),
-                "FavoriteArtist",
-                t => !t.IsValueType && t.GetProperty("ArtistId")!.CanWrite),
-            ("struct", new StructNode("FavoriteKey",
-                    new Field<Guid>("UserId"), new Field<string>("ArtistId")),
-                "FavoriteKey",
-                t => t is { IsValueType: true, IsEnum: false } && Props(t).SequenceEqual(["ArtistId", "UserId"])),
-            ("enum", new EnumNode("FavoriteSource", "Search", "Profile", "Recommendation"),
-                "FavoriteSource",
-                t => t.IsEnum && Enum.GetNames(t).SequenceEqual(["Search", "Profile", "Recommendation"])),
+            new CreateModel("FavoriteArtist",
+                new Field<Guid>("Id"), new Field<string>("ArtistId"), new Field<DateTime>("FavoritedAt")),
+            new CreateModel("Playlist",
+                new Field<Guid>("Id"), new Field<string>("Name"), new Field<int>("TrackCount")),
+            new CreateEnum("FavoriteSource", "Search", "Profile", "Recommendation"),
         };
-        foreach (var (label, decl, typeName, shape) in types)
+        foreach (var recipe in recipes)
         {
+            var decl = recipe.Build();
             var code = TypeEmitter.Emit(decl);
-            var ok = shape(Runtime.CompileType(code, typeName));
+            var ok = Runtime.CompileType(code, decl.Name).Name == decl.Name;
             failed |= !ok;
-            Console.WriteLine($"===== {label}  =>  {typeName} {(ok ? "PASS" : "FAIL")} =====");
+            Console.WriteLine($"===== {recipe.Name} => {decl.Name} {(ok ? "PASS" : "FAIL")} =====");
             Console.WriteLine(code);
-            File.WriteAllText(Path.Combine(outDir, $"{label}.{typeName}.cs"), code);
+            File.WriteAllText(Path.Combine(outDir, $"{decl.Name}.cs"), code);
         }
 
         Console.WriteLine(failed ? "FAIL" : "PASS");
         return failed ? 1 : 0;
     }
-
-    static string[] Props(Type t) => t.GetProperties().Select(p => p.Name).OrderBy(n => n).ToArray();
 
     // --- loop + var + sum, one recipe in four styles -> 10 -------------------------------------
 
