@@ -123,4 +123,37 @@ public class TaxonomyTests
               Classified but not registered (stray): {Bullets(stray)}
             """);
     }
+
+    [Fact]
+    public void EveryRulebookDeclaresItsFolderAsTestType()
+    {
+        var rulebooks = RepoTree.RulebookFolders();
+        Assert.NotEmpty(rulebooks);
+
+        var mismatches = rulebooks
+            .Select(rb => (
+                Folder: Path.GetFileName(Path.GetDirectoryName(rb))!,
+                Declared: DeclaredTestType(Path.Combine(rb, "rules.md")),
+                Where: Path.GetRelativePath(RepoTree.Root, rb)))
+            .Where(x => !string.Equals(x.Folder, x.Declared, StringComparison.OrdinalIgnoreCase))
+            .Select(x => $"{x.Where}: testType '{x.Declared}' ≠ folder '{x.Folder}'")
+            .OrderBy(s => s, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.True(mismatches.Count == 0,
+            $"""
+            These rulebooks declare a testType that does not match their type folder. The doc-engine no longer
+            pins testType to a list — the harness owns the type set — so a rulebook's folder IS its type and the
+            testType front-matter must equal it:
+            {Bullets(mismatches)}
+            Set each 'testType:' to its folder name (lower-case), or move the rulebook under the right type.
+            """);
+    }
+
+    private static string DeclaredTestType(string rulesPath)
+    {
+        var line = File.ReadLines(rulesPath)
+            .FirstOrDefault(l => l.StartsWith("testType:", StringComparison.Ordinal));
+        return line is null ? "(none)" : line["testType:".Length..].Trim();
+    }
 }

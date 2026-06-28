@@ -7,8 +7,9 @@ namespace ABox.Tests.Harness;
 // ABox.Tests.Harness.Tests) validate this set from outside and are deliberately not a member.
 public static class TestTypes
 {
-    // This list is exactly the doc-engine's rulebook/test-template `testType` enum — every registered type has a
-    // Rulebook the Docs type validates against that enum, and nothing else does.
+    // The single source of truth for the test-type set. The doc-engine does not enumerate types (its testType
+    // attr is a free string); the harness owns the set here, and EveryRulebookDeclaresItsFolderAsTestType pins
+    // each rulebook's testType to its folder — so a type lives in this list and nowhere else.
     public static readonly string[] Registered =
         { "Arch", "Structure", "Unit", "E2E", "Wire", "Live", "Docs" };
 

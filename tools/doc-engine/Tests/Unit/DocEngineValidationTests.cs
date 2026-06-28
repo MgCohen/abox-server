@@ -29,11 +29,9 @@ public sealed class DocEngineValidationTests
     [Fact]
     public void Validate_rejects_an_out_of_range_enum_attr()
     {
-        var lines = File.ReadAllLines(GoldenInstance)
-            .Select(l => l.StartsWith("testType:", StringComparison.Ordinal) ? "testType: not-a-real-type" : l)
-            .ToArray();
+        var lines = new[] { "---", "docType: feature-plan", "status: not-a-real-status", "---", "" };
 
-        Assert.Contains(Validate(lines), e => e.Contains("testType", StringComparison.Ordinal));
+        Assert.Contains(Validate(lines), e => e.Contains("status", StringComparison.Ordinal));
     }
 
     [Rule("DocValidator.Validate → flags a missing required front-matter attribute")]

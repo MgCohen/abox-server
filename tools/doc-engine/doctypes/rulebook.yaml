@@ -4,7 +4,7 @@ blocks: [rule]
 required: [rule]
 attrs:
   testType:
-    enum: [arch, structure, unit, e2e, wire, live, docs]
+    type: string
     required: true
   template:
     type: string

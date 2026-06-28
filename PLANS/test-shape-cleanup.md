@@ -135,9 +135,14 @@ passes *vacuously*:
 
 ## Parked / follow-on — do not lose
 
-- **SSOT guard.** `TestTypes.Registered` is duplicated **3×** (C# array + `rulebook.yaml` enum + `test-template.yaml`
-  enum), coupled only by a comment, with no guard. The `right-type` rubric line in `rulebook.yaml` has *already*
-  drifted (it omits `docs`). Add a test asserting `Registered` ⇔ both doctype enums. Do this **before** any new type.
+- **SSOT — DONE (by removal, not a guard).** The list was duplicated 3× (`TestTypes.Registered` + both doctype
+  `testType` enums). Rather than police three copies, we removed the doc-engine's: the doc-engine never needed the
+  list (it validates *shape*; the type is the folder, and its code never reads `testType`). Both doctypes now make
+  `testType` a plain `type: string`; `TestTypes.Registered` is the **sole** source; a harness `[Fact]`
+  (`EveryRulebookDeclaresItsFolderAsTestType`) pins each rulebook's `testType` to its folder (and makes the old
+  judge-only `named-type` rubric mechanical). The reject-path doc-engine test retargeted to `feature-plan`'s
+  `status` enum. **Contract assumption:** the catalog's `testType` enum was treated as non-published (no in-repo
+  consumer binds it; the external client was deemed not to need the value-set). Revisit if the client breaks.
 - **Harness as a registered type.** Whether the harness's own tests become a `harness` type (uniform Rulebook,
   doc-engine-validated, self-parity). Verdict from analysis: a **values call** (category clarity vs uniform
   anti-drift), **leaning yes** *after* the renames + SSOT land — the renames remove the template/rules confusion
