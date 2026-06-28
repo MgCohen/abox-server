@@ -21,6 +21,7 @@ public static class RepoTree
 
     public static readonly string Root = LocateRoot();
     public static readonly string TestsRoot = RequireDir("the central test tree", "tests", "Tests");
+    public static readonly string HarnessTestsRoot = RequireDir("the harness's own tests", "tests", "Harness", "Tests");
 
     public static IReadOnlyList<string> TestTypeFolders() =>
         Directory.EnumerateDirectories(TestsRoot)

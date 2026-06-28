@@ -102,6 +102,7 @@ public class TaxonomyTests
     private static bool IsRegisteredTypeWithRulebook(string dir) =>
         TestTypes.IsRegistered(Path.GetFileName(dir)!) && File.Exists(Path.Combine(dir, "Rulebook.md"));
 
+    [Rule("Every rulebook declares its folder as its testType")]
     [Fact]
     public void EveryRulebookDeclaresItsFolderAsTestType()
     {

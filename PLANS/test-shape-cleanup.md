@@ -147,15 +147,18 @@ passes *vacuously*:
   judge-only `named-type` rubric mechanical). The reject-path doc-engine test retargeted to `feature-plan`'s
   `status` enum. **Contract assumption:** the catalog's `testType` enum was treated as non-published (no in-repo
   consumer binds it; the external client was deemed not to need the value-set). Revisit if the client breaks.
-- **Harness as a registered type.** Whether the harness's own tests become a `harness` type (uniform Rulebook,
-  doc-engine-validated, self-parity). Verdict from analysis: a **values call** (category clarity vs uniform
-  anti-drift), **leaning yes** *after* the renames + SSOT land — the renames remove the template/rules confusion
-  and SSOT makes "add a type" a one-place edit. Cost: add `harness` to both doctype enums (protected) + author a
-  Harness rubric + reframe the "enforcer is not a type" docs. Note: "the enforcer cannot check itself" was never a
-  rule — `Suites.cs` only *described* that it didn't; self-checking is wanted. The narrow real constraint is only
-  "don't route the harness assembly through the `LoadFrom` discovery gate" (identity hazard) — direct self-parity
-  respects it.
-- **Restore lean self-parity** (harness eats its own dogfood) — folds into the Harness-as-type item above.
+- **Central/Feature partition — DONE (collapsed).** Removed `TestTypes.Central`/`Feature`/`IsCentral`/`IsFeature`
+  + the partition guard; central-vs-co-located is now a per-instance ownership call, not a per-type cap. Any
+  registered type may live in either home; `Registered` stays the single source.
+- **Lean self-parity — DONE (restored).** The harness now eats its own dog food: a plain self-Rulebook
+  (`tests/Harness/Tests/Rulebook.md`, **not** a doc-engine instance) parity-checked over the
+  `ABox.Tests.Harness.Tests` namespace via the restored `ParityGuard.ForRulebook`. Every harness fact cites a
+  `[Rule]`; mutation-proved (drop a header → RED).
+- **Harness as a *registered* type — NOT pursued (settled).** We took lean self-parity instead. The harness
+  checks itself but stays **outside** the product taxonomy: `Harness` is not in `TestTypes.Registered`, the
+  self-Rulebook is not a doc-engine instance, and no product scanner sees it. This keeps the enforcer/enforced
+  distinction while honoring "enforcers check themselves." (SSOT-by-removal already dropped the doctype `testType`
+  enum, so the earlier "add `harness` to both enums" cost is moot anyway.)
 - **Bigger question (parked as possible ADR):** is the whole location/discovery model over-built — `For` vs
   `ForColocated`, the `TestsSourceDir` stamp, the `Suites` `LoadFrom` dance? The friction this cleanup surfaced is
   weak evidence it might be. Not now.

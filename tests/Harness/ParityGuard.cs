@@ -31,6 +31,12 @@ public sealed class ParityGuard
     public static ParityGuard ForColocated(Assembly assembly, string type) =>
         new(assembly, TestTypes.ColocatedNamespace(assembly.GetName().Name!, type), ColocatedRulebook(assembly, type));
 
+    // The harness eats its own dog food: a self-Rulebook beside its own tests (tests/Harness/Tests/Rulebook.md —
+    // a plain Rulebook, not a doc-engine instance) checked against the [Rule]s in their namespace. The enforcer
+    // holds itself to the bar it enforces on every product suite, without joining the product taxonomy.
+    public static ParityGuard ForRulebook(Assembly assembly, string scope, string rulesPath) =>
+        new(assembly, scope, rulesPath);
+
     private const string TestsSourceDirKey = "TestsSourceDir";
 
     private static string ColocatedRulebook(Assembly assembly, string type)

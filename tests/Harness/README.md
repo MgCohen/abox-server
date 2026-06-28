@@ -64,8 +64,10 @@ suite (`Suites.Colocated()` → `ParityGuard.ForColocated`) — so there is no p
 `ParityGuard.For` maps a product type to its namespace and Rulebook path through `TestTypes`
 (`<Type>` → `ABox.Tests.<Type>` + `tests/Tests/<Type>/Rulebook.md`), reads the Rulebook's `### `
 headers **from the source tree** (`RepoTree`, not the output dir), and compares them to the `[Rule]`s in that
-namespace — failing the build on any mismatch. The harness's own tests carry no Rulebook and cite no `[Rule]` —
-they are the enforcer, outside the taxonomy they enforce.
+namespace — failing the build on any mismatch. The harness's own tests then check themselves the same way: a
+self-Rulebook (`Tests/Rulebook.md`, plain markdown — not a doc-engine instance) parity-checked over their own
+namespace via `ParityGuard.ForRulebook`. The enforcer holds itself to its own bar, while staying outside the
+product taxonomy it enforces — `Harness` is not a registered type.
 
 ## Failure output: active voice, say how to fix
 
@@ -120,8 +122,9 @@ never.**
 Parity is always **1:N** — every Rule has ≥1 cited test, every `[Rule]` cites a real Rule, no Rule is
 undocumented; a Rule may be realized by several case tests. Completeness is **universal and mandatory**: for
 every type, a bare `[Fact]`/`[Theory]` with no `[Rule]` is an error — there is no opt-out. (Arch / Structure /
-E2E / Wire / Unit / Live.) The harness's own tests are the one exception by design: they are the enforcer, not
-a product type, so they carry no Rulebook and cite no Rule.
+E2E / Wire / Unit / Live.) The harness's own tests hold themselves to the same bar — every one cites a `[Rule]`
+in their self-Rulebook (`Tests/Rulebook.md`). They are still not a product type: that self-Rulebook is plain
+markdown, not a doc-engine instance, and `Harness` is not registered.
 
 (There is no duplicate-citation ban: a universal sweep plus a focused edge-case method may both cite the same
 Rule — that's the 1:N freedom, not drift.)
