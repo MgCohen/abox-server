@@ -4,7 +4,7 @@ testType: arch
 ---
 
 ## Summary
-Each Arch Rule is one dependency invariant over the loaded assemblies (ArchUnitNET) — what may reference what. Prefer deriving the assertion from one allow-graph over hand-listed denylists, so adding a band updates every rule. Enforced in `Arch/`.
+Each Arch Rule is one dependency invariant over the loaded assemblies (ArchUnitNET) — what may reference what. Prefer deriving the assertion from one allow-graph over hand-listed denylists, so adding a band updates every rule. Enforced in `tests/Central/Arch/` (`ABox.Tests.Central`).
 
 ## Criteria
 

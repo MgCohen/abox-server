@@ -4,7 +4,7 @@ testType: structure
 ---
 
 ## Summary
-Each Structure Rule is one source-placement invariant over `src/` and `tests/`, read straight from disk so it holds before code compiles. Enforced in `Structure/`.
+Each Structure Rule is one source-placement invariant over `src/` and `tests/`, read straight from disk so it holds before code compiles. Enforced in `tests/Central/Structure/` (`ABox.Tests.Central`).
 
 ## Criteria
 

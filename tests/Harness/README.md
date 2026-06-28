@@ -1,7 +1,7 @@
 # Test Harness — the Rulebook convention
 
 The **shared base** every test assembly is built on: the `[Rule]` and `[LiveFact]` attributes, the `Report`
-helpers, and the `RepoTree` disk locator — plus this doc. The *enforcement engine* itself (`ParityGuard`,
+helpers, the `RepoTree` disk locator, and the `TestAssemblies` name predicates — plus this doc. The *enforcement engine* itself (`ParityGuard`,
 `TestTypes`, `TestMarkers`) is **not** here — it has exactly one consumer, the harness's own tests, so it lives
 with them in [`Tests/`](Tests/README.md) (the repo's own rule: promote to the shared base only on a genuine
 second consumer). Nothing *product*-specific lives here either; a type's models, doubles, and harnesses stay in
@@ -48,6 +48,9 @@ harness's own tests own parity (Rule ↔ test).
 - **`LiveFactAttribute.cs`** — `[LiveFact]`, the gated real-CLI run attribute (skipped unless `RUN_LIVE=1`).
 - **`Report.cs`** — the `Bullets`/`Join` failure-message helpers.
 - **`RepoTree.cs`** — the on-disk locator (repo root, the central tree, the rulebooks, the feature test roots).
+- **`TestAssemblies.cs`** — the `IsTestAssembly` / `IsFeatureTestAssembly` name predicates: which assemblies are
+  tests at all (Arch excludes them from the production graph) and which are feature/tool suites (the sweeps run
+  over them) — one source so the two answers can't drift apart.
 
 **Enforcement engine** — `tests/Harness/Tests/`, used only by the harness's own tests (its one consumer):
 - **`ParityGuard.cs`** — keeps one type's Rulebook and its `[Rule]` tests in lockstep, scoped to a single
@@ -57,15 +60,22 @@ harness's own tests own parity (Rule ↔ test).
 - **`TestTypes` / `TestMarkers`** — the registry of types (the single source of truth) + completeness flag, and
   the run-attribute names. Rulebook *format* is validated by the doc-engine (shelled out by the **Docs** type),
   not a Harness parser.
+- **`Suites.cs`** — discovers the co-located `ABox.<Owner>.Tests` assemblies from the build output, so the
+  harness polices every suite with no per-feature `ProjectReference` (not a test itself).
 
-Parity is driven **once**, from the harness's own tests — over every central type and every co-located feature
-suite (`Suites.Colocated()` → `ParityGuard.For`) — so there is no per-type or per-feature parity fact:
+Parity is driven from the harness's own tests — `ParityTests` over every central type plus the harness's own
+self-Rulebook, and `CoverageTests` over every co-located feature suite (`Suites.Colocated()` → `ParityGuard.For`)
+— so there is no per-type or per-feature parity fact:
 
   ```csharp
-  // Tests/ParityTests.cs
+  // Tests/ParityTests.cs — central types + the harness's own self-parity
   var product = typeof(SuiteAnchor).Assembly;
-  foreach (var type in TestTypes.Registered)
+  foreach (var type in RepoTree.TestTypeFolders().Where(TestTypes.IsRegistered))
       ParityGuard.For(product, type).Assert();
+
+  var self = typeof(ParityTests).Assembly;
+  ParityGuard.ForRulebook(self, self.GetName().Name!,
+      Path.Combine(RepoTree.HarnessTestsRoot, "Rulebook.md")).Assert();
   ```
 
 `ParityGuard.For` maps a product type to its namespace and Rulebook path through `TestTypes`
@@ -200,8 +210,8 @@ testType: <type>
 ---
 docType: rulebook
 testType: <type>
-rubric: ../../../Rubrics/<Type>.md
-harness: ../../../Harness/README.md
+rubric: ../../Rubrics/<Type>.md
+harness: ../../Harness/README.md
 ---
 
 ## Rules

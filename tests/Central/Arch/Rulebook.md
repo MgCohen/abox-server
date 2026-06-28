@@ -75,7 +75,7 @@ instead of rotting. A per-feature non-vacuity guard rejects a conformant feature
 
 Reflects over the loaded impl assembly's `ExportedTypes` (`EndpointConformance.ExportsOnlyItsModule`): exactly
 one public type, named `<F>Module`, exposing `public static System.Reflection.Assembly EndpointsAssembly`. It
-counts exported *types*, not members, so a Module's public `AddX()` methods (Git/Flows) are fine, and the
+counts exported *types*, not members, so a Module's public `AddX()` methods (Flows) are fine, and the
 separate `Contracts` leaf assembly is excluded — the wall is the impl assembly alone. Asserted positively over
 Projects (sole export `ProjectsModule`, anchor present) so the rule is non-vacuous; the not-yet-consolidated
 features share the same `EndpointConformance.PendingFastEndpointsMigration` allow-list as the endpoint-visibility

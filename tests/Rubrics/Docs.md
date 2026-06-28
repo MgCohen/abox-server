@@ -4,7 +4,7 @@ testType: docs
 ---
 
 ## Summary
-Each Docs Rule is one guarantee about the repo's structured documents, proven by shelling out to the standalone doc-engine (`tools/doc-engine`) — ADR 0015, never a reference. Enforced by a `[Rule]` fact in `Docs/Tests/` that runs `docengine` and asserts the outcome.
+Each Docs Rule is one guarantee about the repo's structured documents, proven by shelling out to the standalone doc-engine (`tools/doc-engine`) — ADR 0015, never a reference. Enforced by a `[Rule]` fact in `tests/Central/Docs/` (`ABox.Tests.Central`) that runs `docengine` and asserts the outcome.
 
 ## Criteria
 
@@ -12,7 +12,7 @@ Each Docs Rule is one guarantee about the repo's structured documents, proven by
 States exactly one document or catalog guarantee, not several bundled.
 
 ### engine_proven
-The guarantee is one the doc-engine (`check`/`validate`) actually enforces.
+The guarantee is one the doc-engine (`check`/`validate`/`catalog`) actually enforces.
 
 ### why_justifies
 The Why gives the guarantee at stake, not a restatement of the header.

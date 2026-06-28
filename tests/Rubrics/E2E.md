@@ -4,7 +4,7 @@ testType: e2e
 ---
 
 ## Summary
-Each E2E Rule is one whole-flow guarantee, driven end to end through the real composition (real Steps, Flow engine, snapshot stream) with a scripted (non-CLI) provider or a real local tool. Enforced in `E2E/`.
+Each E2E Rule is one whole-flow guarantee, driven end to end through the real composition (real Steps, Flow engine, snapshot stream) with a scripted (non-CLI) provider or a real local tool. Enforced in each feature's co-located `src/<…>/<Owner>/Tests/E2E/` (`ABox.<Owner>.Tests`).
 
 ## Criteria
 

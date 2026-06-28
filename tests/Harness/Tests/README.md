@@ -5,7 +5,7 @@ test cites a `[Rule]`, sits where `ParityGuard` can see it, and is wired into co
 system itself**, not the product.
 
 They sit beside the **shared base** they build on — `tests/Harness/` holds it (`Rule`, `LiveFact`, `Report`,
-`RepoTree`, referenced by every suite) — and **own the enforcement engine themselves** (`ParityGuard`,
+`RepoTree`, `TestAssemblies`, referenced by every suite) — and **own the enforcement engine themselves** (`ParityGuard`,
 `TestTypes`, `TestMarkers`), since they are its only consumer. It is its own assembly (it reflects over the
 suites from *outside*), validating every suite the way the Arch guards validate `src/`: it reflects over the
 central assembly (through `ABox.Tests.Central.SuiteAnchor`) and over every co-located `ABox.<Owner>.Tests` (discovered
@@ -28,6 +28,7 @@ assignable to it — Fact, Theory, LiveFact), not `[Fact]` specifically.
 | `TaxonomyTests.cs` | Every marked test in a **feature** assembly sits under `ABox.<Owner>.Tests.<Type>`, never the assembly root. |
 | `TaxonomyTests.cs` | Every folder in a feature's `Tests/` is a known type **with** a `Rulebook.md` (or `Support`) — none silently skipped by coverage parity. |
 | `TaxonomyTests.cs` | Every rulebook's `testType` front-matter equals its folder — the harness owns the type set, the doc-engine no longer pins it to a list. |
+| `TaxonomyTests.cs` | The two test-assembly predicates (`IsTestAssembly` / `IsFeatureTestAssembly`) classify every built suite consistently — Arch's production-graph exclusion and the harness's feature sweep can't diverge. |
 | `CoverageTests.cs` | Every co-located `Tests/` folder on disk maps to a built `ABox.<Owner>.Tests`, and parity runs over each (assembly × type) — the backstop that replaces the central protected wall once a feature's tests live beside the feature. |
 
 `Suites.cs` here is **not** a test — it discovers the co-located assemblies from the build output for the

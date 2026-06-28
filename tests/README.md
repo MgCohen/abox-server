@@ -3,7 +3,7 @@
 > **Tests are co-located ([`../PLANS/test-colocation.md`](../PLANS/test-colocation.md)).** A feature's
 > `Unit`/`Wire`/`E2E`/`Live` live with the feature under `src/<…>/<Owner>/Tests/` (`ABox.<Owner>.Tests`),
 > glob-discovered by `dirs.proj` and policed by the harness's own tests. Under `tests/` now: the ownerless
-> types (`Tests/` = `Arch`/`Structure`/`Docs` in `ABox.Tests.Central`), the shared `Harness/` engine with its
+> types (`Central/` = `Arch`/`Structure`/`Docs` in `ABox.Tests.Central`), the shared `Harness/` engine with its
 > own tests at `Harness/Tests/`, the central per-type `Rubrics/`, and feature-independent `Fixtures/`. Run
 > the full suite with `dotnet test dirs.proj`;
 > stand up a feature's tests with the **new-feature-tests** skill.
@@ -16,7 +16,7 @@ Three pieces:
   attributes, the `Report` helpers, and the `RepoTree` locator. The enforcement engine
   (`ParityGuard` / `TestTypes` / `TestMarkers`) lives with its only consumer in `Harness/Tests/`, not here.
   Nothing product-specific lives here.
-- **[`Tests/`](Tests/README.md)** — the central, ownerless suite (`ABox.Tests.Central`): the three
+- **[`Central/`](Central/README.md)** — the central, ownerless suite (`ABox.Tests.Central`): the three
   structural types `Arch`/`Structure`/`Docs`, each its own Rulebook with the same folder shape
   (`<Type>/Rulebook.md`, the test `.cs`, `<Type>/Support/`). A feature's `Unit`/`Wire`/`E2E`/`Live` are
   **co-located** (`ABox.<Owner>.Tests`), not here.

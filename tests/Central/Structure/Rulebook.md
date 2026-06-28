@@ -28,18 +28,18 @@ folder* is the companion guarantee, enforced at compile time by IDE0130 (`/.edit
 Decided from the csproj layout under `src/Features/<F>` (`SourceTree.ProjectsOf`): one implementation project +
 the role leaves under `Api/` and/or `Contract/`. Projects (one impl + Api) satisfies it positively, so the rule is
 non-vacuous from day one. `FeatureShape.PendingConsolidation` is an explicit allow-list for the not-yet-migrated
-features (per-use-case Flows, per-verb Git/Tasks awaiting Gate 5); the guard still rejects any new non-canonical
+features (per-use-case Flows, per-verb Tasks awaiting Gate 5); the guard still rejects any new non-canonical
 feature, and a staleness check fails once a listed feature consolidates, so the list shrinks instead of rotting.
 
 ### Each verb folder declares its endpoint
 - **Why:** The canonical slice is one endpoint per verb folder (ADR 0011); the only legal non-verb folders are the
-  published `Contracts/` leaf and the folded-in `Module/`. A verb folder with no `*Endpoint.cs` is either a stray
+  published `Api/` and `Contract/` leaves and the folded-in `Module/`. A verb folder with no `*Endpoint.cs` is either a stray
   helper bucket (the `Shared/` sub-assembly the shape forbids) or a verb whose endpoint was misnamed or misplaced —
   the exact "feature doesn't follow the pattern" drift. Read on disk so the empty/odd folder is caught before it compiles.
 
 Checked over the canonical features (`SourceTree.VerbFoldersWithoutEndpoint`): every immediate folder except the
 leaves (`Api`/`Contract`) and `Module` must hold a `*Endpoint.cs`. Projects and Inbox satisfy it positively, so it
-is non-vacuous from day one. The not-yet-migrated features (Flows/Git/Tasks, with `Shared/` and non-endpoint helpers
+is non-vacuous from day one. The not-yet-migrated features (Flows/Tasks, with `Shared/` and non-endpoint helpers
 awaiting Gate 5) share the same `FeatureShape.PendingConsolidation` allow-list as the one-impl-plus-leaves rule;
 consolidating a feature to the canonical shape removes its exemption, and the guard then requires every one of its
 verb folders to conform.
