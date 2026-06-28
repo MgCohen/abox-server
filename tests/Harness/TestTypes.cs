@@ -29,10 +29,10 @@ public static class TestTypes
     public static readonly string[] NonType = { "Support" };
 
     // The namespace conventions, one owner each. A CENTRAL type lives in the central assembly under
-    // ABox.Tests.<Type>.Tests (ParityGuard.For + ContainsTest); a co-located FEATURE type lives in its own
+    // ABox.Tests.<Type> (ParityGuard.For + ContainsTest); a co-located FEATURE type lives in its own
     // assembly under <Assembly>.<Type> (ParityGuard.ForColocated + the co-located sweep in the harness's own
     // tests). Namespace builds the central form only — never call it for a feature type.
-    public static string Namespace(string type) => $"ABox.Tests.{type}.Tests";
+    public static string Namespace(string type) => $"ABox.Tests.{type}";
 
     public static string ColocatedNamespace(string assemblyName, string type) => $"{assemblyName}.{type}";
 
@@ -45,8 +45,8 @@ public static class TestTypes
         NonType.Contains(folder, StringComparer.Ordinal);
 
     // A method physically lives inside a registered type when its namespace is a type's Namespace (or a
-    // sub-namespace). Anything else — shared Support, a type's Support, the root — slips past the per-type
-    // ParityGuard, which scopes to a single .Tests namespace.
+    // sub-namespace, e.g. its Support). Anything else — shared Support, the central root — slips past the
+    // per-type ParityGuard, which scopes to a single type namespace.
     public static bool ContainsTest(string? ns) =>
         ns is not null && Registered.Any(t =>
             ns == Namespace(t) || ns.StartsWith(Namespace(t) + ".", StringComparison.Ordinal));

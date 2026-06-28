@@ -1,7 +1,7 @@
 using ABox.Tests.Docs.Support;
 using static ABox.Tests.Harness.Report;
 
-namespace ABox.Tests.Docs.Tests;
+namespace ABox.Tests.Docs;
 
 // Runs the standalone doc-engine under `dotnet test` so the document catalog and every authored instance are
 // guarded by CI + ParityGuard like any other guarantee — by shelling out (ADR 0015), never referencing it.

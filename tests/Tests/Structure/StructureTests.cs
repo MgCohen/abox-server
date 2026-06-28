@@ -3,7 +3,7 @@ using static ABox.Tests.Harness.Report;
 using static ABox.Tests.Structure.Support.HomeFolders;
 using static ABox.Tests.Structure.Support.FeatureShape;
 
-namespace ABox.Tests.Structure.Tests;
+namespace ABox.Tests.Structure;
 
 // Source-placement guard: reads the project folders on disk (SourceTree), not the loaded assembly graph, so it
 // catches a stray project the moment it lands — even uncompiled or arch-excluded code. The test-system's own

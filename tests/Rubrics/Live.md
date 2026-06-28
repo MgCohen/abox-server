@@ -4,7 +4,7 @@ testType: live
 ---
 
 ## Summary
-Each Live Rule is one real-CLI guarantee — a flow or agent against the real `claude`/`codex` CLI and subscription, gated behind `[LiveFact]` / `RUN_LIVE=1`. Enforced in `Live/Tests/`.
+Each Live Rule is one real-CLI guarantee — a flow or agent against the real `claude`/`codex` CLI and subscription, gated behind `[LiveFact]` / `RUN_LIVE=1`. Enforced in `Live/`.
 
 ## Criteria
 

@@ -82,10 +82,10 @@ Rulebook *shape* — reuse the uniform one.
    in a `→` result — *"claude-ping with a scripted reply → implementer reaches Completed"*.
    Exactly one `**Why:**` bullet; any extra note is plain prose under the Rule, never another
    bold-label bullet. Reuse an existing header if your case proves an existing Rule.
-2. **Write the fact** in `<Type>/Tests/` carrying both the xUnit run attribute and a
+2. **Write the fact** in `<Type>/` carrying both the xUnit run attribute and a
    `[Rule("<exact header>")]` citation — they compose (`[Fact]` + `[Rule]`), the Rule is
    not derived from `FactAttribute`. Live tests use `[LiveFact]` + `[Rule("<header>")]`.
-3. **Keep the namespace = folder** — `ABox.Tests.<Type>.Tests` for a central type in `tests/Tests/<Type>/`,
+3. **Keep the namespace = folder** — `ABox.Tests.<Type>` for a central type in `tests/Tests/<Type>/`,
    or `ABox.<Owner>.Tests.<Type>` for a co-located feature type in `src/<…>/<Owner>/Tests/<Type>/`. IDE0130 is
    `severity = error`, so a mismatch is a **build error, not a warning**.
    - **Failure messages are fix instructions.** Active voice, name the file/type, say what to do

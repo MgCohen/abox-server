@@ -45,10 +45,10 @@ public class TaxonomyTests
 
         Assert.True(misplaced.Count == 0,
             $"""
-            Tests live outside the ABox.Tests.<Type>.Tests structure, where the per-type ParityGuard
+            Tests live outside the ABox.Tests.<Type> structure, where the per-type ParityGuard
             cannot see them to require a [Rule]:
             {Bullets(misplaced)}
-            Move each into a registered type's Tests/ folder.
+            Move each into a registered type's folder.
             """);
     }
 

@@ -17,7 +17,7 @@ Three pieces:
   the harness's own tests run on. Nothing product-specific lives here.
 - **[`Tests/`](Tests/README.md)** — the central, ownerless suite (`ABox.Tests.Central`): the three
   structural types `Arch`/`Structure`/`Docs`, each its own Rulebook with the same folder shape
-  (`<Type>/Rulebook.md`, `<Type>/Tests/`, `<Type>/Support/`). A feature's `Unit`/`Wire`/`E2E`/`Live` are
+  (`<Type>/Rulebook.md`, the test `.cs`, `<Type>/Support/`). A feature's `Unit`/`Wire`/`E2E`/`Live` are
   **co-located** (`ABox.<Owner>.Tests`), not here.
 - **[`Harness/Tests/`](Harness/Tests/README.md)** — the **harness's own tests** (`ABox.Tests.Harness.Tests`),
   beside the engine they police: they guard the *test system* — taxonomy and parity — validating every suite

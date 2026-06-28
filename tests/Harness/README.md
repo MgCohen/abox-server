@@ -43,7 +43,7 @@ harness's own tests own parity (Rule ↔ test).
   A test can't enforce a Rule without citing it. (A guarantee realized by several cases is several
   `[Rule("<same header>")]` methods — see *Completeness* below.)
 - **`ParityGuard.cs`** — keeps one type's Rulebook and its `[Rule]` tests in lockstep, scoped to a single
-  namespace so types sharing an assembly don't bleed into each other's parity: `ABox.Tests.<Type>.Tests` for a
+  namespace so types sharing an assembly don't bleed into each other's parity: `ABox.Tests.<Type>` for a
   central type (`For`), `ABox.<Owner>.Tests.<Type>` for a co-located feature type (`ForColocated`, which finds
   the Rulebook in the source tree via the assembly's `TestsSourceDir` metadata).
 - **`TestTypes` / `TestMarkers` / `RepoTree`** — the test-system vocabulary the **harness's own tests**
@@ -62,7 +62,7 @@ suite (`Suites.Colocated()` → `ParityGuard.ForColocated`) — so there is no p
   ```
 
 `ParityGuard.For` maps a product type to its namespace and Rulebook path through `TestTypes`
-(`<Type>` → `ABox.Tests.<Type>.Tests` + `tests/Tests/<Type>/Rulebook.md`), reads the Rulebook's `### `
+(`<Type>` → `ABox.Tests.<Type>` + `tests/Tests/<Type>/Rulebook.md`), reads the Rulebook's `### `
 headers **from the source tree** (`RepoTree`, not the output dir), and compares them to the `[Rule]`s in that
 namespace — failing the build on any mismatch. The harness's own tests carry no Rulebook and cite no `[Rule]` —
 they are the enforcer, outside the taxonomy they enforce.
@@ -103,7 +103,7 @@ different risk levels:
   the same bar as changing the thing the Rule protects. When in doubt, ask — don't quietly edit.
 - **Changing the shape / rubric / format — most dangerous, and rarely warranted.** The `### `-heading
   scan, the `<Type>.md` / `Rulebook.md` split, the namespace-scoped discovery + path derivation, the
-  universal completeness check (every marked test cites a Rule), the `Rulebook.md` + `Tests/` + `Support/` layout, the csproj copy glob,
+  universal completeness check (every marked test cites a Rule), the `Rulebook.md` + test `.cs` + `Support/` layout, the csproj copy glob,
   the doc-engine doctypes (`rulebook` / `rubric`) that pin each file's shape, and the harness's own
   parity-over-every-registered-type — these are the engine's
   load-bearing assumptions, shared by **every**
@@ -208,8 +208,8 @@ harness: ../../../Harness/README.md
 
 Then:
 
-1. **Create `tests/Tests/<Type>/`** with `Rulebook.md`, `Tests/`, and (if needed) `Support/`. Namespace mirrors
-   folder — `ABox.Tests.<Type>.Tests` for files in `<Type>/Tests/`; IDE0130 is `severity = error`, so a
+1. **Create `tests/Tests/<Type>/`** with `Rulebook.md`, the test `.cs`, and (if needed) `Support/`. Namespace mirrors
+   folder — `ABox.Tests.<Type>` for files in `<Type>/`; IDE0130 is `severity = error`, so a
    mismatch is a build error, not a warning.
 2. **Fill `<Type>.md` + `Rulebook.md`** from the skeleton above — pick the header shape (invariant or
    behavioural), adapt the summary, and write the first Rule. **`<Type>.md` must carry a `## Criteria`
@@ -219,11 +219,11 @@ Then:
 3. **Register the type** in `Harness/TestTypes.Registered`. The *every folder under tests holds a registered
    test type* guard (in the harness's own tests) goes red the moment the folder lands unregistered — this is the
    deliberate gate.
-4. **Write a `### ` Rule + its `[Rule("<header>")]` fact for every test** in `<Type>/Tests/`. Completeness is
+4. **Write a `### ` Rule + its `[Rule("<header>")]` fact for every test** in `<Type>/`. Completeness is
    mandatory: the type ships fully cited from the start (there is no going-forward exemption).
 5. **No csproj edit and no parity fact are needed** — `Tests.csproj` compiles every `.cs` under the type, the
    harness's own tests read your Rulebook straight from the source tree and run parity over your new type the
    moment it's registered. Rebuild; the harness's parity + the Docs format guards prove it's wired and well-formed.
 
-Parity scopes by the `ABox.Tests.<Type>.Tests` namespace, so the new type's Rules never bleed into another
+Parity scopes by the `ABox.Tests.<Type>` namespace, so the new type's Rules never bleed into another
 type's parity — registering the type is all the wiring there is.

@@ -1,7 +1,11 @@
 # Test shape & naming normalization — action plan
 
-**Status:** planned, not started · **Branch:** `claude/docs-test-refactor-review-cqugsd`
+**Status:** ✅ C1–C3 landed + SSOT done (by removal) · **Branch:** `claude/docs-test-refactor-review-cqugsd`
 **Plan of record it amends:** [`test-colocation.md`](test-colocation.md)
+
+> **Done:** C1 (`template`→`rubric`), C2 (`Rulebook/rules.md`→`Rulebook.md`), C3 (drop central inner `Tests/` +
+> `.Tests` suffix; Support kept local). Each landed green; C2 passed the anti-vacuity probe. The historical
+> planning records (`PLANS/test-colocation*`, ADR 0015) keep their own-era "template" wording deliberately.
 
 Working doc for an in-flight cleanup of the test layout's *names and shapes*. The
 Rulebook/parity *discipline* is unchanged — only where files sit and what they're called.
