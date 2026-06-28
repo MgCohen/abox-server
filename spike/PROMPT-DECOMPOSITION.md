@@ -4,133 +4,154 @@
 > An **exploration that opens a new pass**, not an implementation. Everything so far runs the
 > recipe → code direction and that half is *solved*. This doc explores the **input** direction:
 > how a user's intent becomes a recipe in the first place.
-> **Status — EXPLORATION.** Design space mapped, seam located, first slice + done-when proposed.
+> **Status — EXPLORATION.** Canonical pipeline from the owner's decomposition diagram; seam located;
+> altitude gap named; first slice + done-when proposed.
 
 ## The two ends
 
 ```
-USER INTENT  ──── ? ────►  RECIPE (typed C# tree)  ──deterministic──►  ScriptData.cs
- "sum 0..4"                  [ Define(acc, 0),         (Phase 2 +              int acc = 0;
-                               Loop(i, 5, …),           building-style)        for (int i …) …
-                               Return(acc) ]                                   return acc;
-   the OPEN end               the SEAM                  the SOLVED end
+USER INTENT  ──── decomposition ────►  RECIPE (typed tree)  ──deterministic──►  FEATURE
+ "favorite an artist"                   [ recipe catalog ]      (Phase 2 +         files, services,
+                                                                 building-style)    registrations
+   the OPEN end                         the SEAM                                    the SOLVED end
 ```
 
 Every artifact in this spike — snippets, generated nodes, factories, operators, the generator —
 builds the **right half**. The recipe is the *contract* between the two halves. This pass explores
-the **left arrow**: turning intent into a recipe that type-checks.
+the **left arrow**, and the owner's diagram says that arrow is **not a single jump** — it is a staged
+ladder of LLM steps with typed artifacts between them, and only the last rung is deterministic.
 
-## The reframe: the recipe surface *is* the agent's target language
+## The decomposition pipeline (the canonical model)
 
-Building-style (#109) made a recipe read like intention-revealing C# — `[ Define(acc, 0), Loop(i, 5,
-Assign(acc, acc + i)), Return(acc) ]`. That was sold as authoring ergonomics, but its real payoff
-shows up *here*: **that surface is the output language an agent emits.** The cleaner and more
-constrained the surface, the smaller the gap the agent bridges and the more the compiler validates
-for free.
+```
+                          ┌──── back-and-forth, human-approved ────┐
+ User Intent ──► LLM ──────────────► Plan ──► LLM ──► Task/Phase[] ──► LLM ──► Recipe[] ──► compose ──► Feature
+  (prompt)     (plan, ↔ human)      (doc)   (break    (reasoned,    (match    (from a      (parse,
+                                            down)      reviewed)    task→     deterministic  splice)
+                                                                    recipe)   catalog)
+```
 
-So "decompose a prompt into a recipe" is not a new subsystem — it is: *the agent emits a recipe in
-the factory/operator surface, given the catalog and the prompt; the C# compiler is the validator.*
-This is the product thesis from `CLAUDE.md` made concrete — "wrap LLM agents in deterministic
-structure so they get maximum guidance." The recipe type system **is** that structure; prompt →
-recipe is where the agent meets it.
+| # | Stage | Actor | Deterministic? | In → Out | Gate |
+|---|-------|-------|----------------|----------|------|
+| 1 | **Plan** | LLM ↔ Human | no | Intent → **Plan doc** (Context · Summary · Expected Results · What we'll do · What needs to change · Validation) | **Human approval** |
+| 2 | **Breakdown** | LLM | no | Plan → **Task/Phase[]** — *reason* about required changes, then *review* for roles & ordering (two passes) | — |
+| 3 | **Match** | LLM | no | each Task → a **Recipe** (or small composition) from the catalog | — |
+| 4 | **Compose** | **deterministic** | **yes** | Recipe[] → **Feature** (real source) | the **compiler** |
 
-## Where the non-determinism lives (the seam is sharp)
+Read top-down, the structure tightens at each rung: free-form intent → an approved structured plan →
+an ordered task list → catalog recipes → owned code. **Each artifact is more constrained than the one
+above it**, and the agent's freedom shrinks accordingly — exactly the "wrap the agent in deterministic
+structure so it gets maximum guidance" thesis from `CLAUDE.md`, applied as a *ladder*, not a single
+gate.
 
-The spike's founding premise — *"the opposite of 'ask an LLM to glue snippets together'"* — still
-holds. The **gluing** (recipe → code) stays deterministic and byte-identical. What is irreducibly a
-judgment call is **choosing what to compose**. The seam splits cleanly:
+### The worked example (from the diagram)
 
-| Stage | Determinism | Owner |
+Context: *assume a fully-working Spotify-clone app.*
+
+- **Stage 1 — Plan.** Prompt: *"implement a Favorite-Artist collection — favorite any artist, save to a
+  collection, view the collection, unfavorite."* The agent asks clarifying questions (back-and-forth
+  with the human), then emits a **Favorite-Artist Plan** with the fixed schema above. The human
+  **approves** it. This is the only human gate.
+- **Stage 2 — Breakdown.** The agent reasons the plan into tasks (*create the "Favorite Artist"
+  service · create the Model/Entity · create the DB/Repo · implement the API · add docs*), then
+  **reviews** that list for roles & ordering — which *adds* tasks the first pass missed (*dependency &
+  manifest changes · a Vertical-Slice feature with MediatR controllers per standards · DI
+  registration*) and reorders them. Breakdown is a **reason → review** loop, not one shot.
+- **Stage 3 — Match.** Each task is matched to a **recipe** from the deterministic catalog:
+  `Create new service` → `Scaffold Service`, `Create DB/Repo` → `Repository Pattern Fetch`,
+  `Implement API` → `SignalR API`, `Add DI registration` → `Register Services`, `Create Model/Entity`
+  → `Create Model`. The mapping is **not 1:1** — several tasks may resolve to one recipe, some tasks
+  to a *composition* of recipes, and a task with no matching recipe is a signal (write the recipe, or
+  drop to freer code — backlog #4/#10).
+- **Stage 4 — Compose.** The matched recipes lower deterministically to the feature's source — the
+  half this spike already proved.
+
+### What the recipe catalog *is* (the key realization)
+
+The diagram's recipes — `Create Model`, `Scaffold Service`, `Repository Pattern Fetch`, `SignalR API`,
+`Register Services` — are **where the team's architectural standards live, deterministically.** "Per
+standards", "Vertical Slice", "MediatR controllers" aren't prose the agent must remember and might
+drift from — they are *baked into the recipe*. The LLM decides **what** to build (stages 1–3); the
+recipe enforces **how** it's built (stage 4). That split is the product: the guardrails are
+deterministic; only the intent-reading is not.
+
+## The altitude gap (spike recipes vs diagram recipes)
+
+The diagram's recipes are **feature-scale** (emit files, classes, services, registrations). The
+spike's recipes are **statement-scale** (`Loop`, `Define`, `Add` → lines inside one method). Same
+mechanism — *a typed tree of nodes lowered to deterministic source* — at two altitudes:
+
+| | Spike recipe (proven) | Diagram recipe (target) |
 |---|---|---|
-| intent → recipe | non-deterministic (judgment) | the **agent** |
-| recipe validity | static — illegal recipes don't compile | the **C# compiler** (free) |
-| recipe → code | deterministic, byte-identical | the **generator** |
+| Composes | statements in a method body | files, types, members, registrations |
+| Node kinds | `LoopNode`, `DefineNode`, `AddNode` … | `ClassNode`, `MethodNode`, `FieldNode`, `RegistrationNode` … |
+| Root | `Block` (a statement region) | a member/file region — a *declaration tier* |
+| Output | `int acc = 0; for … return acc;` | a `FavoriteArtistService.cs`, a repo, a DI line |
 
-The recipe is the **commit point.** Once a recipe type-checks, everything downstream is deterministic
-and owned. The agent's freedom is *bounded* to "produce a well-typed recipe." A malformed attempt does
-not produce bad code — it **fails to compile**, and the error is the repair signal. That is the whole
-value of putting a type-safe seam between intent and output: the structure catches the agent.
+The bridge is **already on the backlog** — README items **#7–#11** (the declaration tier + the type
+spine): grow *up* from "compose statements" to "compose declarations" (a `MethodNode` whose body is
+today's `Block`; a `ClassNode` whose members are nodes; a member region that is to a type what a
+`Block` is to a method). **The decomposition pass and the declaration tier meet here:** decomposition
+produces recipes, and for a recipe to be a *feature* it must reach the declaration tier. The spike has
+proven the compose engine at the bottom rung; lifting it to the diagram's altitude is #7–#11, not a
+new engine.
 
-## The design space for the left arrow
+## The seam, restated
 
-### A — How is the catalog described to the agent?
+The spike's founding premise — *"the opposite of 'ask an LLM to glue snippets together'"* — survives
+intact: the **gluing** (stage 4) is deterministic and byte-identical. Three LLM stages sit *above* the
+seam (plan, breakdown, match); the recipe is the **commit point** where judgment ends and determinism
+begins. A bad decomposition doesn't emit bad code — it produces a recipe that **fails to compile**, and
+the compiler error is the repair signal. The type-safe recipe validates the agent **for free** — that
+is the whole reason to put a typed seam between intent and output.
 
-The agent's vocabulary is the snippet catalog (today: `Define, Assign, Add, Loop, Return, LessThan,
-GreaterThan, Eq, IfElse`), reached through the generated factories + the `Var<T>` handle pattern. The
-agent needs each snippet *described*: its name, fill shape (produces a value? a statement? takes a
-block?), produced type, and an example call. This description is **generated from the snippets** — the
-same single-source-of-truth move that already produces the nodes and factories:
+## Design space for the match stage (how a Task becomes a Recipe)
 
-```
-[Snippet] method ──► node (Nodes.Generated.cs) ──► factory (Factories.Generated.cs) ──► CATALOG CARD
-```
-
-A **catalog manifest** is the new gen-tool output. It is deterministic, drift-free, and contains no
-model. Example card (shape, not final format):
-
-```
-Loop(i: Var<int>, count: Expr<int>, body: Block) -> Stmt
-  for (int i = 0; i < count; i++) { …body… }
-  e.g.  Loop(i, 5, Assign(acc, acc + i))
-```
-
-### B — How does the agent emit the recipe? (the central fork)
+Building-style (#109) made a recipe read like intention-revealing C# — that surface *is* the agent's
+output language at stage 3. The central fork (settle with probes, #109-style):
 
 | Channel | How | Pro | Con |
 |---|---|---|---|
-| **1. Direct C#** | agent writes the factory/operator expression; we compile it against the catalog assembly | type system validates *for free*; output is exactly the authored surface; IntelliSense-grade constraints | must emit compiling C# (identifiers, `Var` decls); needs a compile-repair loop |
-| **2. Structured → lower** | agent emits JSON/tool-output; we map to the node tree | easy to constrain via tool schema; a natural structured-output channel | re-introduces the JSON the design *rejected* for humans (README §6); loses the compile-time schema; needs a hand-written validator |
-| **3. Constructive tools** | agent builds the tree node-by-node (`addLoop`, `addDefine`), each validated on the call | incremental validation, can't drift far | verbose, many round-trips, loses the holistic read of the recipe |
+| **1. Direct C#** | agent emits the factory/operator expression; compile it against the catalog | type system validates *for free*; output is exactly the authored surface | must emit compiling C#; needs a compile-repair loop |
+| **2. Structured → lower** | agent emits JSON/tool-output; map to the node tree | easy to steer via tool schema | re-introduces the JSON the design rejected (README §6); loses the compile-time schema |
+| **3. Constructive tools** | agent builds the tree node-by-node, validated per call | incremental, can't drift far | verbose, many round-trips, loses the holistic read |
 
-The tension: the type-safe recipe is **most** powerful when the agent emits real C# (channel 1 — the
-compiler is the validator the whole spike was built around). But agents are **easier to steer** via
-structured tool output (channels 2–3). README §6 already rejected JSON for the *human* author; the
-open question is whether an agent's structured-output channel changes that calculus, or whether C#
-emission + a compile-repair loop dominates because it reuses the gate we already trust. **Resolve with
-probes, not opinion** — the building-style pass settled every fork with throwaway compile probes; this
-fork deserves the same.
+The tension: the type-safe recipe is **most** powerful when the agent emits real C# (the compiler is
+the validator the whole spike is built around), but agents are **easier to steer** via structured
+output. README §6 rejected JSON for the *human* author; whether an agent's structured channel changes
+that calculus is the load-bearing open question.
 
-### C — The feedback loop is the point
+## Connections to the product (this is not just a spike)
 
-Whatever the channel, an invalid recipe surfaces as a *specific, actionable* error — `CS1503: cannot
-convert 'string' to 'Expr<int>'` at the `Loop` count. That is exactly the guidance an agent can act
-on. So prompt → recipe is naturally a **propose → type-check → repair** loop, bounded by the catalog.
-The structure doesn't just reject bad output — it *teaches* the agent what the valid move was.
-
-### D — Decomposition granularity
-
-One-shot for small recipes (loop-sum). For larger intents, a **top-down** decomposition: intent →
-sub-goals → sub-recipes → compose. This rhymes with the declaration tier (README backlog #7–11): a
-*program* is a composition of *method* recipes, a method is a composition of *statement* recipes. The
-decomposition mirrors the **containment spine**. Out of scope for the first slice; flagged so the
-first slice doesn't accidentally foreclose it.
-
-### E — Examples as a deterministic asset
-
-Agents do better with examples, and the repo already has worked recipes (loop-sum four ways, nested
-loops, if/else-in-a-loop). Paired with their intent, these become **few-shot exemplars**: a library of
-(intent, recipe) pairs that is itself deterministic and grows with the catalog. Over time, matching a
-prompt to its nearest exemplar narrows the agent's job — the retrieval angle on scaling (see risks).
+- **Stage 1's Plan doc is the doc engine.** Its fixed schema (Context · Summary · Expected · ToDo ·
+  ToChange · Validation) is exactly a structured document — the repo *already has* a doc-template /
+  block engine on `main`. The Plan should be a doc-engine document, not a bespoke artifact.
+- **The staged ladder is a workflow.** Plan → approve → breakdown → match → compose is the
+  "deterministic workflow wrapping an agent" the product is *for*. The spike proves the compose rung;
+  the product owns running the ladder.
+- **The recipe catalog is the guardrail surface.** Architectural standards as deterministic recipes,
+  not remembered prose.
 
 ## Recommended first slice
 
-The smallest thing that proves the left arrow exists end-to-end **without putting a live model in the
-deterministic gate**:
+Prove **one rung end-to-end** without a live model in the deterministic gate — the **match → compose**
+rung at the statement tier the spike already supports:
 
-1. **Catalog manifest** — a gen-tool output listing every snippet (name, fill shape, produced type,
-   example), generated from the `[Snippet]` methods. Deterministic, no model.
-2. **Agent contract** — define input (prompt + manifest + exemplars) and output (a recipe expression
-   in the factory surface). Write it down; don't build the model call yet.
+1. **Catalog manifest** — a gen-tool output listing every snippet/recipe (name, fill shape, produced
+   type, example), generated from the `[Snippet]` methods. Deterministic, drift-free, no model.
+2. **Agent contract** — define input (a Task + the manifest + exemplars) and output (a recipe in the
+   factory surface). Write it down; don't build the model call yet.
 3. **Validate = the existing compile gate** — feed a candidate recipe into a recipe-compile harness; a
    non-compiling recipe is rejected with the compiler error as repair feedback.
-4. **Prove on the canonical prompt** — "sum the numbers 0 to 4" → the loop-sum recipe → `ScriptData.cs`
-   → `10`.
+4. **Prove on the canonical task** — "sum the numbers 0 to 4" → the loop-sum recipe → byte-identical
+   `ScriptData.cs` → `10`.
 
-For the spike, the model-in-the-loop is **recorded/stubbed** (a fixed recipe text for the canonical
-prompt), exactly as Phase 2 never put anything un-runnable in its gate. The spike proves the
-*deterministic scaffolding around the agent* — manifest, validate, repair, lower — and the live LLM is
-a **host swap** later (the same A2 → A1 move that swapped the gen tool for a source generator). The
-gate stays deterministic; only the recipe's *origin* changes from hand-authored to agent-authored.
+The model-in-the-loop is **recorded/stubbed** for the spike (a fixed recipe text for the canonical
+task), exactly as Phase 2 put nothing un-runnable in its gate. The spike proves the *deterministic
+scaffolding around the agent*; the live LLM is a later **host swap** (the same A2 → A1 move that
+swapped the gen tool for a source generator). Stages 1–2 (Plan, Breakdown) and the altitude lift
+(#7–#11) are **named here but out of scope for the first slice** — this rung proves the seam works
+before the ladder is built above it.
 
 ## Done-when (proposed)
 
@@ -144,17 +165,17 @@ gate stays deterministic; only the recipe's *origin* changes from hand-authored 
 
 ## Open questions / risks
 
-- **The B fork (C# vs structured channel)** is the load-bearing decision — settle it with probes: can
-  an agent reliably emit the factory surface? does a structured channel lower as cleanly, and is the
-  lost compile-time schema worth the easier steering?
-- **The `Var<T>` declaration is awkward for an agent.** `var acc = new Var<int>("acc")` then `acc` —
-  the "name spelled twice" sharp edge (BUILDING-STYLE.md) is a *human* nit but an *agent* hazard (two
-  tokens that must agree). Does the agent surface need a terser binding form?
+- **The match-channel fork (C# vs structured)** is the load-bearing decision — settle it with probes.
+- **The altitude lift (#7–#11) is on the critical path to the diagram's "Feature"** — the statement
+  tier can't emit a service/model/registration. Sequence it deliberately.
+- **The `Var<T>` declaration is an agent hazard** — `var acc = new Var<int>("acc")` then `acc` (the
+  "name spelled twice" sharp edge, BUILDING-STYLE.md) means two tokens that must agree. A human nit; an
+  agent footgun. Does the agent surface need a terser binding?
 - **Catalog scale.** The manifest is trivial at nine snippets; an agent's job grows with the catalog.
-  Retrieval / nearest-exemplar (lever E) is the likely answer, but unproven.
-- **Where does the propose → validate → repair loop live?** Inside this spike, or is it a product-tier
-  orchestration concern (the workflows / guardrails / evaluators the product is *for*)? The spike
-  should prove the loop's *mechanism*; the product owns running it.
+  Retrieval / nearest-exemplar is the likely answer, unproven.
+- **Breakdown's reason → review loop** (stage 2) is where ordering & role correctness live — and it's
+  pure judgment with no compiler to catch it. What validates a *task list* the way the compiler
+  validates a recipe?
 
 ## Guardrails (unchanged)
 
@@ -162,4 +183,4 @@ gate stays deterministic; only the recipe's *origin* changes from hand-authored 
 - Every change keeps the generate → compile → run gate green; `out/ScriptData.cs` stays byte-identical
   until a slice *deliberately* changes the output.
 - YAGNI — least mechanism. The manifest and the validate-repair loop earn their surface against the
-  canonical prompt before anything scales.
+  canonical task before anything scales.
