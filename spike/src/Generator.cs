@@ -39,7 +39,7 @@ static class Generator
 
     // --- rendering -----------------------------------------------------------------------
 
-    static string RenderStmt(IStmt node)
+    static string RenderStmt(Stmt node)
     {
         var method = Lookup(node.GetType());
         return SubstituteBlock(method.Body!, BuildFields(node));

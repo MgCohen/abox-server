@@ -3,9 +3,9 @@
 namespace Spike;
 
 sealed record AddNode(Expr<int> A, Expr<int> B) : Expr<int>;
-sealed record AssignNode(Var<int> Target, Expr<int> Value) : IStmt;
-sealed record DefineNode(Var<int> Var, Expr<int> Value) : IStmt;
-sealed record IfElseNode(Expr<bool> Condition, Block Then, Block Else) : IStmt;
+sealed record AssignNode(Var<int> Target, Expr<int> Value) : Stmt;
+sealed record DefineNode(Var<int> Var, Expr<int> Value) : Stmt;
+sealed record IfElseNode(Expr<bool> Condition, Block Then, Block Else) : Stmt;
 sealed record LessThanNode(Expr<int> A, Expr<int> B) : Expr<bool>;
-sealed record LoopNode(Var<int> I, Expr<int> Count, Block Body) : IStmt;
-sealed record ReturnNode(Expr<int> Value) : IStmt;
+sealed record LoopNode(Var<int> I, Expr<int> Count, Block Body) : Stmt;
+sealed record ReturnNode(Expr<int> Value) : Stmt;

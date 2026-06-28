@@ -12,16 +12,17 @@ composed by nesting. The ceremony around that tree was the noise: the `new Block
 `new Ref(x)` to *use* a variable, `new` + the `Node` suffix on every node, `new Lit(0)` around a
 bare number. None of it is the recipe's *intent* — it's the cost of expressing the tree in C#.
 
-## The five levers (all built)
+## The levers (all built)
 
 | Lever | Drops | Authoring before → after | How it's implemented |
 |-------|-------|--------------------------|----------------------|
-| **A** brackets | `new Block(...)` | `new Block(a, b)` → `[a, b]` | `[CollectionBuilder]` on `Block` (+ `IEnumerable<IStmt>` so the element type is known); ctor still works |
+| **A** brackets | `new Block(...)` | `new Block(a, b)` → `[a, b]` | `[CollectionBuilder]` on `Block` (+ `IEnumerable<Stmt>` so the element type is known); ctor still works |
 | **B** bare handles | `new Ref(x)` | `new Ref(acc)` → `acc` | `Var<T> : Expr<T>` — a handle *is* an expression; `Ref` **deleted** |
 | **C** factories | `new` + `Node` | `new LoopNode(...)` → `Loop(...)` | generated into `Factories.Generated.cs` (`static partial class Recipe`) by the gen tool |
 | **D-core** generic literals | int-only `Lit` | `Lit<int>` / `Lit<bool>` / `Lit<double>` | `Lit<T>(T) : Expr<T>, ILit` — mirrors `Var<T>` |
 | **D-sugar** bare literals | `new Lit(0)` | `new Lit<int>(0)` → `0` | implicit `T → Expr<T>` on the `abstract record Expr<T>` base |
 | **E** operators | `Add(...)` / `LessThan(...)` | `Add(acc, i)` → `acc + i`, `LessThan(i, 3)` → `i < 3` | C# 14 extension operators on `Expr<int>` (`Operators.cs`) |
+| **F** single-statement | `[...]` around one statement | `Loop(i, 5, [Assign(…)])` → `Loop(i, 5, Assign(…))` | implicit `Stmt → Block` on the `abstract record Stmt` base; `[...]` kept for multiple |
 
 ### One recipe, four styles — all emit byte-identical source
 
@@ -38,14 +39,14 @@ new Block(new DefineNode(acc, new Lit<int>(0)),
       new AssignNode(acc, new AddNode(acc, i))]),
   new ReturnNode(acc) ]
 
-// 3 — factories (C) + literals (D) + bare handles (B)
+// 3 — factories (C) + literals (D) + bare handles (B) + single-statement body (F)
 [ Define(acc, 0),
-  Loop(i, 5, [ Assign(acc, Add(acc, i)) ]),
+  Loop(i, 5, Assign(acc, Add(acc, i))),
   Return(acc) ]
 
 // 4 — + operators (E)
 [ Define(acc, 0),
-  Loop(i, 5, [ Assign(acc, acc + i) ]),
+  Loop(i, 5, Assign(acc, acc + i)),
   Return(acc) ]
 ```
 
@@ -56,17 +57,19 @@ variable a construct introduces comes first: `Define(acc, 0)` (`acc = 0`), `Loop
 
 ## The keystone that wasn't — verified empirically
 
-The plan called the **interface → class flip** (`IExpr<T>` → `abstract record Expr<T>`) the
-keystone the whole set rode on. Three throwaway compile probes (.NET 10 / C# 14, SDK `10.0.109`)
-proved that wrong. The flip is needed by **exactly one** lever:
+The plan called the **interface → class flip** the keystone the whole set rode on. Four throwaway
+compile probes (.NET 10 / C# 14, SDK `10.0.109`) proved that wrong. A flip is needed by exactly the
+two levers that hang a **conversion** off a base — and only because a user-defined conversion can't
+come from an interface (`CS0552`):
 
-| Lever | Needs the flip? | Decisive evidence |
-|-------|-----------------|-------------------|
+| Lever | Needs a flip? | Decisive evidence |
+|-------|---------------|-------------------|
 | A brackets | no | built-in attribute |
 | B bare handles | no | a record implementing an interface — a *deletion* |
 | C factories | no | vanilla static methods |
 | **E operators** | **no** | C# 14 extension operators attach to `Expr<int>` **or** even `interface IExpr<int>` with no flip. Operators *inside* a generic base fail (`CS0563`) or leak onto every `T`; extension operators scope cleanly to int. |
-| **D-sugar** literals | **yes** | a user-defined conversion **cannot target an interface** (`CS0552`), the leaf-`int→Lit` chain won't fire through an upcast (`CS0029`), and extension *conversions* don't exist (`CS9282`). The only working form is an in-type generic conversion on a **class** base. |
+| **D-sugar** literals | **yes** (`IExpr<T>` → `Expr<T>`) | a conversion **cannot target an interface** (`CS0552`), the leaf-`int→Lit` chain won't fire through an upcast (`CS0029`), and extension *conversions* don't exist (`CS9282`). Only an in-type generic conversion on a **class** base works. |
+| **F** single-statement | **yes** (`IStmt` → `Stmt`) | same wall — `implicit operator Block(IStmt)` is `CS0552`; from `abstract record Stmt` it compiles and resolves at a `Block` param site with no ambiguity against the `[CollectionBuilder]` path. |
 
 ### Why D survived (the generic-`Lit<T>` fix)
 
@@ -81,10 +84,11 @@ already-`Expr` value (a `Var`) outranks the conversion, so handles are never wra
 ### What the flip costs
 
 Nothing usable. The only interface capability a class can't have is `out T` **covariance** — and
-covariance needs reference-type `T`, while ours are value types (`int`/`bool`), so `out` was inert.
-Records keep value-equality / `with`; statements stay on the `IStmt` **interface**; and
-`Generator.cs` barely names the expression base (it routes on `is IVar` / `is Block` / else), so the
-blast radius was the node definitions + the gen tool's field-type string.
+covariance needs reference-type `T`, while `Expr`'s `T` is a value type (`int`/`bool`), so `out` was
+inert; `Stmt` has no type parameter, so it had no variance to give up at all. Records keep
+value-equality / `with`; and `Generator.cs` barely names the bases (it routes on `is IVar` / `is
+Block` / else and renders statements via `RenderStmt`), so the blast radius was the node definitions
++ the gen tool's field-type strings.
 
 ## How byte-identical is kept
 

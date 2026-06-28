@@ -100,7 +100,7 @@ static class Emitter
     // An expression-bodied snippet (=> a + b) produces a value; a block-bodied one
     // ({ return value; }) produces statements — the body KIND, not the return type.
     static string BaseType(MethodDeclarationSyntax m) =>
-        m.ExpressionBody is not null ? $"Expr<{m.ReturnType}>" : "IStmt";
+        m.ExpressionBody is not null ? $"Expr<{m.ReturnType}>" : "Stmt";
 }
 
 static class Naming

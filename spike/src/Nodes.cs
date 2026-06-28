@@ -5,9 +5,11 @@ namespace Spike;
 
 // The normalized contract (the Func/Action analogue):
 //   Expr<T> — produces a value of type T
-//   IStmt   — produces statement(s)
-// Recipe fills are typed against these, so composition is checked at authoring time.
-interface IStmt;
+//   Stmt    — produces statement(s)
+// Recipe fills are typed against these, so composition is checked at authoring time. Stmt is a
+// base CLASS, not an interface, so Block can host an implicit Stmt -> Block conversion (a
+// conversion can't come from an interface — CS0552), letting a single statement skip the [...].
+abstract record Stmt;
 
 // Expr is a base CLASS, not an interface, so it can host the implicit literal conversion
 // (a user-defined conversion can't target an interface — CS0552). `out T` covariance is given
@@ -42,19 +44,21 @@ sealed record Var<T>(string Name) : Expr<T>, IVar;
 // A sequence of statements. The recipe root and a block-region fill. [CollectionBuilder] lets a
 // recipe author a block as a collection expression [...]; the public ctor (new Block(...)) still works.
 [CollectionBuilder(typeof(Blocks), nameof(Blocks.Create))]
-sealed record Block(params IStmt[] Statements) : IEnumerable<IStmt>
+sealed record Block(params Stmt[] Statements) : IEnumerable<Stmt>
 {
     public static Block Of(string id) =>
         throw new InvalidOperationException($"Block.Of(\"{id}\") is a compile-time placeholder; never executed.");
 
-    public IEnumerator<IStmt> GetEnumerator() => ((IEnumerable<IStmt>)Statements).GetEnumerator();
+    public static implicit operator Block(Stmt single) => new(single);
+
+    public IEnumerator<Stmt> GetEnumerator() => ((IEnumerable<Stmt>)Statements).GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }
 
 static class Blocks
 {
-    public static Block Create(ReadOnlySpan<IStmt> statements) => new(statements.ToArray());
+    public static Block Create(ReadOnlySpan<Stmt> statements) => new(statements.ToArray());
 }
 
 // The snippet-backed recipe nodes (DefineNode, AddNode, …) and their factories (Recipe.Loop, …)

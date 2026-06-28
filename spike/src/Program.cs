@@ -87,8 +87,7 @@ static class Program
         var i = new Var<int>("i");
         return [
             Define(acc, 0),
-            Loop(i, 5, [
-                Assign(acc, Add(acc, i))]),
+            Loop(i, 5, Assign(acc, Add(acc, i))),
             Return(acc)];
     }
 
@@ -98,8 +97,7 @@ static class Program
         var i = new Var<int>("i");
         return [
             Define(acc, 0),
-            Loop(i, 5, [
-                Assign(acc, acc + i)]),
+            Loop(i, 5, Assign(acc, acc + i)),
             Return(acc)];
     }
 
@@ -120,9 +118,7 @@ static class Program
         var j = new Var<int>("j");
         return [
             Define(acc, 0),
-            Loop(i, 3, [
-                Loop(j, 3, [
-                    Assign(acc, acc + (i + j))])]),
+            Loop(i, 3, Loop(j, 3, Assign(acc, acc + (i + j)))),
             Return(acc)];
     }
 
@@ -132,10 +128,10 @@ static class Program
         var i = new Var<int>("i");
         return [
             Define(acc, 0),
-            Loop(i, 5, [
+            Loop(i, 5,
                 IfElse(i < 3,
                     [Assign(acc, acc + i), Assign(acc, acc + 1)],
-                    [Assign(acc, acc + 10)])]),
+                    Assign(acc, acc + 10))),
             Return(acc)];
     }
 }
