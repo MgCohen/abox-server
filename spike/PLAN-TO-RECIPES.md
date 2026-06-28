@@ -23,6 +23,11 @@ Plan ──► breakdown ──► Task[] ──► match ──► Recipe[] ─
  engine)               engine)              catalog)     elsewhere
 ```
 
+> Worked empirically against a real implemented feature in
+> [`projects-decomposition.md`](projects-decomposition.md): reconcile the Projects plan ↔ code, break it
+> down over several rounds (milestone → phase → task), then derive the conceptual recipes — finding five
+> CRUD verbs collapse onto three endpoint recipes (tasks ≠ recipes, many-to-one).
+
 Everything in stages 2–3 is **LLM-authored, deterministically validated** — the same atom the rest of
 the product runs on (`PLANS/capability-spec.md` §1: *input → findings → verdict → pass/fail*). The LLM
 proposes; a validator gates; a failure is repair feedback.
