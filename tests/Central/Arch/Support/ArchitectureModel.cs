@@ -25,7 +25,7 @@ internal static class ArchitectureModel
     {
         var assemblies = Directory
             .GetFiles(AppContext.BaseDirectory, "ABox.*.dll")
-            .Where(path => !Path.GetFileName(path).Contains(".Tests.", StringComparison.Ordinal))
+            .Where(path => !TestAssemblies.IsTestAssembly(Path.GetFileNameWithoutExtension(path)))
             .Select(Assembly.LoadFrom)
             .ToArray();
 

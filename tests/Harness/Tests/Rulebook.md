@@ -34,3 +34,8 @@ outside the product taxonomy it polices. It is checked by `ParityGuard.ForRulebo
 ### Every rulebook declares its folder as its testType
 - **Why:** the doc-engine no longer pins `testType` to a list, so the harness owns it — a rulebook's folder is
   its type, and the `testType` front-matter must equal it.
+
+### The two test-assembly predicates classify every built suite consistently
+- **Why:** Arch excludes every test dll from the production graph (`IsTestAssembly`) and the sweeps run over
+  feature suites only (`IsFeatureTestAssembly`); if the two drift, a real suite leaks into the production graph
+  or escapes coverage. The predicates are checked against the actual built suites so neither can silently narrow.

@@ -138,4 +138,37 @@ public class TaxonomyTests
             .FirstOrDefault(l => l.StartsWith("testType:", StringComparison.Ordinal));
         return line is null ? "(none)" : line["testType:".Length..].Trim();
     }
+
+    [Rule("The two test-assembly predicates classify every built suite consistently")]
+    [Fact]
+    public void TestAssemblyPredicatesAgreeOnEverySuite()
+    {
+        var central = typeof(SuiteAnchor).Assembly.GetName().Name!;
+        var suites = Suites.Colocated();
+        Assert.NotEmpty(suites);
+
+        var problems = new List<string>();
+
+        if (!TestAssemblies.IsTestAssembly(central))
+            problems.Add($"{central}: the central suite is not a test assembly — Arch would load it into the production graph");
+        if (TestAssemblies.IsFeatureTestAssembly(central))
+            problems.Add($"{central}: the central suite is classified a feature suite — Suites would double-sweep it");
+
+        foreach (var name in suites.Select(a => a.GetName().Name!).OrderBy(n => n, StringComparer.Ordinal))
+        {
+            if (!TestAssemblies.IsFeatureTestAssembly(name))
+                problems.Add($"{name}: a real co-located suite (it stamps TestsSourceDir) is not a feature suite — Suites would skip it");
+            if (!TestAssemblies.IsTestAssembly(name))
+                problems.Add($"{name}: a real co-located suite is not a test assembly — Arch would load it into the production graph");
+        }
+
+        Assert.True(problems.Count == 0,
+            $"""
+            TestAssemblies.IsTestAssembly and IsFeatureTestAssembly disagree on a real built suite — Arch's
+            exclusion and the harness's sweep would diverge:
+            {Bullets(problems)}
+            Align the two predicates so every feature suite is BOTH, and the central suite is a test assembly but
+            not a feature suite.
+            """);
+    }
 }
