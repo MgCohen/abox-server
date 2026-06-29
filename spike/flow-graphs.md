@@ -50,6 +50,12 @@ persistence · `{{event}}` message/event.
 | 4 | Checkout Cart | `POST /cart/checkout` | Users → **OrderProcessing**, **EmailSending** | handler **sends** cross-module *commands* (create order, send email), then clears cart |
 | 5 | Add Address → cache | `POST /users/addresses` | Users → **OrderProcessing** | aggregate raises domain event → bridged to integration event → other module updates a cache |
 | 6 | Order created → fan-out | order saved | OrderProcessing → **Reporting**, **EmailSending**, **Books** | one domain event → many subscribers; one bridged to integration event; email via async outbox |
+| 7 | Reporting read | `GET /topsales[2]` | Reporting | projection read — Dapper straight to a store, domain stack absent; two contrasted styles |
+| 8 | Create User | `POST /users` | Users | framework-owned write — `UserManager` owns rules + store; no aggregate/repo/event |
+| 9 | Pipeline band | every message | SharedKernel/Web | ambient — validation+logging decorators wrapping every handler |
+
+> Flows 7–9 were added after a coverage audit (below) showed 1–6 clustered on
+> public writes. They sample three otherwise-unseen parts.
 
 Two things already jump out and are worth holding onto for Iteration 2:
 - **Books doesn't use MediatR at all** (direct `Service → Repository`), while Users /
@@ -234,9 +240,110 @@ Two distinct async/decoupling devices appear:
 
 ---
 
+## Coverage audit — did the flows sample *different parts*?
+
+Flows 1–6 were honest but **clustered**: mostly public-HTTP **writes** down the
+Users/OrderProcessing/Books spine, plus the two event flows. To check we weren't
+only looking at "public services," here is every entry-point *category* in RiverBooks
+mapped against the flows that touch it (✓ = covered, — = not).
+
+| Architectural part | F1 | F2 | F3 | F4 | F5 | F6 | F7 | F8 | F9 |
+|---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| Public read (HTTP→service→repo→EF) | ✓ | | | | | | | | |
+| Public write (HTTP→aggregate→repo) | | ✓ | ✓ | ✓ | ✓ | | | ✓ | |
+| Identity / auth-coupled (Claims) | | | ✓ | ✓ | ✓ | | | ✓ | |
+| Cross-module **sync query** | | | ✓ | ✓ | | ✓ | | | |
+| Cross-module **sync command** | | | | ✓ | | ✓ | | | |
+| Event-driven reactor (no HTTP entry) | | | | | ✓ | ✓ | | | |
+| Domain→integration **bridge** | | | | | ✓ | ✓ | | | |
+| **Background worker** (poll, no HTTP) | | | | | | ✓ | | | |
+| Cache / read-model **write** | | | | | ✓ | ✓ | | | |
+| **Projection read** (domain-bypassing) | | | | | | | ✓ | | |
+| **Framework-owned write** (Identity) | | | | | | | | ✓ | |
+| **Ambient pipeline** (wraps every msg) | | | | | | | | | ✓ |
+
+**Verdict.** Flows 1–6 already reached well past public services — F6 has *no HTTP
+entry at all* (internal save-triggered, includes a background worker + domain-only
+reactors), and F5/F6 cover the event/bridge plumbing. But three genuinely distinct
+parts were unsampled: a **domain-bypassing read**, a **framework-owned write**, and
+the **cross-cutting pipeline**. Flows 7–9 fill those.
+
+## 7. Reporting read — projection query (bypasses the domain)
+
+```mermaid
+flowchart LR
+  C([Client])
+  C -->|"GET /topsales (sync)"| EP1["TopSalesByMonth1"]
+  C -->|"GET /topsales2 (async)"| EP2["TopSalesByMonth2"]
+  EP1 -->|call| S1["TopSellingBooksReportService"]
+  EP2 -->|call| S2["DefaultSalesReportService"]
+  S1 -->|"dapper JOIN (reach-in)"| ODB[("OrderProcessing DB<br/>Books+OrderItem+Orders")]
+  S2 -->|"dapper SELECT"| RDB[("Reporting read-model<br/>MonthlyBookSales")]
+  S1 -.->|"TopBooksByMonthReport"| EP1
+  S2 -.-> EP2
+  C3([Client]) -->|"GET /emails"| EP3["ListEmails endpoint"]
+  EP3 -->|"mongo Find"| MDB[("Mongo outbox")]
+```
+
+**Reading.** The CQRS **read side**, and the system's clearest deliberate contrast:
+the *same* business question answered two ways — **reach-in** (`TopSalesByMonth1`:
+synchronous Dapper JOIN straight into the *operational* OrderProcessing tables) vs
+**read-model** (`TopSalesByMonth2`: async Dapper `SELECT` against the denormalized
+`MonthlyBookSales` projection that flow 6 populates). **Neither touches an aggregate,
+repository, EF, or DbContext** — pure SQL→DTO. `ListEmails` (`GET /emails`) is the
+NoSQL cousin: the endpoint holds an `IMongoCollection` directly. This whole *part*
+is "read a store, shape a DTO" with the domain stack deliberately absent.
+`Reporting/ReportEndpoints/TopSalesByMonth{1,2}.cs`, `TopSellingBooksReportService.cs`, `DefaultSalesReportService.cs`, `EmailSending/ListEmailsEndpoint/List.cs:30`.
+
+## 8. Create User — framework-owned write (Identity)
+
+```mermaid
+flowchart LR
+  C([Client]) -->|"HTTP POST /users (anon)"| EP["Create endpoint"]
+  EP -->|"send (cmd)"| H["CreateUserCommandHandler"]
+  H -->|"call CreateAsync"| UM["UserManager&lt;ApplicationUser&gt;<br/>(ASP.NET Identity)"]
+  UM -->|"hash pwd + insert"| IDB[("AspNetUsers")]
+  UM -.->|"IdentityResult"| H
+  H -.->|"Result (Success / Error)"| EP
+  EP -->|"HTTP 200 / problem"| C
+```
+
+**Reading.** A write that **skips the entire domain discipline** flow 5 uses for the
+*same* `ApplicationUser`. No intent-method, no Guard invariants, no repository, no
+domain event, no `SaveChangesAsync` of ours — the aggregate is `new`'d as a bare
+object and handed to `UserManager`, a **framework service that owns its own rules
+(password policy, hashing) and its own store** (`AspNetUsers`). `AllowAnonymous`,
+because this is the pre-auth **bootstrap** every other user flow depends on. Same
+entity, opposite write discipline — a key un-normalized seam (see §2.5).
+`UserEndpoints/Create.cs:26`, `UseCases/User/Create/CreateUserCommandHandler.cs:22`.
+
+## 9. The pipeline band — ambient, wraps every message
+
+```mermaid
+flowchart LR
+  C([Client]) -->|HTTP| MW["RequestLoggingMiddleware"]
+  MW --> EP["Endpoint"]
+  EP -->|"send / publish"| FV["FluentValidationBehavior"]
+  FV -. "fail → Result.Invalid()" .-> EP
+  FV -->|ok| LOG["LoggingBehavior<br/>(timing + reflected props)"]
+  LOG --> H["Handler — the slice (M1)"]
+  H -.-> LOG -.-> EP -->|"HTTP response"| C
+```
+
+**Reading.** Not a feature — the **band wrapping every other flow**. An HTTP
+middleware logs the request; then *inside* MediatR, two pipeline behaviors run before
+any handler: `FluentValidationBehavior` runs all registered validators and — the key
+finding — **converts failures to `Result.Invalid()` right here**, so the per-slice
+validators in flows 2–3 actually execute in this band, not in endpoint code; then
+`LoggingBehavior` times the handler. This is the "wrap the unit of work in fixed
+structure so it's validated for free" shape, expressed as decorators.
+`Web/RequestLoggingMiddleware.cs`, `SharedKernel/FluentValidationBehavior.cs:31`, `SharedKernel/LoggingBehavior.cs`.
+
+---
+
 # Iteration 2 — normalization pass
 
-> Reading the six graphs side by side, the **same handful of node kinds and edge
+> Reading the nine graphs side by side, the **same handful of node kinds and edge
 > kinds** recur, and they assemble out of a small set of repeating **motifs**. This
 > pass names them. Still no grounding on our tech — this is purely "what shapes does
 > a well-built feature decompose into."
@@ -254,7 +361,9 @@ Every box across all six flows collapses to one of these roles:
 | **Service** | stateless behavior a handler/endpoint calls directly | `BookService`, `OrderIngestionService` |
 | **Aggregate** | the consistency-owning domain object; exposes intent methods, holds invariants, **emits events** | `Book`, `ApplicationUser`, `Order` |
 | **Port + Adapter** | an interface (`I*Repository`, `IOrderAddressCache`, `ISendEmail`) and its impl (`Ef*`, `Redis*`, `MimeKit*`) | repos, caches, senders |
-| **Store** | where state lives | SQL per module, Mongo outbox, Redis cache, Dapper read-model |
+| **Framework service** | an external service that owns *its own* rules **and** store — you call it, it does not go through your aggregate/repo | `UserManager<ApplicationUser>` (Identity) |
+| **Pipeline behavior** | an ambient decorator wrapping every message before the handler | `FluentValidationBehavior`, `LoggingBehavior`, `RequestLoggingMiddleware` |
+| **Store** | where state lives — *operational* (aggregate-backed) or *projection* (denormalized, read-optimized) | SQL per module, Mongo outbox, Redis cache, Dapper `MonthlyBookSales` read-model |
 | **Event** | something that *happened* — **domain** (in-module) or **integration** (cross-module, lives in `*.Contracts`) | `OrderCreatedEvent` / `OrderCreatedIntegrationEvent` |
 | **Reactor** | a handler subscribed to an event (incl. the **bridge** reactor that re-emits) | `*EventHandler`, the two bridge handlers |
 | **Worker** | a timer-driven background processor | `EmailSendingBackgroundService` |
@@ -276,35 +385,49 @@ a *directed* `send` of a `*.Contracts` message (flows 3, 4 — synchronous, you 
 an answer or an ordered effect), or a *broadcast* integration event (flows 5, 6 —
 fire-and-forget, the emitter must not wait or care).
 
+There is also a third, *orthogonal* family — **ambient/decorator** (flow 9): the
+pipeline band doesn't move data between components, it *wraps* the directed call.
+`validate`, `log`, and the `Result.Invalid()` short-circuit are this family. It is
+not on the data path; it is the box drawn *around* M1.
+
 ## 2.3 The recurring motifs (the reusable shapes)
 
-Six flows, seven motifs. Every flow is a composition of these:
+Nine flows, nine motifs + an ambient band. Every flow is a composition of these:
 
 | Motif | Shape | Appears in |
 |---|---|---|
-| **M1 · Request pipeline** | `Endpoint → [Gate] → Message → Handler → Result → Endpoint` | all |
+| **M1 · Request pipeline** | `Endpoint → [Gate] → Message → Handler → Result → Endpoint` | all HTTP |
 | **M2 · Aggregate mutation** | `Handler → (load via Port) → Aggregate.intent() [guards (+raise)] → save` | 2,3,4,5,6 |
 | **M3 · Cross-module ask** | `Handler → send(Contracts msg) → foreign Handler → Result` | 3 (query), 4 (command) |
 | **M4 · Post-save dispatch** | `Aggregate.raise → DbContext.save → dispatch → publish → Reactor*` | 5,6 |
 | **M5 · Domain→Integration bridge** | `Reactor → bridge→IE → foreign Reactor*` | 5,6 |
 | **M6 · Async outbox** | `Handler → write(outbox); Worker → poll → read → External → mark` | 6 |
 | **M7 · Read-model / cache replication** | `Reactor → upsert(own denormalized Store)` | 5 (Redis), 6 (Dapper) |
+| **M8 · Projection read** | `Endpoint → Service → store query (Dapper) → DTO` — **no aggregate/repo/EF** | 7 (+ ListEmails) |
+| **M9 · Framework-owned write** | `Handler → Framework service → its own store` — replaces M2's aggregate/repo/event | 8 |
+| **(band) · Ambient pipeline** | `Middleware → Validate(→short-circuit) → Log → Handler` **wraps** M1 | 9 (around 2–6,8) |
 
 Notice the **layering**: M4 feeds M5 feeds (M6 ∥ M7). The right edge of one motif is
 the left edge of the next — they chain at typed seams (a `Result`, an event, a
-`*.Contracts` type). That chaining-at-seams is the thing to carry forward.
+`*.Contracts` type). That chaining-at-seams is the thing to carry forward. M8/M9 are
+*alternative cores* — they occupy M2's slot but deliberately drop the domain stack
+(M8 for reads, M9 for framework-owned writes). The band is not in series at all; it
+encloses M1.
 
 ## 2.4 The canonical composite
 
-Collapsing all six onto the normalized vocabulary, **one feature** looks like this —
-M1 is the spine; M3 branches sideways (sync); M4→M5→{M6,M7} hangs off the bottom
-(async):
+Collapsing all nine onto the normalized vocabulary, **one feature** looks like this —
+the ambient **band** encloses the request; M1 is the spine; the **core** is normally
+M2 but M8/M9 are drop-in alternatives; M3 branches sideways (sync); M4→M5→{M6,M7}
+hangs off the bottom (async):
 
 ```mermaid
 flowchart TB
   EDGE([Edge / Endpoint]) -->|"HTTP"| MSG["Message (command/query)"]
-  MSG -->|validate| GATE[Gate]
-  GATE --> HANDLER[Handler]
+  subgraph BAND["ambient band (flow 9) — wraps every message"]
+    MSG -->|validate| GATE["Gate (→ short-circuit Result.Invalid)"]
+    GATE -->|log| HANDLER[Handler]
+  end
 
   HANDLER -->|"M3: send (Contracts)"| FOREIGN["Foreign Handler<br/>(other module)"]
   FOREIGN -.->|Result| HANDLER
@@ -312,6 +435,8 @@ flowchart TB
   HANDLER -->|"M2: load / save"| PORT["Port → Adapter → Store"]
   HANDLER -->|"intent()"| AGG["Aggregate<br/>(guards + raise)"]
   AGG -.-> PORT
+  HANDLER -. "M9: framework write" .-> FW["Framework service<br/>(owns rules + store)"]
+  HANDLER -. "M8: projection read" .-> PROJ["Service → Dapper → projection store<br/>(no aggregate/repo/EF)"]
 
   PORT -->|"M4: save then dispatch"| EV{{"Domain event"}}
   EV -->|publish 1→N| RX["Reactor(s)"]
@@ -346,6 +471,15 @@ earns its keep:
 4. **Cross-module door choice is by convention, not by type.** "Use `send` for a
    needed answer, an integration event for fire-and-forget" is a rule in people's
    heads — nothing structural enforces which door a given interaction should take.
+5. **One entity, two write disciplines.** `ApplicationUser` is mutated through the
+   full aggregate+event machinery in flow 5 (AddAddress) but created through a bare
+   `UserManager` call in flow 8 — no guard, no event. Framework-owned writes (M9)
+   are a real exception to M2, but nothing marks *which* entities/operations are
+   allowed to take it.
+6. **Read side has its own un-normalized spread.** Reads appear as: M1+service+repo
+   (flow 1), reach-in Dapper into operational tables (flow 7a), Dapper over a
+   denormalized projection (flow 7b), and a raw Mongo `Find` in the endpoint
+   (ListEmails). Four spellings of "get data out," chosen ad hoc.
 
 ## 2.6 Carry-forward (for the later grounding pass — not done here)
 
