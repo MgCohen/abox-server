@@ -9,6 +9,10 @@ This document is written to be **cold-readable**: you should be able to understa
 the whole idea, why it's shaped the way it is, and what we're building, without
 having seen the conversation that produced it.
 
+> **Two follow-on passes branch off this core:** `BUILDING-STYLE.md` explores how a recipe is
+> *authored* (the recipe → code direction), and `PROMPT-DECOMPOSITION.md` explores the **other end** —
+> how a user's intent becomes a recipe in the first place (the intent → recipe direction).
+
 > **Status — Steps 1 & 2 built and passing.**
 > - **Step 1** (`spike/src/`): `dotnet run` generates `spike/out/ScriptData.cs`,
 >   compiles it in-memory, and runs it → returns `10`. Editing a snippet flows
