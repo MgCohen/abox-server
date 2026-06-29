@@ -65,6 +65,11 @@ generalization `NOTES.md` deferred until a real consumer existed (`step` is it).
 | third heading level | `InstanceParser.cs` | parse `#### member` as a **child** of the enclosing `###` member when its block `composes` that type; member parsing (title, attrs, body) recurses by depth (`ParsedBlock` gains `Children`) |
 | recursive validation | `DocValidator.cs` | a child must be in the parent's `composes`; enforce child required-presence (≥1), attrs, labels, body at each level |
 
+**New per-parent rule (decided):** a block that `composes` a type requires **≥1** such child —
+an `action` with zero `#### step`s **fails** `validate`. This is *not* the existing emptiness
+rule (which only flags a group whose *type* has zero members anywhere, `NOTES.md` punt #7); it
+is a new per-parent required-child check in the recursive pass.
+
 ### 1b. Attr validators + invisibility (two reusable params)
 
 Extend the attr field-spec (`FieldSpec.cs`) with two optional parameters — both generic, both
