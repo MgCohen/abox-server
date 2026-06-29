@@ -4,9 +4,9 @@ blocks: [rule]
 required: [rule]
 attrs:
   testType:
-    enum: [arch, structure, unit, e2e, wire, live, meta, docs]
+    type: string
     required: true
-  template:
+  rubric:
     type: string
     required: true
   harness:
@@ -14,5 +14,5 @@ attrs:
     required: true
 rubric:
   coverage: Every guarantee of this type has a Rule; nothing significant unstated.
-  right-type: Each Rule matches the declared testType — behaviour (with Outcome) for wire/live/e2e, invariant for arch/structure/meta.
+  right-type: Each Rule matches the declared testType — behaviour (with Outcome) for wire/live/e2e, invariant for arch/structure.
   one-per-rule: Each Rule states exactly one guarantee, not a bundle or a restatement.

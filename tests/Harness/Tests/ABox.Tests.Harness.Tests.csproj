@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="ABox.Tests.Harness" />
+  </ItemGroup>
+
+  <!-- The harness's own tests validate every suite from OUTSIDE: they reflect over the central suite (via
+       ABox.Tests.Central.SuiteAnchor) the way the Arch guards reflect over src. The reference makes the assembly
+       loadable; Harness carries the engine. Product Rulebooks are read from the source tree (RepoTree), so
+       no copy. This assembly stamps no TestsSourceDir — it polices the taxonomy, it is not part of it. -->
+  <ItemGroup>
+    <ProjectReference Include="..\ABox.Tests.Harness.csproj" />
+    <ProjectReference Include="..\..\Central\ABox.Tests.Central.csproj" />
+  </ItemGroup>
+
+</Project>

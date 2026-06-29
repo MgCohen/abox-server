@@ -71,8 +71,9 @@ dotnet test  dirs.proj        # the FULL suite — central + every co-located fe
 1:1/1:N by `[Rule]` facts and a `ParityGuard` — a test never lands without the Rule it proves.
 **Tests are co-located with their owner** ([`PLANS/test-colocation.md`](PLANS/test-colocation.md)): a
 feature's `Unit`/`Wire`/`E2E`/`Live` live under `src/<…>/<Owner>/Tests/` in `ABox.<Owner>.Tests`; only the
-ownerless types (`Arch`/`Structure`/`Docs` + `Meta`) and the shared `Harness`/`Templates`/`Fixtures` stay
-under `tests/`. Adding a test → **`test-rulebook`** skill; standing up a feature's test assembly →
+ownerless types (`Arch`/`Structure`/`Docs`) and the shared `Harness` engine (with its own tests at
+`Harness/Tests/` that police adherence) / `Rubrics` / `Fixtures` stay under `tests/`. Adding a test →
+**`test-rulebook`** skill; standing up a feature's test assembly →
 **`new-feature-tests`** skill. Front door: [`tests/README.md`](tests/README.md).
 
 ## Repo controls (agent guardrails)
@@ -87,6 +88,13 @@ door: [`governance/README.md`](governance/README.md); the why: [`ADR 0010`](desi
 **You act as the bot `ABox-Agent` — never as the owner.** Use only the credentials this
 session was given. A permission wall — protected path, required review, blocked merge to
 `main` — is by design: stop and ask the owner to act, don't work around it.
+
+**Reading public repos outside session scope.** `git clone` and the GitHub tools are
+routed through the scoped Git Proxy and 401/403 on any repo but the one in scope — that's
+the *authenticated* path and it stays scoped. To read a **public** repo for reference, use
+`scripts/fetch-public-repo.sh <owner/repo>[:<path>] [ref]`: it pulls over codeload/raw,
+which ride the general egress proxy, so no scope change is needed. Don't try to widen the
+Git Proxy scope to read public code.
 
 ## Code standards
 

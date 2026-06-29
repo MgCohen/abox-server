@@ -19,7 +19,7 @@ dump (ephemeral)  ──distill──►  instance.md (blocks)  ──validate�
 ```
 
 An instance lives in its **home folder** in the repo — a Rulebook under
-`tests/**/Rulebook/`, an ADR under `design/adr/`, a plan under `PLANS/` — and is
+`tests/**/Rulebook.md`, an ADR under `design/adr/`, a plan under `PLANS/` — and is
 validated **in place**. The engine owns no output directory; it validates any path.
 
 ## Layout
@@ -44,6 +44,30 @@ validated **in place**. The engine owns no output directory; it validates any pa
 The engine is the C# under this directory: `SchemaChecker` (floor),
 `InstanceParser` + `DocValidator` (instance), `Catalog` (decision matrices),
 `Outline` (derived views), behind the `Program` CLI.
+
+## Rulebooks: the standard / criteria / guarantee split
+
+A test type's Rulebook (ADR 0015) is one doc-engine doctype expressed across three
+physically separated layers — the standard is central, the criteria are central
+per-type, the guarantees are co-located with the feature they protect:
+
+| Layer | What it is | Doc-engine role | Home |
+|---|---|---|---|
+| **Doctype** (`rulebook`, `rubric`) | the schema — what *any* rulebook/rubric must look like | the catalog | **central** — `tools/doc-engine/doctypes/` |
+| **`<type>.md`** | the per-*type* criteria ("what a Unit test is") | a `rubric` **instance** | **central** — `tests/Rubrics/`, one per type |
+| **`Rulebook.md`** | this *feature's* guarantees | a `rulebook` **instance**, `rubric:`→central rubric | **co-located** with the feature under `src/<…>/<Owner>/Tests/<Type>/` |
+
+The engine validates every instance against its doctype **wherever it lives**;
+`ParityGuard` (test-side) bridges the `### ` headers in a co-located `Rulebook.md` to
+the `[Rule]` tests beside it. There is no `add-a-doctype` howto: a new doctype is a
+rare, owner-reviewed change to the protected catalog — add a `kinds`/`doctypes`
+entry by following the existing files, not a routine procedure.
+
+A doctype's **`rubric`** is *advisory* — authoring guidance and binary one-liners
+the LLM judge grades against. It is **not** a `[det]` validator rule: `DocValidator`
+enforces blocks, required attrs, and labels, never rubric text. So per-type wording
+in a rubric (e.g. naming `wire`/`live`/`e2e` "behavioural") is descriptive judge
+guidance, not a structural constraint, and is outside ADR 0015's `[det]` guarantee.
 
 ## Run
 

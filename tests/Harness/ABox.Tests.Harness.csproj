@@ -16,4 +16,10 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <!-- The harness's own tests nest here (they police adherence to this engine), but are their own test
+       assembly — keep their sources out of this library's default compile glob. -->
+  <ItemGroup>
+    <Compile Remove="Tests/**/*.cs" />
+  </ItemGroup>
+
 </Project>
