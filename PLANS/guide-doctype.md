@@ -70,6 +70,14 @@ an `action` with zero `#### step`s **fails** `validate`. This is *not* the exist
 rule (which only flags a group whose *type* has zero members anywhere, `NOTES.md` punt #7); it
 is a new per-parent required-child check in the recursive pass.
 
+**Depth — one level (decided):** only `action` declares `composes`; `step` composes nothing,
+so depth caps at one (`action → step`) and we build/test the parser for that one level (H4
+children) — not speculative arbitrary depth. A **sub-step** (`2.1`) is a flat `#### step` with
+a dotted id, *not* a nested block; the "`2.1` belongs to `2`" relationship lives in the id
+grammar (`pattern` checks the id is well-formed, not that a parent `2` exists). The `composes`
+mechanism stays general — a future block may compose children — but we don't enforce beyond the
+level with a real consumer.
+
 ### 1b. Attr validators + invisibility (two reusable params)
 
 Extend the attr field-spec (`FieldSpec.cs`) with two optional parameters — both generic, both
