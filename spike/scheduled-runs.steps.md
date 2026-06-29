@@ -132,3 +132,44 @@ action+object with resolved context. → **converged at round 3; 11 leaf steps.*
 - **Leaf altitude held:** nothing landed as small as "add field X" (those stayed *fills* of the entity
   step), and nothing as big as "build the service" (that split). The action+object shape + the
   no-open-questions rule found the band on their own.
+
+---
+
+## Review — three perspectives (builder · decomposition-methodologist · product/QA)
+
+Ran three independent reviewers on the final 11 steps. They converged hard. **The list looked clean and
+passed both stop conditions, but it is load-bearing broken** — convergence was declared prematurely.
+
+### Consensus issues
+
+| # | Issue | Fix |
+|---|---|---|
+| 1 | **Overlap-skip is unbuildable as written** *(killer)* — no step writes run-status back on completion, so `LastRun` goes "active" and never clears → overlap-skip is dead or skips forever | add a run-completion-observation/writeback step (the counterpart to firing) |
+| 2 | **Step 9 too abstract** — one line hides due-detection + 3 edge-rules + the timing source | split into due-detection-in-window · fire+edge-rules · run-completion/startup-reconcile, each with its own done-condition |
+| 3 | **Step 10 should fold into 9** — it's a *fill* (“→fire→”), not a peer | demote to resolved-context of the fire step |
+| 4 | **Restart-durability / Verification has no home** — the plan's marquee check ("survives restart, no backfill") maps to no step | add a startup-reconciliation step that clears stale in-flight `LastRun`; add a step that makes runs observable so Verification is runnable |
+| 5 | **Order back-loads the point** — "does it fire on its own" isn't observable until ~step 9 | insert an early "fires once on a near-future cron" milestone before the edge-rules |
+
+### Concrete, repo-grounded gaps (builder lens)
+
+- **The run needs a `Prompt`** — `FlowLauncher.Start(flow, project, dir, prompt)` / `StartRunRequest(ProjectId, Flow, Prompt, Push)` require it; the `Schedule` entity has no prompt field → a fire can't call the launch path.
+- **`LastRun.status` is the wrong model** — run liveness lives in `FlowRegistry`, **in-memory**; a persisted status goes stale after restart, and overlap detection must query the registry, not a field.
+- **Missing a last-outcome/failure field** — "missed fire is recorded" / "records a clean failure" have nowhere to land (entity has only `LastFiredAt` + `LastRun`).
+- **Repo conventions skipped** — no co-located tests (`ABox.Schedules.Tests` + `Rulebook/rules.md` + `Parity.cs`); validation should be a **Step** (ADR 0009), not inline; wire leaf may split `Api` (client) vs `Contract` (scheduler-internal) per ADR 0014; the launch seam is `FlowLauncher`+`ProjectResolver` (StartEndpoint is still Minimal-API).
+
+### Over-specification flagged (we were *too specific*)
+
+- Step 7 hard-codes `PUT /schedules/{id}/pause|/resume` — the REST shape is the implementer's call.
+- Step 2 pre-commits a cron **library** — a reviewed dependency choice (ADR 0012), not a breakdown fact.
+- Step 1 freezes the field list including the wrong `LastRun` model; check-granularity was baked as "interval" when the plan only *leaned*.
+
+### What the review reveals about the LOOP (the real payoff)
+
+1. **"No open questions" is asker-relative** — the loop stopped at its own depth; an adversarial reviewer found load-bearing gaps. → **the loop needs an adversarial review stage (a different perspective) as a convergence gate**, not just self-questioning.
+2. **Gaps hide by relocation** — a question can "resolve" by moving the problem (a field) without closing it (who writes it). → every *resolve* must **close**, not relocate.
+3. **Lean ≠ decision** — collapsing a plan-lean into a settled choice masks an open question. → carry plan-leans forward as still-open.
+4. **Driving questions to zero pushes toward over-specification** — there are **two kinds of open**: *ambiguous* (must close) vs *deferred-to-implementer* (must stay open). The loop conflated them.
+
+> **Sharpened stop condition:** a leaf is done when every **ambiguity** is closed **and** every **design
+> choice** is appropriately **deferred** (not over-resolved) **and** an **adversarial review pass** from a
+> different perspective surfaces no new load-bearing gap.
