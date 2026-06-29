@@ -100,6 +100,38 @@ and whether it's active" / "a due schedule whose prior run is still in flight is
 the earlier Projects exercise produced *technical* leaves because it ran the **other** direction (reverse-
 engineering recipes from known code) — both valid for their purpose, but not the same altitude.
 
+### Three node types — and the layer that was missing
+
+Correcting altitude wasn't enough; the **type** of node matters too. The first intent run produced
+**requirements** (properties of the finished feature — "a user can pause a schedule"), which is just the
+plan re-listed; it converged in one round precisely because it *discovered no work*. A task is not a
+property; it is a **unit of work**.
+
+| Type | Example | Is | Maps to a recipe? |
+|---|---|---|---|
+| **Requirement / definition** | "a user can pause a schedule" | property of the finished feature; acceptance | no |
+| **Task / unit of work** ← the input to *match* | "add the ability to pause/resume a schedule" | a thing to **build**; imperative on a result | **yes** |
+| **Implementation** | "`PUT /schedules/{id}/pause` flips `Active`" | mechanism | it *is* code |
+
+The grammar test: requirements are "the user/system can/does…"; tasks are "**add / introduce / give /
+connect** <result>". Two reasons the task type matters: (1) only tasks **map to recipes**; (2) only the
+task decomposition **surfaces derived / shared work** — the plumbing no single requirement names but
+several need (storage, cadence interpretation, the firing trigger, the launch-wiring all fell out of the
+Scheduled Runs task run; the requirements run was blind to every one).
+
+**Confirmed pipeline (a layer was missing between plan and tasks):**
+
+```
+plan ──► requirements ──► tasks ──► recipes
+(prose)  (de-fuzz; the    (units    (the HOW;
+          acceptance       of work)  technical shape)
+          layer)
+```
+
+Worked end-to-end on Scheduled Runs: `scheduled-runs.intent.md` (8 requirements) →
+`scheduled-runs.tasks.md` (10 work units, 4 of them derived/shared, all recipe-mappable). The
+requirements stay as the **acceptance** each task is checked against.
+
 ## Ground-truth pair — Projects (reconciled)
 
 **Reconcile result:** plans `04→07` are accurate to their slices, but the code grew past them —
