@@ -69,6 +69,11 @@ Two things already jump out and are worth holding onto for Iteration 2:
 
 ## 1. List Books — the read baseline
 
+![Flow 1 — List Books](flow-graphs/f1.png)
+
+<details>
+<summary>Mermaid source</summary>
+
 ```mermaid
 flowchart LR
   C([Client]) -->|"HTTP GET /books"| EP["List endpoint<br/>(FastEndpoints)"]
@@ -81,12 +86,19 @@ flowchart LR
   EP -->|"HTTP 200 JSON"| C
 ```
 
+</details>
+
 **Reading.** The plain read spine. No command/query object, no MediatR — the
 endpoint holds an `IBookService` directly. Mapping to DTO happens in the service.
 This is the *minimal* pipeline every other flow is an elaboration of.
 `BookEndpoints/List.cs`, `BookService.cs:52`, `EfBookRepository.cs:31`.
 
 ## 2. Create Book — the write baseline
+
+![Flow 2 — Create Book](flow-graphs/f2.png)
+
+<details>
+<summary>Mermaid source</summary>
 
 ```mermaid
 flowchart LR
@@ -102,12 +114,19 @@ flowchart LR
   EP -->|"HTTP 201 + Location"| C
 ```
 
+</details>
+
 **Reading.** Write baseline. Two validation layers: **request** validation
 (FluentValidation, outside the aggregate) and **invariant** validation (Guard
 clauses *inside* the `Book` constructor). Still no MediatR. `BookEndpoints/Create.cs`,
 `Create.CreateBookRequestValidator.cs`, `Book.cs:12`.
 
 ## 3. Add Item to Cart — cross-module *query* to enrich
+
+![Flow 3 — Add Item to Cart](flow-graphs/f3.png)
+
+<details>
+<summary>Mermaid source</summary>
 
 ```mermaid
 flowchart LR
@@ -128,6 +147,8 @@ flowchart LR
   EP -->|"HTTP 200"| C
 ```
 
+</details>
+
 **Reading.** First cross-module hop (bold edges). Users needs book price/title to
 build a `CartItem`, but has **no reference to Books** — it `send`s a
 `BookDetailsQuery` *defined in `Books.Contracts`*, and MediatR routes it to the
@@ -135,6 +156,11 @@ handler living in Books. A cross-module **read**: pull data, then keep working.
 `AddItemToCartHandler.cs:30`, `Books.Contracts/BookDetailsQuery.cs`, `Books/Integrations/BookDetailsQueryHandler.cs`.
 
 ## 4. Checkout Cart — cross-module *commands* (orchestration)
+
+![Flow 4 — Checkout Cart](flow-graphs/f4.png)
+
+<details>
+<summary>Mermaid source</summary>
 
 ```mermaid
 flowchart TB
@@ -156,6 +182,8 @@ flowchart TB
   EP -->|"HTTP 200 OrderId"| C
 ```
 
+</details>
+
 **Reading.** The orchestrator. Two cross-module **commands** (cause effects, vs
 flow 3's query): `CreateOrderCommand` into OrderProcessing, `SendEmailCommand` into
 EmailSending. Note the ordering invariant — cart is cleared *only after* the order
@@ -165,6 +193,11 @@ to an event handler" — i.e. this direct send is a known wart.
 `CheckoutCartHandler.cs`, `OrderProcessing.Contracts/CreateOrderCommand.cs`, `OrderProcessing/Integrations/CreateOrderCommandHandler.cs`.
 
 ## 5. Add Address → address-cache replication (event-driven)
+
+![Flow 5 — Add Address → cache](flow-graphs/f5.png)
+
+<details>
+<summary>Mermaid source</summary>
 
 ```mermaid
 flowchart TB
@@ -187,6 +220,8 @@ flowchart TB
   end
 ```
 
+</details>
+
 **Reading.** The decoupling pattern. The aggregate **raises** a domain event onto
 itself; `UsersDbContext.SaveChangesAsync` **dispatches** it *after* the DB commit
 (scanning `ChangeTracker` for `IHaveDomainEvents`). One domain event fans to two
@@ -197,6 +232,11 @@ Domain event = in-module; integration event = cross-module; the bridge is the se
 `ApplicationUser.cs:42`, `UsersDbContext.cs:42`, `SharedKernel/MediatRDomainEventDispatcher.cs`, `Users/Integrations/UserAddressIntegrationEventDispatcherHandler.cs`, `OrderProcessing/Integrations/AddressCacheUpdatingNewUserAddressHandler.cs`.
 
 ## 6. Order created → fan-out (the richest flow)
+
+![Flow 6 — Order created fan-out](flow-graphs/f6.png)
+
+<details>
+<summary>Mermaid source</summary>
 
 ```mermaid
 flowchart TB
@@ -224,6 +264,8 @@ flowchart TB
     OIS -->|"upsert (Dapper)"| RDB[(MonthlyBookSales)]
   end
 ```
+
+</details>
 
 **Reading.** One `raise` → many reactions. The domain event has **two in-module
 subscribers**: one queues a confirmation email (cross-module `send` into
@@ -270,6 +312,11 @@ the **cross-cutting pipeline**. Flows 7–9 fill those.
 
 ## 7. Reporting read — projection query (bypasses the domain)
 
+![Flow 7 — Reporting read](flow-graphs/f7.png)
+
+<details>
+<summary>Mermaid source</summary>
+
 ```mermaid
 flowchart LR
   C([Client])
@@ -285,6 +332,8 @@ flowchart LR
   EP3 -->|"mongo Find"| MDB[("Mongo outbox")]
 ```
 
+</details>
+
 **Reading.** The CQRS **read side**, and the system's clearest deliberate contrast:
 the *same* business question answered two ways — **reach-in** (`TopSalesByMonth1`:
 synchronous Dapper JOIN straight into the *operational* OrderProcessing tables) vs
@@ -297,6 +346,11 @@ is "read a store, shape a DTO" with the domain stack deliberately absent.
 
 ## 8. Create User — framework-owned write (Identity)
 
+![Flow 8 — Create User](flow-graphs/f8.png)
+
+<details>
+<summary>Mermaid source</summary>
+
 ```mermaid
 flowchart LR
   C([Client]) -->|"HTTP POST /users (anon)"| EP["Create endpoint"]
@@ -307,6 +361,8 @@ flowchart LR
   H -.->|"Result (Success / Error)"| EP
   EP -->|"HTTP 200 / problem"| C
 ```
+
+</details>
 
 **Reading.** A write that **skips the entire domain discipline** flow 5 uses for the
 *same* `ApplicationUser`. No intent-method, no Guard invariants, no repository, no
@@ -319,6 +375,11 @@ entity, opposite write discipline — a key un-normalized seam (see §2.5).
 
 ## 9. The pipeline band — ambient, wraps every message
 
+![Flow 9 — Pipeline band](flow-graphs/f9.png)
+
+<details>
+<summary>Mermaid source</summary>
+
 ```mermaid
 flowchart LR
   C([Client]) -->|HTTP| MW["RequestLoggingMiddleware"]
@@ -329,6 +390,8 @@ flowchart LR
   LOG --> H["Handler — the slice (M1)"]
   H -.-> LOG -.-> EP -->|"HTTP response"| C
 ```
+
+</details>
 
 **Reading.** Not a feature — the **band wrapping every other flow**. An HTTP
 middleware logs the request; then *inside* MediatR, two pipeline behaviors run before
@@ -421,6 +484,11 @@ the ambient **band** encloses the request; M1 is the spine; the **core** is norm
 M2 but M8/M9 are drop-in alternatives; M3 branches sideways (sync); M4→M5→{M6,M7}
 hangs off the bottom (async):
 
+![Canonical composite](flow-graphs/composite.png)
+
+<details>
+<summary>Mermaid source</summary>
+
 ```mermaid
 flowchart TB
   EDGE([Edge / Endpoint]) -->|"HTTP"| MSG["Message (command/query)"]
@@ -450,6 +518,8 @@ flowchart TB
 
   HANDLER -->|"Result"| EDGE
 ```
+
+</details>
 
 ## 2.5 What's *not* normalized (the signal)
 
