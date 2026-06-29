@@ -154,13 +154,31 @@ FastEndpoints verbs · `ProjectsModule.EndpointsAssembly`.
 | R7 feature module | `ProjectsModule.EndpointsAssembly` | wiring task |
 | R8 host registration | register endpoints assembly + repo in Composition | wiring task |
 
-## Artifacts produced this pass (all in `spike/`, all doc-only)
+## Map of the decomposition pass (all in `spike/`, all doc-only)
 
+**Canonical — read these first**
 | File | What |
 |---|---|
-| `PROMPT-DECOMPOSITION.md` | The whole pipeline + the staged-ladder model + the seam |
-| `PLAN-TO-RECIPES.md` | The middle (stages 2–3) designed: breakdown, match, validators |
-| `projects-decomposition.md` | The middle worked on real code: reconcile → breakdown → recipes |
-| `favorite-artist.plan.md` | A sample plan (validated `feature-plan` instance) — earlier worked input |
-| `decomposition-findings.md` | This file |
-| `decomposition-tasks.md` | Open decisions + backlog |
+| `decomposition-method.md` | The **living method** — pipeline, node types, the typed-question loop, gates, recipe families (the WHY + rules) |
+| `decomposition-workflow.md` | The **formalized runnable workflow** — two staged loops, gates, schema (the HOW; ready to become an executable Workflow) |
+| `decomposition-findings.md` | Durable conclusions + narrative (this file) |
+| `decomposition-tasks.md` | Open decisions (D1–D6) + backlog |
+
+**Pipeline overview & early design**
+| File | What |
+|---|---|
+| `PROMPT-DECOMPOSITION.md` | The whole intent→recipe pipeline + the staged-ladder model + the seam |
+| `PLAN-TO-RECIPES.md` | The middle (plan→tasks→recipes) designed: breakdown, match, validators |
+
+**Method tests — three feature shapes**
+| Feature (shape) | Files |
+|---|---|
+| Scheduled Runs (greenfield / create) | `scheduled-runs.md` (plan) · `.steps.md` (technical run + 3-perspective review + v2/v3) · `.intent.md` (requirements) · `.tasks.md` (work units) |
+| Project Archiving (modify-existing / modify) | `project-archiving.md` (plan) · `.tasks.md` (requirements→tasks) |
+| Project Activity (read-only / projection) | `project-activity.md` (plan) · `.tasks.md` (requirements→tasks) |
+
+**Early Projects exploration (the *other* direction — reverse-engineering recipes from real code)**
+| File | What |
+|---|---|
+| `projects-decomposition.md` · `projects-worked-instance.md` | Reconcile Projects plan↔code → breakdown → conceptual recipes R1–R8 |
+| `favorite-artist.plan.md` | A validated `feature-plan` doc-engine instance — earliest worked input |
