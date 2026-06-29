@@ -87,9 +87,19 @@ Tasks map to recipes of (at least) two **families**:
 - **create** — a new artifact (entity, endpoint, repository, runner). Scheduled Runs was all create.
 - **modify** — a change to an existing artifact/behaviour (add-state-to-entity, add-filter-to-query,
   add-guard-to-operation). Project-archiving was mostly modify.
+- **projection / read-model** — derive a view from existing data, persisting nothing. Project-activity
+  needed this.
 
-A modify-heavy feature is **recipe-mappable only if the modify family exists**. Greenfield features hide
-this. Flag for the recipe session: the catalog needs both families.
+**Pattern across three tests: each differently-shaped feature reveals a family, and a feature's shape
+predicts which family it needs.** A feature is matchable only if its family exists in the catalog —
+greenfield features hide this. Flag for the recipe session: the catalog needs (at least) these three.
+
+**A contract the existing system *doesn't* satisfy becomes a task.** An integration-contract question is
+checked against the seam: if the seam provides it, it just *shapes* the task; if not, it *spawns* derived
+work (conditional). The loop must check the seam, not assume it.
+
+**The method resists over-decomposition** — a small feature stays small (project-activity → 2–3 tasks).
+The implementation-floor + "only emit shared/derived work" bound the count to the real work; nothing pads.
 
 ## 8. Open questions about the method
 
@@ -100,6 +110,10 @@ this. Flag for the recipe session: the catalog needs both families.
 
 ## Changelog
 
+- **v0.3** — method test #3 (project-activity, read-only/aggregation). Added the **projection/read-model**
+  recipe family (pattern: feature shape → recipe family); confirmed the method **resists
+  over-decomposition** (small feature → 2–3 tasks); refined contract-handling (a contract the seam
+  doesn't satisfy *spawns* a conditional task). Three shapes, method robust — not overfit.
 - **v0.2** — method test #2 (project-archiving, modify-existing). Confirmed the *change* task verb;
   added "not every requirement → a task" (constraints/acceptances); two flavours of derived work; and
   **recipe families (create/modify)** as a catalog requirement. Method generalises beyond greenfield.
