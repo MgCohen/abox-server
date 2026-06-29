@@ -76,6 +76,19 @@ static class Program
             File.WriteAllText(Path.Combine(outDir, $"{decl.Name}.cs"), code);
         }
 
+        // Method tier: the hardcoded ScriptData.Run() shell becomes a recipe — a ClassNode holding a
+        // MethodNode whose body IS the body tier. TypeEmitter renders the class + signature; Generator
+        // renders the body. Gate: compile + invoke -> 10 (the two tiers, joined).
+        Console.WriteLine("method tier — the ScriptData shell, now composed:\n");
+        var calculator = new ClassNode("Calculator",
+            new MethodNode(TypeRef.Of<int>(), "Run", LoopSum_Operators()));
+        var calcCode = TypeEmitter.Emit(calculator);
+        var calcResult = (int)Runtime.Invoke(calcCode, "Calculator", "Run");
+        failed |= calcResult != 10;
+        Console.WriteLine($"===== Calculator.Run() => {calcResult} (expected 10) {(calcResult == 10 ? "PASS" : "FAIL")} =====");
+        Console.WriteLine(calcCode);
+        File.WriteAllText(Path.Combine(outDir, "Calculator.cs"), calcCode);
+
         Console.WriteLine(failed ? "FAIL" : "PASS");
         return failed ? 1 : 0;
     }

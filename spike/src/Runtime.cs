@@ -19,6 +19,15 @@ static class Runtime
         Compile(code).GetType(typeName)
             ?? throw new InvalidOperationException($"type '{typeName}' not found in generated code");
 
+    // Compile + construct + invoke a parameterless method — the gate for the method tier, proving
+    // the body-tier code actually runs inside a real type.
+    public static object Invoke(string code, string typeName, string methodName)
+    {
+        var type = CompileType(code, typeName);
+        var instance = Activator.CreateInstance(type);
+        return type.GetMethod(methodName)!.Invoke(instance, null)!;
+    }
+
     static Assembly Compile(string code)
     {
         var tree = CSharpSyntaxTree.ParseText(code);

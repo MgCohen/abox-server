@@ -80,6 +80,28 @@ Deferred from this step (YAGNI until a component forces them): `using`-derivatio
 the body tier re-enters), enum underlying type + explicit values. All tracked in the canonical
 backlog, `README.md` §8 (#16/#18/#19).
 
+## Status — method tier DONE ✅
+
+The two tiers join: a `MethodNode(TypeRef Returns, string Name, Block Body)` is a `Member` of a
+`ClassNode`, and its **body is the body tier** — `TypeEmitter` renders the class + signature and
+delegates the body to `Generator.RenderBody`. The hardcoded `ScriptData.Run()` shell is now a recipe:
+
+```csharp
+new ClassNode("Calculator", new MethodNode(TypeRef.Of<int>(), "Run", <loop-sum block>))
+// => public class Calculator { public System.Int32 Run() { int acc = 0; for (...) {...} return acc; } }
+// gate: compile + invoke -> 10
+```
+
+Settled:
+- `Member` base; `Field` and `MethodNode` are members; `ClassNode` holds `Member[]` (record/struct
+  stay `Field[]` — a positional field slot can't take a method, by design).
+- A method **signature** is a hand-written container (declaration tier); its **body** is snippet-driven
+  (body tier). Confirms the tier line: *containers hand-written, code-bearing bodies via snippets.*
+- The gate gains `Runtime.Invoke` (construct + invoke) — a method can *run*, unlike a bare type.
+
+Deferred: **params wired to body handles** (a signature `int x` introducing a `Var<int>` the body
+uses) — the immediate next sub-step; modifiers (`static`/access), ctors/properties — backlog #18.
+
 ## Carry-overs to revisit here
 
 - **Class-based snippets (backlog #6)** — a "method" or "type" snippet is naturally class-shaped; the

@@ -434,7 +434,8 @@ share a spine — a **member region** is to a type what a `Block` is to a method
 > `TypeNode` nodes (record/class/struct/enum) + a `TypeEmitter`, gated by compile + reflect. So **#8 is
 > done** (via structural nodes, not a type-`[Snippet]` — a deliberate divergence), **#9 is answered**
 > (members are a typed `Field[]`, *not* a `Block` — a field slot rejects a statement, by design), and
-> **#7 / #11 are partial** (types are modeled; a `MethodNode` and a single root/result spine are not).
+> **#7 is now mostly done** (the method tier added `MethodNode` — a class member whose body is the
+> body tier, compiled + invoked), and **#11 stays partial** (no single root/result spine yet).
 
 7. **What the generated element *is*** — the output shell (class? method? what
    name / return type / params?) is **not modeled** today; it's baked into the
@@ -516,9 +517,9 @@ deliberately left for later; bracketed tags map to `NORTH-STAR.md` milestones.
     so it's named by `TypeRef` (value-level), not `<T>`. `TypeRef` is therefore the fundamental
     representation and `<T>` is sugar for the known subset. Cross-use safety for generated types
     defers to the compile gate — or a recipe-level `TypeRef` validator if that proves insufficient.
-18. **Members beyond fields; modifiers; base/interface lists** — methods/ctors/properties on a type
-    (where the **body tier re-enters** as a member's body), access modifiers, base + interface lists.
-    Overlaps #7 (method-as-node) and #13 (composite).
+18. **Members beyond fields; modifiers; base/interface lists** — *methods done* (`MethodNode`, body =
+    body tier, via the `Member` base). Remaining: **method params wired to body handles** (next
+    sub-step), ctors/properties, access modifiers (`static`/`public`), base + interface lists.
 19. **Enum underlying type + explicit values** — `enum X : byte { A = 1 }`. The current `EnumNode`
     carries bare names only.
 

@@ -18,15 +18,21 @@ readonly record struct TypeRef(string Name)
     public override string ToString() => Name;
 }
 
-record Field(string Name, TypeRef Type);
+// A member of a type. Field is a data member; MethodNode is a behavior member whose Body is the
+// BODY TIER (a Block of statements) — this is where the declaration tier and the body tier join.
+abstract record Member;
+
+record Field(string Name, TypeRef Type) : Member;
 
 sealed record Field<T>(string Name) : Field(Name, TypeRef.Of<T>());
+
+sealed record MethodNode(TypeRef Returns, string Name, Block Body) : Member;
 
 abstract record TypeNode(string Name);
 
 sealed record RecordNode(string Name, params Field[] Members) : TypeNode(Name);
 
-sealed record ClassNode(string Name, params Field[] Members) : TypeNode(Name);
+sealed record ClassNode(string Name, params Member[] Members) : TypeNode(Name);
 
 sealed record StructNode(string Name, params Field[] Members) : TypeNode(Name);
 
