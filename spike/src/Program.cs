@@ -58,7 +58,7 @@ static class Program
         // seam) is M3; a "Model" base that generated types inherit from waits for the inheritance
         // pass. Gate: compile + reflect (a bare type has nothing to Run()).
         Console.WriteLine("type recipes — nodes, parameterized:\n");
-        var decls = new TypeDecl[]
+        var decls = new TypeNode[]
         {
             new RecordNode("FavoriteArtist",
                 new Field<Guid>("Id"), new Field<string>("ArtistId"), new Field<DateTime>("FavoritedAt")),

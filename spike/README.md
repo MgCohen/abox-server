@@ -431,7 +431,7 @@ applied one level up: from "compose statements" to "compose declarations." They
 share a spine — a **member region** is to a type what a `Block` is to a method.
 
 > **Status — M1 shipped the type tier** (`DECLARATION-TIER.md` / `NORTH-STAR.md` M1): hand-authored
-> `TypeDecl` nodes (record/class/struct/enum) + a `TypeEmitter`, gated by compile + reflect. So **#8 is
+> `TypeNode` nodes (record/class/struct/enum) + a `TypeEmitter`, gated by compile + reflect. So **#8 is
 > done** (via structural nodes, not a type-`[Snippet]` — a deliberate divergence), **#9 is answered**
 > (members are a typed `Field[]`, *not* a `Block` — a field slot rejects a statement, by design), and
 > **#7 / #11 are partial** (types are modeled; a `MethodNode` and a single root/result spine are not).
@@ -495,7 +495,7 @@ deliberately left for later; bracketed tags map to `NORTH-STAR.md` milestones.
 
 12. **Catalog surface / matcher seam** [M3] — a recipe needs a catalog **name + description +
     param schema** so an LLM can *select and parameterize* it; an `IRecipe` **marker** over
-    `Stmt`/`Expr`/`TypeDecl` joins when a consumer (the matcher half of the system) needs to handle
+    `Stmt`/`Expr`/`TypeNode` joins when a consumer (the matcher half of the system) needs to handle
     recipes uniformly. Built once at M2 and **removed as premature** — no consumer yet. *Test:* the
     marker stays a marker; composition slots stay typed (`Block` holds `Stmt[]`), or type-safety is lost.
 13. **Composite recipes (`Build()` → subtree)** — a recipe that expands to *many* nodes (a service:

@@ -32,12 +32,12 @@ record Field(string Name, TypeRef Type);
 
 sealed record Field<T>(string Name) : Field(Name, TypeRef.Of<T>());
 
-abstract record TypeDecl(string Name);
+abstract record TypeNode(string Name);
 
-sealed record RecordNode(string Name, params Field[] Members) : TypeDecl(Name);
+sealed record RecordNode(string Name, params Field[] Members) : TypeNode(Name);
 
-sealed record ClassNode(string Name, params Field[] Members) : TypeDecl(Name);
+sealed record ClassNode(string Name, params Field[] Members) : TypeNode(Name);
 
-sealed record StructNode(string Name, params Field[] Members) : TypeDecl(Name);
+sealed record StructNode(string Name, params Field[] Members) : TypeNode(Name);
 
-sealed record EnumNode(string Name, params string[] Members) : TypeDecl(Name);
+sealed record EnumNode(string Name, params string[] Members) : TypeNode(Name);

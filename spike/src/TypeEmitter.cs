@@ -8,7 +8,7 @@ namespace Spike;
 // the same canonical formatting the body-tier Generator produces.
 static class TypeEmitter
 {
-    public static string Emit(TypeDecl decl)
+    public static string Emit(TypeNode decl)
     {
         var source = decl switch
         {
