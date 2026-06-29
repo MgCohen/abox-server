@@ -508,8 +508,9 @@ deliberately left for later; bracketed tags map to `NORTH-STAR.md` milestones.
 15. **Output target: namespace + folder** [M4] — a type name alone doesn't say *where* the file
     lands or *what namespace* it declares. A **wrapper on the emitted type** (not a change to the
     node model), forced when recipes reference each other across files (a `using` needs a namespace).
-16. **`using`-derivation** — the emitter hardcodes `using System;`. Derive the using set from the
-    `TypeRef`s a type actually references.
+16. **`using`-derivation** — *largely moot now*: `Of<T>` renders fully-qualified (`System.Guid`), so
+    existing types need **no `using`** and the emitter emits none. Revisit only if we ever want
+    unqualified/idiomatic output — then a using set must be derived from the `TypeRef`s.
 17. **Generated-type representation / `TypeRef` validator** — the forward-reference finding: `<T>`
     type-checks only **real** types; a type a sibling recipe *generates* lives in another compilation,
     so it's named by `TypeRef` (value-level), not `<T>`. `TypeRef` is therefore the fundamental

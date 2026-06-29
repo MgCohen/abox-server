@@ -12,9 +12,9 @@ static class TypeEmitter
     {
         var source = decl switch
         {
-            RecordNode r => $"using System;\n\npublic record {r.Name}({Positional(r.Members)});",
-            ClassNode c => $"using System;\n\npublic class {c.Name}\n{{\n{Properties(c.Members)}\n}}",
-            StructNode s => $"using System;\n\npublic struct {s.Name}\n{{\n{Properties(s.Members)}\n}}",
+            RecordNode r => $"public record {r.Name}({Positional(r.Members)});",
+            ClassNode c => $"public class {c.Name}\n{{\n{Properties(c.Members)}\n}}",
+            StructNode s => $"public struct {s.Name}\n{{\n{Properties(s.Members)}\n}}",
             EnumNode e => $"public enum {e.Name}\n{{\n{string.Join(",\n", e.Members)}\n}}",
             _ => throw new InvalidOperationException($"unknown declaration node {decl.GetType().Name}"),
         };

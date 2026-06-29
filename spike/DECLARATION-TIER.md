@@ -45,9 +45,8 @@ assertion. Driver `PASS`; `DeclarationTests` green (4 facts).
 
 ```csharp
 TypeEmitter.Emit(new RecordNode("FavoriteArtist",
-    new Field("Id", "Guid"), new Field("ArtistId", "string"), new Field("FavoritedAt", "DateTime")))
-// => using System;
-//    public record FavoriteArtist(Guid Id, string ArtistId, DateTime FavoritedAt);
+    new Field<Guid>("Id"), new Field<string>("ArtistId"), new Field<DateTime>("FavoritedAt")))
+// => public record FavoriteArtist(System.Guid Id, System.String ArtistId, System.DateTime FavoritedAt);
 ```
 
 Design calls settled by building it:
@@ -58,7 +57,7 @@ Design calls settled by building it:
 | What's the gate? | **compile + reflect-shape**, not `Run()` | a bare entity has nothing to run; correctness = it compiles and the loaded `Type` has the expected kind + members. |
 | One node or four? | **four distinct nodes** (`RecordNode`/`ClassNode`/`StructNode`/`EnumNode`) under `abstract record TypeNode` | makes illegal states unrepresentable — an enum can't carry typed fields. `record`/`class`/`struct` currently share `(Name, Field[])`; the `TypeEmitter` switch is the only place they converge. **Collapse-watch:** if they never diverge they fold to one node with a kind; they will diverge (class gains methods, record value-eq, struct value semantics), so kept apart. |
 | The new primitive | `TypeRef` (a named type, implicit from `string`) | member/return/base types all *reference* a type; the int-only dodge ends here. |
-| Generic field? | **both** — `Field<T>` sugar over a `TypeRef`-based `Field` | `Field<Guid>("Id")` reads better + is compiler-checked for *real* types; the name-based `Field("repo", "IFavoriteArtistRepository")` names a type a sibling recipe is still generating. Byte-identical (`Field<string>` → `string` via a keyword map). **General, not Field-specific — see the forward-reference note below.** |
+| Generic field? | **both** — `Field<T>` for **existing** types, string form for **created** types | `Field<Guid>("Id")` is compiler-checked and renders **fully-qualified** (`System.Guid`, via `typeof(T).FullName`) — no keyword table, no `using` (agent-first, so the verbose name is fine). The string form (`Field("repo", "IFavoriteArtistRepository")`) names a type a sibling recipe is still generating. **General, not Field-specific — see the forward-reference note below.** |
 
 ### Forward references — the limit of borrowing C#'s type system
 

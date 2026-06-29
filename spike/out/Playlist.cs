@@ -1,3 +1,1 @@
-using System;
-
-public record Playlist(Guid Id, string Name, int TrackCount);
+public record Playlist(System.Guid Id, System.String Name, System.Int32 TrackCount);

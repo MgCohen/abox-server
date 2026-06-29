@@ -13,9 +13,7 @@ public class DeclarationTests
             new Field<Guid>("Id"), new Field<string>("ArtistId"), new Field<DateTime>("FavoritedAt")));
 
         Assert.Equal(Normalize("""
-            using System;
-
-            public record FavoriteArtist(Guid Id, string ArtistId, DateTime FavoritedAt);
+            public record FavoriteArtist(System.Guid Id, System.String ArtistId, System.DateTime FavoritedAt);
             """), Normalize(code));
 
         var type = Runtime.CompileType(code, "FavoriteArtist");
@@ -29,7 +27,7 @@ public class DeclarationTests
         Field generic = new Field<Guid>("Id");
 
         Assert.Equal("Id", generic.Name);
-        Assert.Equal(new TypeRef("Guid"), generic.Type);
+        Assert.Equal(new TypeRef("System.Guid"), generic.Type);
     }
 
     [Fact]
@@ -45,7 +43,7 @@ public class DeclarationTests
     public void Class_emits_settable_properties()
     {
         var code = TypeEmitter.Emit(new ClassNode("FavoriteArtist",
-            new Field("Id", "Guid"), new Field("ArtistId", "string")));
+            new Field<Guid>("Id"), new Field<string>("ArtistId")));
 
         var type = Runtime.CompileType(code, "FavoriteArtist");
         Assert.False(type.IsValueType);
@@ -56,7 +54,7 @@ public class DeclarationTests
     public void Struct_is_a_value_type()
     {
         var code = TypeEmitter.Emit(new StructNode("FavoriteKey",
-            new Field("UserId", "Guid"), new Field("ArtistId", "string")));
+            new Field<Guid>("UserId"), new Field<string>("ArtistId")));
 
         var type = Runtime.CompileType(code, "FavoriteKey");
         Assert.True(type.IsValueType);

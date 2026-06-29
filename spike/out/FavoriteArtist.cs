@@ -1,3 +1,1 @@
-using System;
-
-public record FavoriteArtist(Guid Id, string ArtistId, DateTime FavoritedAt);
+public record FavoriteArtist(System.Guid Id, System.String ArtistId, System.DateTime FavoritedAt);
