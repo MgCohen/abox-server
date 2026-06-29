@@ -78,7 +78,8 @@ PHASE-2 2b) or, if ever needed, a recipe-level validator over `TypeRef`s. Deferr
 
 Deferred from this step (YAGNI until a component forces them): `using`-derivation (hardcoded
 `using System;` for now), modifiers/base lists, members beyond fields (methods/ctors — that's where
-the body tier re-enters), enum underlying type + explicit values.
+the body tier re-enters), enum underlying type + explicit values. All tracked in the canonical
+backlog, `README.md` §8 (#16/#18/#19).
 
 ## Carry-overs to revisit here
 

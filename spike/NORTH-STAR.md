@@ -92,7 +92,7 @@ takes its name and fields as args; there is no separate "recipe class" wrapper. 
 native: `Block` holds `Stmt[]`, a type holds `Field[]` — the tree *is* recipes composing recipes,
 with the slots **typed** so illegal nesting can't compile.
 
-What's *not* intrinsic to a recipe, and lands later:
+What's *not* intrinsic to a recipe, and lands later (tracked in the backlog, `README.md` §8 #12–14):
 
 | Facet | What it is | Lands at |
 |---|---|---|
@@ -134,12 +134,9 @@ What the Feature demands vs. what the spike has proven:
 | Tasks that **edit existing files** (DI, csproj) | ❌ | **M5 — merge-into-existing** (kept in mind, built last) |
 | Deterministic, type-safe, owned files | ✅ | — |
 
-**Output target (namespace + folder) — deferred to M4.** A type name alone doesn't say *where* the
-file lands or *what namespace* it declares. It's deliberately deferred because it only becomes
-load-bearing when recipes reference each other across files (a Service `using` the Model's namespace)
-— exactly M4's cross-reference problem. It's a *wrapper* on the emitted type, not a change to the
-`TypeDecl` model, so M2 stays forward-compatible: a recipe later gains a target (namespace + path)
-and the emitter wraps the type in `namespace X;`.
+> Deferred items behind these milestones — output target (namespace + folder), inheritance/`Model`
+> base, catalog surface, `using`-derivation, the `TypeRef` validator — are tracked in the **canonical
+> backlog**, `README.md` §8 (#12–19). This doc keeps only the roadmap.
 
 ```
 M1 file-tier → M2 params → M3 catalog → M4 multi-file+refs → M5 merge-into-existing
