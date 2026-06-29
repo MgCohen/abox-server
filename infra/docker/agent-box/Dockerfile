@@ -1,7 +1,9 @@
 # The agent box (ADR 0013): runs `claude` for one turn, driven from the host over
 # `docker exec -it`. Nothing secret is baked in — the per-turn sh hooks arrive on the
-# /session mount, the worktree on /work, and the pre-onboarded credential on /home/box
-# (HOME). Built as `abox-claude:latest` (see SandboxSettings.Image).
+# /session mount, the worktree on /work, and a non-secret onboarding skeleton on
+# /home/box (HOME). The subscription credential is NOT here: it rides the per-turn box
+# env as CLAUDE_CODE_OAUTH_TOKEN (docker exec -e). Built as `abox-claude:latest` (see
+# SandboxSettings.Image).
 #
 # .NET SDK base because the agent works a .NET worktree; node is claude's runtime.
 FROM mcr.microsoft.com/dotnet/sdk:10.0

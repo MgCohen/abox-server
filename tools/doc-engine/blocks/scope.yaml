@@ -1,0 +1,9 @@
+type: scope
+collection: true
+group: Scope
+description: A bounded in/out list that draws the work boundary.
+rubric:
+  in-and-out:   One "### In scope" member (what this builds) and one "### Out of scope" (owned elsewhere, with where).
+  real-bullets: Bullets, each a real capability — not a vague gesture.
+body:
+  type: markdown

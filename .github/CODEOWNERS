@@ -4,10 +4,17 @@
 # branch ruleset requires code-owner review (see governance/README.md).
 
 tests/Harness/** @MgCohen
-tests/Meta/** @MgCohen
-tests/**/Rulebook/** @MgCohen
-tests/Tests/Arch/** @MgCohen
-tests/Tests/Structure/** @MgCohen
+tests/**/Rulebook.md @MgCohen
+src/**/Tests/**/Rulebook.md @MgCohen
+tools/**/Tests/**/Rulebook.md @MgCohen
+tools/doc-engine/doctypes/** @MgCohen
+tools/doc-engine/blocks/** @MgCohen
+tools/doc-engine/kinds/** @MgCohen
+tools/doc-engine/_schema/** @MgCohen
+tests/Rubrics/** @MgCohen
+tests/Fixtures/** @MgCohen
+tests/Central/Arch/** @MgCohen
+tests/Central/Structure/** @MgCohen
 .github/** @MgCohen
 .githooks/** @MgCohen
 governance/** @MgCohen
@@ -17,3 +24,4 @@ Directory.Build.props @MgCohen
 .editorconfig @MgCohen
 .gitattributes @MgCohen
 ABox.slnx @MgCohen
+src/Api/** @MgCohen

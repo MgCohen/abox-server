@@ -10,7 +10,7 @@ using ABox.Domain.Inbox;
 using ABox.Domain.Projects;
 using ABox.Features.Decisions.Module;
 using ABox.Features.Flows.Module;
-using ABox.Features.Git.Contracts;
+using ABox.Features.Git.Contract;
 using ABox.Features.Git.Module;
 using ABox.Features.Inbox.Module;
 using ABox.Features.Projects.Module;
@@ -27,7 +27,7 @@ internal static class Composition
     {
         var services = builder.Services;
 
-        // Transport is Tailscale-only with no app-layer auth (feature-map A8), so CORS is wide open.
+        // Public HTTPS via a Cloudflare tunnel with no app-layer auth (feature-map A8), so CORS is wide open.
         services.AddCors(o => o.AddPolicy(CorsPolicy, p => p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
 
         services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
@@ -51,14 +51,8 @@ internal static class Composition
         services.AddSingleton<DenyResolver>();
         services.AddSingleton<AutoPolicy>();
         services.AddSingleton<ResolverSelector>();
-        // Box config (ADR 0013). Network + ProxyUrl default to the egress-up.sh sidecar so
-        // the box's only route out is the allowlist proxy — fail-closed: a box won't open
-        // until the sidecar is up. TemplateHome is null until the owner provisions a
-        // setup-token home, the deferred step that gates a real billed turn.
-        services.AddSingleton(new SandboxSettings(
-            Image: "abox-claude:latest",
-            Network: "abox-boxnet",
-            ProxyUrl: "http://abox-egress-proxy:8888"));
+        services.AddSingleton(ClaudeBox.Confined());
+        services.AddSingleton(CodexBox.Confined());
         services.AddSingleton<IAgentFactory, AgentFactory>();
 
         services.AddFlows(flows);

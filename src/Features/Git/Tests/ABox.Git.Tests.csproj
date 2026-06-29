@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <Import Project="..\..\..\..\tests\TestProject.props" />
+
+  <PropertyGroup>
+    <RootNamespace>ABox.Git.Tests</RootNamespace>
+    <AssemblyName>ABox.Git.Tests</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="TestsSourceDir" Value="$(MSBuildProjectDirectory)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="ABox.Tests.Fixtures" />
+    <Using Include="ABox.Git.Tests.Support" />
+    <Using Include="ABox.Domain.Git.Git" Alias="DomainGit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\tests\Harness\ABox.Tests.Harness.csproj" />
+    <ProjectReference Include="..\..\..\..\tests\Fixtures\ABox.Tests.Fixtures.csproj" />
+    <ProjectReference Include="..\..\..\Domain\Git\ABox.Domain.Git.csproj" />
+    <ProjectReference Include="..\..\..\Domain\Flow\ABox.Domain.Flow.csproj" />
+    <ProjectReference Include="..\..\..\Infrastructure\ABox.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

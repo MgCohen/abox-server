@@ -12,11 +12,14 @@ canonical docs rather than restating them.
 
 ## What we're doing
 
-Re-authoring the **spine** of a .NET 10 Unity-agent orchestrator (Host + Blazor
-UI + library that drives `claude`/`codex` CLIs over ConPTY for subscription
-billing). This is a **rebuild of internals, not behavior**: if a user can't tell
-the difference in what the system *does*, the rebuild succeeded. We build in
-**12 layers (L1→L12)**, walking-skeleton-first.
+Building the server/API behind **A.Box — an agent harness workspace** (.NET 10):
+it wraps LLM agents in deterministic structure (workflows, document/spec
+enforcement, evaluators, guardrails) so agents get maximum guidance.
+**Orchestration is one capability, not the whole product.**
+
+This is a **rebuild of internals, not behavior**: if a user can't tell the
+difference in what the system *does*, the rebuild succeeded. We build in **12
+layers (L1→L12)**, walking-skeleton-first.
 
 > **The Blazor UI lives in a separate client repo — it is NOT rebuilt here.** This
 > repo is the **server/API** the existing client consumes. Don't scaffold a UI here;
@@ -58,16 +61,20 @@ DTOs. An assembly boundary exists only where it earns enforcement or reuse — s
 
 **Build & test:**
 ```
-dotnet build ABox.slnx
-dotnet test  ABox.slnx
+dotnet build ABox.slnx        # the product/IDE solution (src/** + central tests)
+dotnet test  dirs.proj        # the FULL suite — central + every co-located feature assembly
 ```
+`dirs.proj` (MSBuild traversal) is the test-discovery seam, not `ABox.slnx`: it globs every
+`*.Tests.csproj`, so a new feature's tests run with no solution edit. CI builds & tests `dirs.proj`.
 
-**Tests are Rulebooks.** `tests/` is organized into six types (Arch, Structure,
-Unit, E2E, Wire, Live), each a *Rulebook* whose `### ` headers are guarantees
-enforced 1:1/1:N by `[Rule]` facts and a `ParityGuard` — a test never lands without
-the Rule it proves. Adding or moving a test? Use the **`test-rulebook`** skill; the
-front door is [`tests/README.md`](tests/README.md), the plan is
-[`PLANS/test-structure.md`](PLANS/test-structure.md).
+**Tests are Rulebooks.** Each test *type* is a *Rulebook* whose `### ` headers are guarantees enforced
+1:1/1:N by `[Rule]` facts and a `ParityGuard` — a test never lands without the Rule it proves.
+**Tests are co-located with their owner** ([`PLANS/test-colocation.md`](PLANS/test-colocation.md)): a
+feature's `Unit`/`Wire`/`E2E`/`Live` live under `src/<…>/<Owner>/Tests/` in `ABox.<Owner>.Tests`; only the
+ownerless types (`Arch`/`Structure`/`Docs`) and the shared `Harness` engine (with its own tests at
+`Harness/Tests/` that police adherence) / `Rubrics` / `Fixtures` stay under `tests/`. Adding a test →
+**`test-rulebook`** skill; standing up a feature's test assembly →
+**`new-feature-tests`** skill. Front door: [`tests/README.md`](tests/README.md).
 
 ## Repo controls (agent guardrails)
 
@@ -81,6 +88,13 @@ door: [`governance/README.md`](governance/README.md); the why: [`ADR 0010`](desi
 **You act as the bot `ABox-Agent` — never as the owner.** Use only the credentials this
 session was given. A permission wall — protected path, required review, blocked merge to
 `main` — is by design: stop and ask the owner to act, don't work around it.
+
+**Reading public repos outside session scope.** `git clone` and the GitHub tools are
+routed through the scoped Git Proxy and 401/403 on any repo but the one in scope — that's
+the *authenticated* path and it stays scoped. To read a **public** repo for reference, use
+`scripts/fetch-public-repo.sh <owner/repo>[:<path>] [ref]`: it pulls over codeload/raw,
+which ride the general egress proxy, so no scope change is needed. Don't try to widen the
+Git Proxy scope to read public code.
 
 ## Code standards
 

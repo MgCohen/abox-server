@@ -38,4 +38,11 @@ public static class Shell
     // (not QuoteArg, which is cmd.exe-shaped) for anything that lands in `bash -c`.
     public static string QuotePosix(string arg) =>
         arg.Length == 0 ? "''" : "'" + arg.Replace("'", "'\\''") + "'";
+
+    // Quote for whichever shell Command() spawns on this host — cmd.exe on Windows, a
+    // POSIX shell elsewhere. Use for any arg interpolated into a command string that
+    // RunCommand or the driving PTY executes; the wrong dialect leaks literal quotes
+    // (cmd keeps the '…', producing `docker: invalid reference format`).
+    public static string Quote(string arg) =>
+        OperatingSystem.IsWindows() ? QuoteArg(arg) : QuotePosix(arg);
 }

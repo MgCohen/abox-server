@@ -1,0 +1,433 @@
+{
+  "catalogVersion": "1",
+  "kinds": {
+    "block": {
+      "name": "block",
+      "description": "A reusable content unit.",
+      "defs": "blocks/*.yaml",
+      "fields": {
+        "type": {
+          "kind": "string",
+          "required": "true"
+        },
+        "collection": {
+          "kind": "bool",
+          "required": "false"
+        },
+        "group": {
+          "kind": "string",
+          "required": "false"
+        },
+        "description": {
+          "kind": "string",
+          "required": "true"
+        },
+        "rubric": {
+          "kind": "strmap",
+          "required": "true"
+        },
+        "attrs": {
+          "kind": "attrs",
+          "required": "false"
+        },
+        "labels": {
+          "kind": "labelmap",
+          "required": "false"
+        },
+        "body": {
+          "kind": "typespec",
+          "required": "false"
+        }
+      },
+      "constraints": [
+        {
+          "rule": "requires_when",
+          "when": "collection",
+          "then": "group"
+        }
+      ]
+    },
+    "doctype": {
+      "name": "doctype",
+      "description": "An ordered composition of blocks into a standalone document.",
+      "defs": "doctypes/*.yaml",
+      "fields": {
+        "docType": {
+          "kind": "string",
+          "required": "true"
+        },
+        "description": {
+          "kind": "string",
+          "required": "true"
+        },
+        "blocks": {
+          "kind": "list",
+          "required": "true",
+          "of": "string"
+        },
+        "required": {
+          "kind": "list",
+          "required": "false",
+          "of": "string"
+        },
+        "attrs": {
+          "kind": "attrs",
+          "required": "false"
+        },
+        "rubric": {
+          "kind": "strmap",
+          "required": "false"
+        }
+      },
+      "constraints": [
+        {
+          "rule": "subset",
+          "of": "required",
+          "in": "blocks"
+        }
+      ]
+    }
+  },
+  "blocks": {
+    "analysis": {
+      "type": "analysis",
+      "description": "The main investigation \u2014 evidence and reasoning.",
+      "rubric": {
+        "evidence-to-outcome": "Walk the evidence and reasoning that connects the questions to the outcome.",
+        "sourced": "Lean on the quotations/sources; real specifics, not vague claims."
+      },
+      "body": {
+        "type": "markdown"
+      }
+    },
+    "context": {
+      "type": "context",
+      "description": "What exists today and where the gap is.",
+      "rubric": {
+        "state-then-gap": "Describe the current state in prose, then name the specific gap this closes.",
+        "cite-real": "Cite the real files/types that exist now.",
+        "prose": "Enough prose to orient a reader, not just a file list."
+      },
+      "body": {
+        "type": "markdown"
+      }
+    },
+    "criterion": {
+      "type": "criterion",
+      "collection": "true",
+      "group": "Criteria",
+      "description": "One semantic rubric item the judge grades Rules of this type against.",
+      "rubric": {
+        "judgment-only": "A quality the mechanical guards cannot check, not a format rule.",
+        "one-per-criterion": "Exactly one criterion per member."
+      },
+      "body": {
+        "type": "markdown"
+      }
+    },
+    "decision": {
+      "type": "decision",
+      "collection": "true",
+      "group": "Decisions",
+      "description": "A settled choice carried in; do not re-litigate.",
+      "rubric": {
+        "decision-and-why": "State the decision and the one-line why.",
+        "closed-only": "Closed choices only \u2014 genuinely open ones go in open-question."
+      },
+      "body": {
+        "type": "markdown"
+      }
+    },
+    "expected-result": {
+      "type": "expected-result",
+      "description": "The hypothesis \u2014 what we expected to find before looking.",
+      "rubric": {
+        "state-expectation": "State the prior expectation plainly, so the outcome can confirm or upset it.",
+        "short": "One short block; not a place for analysis."
+      },
+      "body": {
+        "type": "markdown"
+      }
+    },
+    "open-question": {
+      "type": "open-question",
+      "collection": "true",
+      "group": "Open Questions",
+      "description": "A genuinely unresolved decision the reader must make.",
+      "rubric": {
+        "question-and-options": "State the question and the realistic options.",
+        "lean": "Put the recommended default in \u0060lean\u0060.",
+        "not-decided": "If already decided, it is a decision, not an open question.",
+        "last": "The group goes last."
+      },
+      "attrs": {
+        "lean": {
+          "type": "string"
+        }
+      },
+      "body": {
+        "type": "markdown"
+      }
+    },
+    "outcome": {
+      "type": "outcome",
+      "description": "What was actually found \u2014 the conclusion.",
+      "rubric": {
+        "answer-and-match": "Answer the questions and say whether the result matched the expectation.",
+        "decisive": "Concrete and decisive; name follow-ups only if real."
+      },
+      "body": {
+        "type": "markdown"
+      }
+    },
+    "phase": {
+      "type": "phase",
+      "collection": "true",
+      "group": "Phases",
+      "description": "One ordered, shippable step of the build.",
+      "rubric": {
+        "reuse-first": "Lead with what the step reuses before what it adds.",
+        "goal-and-done": "The body states the goal and the done-when bar.",
+        "status": "Carry \u0060status\u0060; for a blocked phase, list blockers as a sub-list.",
+        "caveat": "Use \u0060caveat\u0060 for a short qualifier on an otherwise-done phase.",
+        "min-two": "At least two phases \u2014 a single step is not a plan."
+      },
+      "attrs": {
+        "status": {
+          "enum": [
+            "todo",
+            "doing",
+            "done",
+            "blocked"
+          ],
+          "default": "todo"
+        },
+        "caveat": {
+          "type": "string"
+        }
+      },
+      "body": {
+        "type": "markdown"
+      }
+    },
+    "question": {
+      "type": "question",
+      "collection": "true",
+      "group": "Questions",
+      "description": "A specific question the research sets out to answer.",
+      "rubric": {
+        "one-question": "One concrete, answerable question per member; phrase it as a question.",
+        "why-it-matters": "Body says why it matters or scopes it; keep it tight."
+      },
+      "body": {
+        "type": "markdown"
+      }
+    },
+    "quotation": {
+      "type": "quotation",
+      "collection": "true",
+      "group": "Quotations",
+      "description": "A cited quote or source bearing on a question.",
+      "rubric": {
+        "faithful-attributed": "Quote or paraphrase faithfully; attribute it in \u0060source\u0060.",
+        "excerpt": "Keep each to the load-bearing excerpt, not a wall."
+      },
+      "attrs": {
+        "source": {
+          "type": "string"
+        }
+      },
+      "body": {
+        "type": "markdown"
+      }
+    },
+    "rule": {
+      "type": "rule",
+      "collection": "true",
+      "group": "Rules",
+      "description": "One guarantee \u2014 a behaviour or invariant \u2014 stated as the heading, justified by its Why.",
+      "rubric": {
+        "guarantee-not-implementation": "States a behaviour or invariant guaranteed, not how it is coded.",
+        "one-per-rule": "Exactly one guarantee, not several bundled.",
+        "why-justifies": "The Why gives the property at stake, not a restatement of the header."
+      },
+      "labels": {
+        "Why": {
+          "required": "true"
+        },
+        "Outcome": {
+          "required": "false"
+        }
+      },
+      "body": {
+        "type": "markdown"
+      }
+    },
+    "scope": {
+      "type": "scope",
+      "collection": "true",
+      "group": "Scope",
+      "description": "A bounded in/out list that draws the work boundary.",
+      "rubric": {
+        "in-and-out": "One \u0022### In scope\u0022 member (what this builds) and one \u0022### Out of scope\u0022 (owned elsewhere, with where).",
+        "real-bullets": "Bullets, each a real capability \u2014 not a vague gesture."
+      },
+      "body": {
+        "type": "markdown"
+      }
+    },
+    "summary": {
+      "type": "summary",
+      "description": "One-paragraph what-and-why at the very top.",
+      "rubric": {
+        "outcome-first": "Outcome-first \u2014 state the objective and what \u0022done\u0022 means, concretely.",
+        "tight": "One tight paragraph of real prose, not a bullet skeleton or a wall.",
+        "standalone": "Understandable with no prior context."
+      },
+      "body": {
+        "type": "markdown"
+      }
+    },
+    "verification": {
+      "type": "verification",
+      "description": "How \u0022done\u0022 is proven.",
+      "rubric": {
+        "concrete-checks": "Name concrete checks \u2014 build, tests, and at least one behaviour run end-to-end.",
+        "end-to-end": "Not just \u0022it compiles\u0022. One block, near the end."
+      },
+      "body": {
+        "type": "markdown"
+      }
+    }
+  },
+  "doctypes": {
+    "feature-plan": {
+      "docType": "feature-plan",
+      "description": "Build or change a feature \u2014 objective, scope, ordered phases, verification.",
+      "blocks": [
+        "summary",
+        "context",
+        "scope",
+        "decision",
+        "phase",
+        "verification",
+        "open-question"
+      ],
+      "required": [
+        "summary",
+        "phase",
+        "verification"
+      ],
+      "attrs": {
+        "status": {
+          "enum": [
+            "draft",
+            "approved"
+          ],
+          "default": "draft"
+        }
+      },
+      "rubric": {
+        "coverage": "Every load-bearing part of the dump has a block; nothing significant dropped.",
+        "right-type": "Each piece sits in the right block type (settled \u2192 decision, open \u2192 open-question, steps \u2192 phase).",
+        "no-filler": "No filler blocks \u2014 each carries real substance.",
+        "standalone": "The doc stands alone \u2014 no references to the dump, prior chat, or earlier drafts.",
+        "concrete": "Names real files and symbols, not vague gestures.",
+        "reuse-first": "Each phase leads with what it reuses before what it adds.",
+        "open-lean": "Open questions are genuinely open and carry a recommended lean.",
+        "verify-real": "Verification runs a real end-to-end behaviour, not just build/typecheck.",
+        "prose": "Prose is substantive where it matters; bold marks labels, not emphasis."
+      }
+    },
+    "research": {
+      "docType": "research",
+      "description": "Investigate questions against sources and record what was found.",
+      "blocks": [
+        "summary",
+        "question",
+        "expected-result",
+        "quotation",
+        "analysis",
+        "outcome",
+        "open-question"
+      ],
+      "required": [
+        "summary",
+        "question",
+        "outcome"
+      ],
+      "attrs": {
+        "status": {
+          "enum": [
+            "draft",
+            "final"
+          ],
+          "default": "draft"
+        }
+      },
+      "rubric": {
+        "coverage": "Every investigated question, key source, and the conclusion has a block.",
+        "right-type": "Content sits in the right block (questions \u2192 question, sources \u2192 quotation, conclusion \u2192 outcome).",
+        "no-filler": "No filler blocks.",
+        "standalone": "The doc stands alone \u2014 no references to the source, prior chat, or drafts.",
+        "sourced": "Every claim ties to a cited source; no unsupported assertions.",
+        "headline-first": "The summary leads with the finding, not a buried conclusion.",
+        "expectation-vs-outcome": "The outcome says whether the result matched the expected-result.",
+        "questions-answered": "Each question is actually answered.",
+        "prose": "Prose is substantive; bold marks labels, not emphasis."
+      }
+    },
+    "rubric": {
+      "docType": "rubric",
+      "description": "The per-test-type schema \u2014 names the type and carries the judge criteria its Rules are graded against.",
+      "blocks": [
+        "summary",
+        "criterion"
+      ],
+      "required": [
+        "summary",
+        "criterion"
+      ],
+      "attrs": {
+        "testType": {
+          "type": "string",
+          "required": "true"
+        }
+      },
+      "rubric": {
+        "criteria-cover": "The criteria cover the semantic qualities a Rule of this type must have.",
+        "judgment-only": "Criteria name qualities the mechanical guards cannot check.",
+        "named-type": "The testType matches the Rulebook it governs."
+      }
+    },
+    "rulebook": {
+      "docType": "rulebook",
+      "description": "A test type\u0027s Rulebook \u2014 a list of Rules, each a guarantee proven by tests.",
+      "blocks": [
+        "rule"
+      ],
+      "required": [
+        "rule"
+      ],
+      "attrs": {
+        "testType": {
+          "type": "string",
+          "required": "true"
+        },
+        "rubric": {
+          "type": "string",
+          "required": "true"
+        },
+        "harness": {
+          "type": "string",
+          "required": "true"
+        }
+      },
+      "rubric": {
+        "coverage": "Every guarantee of this type has a Rule; nothing significant unstated.",
+        "right-type": "Each Rule matches the declared testType \u2014 behaviour (with Outcome) for wire/live/e2e, invariant for arch/structure.",
+        "one-per-rule": "Each Rule states exactly one guarantee, not a bundle or a restatement."
+      }
+    }
+  }
+}

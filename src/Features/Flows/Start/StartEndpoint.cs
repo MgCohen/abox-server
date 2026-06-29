@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using ABox.Domain.Flow;
 using ABox.Domain.Projects;
-using ABox.Features.Flows.Contracts;
+using ABox.Features.Flows.Contract;
 
 namespace ABox.Features.Flows.Start;
 

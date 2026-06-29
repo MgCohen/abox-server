@@ -1,0 +1,103 @@
+using System.Reflection;
+
+namespace ABox.Tests.Harness.Tests;
+
+// The parity engine: it keeps one test type's Rulebook (Rulebook.md) and the [Rule]-cited tests that
+// enforce it in lockstep, scoped to a single namespace so types sharing an assembly don't bleed into each
+// other's parity. The harness's own tests drive this over every suite (For — central and co-located alike,
+// since both stamp TestsSourceDir and follow RootNamespace == AssemblyName) and over themselves (ForRulebook).
+public sealed class ParityGuard
+{
+    private const string Heading = "### ";
+
+    private readonly Assembly assembly;
+    private readonly string scope;
+    private readonly string rulesPath;
+
+    private ParityGuard(Assembly assembly, string scope, string rulesPath)
+    {
+        this.assembly = assembly;
+        this.scope = scope;
+        this.rulesPath = rulesPath;
+    }
+
+    // One factory for every suite: scope is <AssemblyName>.<Type> (read off the assembly), the Rulebook is found
+    // in the source tree via the TestsSourceDir the build stamps — so parity reads the same on-disk Rulebook.md
+    // the doc-engine validates, with no copy-to-output step, for central and co-located alike.
+    public static ParityGuard For(Assembly assembly, string type) =>
+        new(assembly, TestTypes.Namespace(assembly.GetName().Name!, type), Rulebook(assembly, type));
+
+    // The harness eats its own dog food: a self-Rulebook beside its own tests (tests/Harness/Tests/Rulebook.md —
+    // a plain Rulebook, not a doc-engine instance) checked against the [Rule]s in their namespace. The enforcer
+    // holds itself to the bar it enforces on every product suite, without joining the product taxonomy.
+    public static ParityGuard ForRulebook(Assembly assembly, string scope, string rulesPath) =>
+        new(assembly, scope, rulesPath);
+
+    private static string Rulebook(Assembly assembly, string type)
+    {
+        var sourceDir = assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+            .FirstOrDefault(a => a.Key == Suites.TestsSourceDirKey)?.Value
+            ?? throw new InvalidOperationException(
+                $"Assembly '{assembly.GetName().Name}' carries no [{Suites.TestsSourceDirKey}] metadata. Every test project " +
+                "(central or co-located) must stamp <AssemblyMetadata Include=\"TestsSourceDir\" " +
+                "Value=\"$(MSBuildProjectDirectory)\" /> so parity can find its Rulebook in the source tree.");
+        return Path.Combine(sourceDir, type, "Rulebook.md");
+    }
+
+    public void Assert()
+    {
+        var declared = DeclaredRules(rulesPath);
+        var methods = ScopedMethods();
+
+        var enforced = methods
+            .Select(m => m.GetCustomAttribute<RuleAttribute>())
+            .Where(a => a is not null)
+            .Select(a => a!.Name)
+            .ToList();
+
+        var unenforced = declared.Except(enforced).ToList();
+        var undocumented = enforced.Except(declared).ToList();
+        var orphaned = methods
+            .Where(m => m.GetCustomAttribute<RuleAttribute>() is not null && !TestMarkers.Marks(m))
+            .Select(m => m.Name)
+            .ToList();
+        var uncited = methods.Where(TestMarkers.Marks)
+            .Where(m => m.GetCustomAttribute<RuleAttribute>() is null).Select(m => m.Name).ToList();
+
+        Xunit.Assert.True(
+            unenforced.Count == 0 && undocumented.Count == 0 && orphaned.Count == 0 && uncited.Count == 0,
+            $"""
+            Rulebook ({Path.GetRelativePath(RepoTree.Root, rulesPath)}) and its [Rule] tests are out of sync — fix each non-empty list:
+              Add a [Rule]-cited test for the header:          {Fmt(unenforced)}
+              Add a '### ' header (or correct the citation) for: {Fmt(undocumented)}
+              Add a test attribute ([Fact]/[Theory]) to the [Rule] method: {Fmt(orphaned)}
+              Add a [Rule("<header>")] to the bare test:        {Fmt(uncited)}
+            Each '### <name>' header pairs 1:N with a [Rule("<name>")] on a runnable test.
+            """);
+    }
+
+    private IReadOnlyList<MethodInfo> ScopedMethods() =>
+        Suites.TypesOf(assembly)
+            .Where(t => InScope(t.Namespace))
+            .SelectMany(t => t.GetMethods())
+            .ToList();
+
+    private bool InScope(string? ns) =>
+        ns is not null && (ns == scope || ns.StartsWith(scope + ".", StringComparison.Ordinal));
+
+    private static IReadOnlyList<string> DeclaredRules(string rulesPath)
+    {
+        if (!File.Exists(rulesPath))
+            throw new FileNotFoundException(
+                $"Rulebook not found at '{rulesPath}'. Parity reads Rulebook.md from the source tree (RepoTree); " +
+                "check the type's folder layout or the repo-root locator.");
+
+        return File.ReadAllLines(rulesPath)
+            .Where(line => line.StartsWith(Heading, StringComparison.Ordinal))
+            .Select(line => line[Heading.Length..].Trim())
+            .ToList();
+    }
+
+    private static string Fmt(IReadOnlyList<string> names) =>
+        names.Count == 0 ? "(none)" : string.Join(", ", names.Select(n => $"\"{n}\""));
+}

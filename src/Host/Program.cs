@@ -11,6 +11,7 @@ var app = builder.Build();
 app.UseCors(Composition.CorsPolicy);
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+app.MapGet("/healthz", () => Results.Ok(new { status = "ok" }));
 
 app.UseFastEndpoints(c => c.Serializer.Options.Converters.Add(new JsonStringEnumConverter()));
 app.MapFlows();

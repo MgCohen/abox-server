@@ -1,0 +1,18 @@
+docType: rulebook
+description: A test type's Rulebook — a list of Rules, each a guarantee proven by tests.
+blocks: [rule]
+required: [rule]
+attrs:
+  testType:
+    type: string
+    required: true
+  rubric:
+    type: string
+    required: true
+  harness:
+    type: string
+    required: true
+rubric:
+  coverage: Every guarantee of this type has a Rule; nothing significant unstated.
+  right-type: Each Rule matches the declared testType — behaviour (with Outcome) for wire/live/e2e, invariant for arch/structure.
+  one-per-rule: Each Rule states exactly one guarantee, not a bundle or a restatement.

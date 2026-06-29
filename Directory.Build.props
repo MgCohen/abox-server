@@ -41,4 +41,12 @@
     <RootNamespace>ABox.$([MSBuild]::MakeRelative('$(_SrcRoot)', '$(MSBuildProjectDirectory)').Replace('\', '.').Replace('/', '.').TrimEnd('.'))</RootNamespace>
   </PropertyGroup>
 
+  <!-- Co-located tests (PLANS/test-colocation.md): a feature's tests live in its own Tests/ subfolder, owned by
+       a sibling ABox.<Owner>.Tests project. So a production project under src/ must NOT compile its Tests/
+       subtree — that belongs to the test assembly. Gated to non-test projects (name not ending .Tests) so the
+       test project still compiles its own files, and to src/ so the central tests/ projects are untouched. -->
+  <PropertyGroup Condition="$(MSBuildProjectDirectory.StartsWith('$(_SrcRoot)')) and !$(MSBuildProjectName.EndsWith('.Tests'))">
+    <DefaultItemExcludes>$(DefaultItemExcludes);Tests\**</DefaultItemExcludes>
+  </PropertyGroup>
+
 </Project>

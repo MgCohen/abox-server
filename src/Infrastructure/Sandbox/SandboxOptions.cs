@@ -5,4 +5,5 @@ public sealed record SandboxOptions(
     DirectoryInfo SessionDir,
     DirectoryInfo Home,
     string Image,
-    string? Network = null);
+    string? Network = null,
+    bool RequireInternalNetwork = false);
