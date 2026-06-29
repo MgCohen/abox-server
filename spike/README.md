@@ -388,10 +388,12 @@ renames, snippet base-class.
 
 ---
 
-## 8. Post-spike backlog
+## 8. Backlog
 
-Revisit each **against running code**, once the Step-1 slice works. Kept out of the
-spike to keep the first cut minimal.
+**This is the canonical backlog — record deferred/parked items here**, not in `NORTH-STAR.md`
+(which holds only the north-star vision + the milestone *roadmap*, and references items here by
+number). Revisit each **against running code**. As the spike grew, some items (the declaration
+tier, #7–9) moved **into** it and now carry a status; the rest stay parked.
 
 1. ✅ **DONE — Variable names on the instance, not a recipe field** — shipped as `Var<T>`
    handles (Phase 2b); a declaration binds a handle, a use references it, the name is chosen once.
@@ -427,6 +429,13 @@ Everything so far composes the **body** of a fixed shell — the tool hardcodes
 recipe only fills the `<recipe>` statements. Items 7–9 are the same modeling move
 applied one level up: from "compose statements" to "compose declarations." They
 share a spine — a **member region** is to a type what a `Block` is to a method.
+
+> **Status — M1 shipped the type tier** (`DECLARATION-TIER.md` / `NORTH-STAR.md` M1): hand-authored
+> `TypeNode` nodes (record/class/struct/enum) + a `TypeEmitter`, gated by compile + reflect. So **#8 is
+> done** (via structural nodes, not a type-`[Snippet]` — a deliberate divergence), **#9 is answered**
+> (members are a typed `Field[]`, *not* a `Block` — a field slot rejects a statement, by design), and
+> **#7 is now mostly done** (the method tier added `MethodNode` — a class member whose body is the
+> body tier, compiled + invoked), and **#11 stays partial** (no single root/result spine yet).
 
 7. **What the generated element *is*** — the output shell (class? method? what
    name / return type / params?) is **not modeled** today; it's baked into the
@@ -477,6 +486,42 @@ share a spine — a **member region** is to a type what a `Block` is to a method
     statements, a statement *references* a `Var<T>`), or does any tier actually want
     **inheritance** — and if nothing does, say so, so we don't reach for a base type
     the structure doesn't ask for.
+
+### Recipe model & emitter (items 12–19: parked from the M1/M2 build)
+
+Terminology settled here: **a recipe is any node** — the whole typed tree, primitive
+(`RecordNode`, `LoopNode`, `Var`) up to a composite that builds a subtree. A node is *already* a
+parameterized recipe, so there is no wrapper "recipe class." These are what the type-tier build
+deliberately left for later; bracketed tags map to `NORTH-STAR.md` milestones.
+
+12. **Catalog surface / matcher seam** [M3] — a recipe needs a catalog **name + description +
+    param schema** so an LLM can *select and parameterize* it; an `IRecipe` **marker** over
+    `Stmt`/`Expr`/`TypeNode` joins when a consumer (the matcher half of the system) needs to handle
+    recipes uniformly. Built once at M2 and **removed as premature** — no consumer yet. *Test:* the
+    marker stays a marker; composition slots stay typed (`Block` holds `Stmt[]`), or type-safety is lost.
+13. **Composite recipes (`Build()` → subtree)** — a recipe that expands to *many* nodes (a service:
+    class + interface + repo + DI), the Flutter `StatelessWidget.build()` pattern, typed so a
+    composite *is-a* the category it produces. Reserve until a genuinely multi-node recipe forces it
+    (`ScaffoldService`); a 1:1 wrapper earns nothing. Overlaps #18.
+14. **Inheritance — a `Model` base** — a generated type declaring a base (`record User : Model`);
+    needs **base-list support** in the emitter, and `Model` becomes the shared base entities inherit.
+    Makes the inheritance half of #11 concrete. [before/with M4]
+15. **Output target: namespace + folder** [M4] — a type name alone doesn't say *where* the file
+    lands or *what namespace* it declares. A **wrapper on the emitted type** (not a change to the
+    node model), forced when recipes reference each other across files (a `using` needs a namespace).
+16. **`using`-derivation** — *largely moot now*: `Of<T>` renders fully-qualified (`System.Guid`), so
+    existing types need **no `using`** and the emitter emits none. Revisit only if we ever want
+    unqualified/idiomatic output — then a using set must be derived from the `TypeRef`s.
+17. **Generated-type representation / `TypeRef` validator** — the forward-reference finding: `<T>`
+    type-checks only **real** types; a type a sibling recipe *generates* lives in another compilation,
+    so it's named by `TypeRef` (value-level), not `<T>`. `TypeRef` is therefore the fundamental
+    representation and `<T>` is sugar for the known subset. Cross-use safety for generated types
+    defers to the compile gate — or a recipe-level `TypeRef` validator if that proves insufficient.
+18. **Members beyond fields; modifiers; base/interface lists** — *methods done* (`MethodNode`, body =
+    body tier, via the `Member` base). Remaining: **method params wired to body handles** (next
+    sub-step), ctors/properties, access modifiers (`static`/`public`), base + interface lists.
+19. **Enum underlying type + explicit values** — `enum X : byte { A = 1 }`. The current `EnumNode`
+    carries bare names only.
 
 ---
 

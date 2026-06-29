@@ -53,6 +53,42 @@ static class Program
         Directory.CreateDirectory(outDir);
         File.WriteAllText(Path.Combine(outDir, "ScriptData.cs"), canonical);
 
+        // Recipes ARE the nodes — already parameterized (a node takes its name + fields as args), so
+        // they are authored directly with no wrapper layer. A named catalog + metadata (the matcher
+        // seam) is M3; a "Model" base that generated types inherit from waits for the inheritance
+        // pass. Gate: compile + reflect (a bare type has nothing to Run()).
+        Console.WriteLine("type recipes — nodes, parameterized:\n");
+        var decls = new TypeNode[]
+        {
+            new RecordNode("FavoriteArtist",
+                new Field<Guid>("Id"), new Field<string>("ArtistId"), new Field<DateTime>("FavoritedAt")),
+            new RecordNode("Playlist",
+                new Field<Guid>("Id"), new Field<string>("Name"), new Field<int>("TrackCount")),
+            new EnumNode("FavoriteSource", "Search", "Profile", "Recommendation"),
+        };
+        foreach (var decl in decls)
+        {
+            var code = TypeEmitter.Emit(decl);
+            var ok = Runtime.CompileType(code, decl.Name).Name == decl.Name;
+            failed |= !ok;
+            Console.WriteLine($"===== {decl.Name} {(ok ? "PASS" : "FAIL")} =====");
+            Console.WriteLine(code);
+            File.WriteAllText(Path.Combine(outDir, $"{decl.Name}.cs"), code);
+        }
+
+        // Method tier: the hardcoded ScriptData.Run() shell becomes a recipe — a ClassNode holding a
+        // MethodNode whose body IS the body tier. TypeEmitter renders the class + signature; Generator
+        // renders the body. Gate: compile + invoke -> 10 (the two tiers, joined).
+        Console.WriteLine("method tier — the ScriptData shell, now composed:\n");
+        var calculator = new ClassNode("Calculator",
+            new MethodNode(TypeRef.Of<int>(), "Run", LoopSum_Operators()));
+        var calcCode = TypeEmitter.Emit(calculator);
+        var calcResult = (int)Runtime.Invoke(calcCode, "Calculator", "Run");
+        failed |= calcResult != 10;
+        Console.WriteLine($"===== Calculator.Run() => {calcResult} (expected 10) {(calcResult == 10 ? "PASS" : "FAIL")} =====");
+        Console.WriteLine(calcCode);
+        File.WriteAllText(Path.Combine(outDir, "Calculator.cs"), calcCode);
+
         Console.WriteLine(failed ? "FAIL" : "PASS");
         return failed ? 1 : 0;
     }
