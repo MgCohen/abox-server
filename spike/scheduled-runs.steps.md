@@ -173,3 +173,93 @@ passed both stop conditions, but it is load-bearing broken** — convergence was
 > **Sharpened stop condition:** a leaf is done when every **ambiguity** is closed **and** every **design
 > choice** is appropriately **deferred** (not over-resolved) **and** an **adversarial review pass** from a
 > different perspective surfaces no new load-bearing gap.
+
+---
+
+## Round 4 (v2) — corrected after the review
+
+**Moves (each ties to a review finding):**
+- **Prompt is a launch input** → the entity carries `Prompt` (a fire needs it for `FlowLauncher.Start`).
+- **Liveness is not persisted** → drop the `LastRun.status` truth-field; store only `LastRunId` (a reference) + an outcome; *derive* "still running" by querying the run registry (`FlowRegistry`).
+- **Recording has a home** → entity gains `LastOutcome` + doors `recordFired/recordSkipped/recordFailed`.
+- **Split the scheduler** → due-detection, fire, and each of the three edge-rules become their own leaf with a done-when.
+- **Fold old step 10** → firing is a fill of the fire step (re-pointed at the real seam `FlowLauncher`+`ProjectResolver`).
+- **Add startup reconciliation** → a `LastRunId` the in-memory registry forgot (post-restart) reads as not-running.
+- **Early firing milestone** → "fires once" lands before the edge-rules so the core behaviour is demoable early.
+- **Add tests** → a co-located `ABox.Schedules.Tests` step makes the plan's Verification runnable.
+- **De-specify** the over-resolved bits (cron-library choice, pause/resume REST shape, check granularity) — marked **⟂ deferred to the implementer**: an *open we keep open*, not a gap.
+
+Ordered into phases for incremental verifiability. **⟂ = deliberately deferred** (design choice, stays open).
+
+### Phase A — schedule as data + CRUD (demoable; no firing yet)
+
+1. Create the **`Schedule` domain entity** — `Id, ProjectId, Flow, Prompt, Cron, Active, LastFiredAt, LastRunId?, LastOutcome?`; invariants: valid cron + non-empty project/flow/prompt; doors `Create/Pause/Resume/recordFired(runId)/recordSkipped(reason)/recordFailed(reason)`. *(No status field — liveness is derived, not stored.)*
+2. **Interpret the cron cadence** — compute next-fire and "is-due-in-window". ⟂ *build-vs-buy / which parser.*
+3. Create the **schedule repository** over the storage floor — persist + a *list-active* query.
+4. Create the **`Api` wire shapes** — `ScheduleDto` (computed next-fire, last-fire, last-outcome), `CreateScheduleRequest(projectId, flow, prompt, cron)`, `ScheduleByIdRequest`.
+5. **Create-schedule endpoint** — `POST /schedules`; validate inputs. ⟂ *validation as a Step (ADR 0009) vs provisional inline guard.*
+6. **List-schedules endpoint** — `GET /schedules`; compute next & last fire on read.
+7. **Pause + Resume operation** — flip `Active`. ⟂ *exact REST shape (two verbs vs PATCH).*
+8. **Delete-schedule endpoint** — `DELETE /schedules/{id}`; 404 / 204.
+
+→ **Milestone A:** schedules create / list / pause / delete and persist. Demoable; nothing fires yet.
+
+### Phase B — fire once (minimal core behaviour)
+
+9. **Launch a flow from a schedule** — call the real seam `FlowLauncher.Start(flow, project, dir, prompt)` via `ProjectResolver`; produce a normal run; return its run id. *(Folds old step 10.)*
+10. **Schedule-runner hosted service (minimal)** — periodic check → find schedules due-in-window → launch via (9) → `recordFired(runId)`. ⟂ *check granularity (periodic; interval per plan lean).*
+
+→ **Milestone B:** a near-future cron **fires on its own** once and produces a run. Plan Verification #1 now demonstrable.
+
+### Phase C — edge rules (each its own leaf + done-when)
+
+11. **Downtime-skip** — fire only occurrences due inside the current window; missed ones `recordSkipped`, never backfilled. *Done-when:* down across a due time → on restart only the next future occurrence fires.
+12. **Overlap-skip** — before firing, derive liveness via the run registry (`FlowRegistry.Get(LastRunId)`); if still `Running`, `recordSkipped` instead of launching. *Done-when:* due again while its run is active → no second run.
+13. **Startup reconciliation** — on boot, a `LastRunId` the in-memory registry no longer knows reads as not-running. *Done-when:* restart with an in-flight run recorded → the schedule still fires future occurrences (no permanent wedge).
+14. **Vanished-target clean-fail** — a launch whose project/flow is gone is caught → `recordFailed(reason)` → the runner continues with the others. *Done-when:* removed target → clean recorded failure, scheduler + other schedules unaffected.
+
+### Phase D — wiring + proof
+
+15. **Feature module + Host registration** — `SchedulesModule.EndpointsAssembly` into FE discovery; `AddSingleton<IScheduleRepository, ScheduleRepository>()`; `AddHostedService<ScheduleRunner>()` in `Composition` (storage floor already registered).
+16. **Co-located tests** — `ABox.Schedules.Tests` (Unit: entity invariants, cron next/in-window, repo, the four edge-rules; Wire: the endpoints) + `Rulebook/rules.md` + `Parity.cs` per the `new-feature-tests` skill. Makes the plan's Verification checks runnable.
+
+**Stop check (sharpened):** ambiguities closed ✅ · design choices deferred (⟂ marked, not forced) ✅ ·
+adversarial review → **Round 5** (below).
+
+---
+
+## Round 5 — adversarial validation (the gate v1 never had)
+
+Ran a skeptical, repo-grounded reviewer on v2. It **closed 7 of 9 v1 findings** (Prompt, step-9 split,
+step-10 fold, back-loaded order, tests, over-spec, recording-home) — but found **two new load-bearing
+gaps, both code-grounded**, plus altitude fixes. The lesson: v2 got the liveness model *directionally*
+right (derive, don't persist) but **mechanically wrong**, and only reading the real code caught it.
+
+| Gap | Finding (cited code) | Fix → v3 |
+|---|---|---|
+| **A — overlap-skip (12)** | `FlowRegistry.Get(id)` is `_live[id] ?? history.Get(id)` — it **falls through to persisted history**, so it returns a non-null snapshot for *completed* runs too; never null for a known run | liveness = `Get(LastRunId)?.Phase == FlowPhase.Running`; `null` ⇒ unknown ⇒ not-running |
+| **B — startup reconcile (13)** | `IFlowHistory` = `FileFlowHistory` — **persists to disk + reloads on restart** (50-entry cap, evicts oldest). Nothing persists *liveness*, so there's no stale flag to clear; "registry forgot it" only covers the crash case | **fold 13 into 12** — it's not a peer leaf; `null`/terminal phase ⇒ not-running is a *fill* of overlap-skip |
+| **C — launch (9)** | `FlowLauncher.Start(...)` returns `Guid?` (null ⇒ unknown flow); `ProjectResolver.Resolve` **throws** on unknown project | step 9 returns `Guid?`; the vanished-target paths (null flow + resolve throw) are owned jointly with step 14 |
+| **Altitude — step 5 ⟂** | validation-as-Step is **not** a free choice — ADR 0009 / R-SPINE makes validators Steps | **close the ⟂ toward "a Step"**, don't defer |
+
+## Round 6 (v3) — patch from the gate (→ 15 steps)
+
+Only the affected steps change; Phase A/B/D otherwise stand.
+
+- **Step 5 — close the ⟂:** validation lands as a **Step** (ADR 0009 / R-SPINE), not an inline guard. *(No longer deferred.)*
+- **Step 9 — own the unhappy paths:** returns `Guid?`; an unknown flow (`null`) or a `ProjectResolver.Resolve` throw is the vanished-target case — handled jointly with step 14, not silently assumed away.
+- **Step 12 — correct the liveness read:** overlap-skip = `FlowRegistry.Get(LastRunId)?.Phase == FlowPhase.Running`; a completed run reads a terminal phase, and a `null` (crashed-in-flight, or evicted from the 50-entry history) reads as **not-running**.
+- **Step 13 — folded into 12** and removed as a peer leaf (nothing persists liveness, so there is no separate "reconciliation"). The restart-durability *behaviour* still holds — it's now a property of step 12's null-rule — and stays covered by the tests (step 16).
+
+**Stop check (sharpened):** ambiguities closed (incl. the liveness model, now code-correct) ✅ · the one
+mis-deferred ⟂ (step 5) closed ✅ · design choices still genuinely open kept ⟂ ✅ · adversarial gate's
+load-bearing gaps all patched ✅ → **converged at v3, 15 steps.** A further gate pass is the cap-bounded
+"one more round" the workflow would run; the remaining items are closed or correctly deferred.
+
+### What Round 5 proved about the loop
+
+The gate caught a **wrong mental model that survived a careful, deliberate manual correction** — v2 was
+written *by the same author who saw the v1 review* and still mis-modeled `FlowRegistry`. So the
+adversarial, **code-grounded** review pass isn't optional polish; it's the only stage that reliably
+closes load-bearing gaps. In the workflow this means: the reviewer must (a) run **every** round, not
+just once, and (b) **read the real code**, not just reason about the steps.
