@@ -378,6 +378,17 @@ That is structurally the **golden-path move**: a constrained catalog where only 
 
 ---
 
+# PART 3 — The A.Box Compilation Pipeline (proposed flow)
+
+> **Extracted to dedicated docs.** The compilation-pipeline idea (decompose intent → match template fragments → compose → validate against templates *and* intent), its evaluation, the Magic-Arena reality-check, and the full vendor/academic landscape now live in two focused companion docs so this report stays scoped to golden-paths foundations:
+>
+> - **[`golden-paths-compilation-pipeline.md`](golden-paths-compilation-pipeline.md)** — the whole idea: summary, the flow, the three load-bearing insights (granularity · semantic-parse-not-regex · typed composition contract), the low-code/no-code comparison, and open design questions. *(No code.)*
+> - **[`golden-paths-prior-art.md`](golden-paths-prior-art.md)** — the competitive/prior-art map: OpenRewrite, Backstage, Parsel, DreamCoder/LILO, Clover, component synthesis, Tessl, Cortex/Port, plus low-code dataflow and the MTGA engine — with snippets, use cases, and the per-stage ownership map.
+>
+> **One-line takeaway:** no vendor occupies the seam — *NL-driven matching of decomposed operations to a fixed code-fragment catalog* and *composing from those fragments under a typed contract* are unfilled; the rest of the pipeline exists only in pieces across separate tools.
+
+---
+
 ## Caveats & confidence
 
 - **PART 1 is strong:** primary-sourced (Spotify, Netflix, CNCF, Backstage) and verified 3-0 on the core definitional claims. Origin/age of the 2020–2018 sources is appropriate — they're canonical.
@@ -430,4 +441,6 @@ That is structurally the **golden-path move**: a constrained catalog where only 
 
 **Architecture card-game aside (§17):** AWS BuilderCards (aws.amazon.com/gametech/buildercards) · AWS Card Clash.
 
-*Run stats: 6 search angles · 22 sources fetched · 98 claims extracted · 25 verified · 24 confirmed / 1 refuted.*
+**A.Box compilation pipeline (Part 3)** — extracted to companion docs; sources live there: [`golden-paths-compilation-pipeline.md`](golden-paths-compilation-pipeline.md) (the idea) and [`golden-paths-prior-art.md`](golden-paths-prior-art.md) (vendor/academic landscape, full source list).
+
+*Run stats: PART 1–2 — 6 search angles · 22 sources fetched · 98 claims extracted · 25 verified · 24 confirmed / 1 refuted. Part 3 prior-art sweep (now in the companion docs) — 4 search angles · ~40 sources fetched, lightly verified.*
