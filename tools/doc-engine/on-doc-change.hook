@@ -1,6 +1,7 @@
 # Repo-hooks consumer (replaces the bespoke .claude/hooks/on-doc-change.sh): when a turn ends or a
 # commit lands, validate the doc-engine instances that changed and dispatch their onChange handlers.
 # The trigger is owned by repo-hooks; the reaction logic stays pure doc-engine (no Claude Code).
+# mode: check — the handler's output is fed back to the agent, and an invalid doc blocks the turn-end.
 on:   [TurnEnded, CommitLanded]
-mode: notify
+mode: check
 run:  sh scripts/on-doc-change.sh

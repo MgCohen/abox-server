@@ -42,26 +42,33 @@ public sealed class HookRunner
         {
             using var proc = new Process { StartInfo = psi };
             if (!proc.Start())
-                return new HookDispatchResult(manifest.Path, -1, false, "failed to start process");
+                return new HookDispatchResult(manifest.Path, manifest.Mode, -1, false, "failed to start process", "", "");
 
             await FeedStdinAsync(proc, e);
+
+            // Drain both pipes concurrently from the start: a check hook's stdout is the feedback we
+            // relay, and an undrained pipe would deadlock a hook that writes more than the buffer holds.
+            var stdoutTask = proc.StandardOutput.ReadToEndAsync();
+            var stderrTask = proc.StandardError.ReadToEndAsync();
 
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
             timeout.CancelAfter(_timeoutMs);
             try
             {
                 await proc.WaitForExitAsync(timeout.Token);
-                return new HookDispatchResult(manifest.Path, proc.ExitCode, false, null);
+                return new HookDispatchResult(
+                    manifest.Path, manifest.Mode, proc.ExitCode, false, null,
+                    await stdoutTask, await stderrTask);
             }
             catch (OperationCanceledException) when (!ct.IsCancellationRequested)
             {
                 TryKill(proc);
-                return new HookDispatchResult(manifest.Path, -1, true, null);
+                return new HookDispatchResult(manifest.Path, manifest.Mode, -1, true, null, "", "");
             }
         }
         catch (Exception ex) when (ex is IOException or System.ComponentModel.Win32Exception)
         {
-            return new HookDispatchResult(manifest.Path, -1, false, ex.Message);
+            return new HookDispatchResult(manifest.Path, manifest.Mode, -1, false, ex.Message, "", "");
         }
     }
 

@@ -11,17 +11,18 @@ public sealed class HookController
         _dispatcher = dispatcher;
     }
 
-    public async Task<int> DispatchPendingAsync(string logPath, string cursorPath, CancellationToken ct = default)
+    public async Task<HookDispatchPass> DispatchPendingAsync(string logPath, string cursorPath, CancellationToken ct = default)
     {
         var slice = HookLog.ReadSince(logPath, HookCursor.Read(cursorPath));
+        var results = new List<HookDispatchResult>();
         if (slice.Events.Count > 0)
         {
             var manifests = _catalog.Scan();
             foreach (var e in slice.Events)
-                await _dispatcher.DispatchAsync(e, manifests, ct);
+                results.AddRange(await _dispatcher.DispatchAsync(e, manifests, ct));
         }
 
         HookCursor.Write(cursorPath, slice.NextOffset);
-        return slice.Events.Count;
+        return new HookDispatchPass(slice.Events.Count, results);
     }
 }

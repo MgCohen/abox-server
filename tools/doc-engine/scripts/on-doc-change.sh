@@ -5,16 +5,28 @@
 # carries no knowledge of Claude Code or any provider. The repo-hooks event arrives on stdin and is
 # not needed (we recompute the changed set from git), so it is ignored.
 #
-# Two jobs, both NON-BLOCKING (surface only; CI's Docs test is the hard backstop):
-#   1. docengine check + docengine validate on each changed instance.
+# This is a `mode: check` handler: its output is fed back to the running agent, so it writes its
+# findings to stdout. Two jobs:
+#   1. docengine validate each changed instance — an invalid doc exits non-zero to BLOCK the
+#      turn-end, feeding the validation error back so the agent fixes it before stopping.
 #   2. onChange dispatch — run it when it is a deterministic script; an agent handler stays
-#      on-demand (`/walk-guide <doc>`), never auto-spawned from a hook (cost / headless / loops).
+#      on-demand (`/walk-guide <doc>`), never auto-spawned from here.
+# CI's Docs test remains the hard backstop; this is the fast, in-loop nudge.
 set -eu
 
 root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
 cd "$root"
 engine="tools/doc-engine"
 marker="$(git rev-parse --git-dir)/abox-doc-onchange-state"
+
+# Resolve a fast `docengine` invocation: a prebuilt dll skips the per-call restore+build that
+# `dotnet run` pays every time. Fall back to `dotnet run` when nothing is built yet.
+dll=$(ls "artifacts/bin/ABox.DocEngine"/*/docengine.dll 2>/dev/null | head -n 1 || true)
+if [ -n "$dll" ]; then
+    de() { dotnet "$dll" "$@"; }
+else
+    de() { dotnet run --project "$engine" -- "$@"; }
+fi
 
 # Track a last-handled SHA (committed OR uncommitted): the cloud flow commits mid-session, so an
 # uncommitted-only diff would miss freshly-committed docs.
@@ -38,19 +50,21 @@ changed=$(
 [ -n "$changed" ] || exit 0
 
 notes=""
+invalid=0
 for f in $changed; do
     [ -f "$f" ] || continue
     head -n 1 "$f" | grep -q '^---$' || continue
     head -n 20 "$f" | grep -q '^docType:' || continue
 
-    if ! out=$(dotnet run --project "$engine" -- validate "$f" --root "$engine" 2>&1); then
+    if ! out=$(de validate "$f" --root "$engine" 2>&1); then
+        invalid=1
         notes="$notes
 [invalid] $f
 $out"
         continue
     fi
 
-    handler=$(dotnet run --project "$engine" -- onchange "$f" --root "$engine" 2>/dev/null || true)
+    handler=$(de onchange "$f" --root "$engine" 2>/dev/null || true)
     [ -n "$handler" ] || continue
     case "$handler" in
         scripts/* | *.sh)
@@ -70,5 +84,9 @@ $out"
 done
 
 [ -n "$notes" ] || exit 0
-printf 'doc-engine — changed instances:%s\n' "$notes" >&2
+printf 'doc-engine — changed instances:%s\n' "$notes"
+
+# An invalid doc blocks the turn-end (exit non-zero) so the agent fixes it before stopping; valid
+# changes with notes are advisory (exit 0). The producer's stop_hook_active guard breaks any loop.
+[ "$invalid" -eq 0 ] || exit 2
 exit 0

@@ -88,7 +88,7 @@ public static class HookManifestParser
     private static HookMode ParseMode(string path, int lineNo, string raw, string value)
     {
         if (!Enum.TryParse<HookMode>(value, ignoreCase: true, out var mode))
-            throw Bad(path, lineNo, raw, $"unknown mode '{value}' (expected notify|gate)");
+            throw Bad(path, lineNo, raw, $"unknown mode '{value}' (expected notify|gate|check)");
         return mode;
     }
 

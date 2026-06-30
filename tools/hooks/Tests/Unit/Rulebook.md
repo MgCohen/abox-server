@@ -35,9 +35,10 @@ harness: ../../../../tests/Harness/README.md
 - **Why:** discovery is convention-over-registration across many feature folders; one malformed `.hook` must be
   reported and skipped, leaving the rest discoverable, so a single typo can't blind the controller to every hook.
 
-### HookDispatcher runs only the matching notify hooks, feeding the event on stdin
-- **Why:** `notify` hooks fan out off the event with the payload on stdin; a non-matching hook or a `gate` hook
-  (which rides the synchronous perm-shim, not this stream) must not be run here, or the wrong code fires.
+### HookDispatcher runs the matching notify and check hooks, not gate, feeding the event on stdin
+- **Why:** `notify` and `check` hooks both fan out off the event with the payload on stdin; a non-matching hook
+  or a `gate` hook (which rides the synchronous perm-shim, not this stream) must not be run here, or the wrong
+  code fires — `check` differs only in that its captured output is relayed back to the agent, not discarded.
 
 ### HookController dispatches the pending log slice once and advances the cursor past completed lines
 - **Why:** the durable cursor is what makes delivery deferred-not-dropped — it must advance past completed lines
@@ -70,6 +71,19 @@ harness: ../../../../tests/Harness/README.md
 ### abox-hooks turn-ended in an opted-in repo → appends a TurnEnded line from the Stop payload and dispatches
 - **Why:** this is the dev-loop producer — given the Claude Code Stop payload on stdin it must emit a well-formed
   TurnEnded line (carrying the session id and raw payload) and dispatch, so a normal session fires hooks too.
+
+### abox-hooks turn-ended with a passing check hook → returns the check output as advisory Stop context
+- **Why:** a `check` hook is the synchronous, fed-back mode — when it passes (exit 0) its stdout must come back as
+  advisory context so the producer can inject it via the Stop hook's `additionalContext`, guiding without blocking.
+
+### abox-hooks turn-ended with a failing check hook → blocks the turn, feeding the check output back as the reason
+- **Why:** the whole point of `check` is to let a reaction stop a premature turn-end — a non-zero check must surface
+  as a block whose reason is the hook's output, which the producer renders as a Stop exit-2 fed back to the agent.
+
+### abox-hooks turn-ended honors stop_hook_active → a blocking check is downgraded to context, not re-blocked
+- **Why:** Claude sets `stop_hook_active` once a stop has already been blocked and resumed; if a check still wants
+  to block, re-blocking would wedge the agent in an endless block→resume loop, so the guard downgrades it to
+  advisory context — the reason is still surfaced, but the turn is allowed to end.
 
 ### abox-hooks turn-ended with no .abox opt-in → emits nothing
 - **Why:** a Stop hook fires every turn, so without the `.abox/` opt-in it must be a silent no-op — never writing

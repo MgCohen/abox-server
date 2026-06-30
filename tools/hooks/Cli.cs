@@ -53,8 +53,8 @@ public static class Cli
         var dispatcher = new HookDispatcher(new HookRunner(opts.TimeoutMs));
         var controller = new HookController(catalog, dispatcher);
 
-        var dispatched = await controller.DispatchPendingAsync(opts.LogPath, opts.CursorPath);
-        Console.WriteLine($"abox-hooks: dispatched {dispatched} event(s)");
+        var pass = await controller.DispatchPendingAsync(opts.LogPath, opts.CursorPath);
+        Console.WriteLine($"abox-hooks: dispatched {pass.Events} event(s)");
         return 0;
     }
 
@@ -79,11 +79,11 @@ public static class Cli
 
         var catalog = new HookCatalog([repo], msg => Console.Error.WriteLine($"abox-hooks: {msg}"));
         var controller = new HookController(catalog, new HookDispatcher(new HookRunner()));
-        var dispatched = await controller.DispatchPendingAsync(
+        var pass = await controller.DispatchPendingAsync(
             Path.Combine(hooksDir, "hooks.jsonl"), Path.Combine(hooksDir, "hooks.cursor"));
 
         var shortSha = head.Sha[..Math.Min(7, head.Sha.Length)];
-        Console.WriteLine($"abox-hooks: CommitLanded {shortSha} → dispatched {dispatched} event(s)");
+        Console.WriteLine($"abox-hooks: CommitLanded {shortSha} → dispatched {pass.Events} event(s)");
         return 0;
     }
 
@@ -98,28 +98,79 @@ public static class Cli
     {
         var repo = ResolveRepo(RepoArg(args));
         var raw = Console.IsInputRedirected ? await Console.In.ReadToEndAsync() : "";
-        await EmitTurnEndedAsync(repo, raw);
-        return 0;
+        var outcome = await EmitTurnEndedAsync(repo, raw);
+        return ApplyStopFeedback(outcome.Feedback);
     }
 
-    // The testable core: given a repo and the raw Claude Code Stop payload, emit a TurnEnded
-    // line (opt-in on .abox/) and dispatch. Returns the number of events dispatched, or -1 when
-    // the repo has not opted in.
-    public static async Task<int> EmitTurnEndedAsync(string repo, string rawPayload)
+    // The testable core: given a repo and the raw Claude Code Stop payload, emit a TurnEnded line
+    // (opt-in on .abox/), dispatch, and translate any check-hook output into feedback for the running
+    // agent. Returns the dispatched count + feedback, or NotOptedIn (-1) when the repo has not opted in.
+    public static async Task<TurnEndedOutcome> EmitTurnEndedAsync(string repo, string rawPayload)
     {
         var hooksDir = Path.Combine(repo, ".abox");
-        if (!Directory.Exists(hooksDir)) return -1;
+        if (!Directory.Exists(hooksDir)) return TurnEndedOutcome.NotOptedIn;
 
         HookLog.Append(Path.Combine(hooksDir, "hooks.jsonl"), TurnEndedEvent(repo, rawPayload));
 
         var catalog = new HookCatalog([repo], msg => Console.Error.WriteLine($"abox-hooks: {msg}"));
         var controller = new HookController(catalog, new HookDispatcher(new HookRunner()));
-        var dispatched = await controller.DispatchPendingAsync(
+        var pass = await controller.DispatchPendingAsync(
             Path.Combine(hooksDir, "hooks.jsonl"), Path.Combine(hooksDir, "hooks.cursor"));
 
-        Console.Error.WriteLine($"abox-hooks: TurnEnded → dispatched {dispatched} event(s)");
-        return dispatched;
+        var feedback = HookFeedback.FromChecks(pass.Checks);
+
+        // Loop guard: Claude sets stop_hook_active once a stop has already been blocked and resumed. If a
+        // check still wants to block, downgrade it to advisory context so we surface the reason without
+        // wedging the agent in an endless block→resume→block cycle on something it cannot satisfy.
+        if (feedback.Kind == HookFeedbackKind.Block && StopHookActive(rawPayload))
+            feedback = feedback with { Kind = HookFeedbackKind.Context };
+
+        return new TurnEndedOutcome(pass.Events, feedback);
     }
+
+    private static bool StopHookActive(string rawPayload)
+    {
+        if (string.IsNullOrWhiteSpace(rawPayload)) return false;
+        try
+        {
+            using var doc = JsonDocument.Parse(rawPayload);
+            return doc.RootElement.ValueKind == JsonValueKind.Object
+                && doc.RootElement.TryGetProperty("stop_hook_active", out var a)
+                && a.ValueKind == JsonValueKind.True;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
+    // Render the feedback in Claude Code's Stop-hook protocol: exit 2 with the reason on stderr blocks
+    // the stop and feeds it back to the agent; exit 0 with hookSpecificOutput.additionalContext on
+    // stdout injects advisory context; nothing to say is a silent exit 0. (≤10k chars per the docs.)
+    private static int ApplyStopFeedback(HookFeedback fb)
+    {
+        switch (fb.Kind)
+        {
+            case HookFeedbackKind.Block:
+                Console.Error.WriteLine(Cap(fb.Text));
+                return 2;
+            case HookFeedbackKind.Context:
+                var payload = new JsonObject
+                {
+                    ["hookSpecificOutput"] = new JsonObject
+                    {
+                        ["hookEventName"] = "Stop",
+                        ["additionalContext"] = Cap(fb.Text),
+                    },
+                };
+                Console.WriteLine(payload.ToJsonString());
+                return 0;
+            default:
+                return 0;
+        }
+    }
+
+    private static string Cap(string s) => s.Length <= 10_000 ? s : s[..10_000];
 
     private static int InstallClaude(string[] args)
     {

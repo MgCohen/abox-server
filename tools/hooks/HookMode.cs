@@ -4,4 +4,5 @@ public enum HookMode
 {
     Notify,
     Gate,
+    Check,
 }

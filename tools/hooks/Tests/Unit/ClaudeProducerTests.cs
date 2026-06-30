@@ -64,9 +64,9 @@ public sealed class ClaudeProducerTests
                 "on: [TurnEnded]\nmode: notify\nrun: cat > got.json\n");
 
             var payload = """{"session_id":"sess-9","hook_event_name":"Stop","last_assistant_message":"hi"}""";
-            var dispatched = await Cli.EmitTurnEndedAsync(repo, payload);
+            var outcome = await Cli.EmitTurnEndedAsync(repo, payload);
 
-            Assert.Equal(1, dispatched);
+            Assert.Equal(1, outcome.Dispatched);
             var line = File.ReadAllText(Path.Combine(repo, ".abox", "hooks.jsonl")).Trim();
             using var doc = JsonDocument.Parse(line);
             Assert.Equal("TurnEnded", doc.RootElement.GetProperty("kind").GetString());
@@ -81,6 +81,77 @@ public sealed class ClaudeProducerTests
         }
     }
 
+    [Rule("abox-hooks turn-ended with a passing check hook → returns the check output as advisory Stop context")]
+    [Fact]
+    public async Task TurnEnded_passing_check_becomes_advisory_context()
+    {
+        var repo = Directory.CreateTempSubdirectory("turnend-check-ok-").FullName;
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(repo, ".abox"));
+            var feat = Directory.CreateDirectory(Path.Combine(repo, "feat")).FullName;
+            // echo is a builtin in both cmd and sh — exits 0 with text on stdout.
+            File.WriteAllText(Path.Combine(feat, "review.hook"),
+                "on: [TurnEnded]\nmode: check\nrun: echo looks-good\n");
+
+            var outcome = await Cli.EmitTurnEndedAsync(repo, """{"session_id":"s"}""");
+
+            Assert.Equal(HookFeedbackKind.Context, outcome.Feedback.Kind);
+            Assert.Contains("looks-good", outcome.Feedback.Text);
+        }
+        finally
+        {
+            Directory.Delete(repo, recursive: true);
+        }
+    }
+
+    [Rule("abox-hooks turn-ended with a failing check hook → blocks the turn, feeding the check output back as the reason")]
+    [Fact]
+    public async Task TurnEnded_failing_check_blocks_with_its_output()
+    {
+        var repo = Directory.CreateTempSubdirectory("turnend-check-block-").FullName;
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(repo, ".abox"));
+            var feat = Directory.CreateDirectory(Path.Combine(repo, "feat")).FullName;
+            // `&&` chains in both cmd and sh: print the reason, then exit non-zero to signal a block.
+            File.WriteAllText(Path.Combine(feat, "review.hook"),
+                "on: [TurnEnded]\nmode: check\nrun: echo doc-invalid && exit 2\n");
+
+            var outcome = await Cli.EmitTurnEndedAsync(repo, """{"session_id":"s"}""");
+
+            Assert.Equal(HookFeedbackKind.Block, outcome.Feedback.Kind);
+            Assert.Contains("doc-invalid", outcome.Feedback.Text);
+        }
+        finally
+        {
+            Directory.Delete(repo, recursive: true);
+        }
+    }
+
+    [Rule("abox-hooks turn-ended honors stop_hook_active → a blocking check is downgraded to context, not re-blocked")]
+    [Fact]
+    public async Task TurnEnded_downgrades_block_when_stop_hook_active()
+    {
+        var repo = Directory.CreateTempSubdirectory("turnend-loopguard-").FullName;
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(repo, ".abox"));
+            var feat = Directory.CreateDirectory(Path.Combine(repo, "feat")).FullName;
+            File.WriteAllText(Path.Combine(feat, "review.hook"),
+                "on: [TurnEnded]\nmode: check\nrun: echo doc-invalid && exit 2\n");
+
+            var outcome = await Cli.EmitTurnEndedAsync(repo, """{"session_id":"s","stop_hook_active":true}""");
+
+            Assert.Equal(HookFeedbackKind.Context, outcome.Feedback.Kind);
+            Assert.Contains("doc-invalid", outcome.Feedback.Text);
+        }
+        finally
+        {
+            Directory.Delete(repo, recursive: true);
+        }
+    }
+
     [Rule("abox-hooks turn-ended with no .abox opt-in → emits nothing")]
     [Fact]
     public async Task TurnEnded_is_a_noop_without_opt_in()
@@ -88,7 +159,7 @@ public sealed class ClaudeProducerTests
         var repo = Directory.CreateTempSubdirectory("turnend-none-").FullName;
         try
         {
-            Assert.Equal(-1, await Cli.EmitTurnEndedAsync(repo, "{}"));
+            Assert.Equal(-1, (await Cli.EmitTurnEndedAsync(repo, "{}")).Dispatched);
             Assert.False(File.Exists(Path.Combine(repo, ".abox", "hooks.jsonl")));
         }
         finally
