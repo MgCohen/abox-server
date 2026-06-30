@@ -19,13 +19,13 @@ User Intent ─(LLM⇄Human)→ Plan ─→ Tasks/Phases ─(LLM matches)→ Rec
 The color marks the **lowering**: every line of the Feature is emitted by the **deterministic
 (yellow)** step (recipe → owned source, byte-for-byte). This does **not** mean the LLM writes no
 code — it means the LLM doesn't improvise *structure*. The LLM stays the author, in **four bounded
-positions:** (1) **compose** a recipe by wiring components; (2) **author the components**
-themselves, with the human, in a separate session (how the catalog grows); (3) write the **custom
-glue** — the feature's irreducible business logic, e.g. *how* an element is found in a repository
-(a predicate/lambda) or *how* it's changed (a few lines), dropped into a typed slot; (4) **select**
-which recipes/components fit the task. A.Box's "maximum guidance" is made literal here: illegal
-*composition* is unrepresentable, the hand-written surface is shrunk to the typed glue slot, and the
-agent stays the author throughout.
+positions**, in workflow order: (1) **analyze / select** which recipes & components fit the task;
+(2) **compose** a recipe by wiring them; (3) **author the missing** — if a component is absent, step
+out to a *separate* session, build/clean it, and come back to use it (you don't wire it in place);
+(4) **glue** the irreducible business logic — *how* an element is found in a repository (a
+predicate/lambda) or *how* it's changed (a few lines) — into a typed slot. A.Box's "maximum
+guidance" is made literal here: illegal *composition* is unrepresentable, the hand-written surface is
+shrunk to the typed glue slot, and the agent stays the author throughout.
 
 | Lane | Who | Does | Owner |
 |------|-----|------|-------|
