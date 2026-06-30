@@ -15,28 +15,55 @@ These are the properties the whole effort must hold. Everything else (which dial
 milestone, which reference) is detail that serves them. Sharpened from §1's original constraint
 table after the architecture-first pass (`flow-graphs.md` → `authoring-dialects.md`).
 
-- **Structured.** A feature is *composed* from pre-built components, not free-authored. The shape
-  is enforced by the catalog — you can only wire what exists.
+**What the LLM does — four bounded positions (not "writes no code").** The LLM stays the author
+throughout; the system constrains *where and how* it authors, maximizing structure in the first and
+last positions and shrinking the hand-written surface in the third — never to zero:
+
+1. **Compose** — wire components into a recipe (output→input). The structured, minimal-dialect bulk.
+2. **Author components** — build the reusable components themselves, with the human, in a *separate*
+   session. How the catalog grows (the ratchet); a cleaned component carries the hard standards so
+   every later composition inherits them.
+3. **Custom glue** — the irreducibly-custom middle of a feature: *how* an element is found in a
+   repository (a predicate/lambda), *how* it's changed (a few lines). No way around it — it is the
+   feature's business logic. Made small and standardized, dropped into a **typed slot**.
+4. **Select** — analyze which recipes/components fit the task (intent → catalog).
+
+The **deterministic** part is only the *lowering* (recipe → owned source). Authorship of the recipe
+and its glue is the LLM's; what's enforced is the *composition*, not the absence of the author.
+
+- **Structured.** A feature is *composed* from pre-built components — you can only wire what the
+  catalog holds (position 1). New components enter only by being authored and cleaned first
+  (position 2), never improvised inline.
 - **Type-safe.** Illegal compositions don't compile. The type system *is* the schema — no JSON, no
   runtime validator, no "looks right."
-- **Deterministic.** Same input → same output, byte-for-byte. No model in the generation loop.
-- **Minimal dialect.** The wiring an agent emits is a small, regular, unambiguous vocabulary — few
-  forms, no dialect *choice*. Optimized so an agent emits it reliably, not for human prose.
-- **Source-generation back-fills inline.** The author declares a need at the use-site (e.g.
-  `new CreateRecord("X")`, `scope.Get<T>`) and the generator mints the required type / DI / wiring.
-  Any required type can be created in line.
+- **Deterministic lowering.** A fixed recipe → the same owned source, byte-for-byte. "Input" =
+  recipe + catalog version + toolchain (Roslyn/formatter). No model *in the lowering step* — the
+  model's work is upstream, in the four positions.
+- **Minimal dialect — in the wiring.** The composition surface (position 1) is a small, regular,
+  unambiguous vocabulary — few forms, no dialect *choice* — so an agent emits it reliably. The
+  custom-glue slot (position 3) is necessarily freer; minimal dialect is a property of the *wiring*,
+  not the glue.
+- **Source-generation back-fills inline — bounded.** The author declares a need at the use-site
+  (`new CreateRecord("X")`, `scope.Get<T>`) and the generator mints it — but only **types / DI /
+  plumbing from a fixed grammar, never new behavior.** Any required *type* can be created in line;
+  new *behavior* enters only as an authored component (position 2).
 - **Optimized for agent delivery.** The audience is an *agent composing*, not a human reading the
   recipe. **The recipe is a tool; the generated output is the artifact** that gets read, reviewed,
   tested, owned. The recipe need not follow the product's ADRs/standards — **the output must.**
 - **Owned output.** Generated code is normal, committed, hand-editable `.cs`. Not invisible weaving.
-- **Components carry the standards; custom logic is the slotted exception.** The hard standards live
-  in the components. The agent writes only the small custom logic in the middle — itself usually a
-  standardized shape (a query/check where only the variables and the predicate change).
+  *(Open: the regenerate-vs-hand-edit round-trip policy — write-once / protected-regions /
+  derived-artifact — is not yet decided.)*
+- **Custom glue is bounded, not banned (position 3).** The hard standards live in the components.
+  Hand-written code is allowed only as the feature's irreducible business logic — a predicate / query
+  / a few lines — dropped into a **typed leaf or block slot**, never as a new top-level form. Small
+  and standardized, never zero.
 - **Ratchet growth (build-once-then-reuse).** No speculative abstraction. When we hit something not
-  yet built, we build it once, clean it into a component, and it is reusable forever. The library
-  grows by harvesting *real* recurring need — that is YAGNI as a growth model.
-- **The LLM never writes code.** It produces judgment — plan, breakdown, *selection* — and every line
-  of the feature comes out of the deterministic layer. Illegal code is *unrepresentable*, not discouraged.
+  yet built, we build it once, clean it into a component (position 2), and it is reusable forever.
+  The library grows by harvesting *real* recurring need — that is YAGNI as a growth model.
+- **The LLM authors, within structure.** It writes code in all four positions above — *not* zero
+  code. What it cannot do is improvise *structure*: illegal composition is unrepresentable, and every
+  emitted line still passes the compile gate. ("Deterministic" governs the lowering; "structured"
+  governs the authoring.)
 
 ## Document map — active vs parked
 

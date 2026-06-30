@@ -16,11 +16,16 @@ User Intent ─(LLM⇄Human)→ Plan ─→ Tasks/Phases ─(LLM matches)→ Rec
    human          blue        blue      blue          blue          YELLOW           YELLOW
 ```
 
-The color is the thesis: **the LLM never writes code.** It produces judgment — a plan, a task
-breakdown, and a *selection* (this task → that recipe, with these params). Every line of the
-Feature comes out of the **deterministic (yellow)** layer. That is A.Box's "maximum guidance"
-made literal: an agent can only compose what the catalog allows — illegal code is
-*unrepresentable*, not merely discouraged.
+The color marks the **lowering**: every line of the Feature is emitted by the **deterministic
+(yellow)** step (recipe → owned source, byte-for-byte). This does **not** mean the LLM writes no
+code — it means the LLM doesn't improvise *structure*. The LLM stays the author, in **four bounded
+positions:** (1) **compose** a recipe by wiring components; (2) **author the components**
+themselves, with the human, in a separate session (how the catalog grows); (3) write the **custom
+glue** — the feature's irreducible business logic, e.g. *how* an element is found in a repository
+(a predicate/lambda) or *how* it's changed (a few lines), dropped into a typed slot; (4) **select**
+which recipes/components fit the task. A.Box's "maximum guidance" is made literal here: illegal
+*composition* is unrepresentable, the hand-written surface is shrunk to the typed glue slot, and the
+agent stays the author throughout.
 
 | Lane | Who | Does | Owner |
 |------|-----|------|-------|
