@@ -35,8 +35,8 @@ harness: ../../../../tests/Harness/README.md
 - **Why:** discovery is convention-over-registration across many feature folders; one malformed `.hook` must be
   reported and skipped, leaving the rest discoverable, so a single typo can't blind the controller to every hook.
 
-### HookDispatcher runs only the matching react hooks, feeding the event on stdin
-- **Why:** `react` hooks fan out off the event with the payload on stdin; a non-matching hook or a `gate` hook
+### HookDispatcher runs only the matching notify hooks, feeding the event on stdin
+- **Why:** `notify` hooks fan out off the event with the payload on stdin; a non-matching hook or a `gate` hook
   (which rides the synchronous perm-shim, not this stream) must not be run here, or the wrong code fires.
 
 ### HookController dispatches the pending log slice once and advances the cursor past completed lines

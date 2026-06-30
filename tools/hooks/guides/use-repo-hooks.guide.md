@@ -24,7 +24,7 @@ agent turn ended).
 <!-- id: 2 -->
 Create `<feature>/<name>.hook` with `on:` (required — the event kinds) and `run:` (required — the
 shell command). Optionally add `when:` (a `source` / `cwd glob` / `tool` filter) and `mode:`
-(`react` or `gate`, default `react`).
+(`notify` or `gate`, default `notify`).
 #### Opt the repo in
 <!-- id: 3 -->
 Create an `.abox/` directory at the repo root. Producers emit events only when `.abox/` exists, so a

@@ -10,16 +10,16 @@ public sealed class HookManifestParserTests
             "# revalidate docs",
             "on:   [CommitLanded, TurnEnded]",
             "when: cwd glob \"**/docs/**\"",
-            "mode: react",
-            "run:  docengine react --since-cursor");
+            "mode: notify",
+            "run:  docengine onchange --since-cursor");
 
         var m = HookManifestParser.Parse("/feat/revalidate.hook", text);
 
         Assert.Equal(new[] { HookKind.CommitLanded, HookKind.TurnEnded }, m.On);
         Assert.Equal("**/docs/**", m.When.CwdGlob);
         Assert.Null(m.When.Source);
-        Assert.Equal(HookMode.React, m.Mode);
-        Assert.Equal("docengine react --since-cursor", m.Run);
+        Assert.Equal(HookMode.Notify, m.Mode);
+        Assert.Equal("docengine onchange --since-cursor", m.Run);
     }
 
     [Rule("HookManifestParser rejects a .hook missing on: or run: with an actionable error naming the file")]
@@ -32,6 +32,6 @@ public sealed class HookManifestParserTests
         Assert.Contains("run:", ex.Message);
 
         Assert.Throws<FormatException>(
-            () => HookManifestParser.Parse("/feat/bad.hook", "run: docengine react"));
+            () => HookManifestParser.Parse("/feat/bad.hook", "run: docengine onchange"));
     }
 }

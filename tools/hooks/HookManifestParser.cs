@@ -10,7 +10,7 @@ public static class HookManifestParser
         HookSource? source = null;
         string? cwdGlob = null;
         string? tool = null;
-        var mode = HookMode.React;
+        var mode = HookMode.Notify;
         string? run = null;
 
         var lineNo = 0;
@@ -88,7 +88,7 @@ public static class HookManifestParser
     private static HookMode ParseMode(string path, int lineNo, string raw, string value)
     {
         if (!Enum.TryParse<HookMode>(value, ignoreCase: true, out var mode))
-            throw Bad(path, lineNo, raw, $"unknown mode '{value}' (expected react|gate)");
+            throw Bad(path, lineNo, raw, $"unknown mode '{value}' (expected notify|gate)");
         return mode;
     }
 

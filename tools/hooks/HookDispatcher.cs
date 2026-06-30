@@ -12,7 +12,7 @@ public sealed class HookDispatcher
     public async Task<IReadOnlyList<HookDispatchResult>> DispatchAsync(
         HookEvent e, IReadOnlyList<HookManifest> manifests, CancellationToken ct = default)
     {
-        var matches = manifests.Where(m => m.Mode == HookMode.React && m.Matches(e));
+        var matches = manifests.Where(m => m.Mode == HookMode.Notify && m.Matches(e));
         return await Task.WhenAll(matches.Select(m => _runner.RunAsync(m, e, ct)));
     }
 }

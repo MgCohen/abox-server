@@ -58,7 +58,7 @@ public sealed class GitInstallerTests
             Directory.CreateDirectory(Path.Combine(repo, ".abox"));
             var feat = Directory.CreateDirectory(Path.Combine(repo, "feat")).FullName;
             File.WriteAllText(Path.Combine(feat, "on-commit.hook"),
-                "on: [CommitLanded]\nmode: react\nrun: cat > got.json\n");
+                "on: [CommitLanded]\nmode: notify\nrun: cat > got.json\n");
 
             var code = await Cli.RunAsync(["commit", "--repo", repo]);
             Assert.Equal(0, code);

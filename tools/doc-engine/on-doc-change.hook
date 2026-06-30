@@ -2,5 +2,5 @@
 # commit lands, validate the doc-engine instances that changed and dispatch their onChange handlers.
 # The trigger is owned by repo-hooks; the reaction logic stays pure doc-engine (no Claude Code).
 on:   [TurnEnded, CommitLanded]
-mode: react
+mode: notify
 run:  sh scripts/on-doc-change.sh

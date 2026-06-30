@@ -61,7 +61,7 @@ public sealed class ClaudeProducerTests
             Directory.CreateDirectory(Path.Combine(repo, ".abox"));
             var feat = Directory.CreateDirectory(Path.Combine(repo, "feat")).FullName;
             File.WriteAllText(Path.Combine(feat, "on-turn.hook"),
-                "on: [TurnEnded]\nmode: react\nrun: cat > got.json\n");
+                "on: [TurnEnded]\nmode: notify\nrun: cat > got.json\n");
 
             var payload = """{"session_id":"sess-9","hook_event_name":"Stop","last_assistant_message":"hi"}""";
             var dispatched = await Cli.EmitTurnEndedAsync(repo, payload);
