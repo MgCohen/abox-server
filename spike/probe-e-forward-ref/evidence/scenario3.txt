@@ -1,0 +1,13 @@
+=== SCENARIO 3a: DEFAULT BUILD (Break.cs) — name-based <T> at the corner ===
+$ dotnet build
+/home/user/abox-server/spike/probe-e-forward-ref/scenario3-corner-case/Break.cs(19,12): error CS0246: The type or namespace name 'Foo' could not be found (are you missing a using directive or an assembly reference?) [/home/user/abox-server/spike/probe-e-forward-ref/scenario3-corner-case/Scenario3.csproj]
+/home/user/abox-server/spike/probe-e-forward-ref/scenario3-corner-case/Break.cs(20,17): error CS0246: The type or namespace name 'Foo' could not be found (are you missing a using directive or an assembly reference?) [/home/user/abox-server/spike/probe-e-forward-ref/scenario3-corner-case/Scenario3.csproj]
+Build FAILED.
+/home/user/abox-server/spike/probe-e-forward-ref/scenario3-corner-case/Break.cs(19,12): error CS0246: The type or namespace name 'Foo' could not be found (are you missing a using directive or an assembly reference?) [/home/user/abox-server/spike/probe-e-forward-ref/scenario3-corner-case/Scenario3.csproj]
+/home/user/abox-server/spike/probe-e-forward-ref/scenario3-corner-case/Break.cs(20,17): error CS0246: The type or namespace name 'Foo' could not be found (are you missing a using directive or an assembly reference?) [/home/user/abox-server/spike/probe-e-forward-ref/scenario3-corner-case/Scenario3.csproj]
+
+=== SCENARIO 3b: TYPEREF BUILD (Works.cs) — value-level TypeRef at the same corner ===
+$ dotnet run -p:Mode=typeref
+TypeRef      -> Foo
+List<TypeRef>-> 2
+Scenario 3: no producer in/visible to this compilation => <T> impossible; value-level TypeRef COMPILES & RAN

@@ -1,0 +1,3 @@
+Current      -> Foo { Id = 2127da2d-0225-4bdc-95f4-2b6bf334ce80, Name = beta }
+Repo+List ct -> 4
+Scenario 1: same-compilation, cross-file, use-before-mint => COMPILED & RAN
