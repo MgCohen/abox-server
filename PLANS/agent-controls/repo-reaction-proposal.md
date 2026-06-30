@@ -1,10 +1,11 @@
 # Repo-Reaction — Proposal
 
 > **Status: proposal / iterating — not yet decided.** Captures the design for a
-> governance-owned **reaction layer**: a thin, provider-agnostic event *transport*
-> that any of our systems (doc-engine first) subscribes to in type-safe C#, without
-> caring how the underlying hook fired. Produced 2026-06-30. Nothing is built behind
-> this yet — this is the shape we agree on first.
+> governance-owned **reaction layer**: a thin, provider-agnostic event *transport* feeds
+> a single governance *controller* that discovers declarative `.hook` files — which any
+> feature (doc-engine first) drops in its own folder, in any language, without caring how
+> the underlying provider hook fired. Produced 2026-06-30. Nothing is built behind this
+> yet — this is the shape we agree on first.
 
 ## Summary
 
@@ -19,11 +20,14 @@ provider." It is a **split**:
 | Layer | What it is | Who owns it |
 |---|---|---|
 | **Transport** | dumb per-provider shims that normalize *raw provider events* into one event stream | **governance** (shared infra) |
-| **Reaction** | what a system *does* when an event fires — subscribed in type-safe C#, located and written however the consumer likes | **the consuming system** (doc-engine, …) |
+| **Controller** | the single subscriber to that stream; on each event it **discovers** `.hook` files, filters, and runs them | **governance** |
+| **Reaction** | a declarative `.hook` file a feature drops in **its own folder**, pointing at an action in **any language** | **the feature** (doc-engine, …) |
 
-The shim stays dumb (read stdin → append one normalized line). All smarts move into
-C# **subscribers** that read the stream out-of-band. That directly answers all three
-walls and gives you type-safe C# reactions with free file location and language.
+The shim stays dumb (read stdin → append one normalized line). A feature opts in by
+**dropping a `.hook` file** — no DI registration, no build step. The governance
+controller globs `**/*.hook`, filters by event, and runs the matches out-of-band. That
+answers all three walls *and* removes the build-time gap: "what reactions exist" is a
+filesystem fact, not a populated container.
 
 ## The three walls, concretely
 
@@ -47,10 +51,11 @@ printf '%s' "$payload" > "$RA_STOP_SIGNAL"
 ```
 
 `ClaudeProvider` then reads the signal back (`ReadFinalMessage()`). What's missing is
-**(a)** a *normalized* event shape so a consumer doesn't parse Claude's raw payload,
-and **(b)** a **subscription seam** so systems other than the provider can react.
+**(a)** a *normalized* event shape so a feature doesn't parse Claude's raw payload, and
+**(b)** a **discovery + dispatch controller** so features other than the provider can
+react by dropping a `.hook` file.
 
-## Core idea — one normalized event, many dumb installers, C# subscribers
+## Core idea — one normalized event, one controller, discovered `.hook` files
 
 ```
                     ┌──────────────── governance: TRANSPORT ────────────────┐
@@ -60,16 +65,17 @@ and **(b)** a **subscription seam** so systems other than the provider can react
                     │              │        │ map raw→ReactionEvent          │
   git   ──post-commit▶ git hook ───┘        │  (the mapping table)           │
                     └─────────────────────────┼──────────────────────────────┘
-                                              │ subscribe (out-of-band, async)
+                                              │ governance controller tails the stream
               ┌───────────────────────────────┴───────────────────────────┐
-              │  doc-engine        guardrail svc        <your system>      │   ← REACTION
-              │  IReaction (C#)    IReaction (C#)        IReaction (C#)     │     (any folder,
+              │  glob **/*.hook  →  filter by event  →  run each match      │   ← REACTION
+              │  tools/doc-engine/*.hook   src/.../*.hook   <feature>/*.hook │     (any folder,
               └───────────────────────────────────────────────────────────┘      any language)
 ```
 
-The shim never runs consumer logic inline (hooks run **synchronously in the agent's
-process tree** — a slow hook blocks the turn). It only appends a normalized line;
-subscribers wake on the stream.
+The shim never runs feature logic inline (hooks run **synchronously in the agent's
+process tree** — a slow hook blocks the turn). It only appends a normalized line; the
+**governance controller** — the single subscriber — wakes on the stream, discovers
+the `.hook` files, filters, and runs them out-of-band.
 
 ### The normalized event (the contract that makes it hold)
 
@@ -113,45 +119,45 @@ public sealed record ReactionEvent(
 > needs and passes the rest through in `RawPayload`; it never rejects on an unknown
 > field.
 
-### The subscription seam (where your type-safe C# lives)
+### The reaction seam — a discovered `.hook` manifest (no registration)
 
-```csharp
-namespace ABox.Governance.Reactions;
+A feature does **not** register in a DI container. It drops a `.hook` file in **its
+own folder**; the governance controller discovers it. Convention over registration —
+so "what reactions exist" is a filesystem fact, needing no build (this is what closes
+the build-time gap, below).
 
-public interface IReaction
-{
-    // The consumer declares only what it cares about; the bus filters.
-    IReadOnlySet<ReactionKind> Subscribes { get; }
-
-    Task OnAsync(ReactionEvent e, CancellationToken ct);
-}
+```
+# tools/doc-engine/revalidate.hook   — in the feature's OWN folder, any location
+on:    [CommitLanded, TurnEnded]      # event filter — required
+when:  cwd glob "**/docs/**"          # optional extra filter
+mode:  react                          # react | gate  (see below)
+run:   docengine react --since-cursor # action; the ReactionEvent arrives on stdin
 ```
 
-A consumer registers in DI (per the repo's "DI services over statics" standard) and
-**that's the whole integration** — no `.claude/`, no shell, no provider knowledge:
+**The action format** (the open piece). `run:` is the spine — governance just execs
+the command with the normalized `ReactionEvent` on **stdin**, which is what gives the
+language freedom (C# exe, shell, python). Two optional sugars layer on later:
 
-```csharp
-// tools/doc-engine/  — lives in the consumer's own tree, type-safe, testable.
-public sealed class DocEngineReaction(IDocStore docs) : IReaction
-{
-    public IReadOnlySet<ReactionKind> Subscribes { get; } =
-        new HashSet<ReactionKind> { ReactionKind.TurnEnded, ReactionKind.CommitLanded };
+| Action kind | `.hook` declares | Controller does | When |
+|---|---|---|---|
+| **`run:` command** (default) | `run: docengine react` | exec, event on stdin | max language freedom |
+| `action:` builtin | `action: revalidate-docs` | dispatch to a registered handler | common, type-safe, no exec |
+| `agent:` prompt | `agent: ./why.md` | hand the event + prompt to an agent | **NL reactions** — non-deterministic, opt-in |
 
-    public async Task OnAsync(ReactionEvent e, CancellationToken ct)
-    {
-        if (e.Kind is ReactionKind.CommitLanded)
-            await docs.RevalidateChangedDocsAsync(e.Cwd, ct);   // stale-index guard, NOTES.md punt #1
-        else
-            await docs.SnapshotForSessionAsync(e.SessionId, ct);
-    }
-}
-```
+> Start with `run:` only (YAGNI). `run: docengine react` *is* a type-safe C# reaction —
+> the built `docengine` CLI consumes the event. `builtin`/`agent` arrive on a real
+> second need; **NL is an action kind, never the dispatch mechanism** — the controller
+> path stays deterministic.
 
-```csharp
-// composition root — registration is the entire wiring
-services.AddReactionBus();                 // governance-owned: tails reactions.jsonl
-services.AddReaction<DocEngineReaction>();  // consumer opts in
-```
+**`react` vs `gate`.** Two modes, because they have different execution contracts:
+
+| Mode | Runs | On result | For |
+|---|---|---|---|
+| `react` | fan-out, parallel, failure-isolated | ignored (fire-and-forget) | observe — snapshot, validate, notify |
+| `gate` | sequential, first-deny-wins, **must be fast** | `allow`/`deny` returned to the provider | decide — `ToolPending` permission gating |
+
+A `gate` is the only path that runs back inside the turn (bounded by the existing
+perm-shim deadline in `ClaudeHooks`); `react` never blocks it.
 
 ## Worked flow — doc-engine reacts to a turn end
 
@@ -162,14 +168,15 @@ services.AddReaction<DocEngineReaction>();  // consumer opts in
      → Stop hook fires IN claude's process tree → shim writes raw payload      (dumb, ~1ms)
 3. installer's mapper tails the raw signal, emits:
      {"kind":"TurnEnded","source":"Claude","sessionId":"…","cwd":"…","raw":{…}}  → reactions.jsonl
-4. ReactionBus (async, OUT of the agent process) reads the new line
-     → dispatches to every IReaction whose Subscribes contains TurnEnded
-5. DocEngineReaction.OnAsync runs — snapshots/validates — turn was NEVER blocked on it
+4. governance controller (async, OUT of the agent process) reads the new line
+     → from its cached .hook set, selects every manifest whose `on:` ∋ TurnEnded
+       and whose `when:` matches → runs each (react → parallel)
+5. revalidate.hook's `run:` execs `docengine react`, event on stdin — turn NEVER blocked
 ```
 
 Contrast with wiring this by hand today: doc-engine would need its own
 `.claude/settings.json` entry, its own shell shim, and its own Codex variant — and
-all of it would run **inside** the agent turn.
+all of it would run **inside** the agent turn. Here it drops one `.hook` file.
 
 ## Provider install matrix (what the transport renders)
 
@@ -189,95 +196,93 @@ all of it would run **inside** the agent turn.
 
 | Wall | Answer |
 |---|---|
-| **Provider access** | Consumer codes against `ReactionKind`, never a provider event; new provider quirks are absorbed in one mapper |
-| **Different providers** | One `IReaction` fans out across Claude + Codex + Git; the installer owns the dialects |
-| **Folder + language** | The only thing in `.claude/`/`~/.codex/` is a 3-line dumb shim. Your reaction lives **anywhere**, in **C#** (or anything that can tail a jsonl) |
+| **Provider access** | A `.hook` filters on `ReactionKind`, never a provider event; new provider quirks are absorbed in one mapper |
+| **Different providers** | One `.hook` fans out across Claude + Codex + Git; the installer owns the dialects |
+| **Folder + language** | The only thing in `.claude/`/`~/.codex/` is a 3-line dumb shim. The `.hook` lives **in the feature's own folder**, and its `run:` target is **any language** |
 
-## Execution contexts — who hosts the bus (the build-time gap)
+## Execution contexts — why discovery closes the build-time gap
 
-`AddReaction<…>()` is DI registration **inside a running host**. So if nobody
-built/started a host — a dev runs `claude` by hand, or git `post-commit` fires on a
-bare checkout — there is no container and no subscriber fires. This is the one real
-hole, and the split is designed to absorb it: **the shim needs no DI** (3 lines of
-shell), so it writes `reactions.jsonl` regardless. "App not running" therefore
-degrades to **deferred**, not **dropped** — each subscriber keeps a durable cursor and
-the host replays unconsumed lines on start.
+The previous concern: DI registration only exists *inside a running host*, so a hand-run
+`claude` or a bare git `post-commit` would have no registered reactions. **Discovery
+removes that** — "what reactions exist" is a filesystem glob, not a populated container,
+so it needs no build at all. The only thing that must run is the **governance
+controller** (the single subscriber). And the shim itself needs no DI either (3 lines of
+shell), so it writes `reactions.jsonl` regardless. "Nothing running" degrades to
+**deferred**, not **dropped** — a durable cursor replays unconsumed lines when the
+controller next starts.
 
-| Context | Host up? | Bus runs where | Delivery |
+| Context | Controller up? | Where it runs | Delivery |
 |---|---|---|---|
 | **Hosted runtime** — ABox drives agents | yes | co-hosted in the orchestrator | live |
-| **Dev-local / git hook / raw `claude`** | maybe not | standalone reaction-host, or next host start | live-if-runner, else replayed from cursor |
+| **Dev-local / git hook / raw `claude`** | maybe not | thin standalone controller, or next start | live-if-running, else replayed from cursor |
 
-The bus is therefore **a thin standalone host, not bolted into the orchestrator** —
+The controller is **a thin standalone host, not bolted into the orchestrator** —
 doc-engine already proves the pattern (`tools/doc-engine/` ships as the built
-`docengine` CLI, deliberately *out of `ABox.slnx`*). Registration is the
-**reaction-host's** DI, not "the app's," so a git hook can invoke the built runner
-with no orchestrator at all:
+`docengine` CLI, deliberately *out of `ABox.slnx`*). A git hook can invoke it directly:
 
 ```sh
-# git post-commit — invoke the BUILT runner; no orchestrator needed
-exec docengine react --since-cursor
+# git post-commit — invoke the BUILT controller; no orchestrator needed
+exec abox-reactions run --since-cursor   # globs .hook files, replays, dispatches
 ```
 
-```csharp
-// reaction-host (standalone) — same registration, minimal executable
-var host = Host.CreateApplicationBuilder(args);
-host.Services.AddReactionBus(cursor: ".abox/reactions.cursor"); // durable cursor
-host.Services.AddReaction<DocEngineReaction>();
-// on start: replay reactions.jsonl past the cursor, then tail
-```
-
-The **same `IReaction`** runs in either host — co-hosted live when the orchestrator is
-up, or in the thin built runner otherwise. The jsonl + cursor makes them
-interchangeable. (This resolves open question #2.)
+The same `.hook` set is discovered in either host — co-hosted live when the
+orchestrator runs, or in the thin built controller otherwise.
 
 ## Constraints / risks (design against these)
 
-- **Hooks block the turn.** The shim must stay dumb; *all* consumer logic runs in the
-  out-of-band `ReactionBus`, never in the hook command. This is the load-bearing rule.
+- **Hooks block the turn.** The shim stays dumb; the controller dispatches `react`
+  hooks *out-of-band* off the jsonl stream, never in the hook command. Only `gate`
+  hooks run back inside the turn, bounded by the perm-shim deadline. Load-bearing rule.
+- **Discovery cost.** Don't glob `**/*.hook` per event — scan once at controller start +
+  `FileSystemWatcher`, cache the manifest set keyed by `ReactionKind`. Re-scan on file
+  change, dispatch from cache.
+- **Trust — `.hook` runs code.** A discovered `.hook`'s `run:` executes with the
+  controller's privileges. Governance must own **which roots are scanned** and treat
+  `.hook` as a trusted surface (a protected-paths tier) — this is exactly why the
+  controller is governance-owned, not a free-for-all.
 - **Codex hooks are documented-unreliable** (#20204, #17532) and force **global**
   config. Treat Codex as best-effort with a PTY fallback; gate its install on real need.
 - **Payloads aren't schema-stable.** Map the fields you need, pass the rest through,
   never reject on unknown fields.
-- **At-least-once, not exactly-once.** A crash mid-dispatch can re-deliver a line.
-  `IReaction.OnAsync` should be **idempotent** (the shim seam is already idempotent —
-  research §"What we ship").
+- **At-least-once, not exactly-once.** A crash mid-dispatch can re-deliver a line. A
+  `.hook`'s action should be **idempotent** (the shim seam already is — research §"What
+  we ship").
 - **Ordering is per-stream, not global.** Lines in `reactions.jsonl` are ordered;
-  cross-session ordering is not guaranteed. Consumers key off `SessionId`.
+  cross-session ordering is not. Actions key off `SessionId`.
 
 ## Scope / non-goals
 
 - **Not** a published product or plugin marketplace — internal infra for our systems.
 - **Not** "install all hooks for all providers up front" — install-on-subscribe only.
-- **No** consumer logic inside hooks — transport is dumb by construction.
+- **No** feature logic inside the shim — transport is dumb by construction.
 - **Doesn't** replace `ClaudeProvider`'s direct Stop read for *turn completion* (that
-  stays — it's the provider's own control signal); the reaction bus is the **fan-out
-  for other consumers**, not a rewrite of the provider's plumbing.
+  stays — it's the provider's own control signal); the controller is the **fan-out for
+  other features**, not a rewrite of the provider's plumbing.
 
 ## Open questions (still iterating)
 
-1. **Transport medium.** `reactions.jsonl` tail (simple, matches existing shim seam,
-   survives restart) vs an in-proc channel (lower latency, loses cross-process
-   reach). Lean jsonl — it already works across the host↔box mount.
-2. ~~**Bus location.**~~ **Resolved** (see *Execution contexts*): a thin standalone
-   reaction-host, not embedded in the orchestrator — co-hosted live when the
-   orchestrator runs, runnable as a built CLI (the `docengine` pattern) otherwise.
-   Durable cursor makes "no host running" a *deferred*, not *dropped*, delivery.
-3. **Backpressure / retention.** Who truncates `reactions.jsonl`, and what happens to a
-   slow `IReaction`? Probably: bounded file + per-subscriber cursor.
-4. **Where the contract assembly lives.** New `ABox.Governance.Reactions` vs folding
-   into `Contracts`. The contract is wire-ish and cross-cutting — likely its own thin
-   assembly under governance ownership.
+1. **`.hook` action format.** `run:` command + stdin (recommended spine — max language
+   freedom) is enough for v1; `builtin:`/`agent:` are deferred sugar. Confirm we start
+   `run:`-only and that NL stays an action *kind*, never the dispatch mechanism.
+2. **Filter expressiveness.** `on:` (event kind, required) + `when:` (a small fixed set —
+   `source`, `cwd` glob, `tool`). Resist a DSL; richer logic lives in the action, which
+   reads the event and early-exits.
+3. **Transport medium.** `reactions.jsonl` tail (simple, survives restart, already works
+   across the host↔box mount) vs in-proc channel. Lean jsonl.
+4. **Backpressure / retention + trust tier.** Who truncates `reactions.jsonl`; what tier
+   `.hook` files sit at in `protected-paths` (they execute, so likely `attention`+).
+5. **Where the contract assembly lives.** New `ABox.Governance.Reactions` (the controller
+   + `ReactionEvent` + `.hook` parser) vs folding the wire types into `Contracts`.
 
 ## Next steps
 
-1. Settle open questions (medium, bus location).
-2. Land the **contract** (`ReactionEvent` + `ReactionKind` + `IReaction`) and a
-   `ReactionBus` that tails the stream — thin, no consumers yet.
+1. Settle the open questions (action format, filter set, trust tier).
+2. Land the **contract + controller**: `ReactionEvent`/`ReactionKind`, a `.hook` parser,
+   and the discovery+dispatch loop that tails the stream — thin, no `.hook` files yet.
 3. **Generalize `ClaudeHooks`** into the Claude installer behind the contract (Stop →
    `TurnEnded`), leaving the existing provider read intact.
-4. Wire **doc-engine as the first `IReaction`** (the second real consumer that
-   justifies the abstraction) — `CommitLanded` → revalidate stale docs (NOTES.md
+4. Add **doc-engine's first `.hook`** (the second real consumer that justifies the
+   abstraction) — `CommitLanded` → `docengine react` revalidates stale docs (NOTES.md
    punt #1).
-5. Add Git `post-commit` installer; defer Codex until a subscriber needs a Codex-only
+5. Add the Git `post-commit` installer; defer Codex until a `.hook` needs a Codex-only
    kind.
