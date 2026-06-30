@@ -12,6 +12,10 @@ fields:
   group:
     kind: string
     required: false
+  composes:
+    kind: list
+    required: false
+    of: string
   description:
     kind: string
     required: true
@@ -31,3 +35,9 @@ constraints:
   - rule: requires_when
     when: collection
     then: group
+  - rule: requires_when
+    when: composes
+    then: collection
+  - rule: references
+    field: composes
+    by: type

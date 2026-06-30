@@ -14,7 +14,7 @@ public sealed class SchemaChecker
         var floorPath = Path.Combine(_root, "_schema", "kind.schema.yaml");
         var floor = LoadMap(errs, floorPath);
         if (floor is null) return errs;
-        Conform(errs, floor, floor, floorPath);
+        Conform(errs, floor, floor, floorPath, NoSiblings);
 
         var floorDefs = Yaml.AsString(floor.GetValueOrDefault("defs"));
         if (floorDefs is null) return errs;
@@ -22,18 +22,25 @@ public sealed class SchemaChecker
         {
             var kind = LoadMap(errs, kindFile);
             if (kind is null) continue;
-            Conform(errs, kind, floor, kindFile);
+            Conform(errs, kind, floor, kindFile, NoSiblings);
 
             var kindDefs = Yaml.AsString(kind.GetValueOrDefault("defs"));
             if (kindDefs is null) continue;
+            var defMaps = new List<(string File, IReadOnlyDictionary<string, object?> Map)>();
             foreach (var defFile in RequireFiles(errs, kindDefs))
             {
                 var def = LoadMap(errs, defFile);
-                if (def is not null) Conform(errs, def, kind, defFile);
+                if (def is not null) defMaps.Add((defFile, def));
             }
+            var siblings = defMaps.Select(d => d.Map).ToList();
+            foreach (var (defFile, def) in defMaps)
+                Conform(errs, def, kind, defFile, siblings);
         }
         return errs;
     }
+
+    private static readonly IReadOnlyList<IReadOnlyDictionary<string, object?>> NoSiblings =
+        Array.Empty<IReadOnlyDictionary<string, object?>>();
 
     // A definition glob (kinds/*, blocks/*, doctypes/*) that yields nothing means the directory was renamed or
     // emptied — and an empty loop validates zero definitions and returns PASS. Fail loud so a missing catalog
@@ -54,13 +61,14 @@ public sealed class SchemaChecker
     }
 
     private void Conform(List<string> errs, IReadOnlyDictionary<string, object?> defn,
-                         IReadOnlyDictionary<string, object?> kind, string path)
+                         IReadOnlyDictionary<string, object?> kind, string path,
+                         IReadOnlyList<IReadOnlyDictionary<string, object?>> siblings)
     {
         var local = new List<string>();
         var fields = Yaml.AsMap(kind["fields"])!;
         CheckFields(local, defn, fields);
         CheckFieldOrder(local, defn, fields);
-        RunConstraints(local, defn, kind.GetValueOrDefault("constraints"));
+        RunConstraints(local, defn, kind.GetValueOrDefault("constraints"), siblings);
         var rel = Path.GetRelativePath(_root, path);
         foreach (var e in local) errs.Add($"{rel}: {e}");
     }
@@ -155,7 +163,8 @@ public sealed class SchemaChecker
 
     private static bool IsFieldspec(object? value) => Yaml.AsMap(value)?.GetValueOrDefault("kind") is string;
 
-    private static void RunConstraints(List<string> errs, IReadOnlyDictionary<string, object?> defn, object? constraints)
+    private static void RunConstraints(List<string> errs, IReadOnlyDictionary<string, object?> defn, object? constraints,
+                                       IReadOnlyList<IReadOnlyDictionary<string, object?>> siblings)
     {
         foreach (var node in Yaml.AsList(constraints))
         {
@@ -163,6 +172,18 @@ public sealed class SchemaChecker
             if (c is null) { errs.Add("constraint must be a map"); continue; }
             switch (Yaml.AsString(c.GetValueOrDefault("rule")))
             {
+                case "references":
+                {
+                    var field = Yaml.AsString(c.GetValueOrDefault("field"));
+                    var by = Yaml.AsString(c.GetValueOrDefault("by"));
+                    if (field is null || by is null) { errs.Add("references constraint needs `field` and `by`"); break; }
+                    var ids = siblings.Select(s => Yaml.AsString(s.GetValueOrDefault(by)))
+                        .Where(x => x is not null).ToHashSet(StringComparer.Ordinal);
+                    foreach (var v in StrSet(defn.GetValueOrDefault(field)).Where(v => !ids.Contains(v))
+                                 .OrderBy(x => x, StringComparer.Ordinal))
+                        errs.Add($"`{field}` references unknown {by} '{v}'");
+                    break;
+                }
                 case "requires_when":
                 {
                     var when = Yaml.AsString(c.GetValueOrDefault("when"));
