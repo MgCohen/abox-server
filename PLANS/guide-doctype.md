@@ -1,5 +1,12 @@
 # Plan — `guide` doc type, nested-block composition, and agent-walkable how-tos
 
+> **Amended by [ADR 0017](../design/adr/0017-guide-procedures-and-heading-step-ids.md).** After
+> reading guides raw, two shapes below changed: the how-to block `action` is now **`procedure`**
+> (group `## Procedures`), and a step's id is the **visible leading ordinal of its `#### N. <title>`
+> heading** (read via the `inHeading` attr param) instead of an invisible `<!-- id: N -->` comment
+> (the `hidden` param is retired). The `procedure` block also gains a `title-gerund` rubric. Read
+> the `action`/`hidden`/`<!-- id -->` details below as the original design; ADR 0017 is current.
+
 ## Context
 
 We write how-to / step-by-step docs informally today (`tools/doc-engine/howto/*`). This

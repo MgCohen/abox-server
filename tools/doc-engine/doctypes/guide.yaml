@@ -1,11 +1,11 @@
 docType: guide
-description: A how-to — independent actions, each with context, ordered steps, and a stated, observable outcome, read by a human or an agent.
-blocks: [summary, action, open-question]
-required: [summary, action]
+description: A how-to — independent procedures, each with context, ordered steps, and a stated, observable outcome, read by a human or an agent.
+blocks: [summary, procedure, open-question]
+required: [summary, procedure]
 rubric:
-  coverage: The actions cover the distinct tasks a reader comes to this guide to perform.
-  outcome-each: Every action states a concrete, recognizable outcome.
-  validation-each: Every action gives an observable way to confirm its outcome.
+  coverage: The procedures cover the distinct tasks a reader comes to this guide to perform.
+  outcome-each: Every procedure states a concrete, recognizable outcome.
+  validation-each: Every procedure gives an observable way to confirm its outcome.
   steps-concrete: Steps are concrete imperative instructions, not vague guidance.
-  mentions-resolve: A step that mentions another action's step refers to one that exists.
+  mentions-resolve: A step that mentions another procedure's step refers to one that exists.
   one-subject: The guide stays on one subject; unrelated tasks belong in another guide.

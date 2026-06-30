@@ -7,7 +7,6 @@ public static class InstanceParser
     private static readonly Regex H2 = new(@"^##\s+(.+?)\s*$");
     private static readonly Regex H3 = new(@"^###\s+(.+?)\s*$");
     private static readonly Regex H4 = new(@"^####\s+(.+?)\s*$");
-    private static readonly Regex HiddenRe = new(@"^<!--\s*([\w-]+):\s*(.+?)\s*-->\s*$");
     private static readonly Regex AttrRe = new(@"^([\w-]+):\s*(.+?)\s*$");
     private static readonly Regex LabelBulletRe = new(@"^-\s+\*\*(?<label>[^:*]+):\*\*");
 
@@ -36,7 +35,7 @@ public static class InstanceParser
         IReadOnlyDictionary<string, IReadOnlyDictionary<string, object?>> defs)
     {
         var (singleton, group) = LabelMaps(defs);
-        var hidden = HiddenAttrKeys(defs);
+        var headingAttr = HeadingAttrKeys(defs);
         var labels = LabelNames(defs);
         var blocks = new List<ParsedBlock>();
         var groupsSeen = new List<string>();
@@ -114,7 +113,17 @@ public static class InstanceParser
             if (m4.Success && cur is not null && ComposedType(defs, cur.Type) is { } childType)
             {
                 CloseChild();
-                child = new ParsedBlock { Type = childType, Title = m4.Groups[1].Value };
+                child = new ParsedBlock { Type = childType };
+                var heading = m4.Groups[1].Value;
+                if (headingAttr.TryGetValue(childType, out var ordinalAttr) && SplitOrdinal(heading) is (string id, var title))
+                {
+                    child.Attrs[ordinalAttr] = id;
+                    child.Title = title;
+                }
+                else
+                {
+                    child.Title = heading;
+                }
                 meta = true;
                 continue;
             }
@@ -122,18 +131,6 @@ public static class InstanceParser
             if (tgt is null) continue;
             if (meta)
             {
-                var hm = HiddenRe.Match(line);
-                if (hm.Success)
-                {
-                    if (hidden.GetValueOrDefault(tgt.Type)?.Contains(hm.Groups[1].Value) == true)
-                    {
-                        tgt.Attrs[hm.Groups[1].Value] = hm.Groups[2].Value;
-                        continue;
-                    }
-                    meta = false;
-                    tgt.Lines.Add(line);
-                    continue;
-                }
                 if (line.Trim().Length == 0) { meta = false; continue; }
                 var am = AttrRe.Match(line);
                 if (am.Success) { tgt.Attrs[am.Groups[1].Value] = am.Groups[2].Value; continue; }
@@ -172,19 +169,24 @@ public static class InstanceParser
         return labels;
     }
 
-    private static Dictionary<string, HashSet<string>> HiddenAttrKeys(
+    private static (string Id, string Title)? SplitOrdinal(string heading)
+    {
+        var sp = heading.IndexOf(' ');
+        if (sp <= 0) return null;
+        var token = heading[..sp].TrimEnd('.', ')');
+        if (token.Length == 0 || !char.IsDigit(token[0])) return null;
+        return (token, heading[(sp + 1)..].Trim());
+    }
+
+    private static Dictionary<string, string> HeadingAttrKeys(
         IReadOnlyDictionary<string, IReadOnlyDictionary<string, object?>> defs)
     {
-        var hidden = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        var heading = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var (type, def) in defs)
-        {
-            var keys = new HashSet<string>(StringComparer.Ordinal);
             foreach (var (name, spec) in Yaml.AsMap(def.GetValueOrDefault("attrs")) ?? new Dictionary<string, object?>())
-                if (FieldSpec.Normalize(spec, false).Hidden)
-                    keys.Add(name);
-            if (keys.Count > 0) hidden[type] = keys;
-        }
-        return hidden;
+                if (FieldSpec.Normalize(spec, false).InHeading)
+                    heading[type] = name;
+        return heading;
     }
 
     private static (Dictionary<string, string> Singleton, Dictionary<string, string> Group) LabelMaps(
