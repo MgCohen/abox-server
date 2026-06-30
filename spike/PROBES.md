@@ -170,10 +170,53 @@ Win condition `motif << hand-written << verbose-slice` **met by line count** (mo
 >
 > **What survives: the TECH only.** A motif *can* carry the scaffold so the author writes only the
 > divergence — that mechanism is real. **What is reproved: the entire authoring API / dialect / style**
-> shown in both the integration slice and this probe. The dialect remains **UNDESIGNED**; the next step
-> must produce a **typed, structured, swappable** surface (no free-text strings), and only then re-measure
-> leverage. Until then, treat *components carry the standards; glue is the slotted exception* as a
-> **tech-feasible hypothesis, not a demonstrated authoring win.**
+> shown in both the integration slice and this probe. The dialect was **UNDESIGNED**; the next step
+> had to produce a **typed, structured, swappable** surface (no free-text strings), and only then
+> re-measure leverage.
+>
+> **→ Now answered by the extraction probe (`extraction-probe/`), below.** It re-authors the same feature
+> with the scaffold extracted into a typed component (generics) and the business glue as real,
+> compiler-checked lambdas — **0 business strings**, same 9 lines, same emitted output. The rejection
+> stands for the *string* dialect; the *typed* dialect supersedes it.
+
+## Extraction probe — the typed dialect that answers the rejection (`extraction-probe/`)
+
+The rejection above demanded a **typed, structured, swappable** authoring surface with no free-text
+strings. This probe builds it by going the **opposite** direction from the string motif: instead of a
+top-down string dialect, it **extracts the scaffold from real code into a typed component** and leaves the
+business logic as **real, compiler-checked code**.
+
+The division of labour the north star calls for, made concrete:
+
+| Part of a feature | Mechanism | String-free? |
+|---|---|---|
+| variant types (aggregate, command, return) | **generic arguments** `Mutates<User, AddItemCommand>()` | ✅ checked by the type system |
+| scaffold (load / save / return / repo-wiring) | **derived from the generics** in the component; author never writes it | ✅ not authored at all |
+| business glue (how to find, the divergence) | **typed lambdas** `LoadBy(cmd => cmd.Email)` / `With((agg,cmd,scope)=>{…})` | ✅ real code, compiler-checked |
+| new types (CartItem, command) | the **closed inline mint** (probe A/E) — not re-proven here | ✅ field declaration, not free text |
+
+**The new mechanism:** the glue is a real lambda, so the compiler type-checks every member access; the
+emitter then **lifts the lambda's syntax** (not the compiled delegate) into the owned handler via Roslyn,
+**renaming** the author's natural parameter names to the canonical ones (`Lift.cs`). Same "merge
+declaration" tech as probe D, pointed at lambda bodies. The emitted handler is **byte-identical** to the
+leverage probe's — same owned code, same behaviour, fully type-safe upstream.
+
+Author-only surface (`evidence/measure.py`), the headline metric being **business strings**, not lines:
+
+| version | lines | tokens | **business strings** |
+|---|---:|---:|---:|
+| rejected string motif | 9 | 37 | **4** |
+| **typed extraction (this probe)** | **9** | 98 | **0** |
+| hand-written baseline | 17 | 147 | 0 |
+
+Same 9 lines as the rejected version, half the hand-written baseline, **zero free-text business strings**
+where the rejected recipe had four. Tokens rise (37→98) only because real code exposes every *checked*
+identifier a collapsed string literal hid — the same logic, now compiler-verified, still well under the
+baseline's 147. **Verdict: the rejection is answered — type-safety recovered at no line cost.** Three
+author shapes (record / builder / base-override) all type-check (`src/Shapes.cs`), so the win is
+ergonomics-independent. `dotnet run --project src -- prove` → `PROVE: PASS`; the emitted feature builds +
+runs with the load-bearing wiring throw. Open: which shape, and §8 #10 (glue is now a lambda, not a
+string — the decision tilts decisively to **typed lambda leaf**).
 
 ## What this means
 

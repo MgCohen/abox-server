@@ -1,11 +1,13 @@
 # Leverage probe — does a motif make the recipe smaller than the feature?
 
-> **⛔ API/DIALECT REJECTED.** This probe proves the **tech** (a motif can carry the scaffold so the
-> author writes only the divergence) — but the authoring **style shown here is rejected**: it is
-> stringly-typed free text (`key`/`command`/`models`/`with` as strings), which breaks type-safety,
-> structure, and swappable typed components. The leverage *number* is contaminated by that stringiness
-> and does not carry to a type-safe dialect. The dialect remains UNDESIGNED. See `spike/PROBES.md` for
-> the full disclaimer.
+> **⛔ API/DIALECT REJECTED — superseded by `../extraction-probe/`.** This probe proves the **tech** (a
+> motif can carry the scaffold so the author writes only the divergence) — but the authoring **style
+> shown here is rejected**: it is stringly-typed free text (`key`/`command`/`models`/`with` as strings),
+> which breaks type-safety, structure, and swappable typed components. The leverage *number* is
+> contaminated by that stringiness. **The typed dialect that replaces it lives in
+> `../extraction-probe/`** (generics + real-code lambdas, 0 business strings, same 9 lines, same emitted
+> output). Read this probe for the *tech*; read the extraction probe for the *dialect*. See
+> `spike/PROBES.md` for the full disclaimer.
 
 > Answers the **leverage gap** the integration slice left open (`spike/PROBES.md`).
 > The slice proved the *pipe* (mint/wire/render/emit/forward-ref compose into a

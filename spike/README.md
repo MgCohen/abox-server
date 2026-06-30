@@ -95,7 +95,7 @@ One north star, explored from several entry points. **Parked ≠ legacy** — pa
 | State | Docs | What it is |
 |---|---|---|
 | **Anchor** | `README.md` (this), `NORTH-STAR.md` | the invariants + the `Intent→…→Feature` vision/roadmap |
-| **Active** | `flow-graphs.md`, `authoring-dialects.md`, `PROBES.md` (+ `probe-*/`) | architecture-first thread: RiverBooks flows → motifs → authoring surface → **runnable technical proofs** of the mechanics |
+| **Active** | `flow-graphs.md`, `authoring-dialects.md`, `PROBES.md` (+ the probe dirs: `probe-a…e/`, `integration-slice/`, `leverage-probe/`, `extraction-probe/`) | architecture-first thread: RiverBooks flows → motifs → authoring surface → **runnable technical proofs** of the mechanics, ending at the **typed dialect** (`extraction-probe/`) |
 | **Parked — mechanism (recipe→code)** | `PHASE-2`, `DECLARATION-TIER`, `BUILDING-STYLE` + `src/ gen/ out/ tests/` | proved the lowering mechanism bottom-up; `authoring-dialects.md` supersedes `BUILDING-STYLE`'s authoring pass |
 | **Parked — intent→recipe (the other end)** | `PROMPT-DECOMPOSITION`, `PLAN-TO-RECIPES`, `decomposition-*`, `scheduled-runs.*`, `project-*`, `projects-*`, `favorite-artist.plan` | how intent becomes a recipe (decomposition) — a different axis |
 
@@ -573,6 +573,16 @@ share a spine — a **member region** is to a type what a `Block` is to a method
     note the tension with operator sugar (see `BUILDING-STYLE.md`): `acc + i` solves
     the same "don't hand-build expression nodes" itch while staying *inside* the
     type system, where a lambda steps outside it.
+    > **Largely answered — `spike/extraction-probe/`.** A lambda body *can* be lowered
+    > deterministically — not via `CallerArgumentExpression`/expression-trees, but by
+    > **lifting the lambda's Roslyn syntax** from the recipe source and splicing it into the
+    > owned output (renaming params to canonical names). It extends past leaf expressions to a
+    > full **statement block** (the `With((agg,cmd,scope)=>{ … })` divergence), so the "never
+    > where a `Block` is expected" worry is relaxed: a block lambda is a legitimate typed glue
+    > slot. The leaf stays *typed* (the compiler checks every access against the real domain) and
+    > carries **0 free-text strings**. The decision tilts to **typed lambda leaf** over `Raw("…")`
+    > for business glue; the residual is the syntactic-vs-semantic rename (probe notes the
+    > semantic-model upgrade).
 
 ### The type spine (item 11)
 

@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Proves the EMITTED feature builds + runs as a unit. It compiles:
+       - the owned, emitted handler (../emitted/*.cs) exactly as committed,
+       - the domain + minted types it depends on (linked from ../src),
+       - a tiny Main that registers, wires (the generated RegisterDiscovered),
+         dispatches the handler, and prints the result.
+       No reference to the emit tool — this is the downstream consumer. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Proof</RootNamespace>
+    <AssemblyName>proof</AssemblyName>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Main.cs" />
+    <!-- The committed, owned emitted handler — compiled verbatim. -->
+    <Compile Include="..\emitted\AddItem.Handler.cs" Link="emitted\AddItem.Handler.cs" />
+    <!-- The domain + minted types the feature depends on. -->
+    <Compile Include="..\src\Domain.cs" Link="src\Domain.cs" />
+    <Compile Include="..\src\Minted.cs" Link="src\Minted.cs" />
+  </ItemGroup>
+
+</Project>
