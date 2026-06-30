@@ -1,0 +1,46 @@
+
+--- 0. clean slate ---
+      removed live/ and emitted/
+
+--- 1. LIVE (preview only — no leak across the gate) ---
+LIVE  AddItem  ->  preview 'leverage-probe/live'
+      regenerated AddItem.Models.cs
+      regenerated AddItem.Handler.cs
+      (preview is overwritten wholesale each run; never hand-edited)
+      [PASS] live did NOT create the owned target
+
+--- 2. EMIT (explicit gate -> owned files) ---
+EMIT  AddItem  ->  target 'leverage-probe/emitted' (namespace Acme.Users)
+      wrote AddItem.Models.cs
+      wrote AddItem.Handler.cs
+      [PASS] emit created the owned handler file
+      [PASS] wiring (probe B): Repo<User> registered — IMPLIED BY THE MOTIF, not authored
+      [PASS] wiring (probe B): BookDetails query registered — from the divergence's scope.Ask
+      [PASS] motif scaffold: load-by-key emitted (author wrote only the key)
+      [PASS] motif scaffold: save emitted (author never wrote it)
+      [PASS] motif scaffold: return-aggregate emitted (author never wrote it)
+      [PASS] mint (probe A): CartItem record emitted from the terse model decl
+      [PASS] mint (probe A): the command record emitted from the terse command decl
+
+--- 3. EDIT recipe (variant +Notes field on CartItem) and re-run LIVE ---
+LIVE  AddItem  ->  preview 'leverage-probe/live'
+      regenerated AddItem.Models.cs
+      regenerated AddItem.Handler.cs
+      (preview is overwritten wholesale each run; never hand-edited)
+      [PASS] live preview tracked the recipe edit (+Notes)
+      [PASS] DETACHMENT: emitted target untouched by live
+
+--- 4. RE-EMIT v2 (override) ---
+EMIT  AddItem  ->  target 'leverage-probe/emitted' (namespace Acme.Users)
+      wrote AddItem.Models.cs
+      wrote AddItem.Handler.cs
+      [PASS] OVERRIDE: re-emit reflects the recipe edit
+
+--- 4b. restore canonical emit (so the committed sample matches the authored recipe) ---
+EMIT  AddItem  ->  target 'leverage-probe/emitted' (namespace Acme.Users)
+      wrote AddItem.Models.cs
+      wrote AddItem.Handler.cs
+      [PASS] re-emit clobbered the variant — committed sample is the canonical recipe
+
+PROVE: PASS
+exit prove: 0
