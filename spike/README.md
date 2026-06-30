@@ -190,8 +190,10 @@ Two **separate** generation steps — do not conflate them:
   `IStmt` (produces statements) — so **composition is type-checked**: an `int`
   param rejects a `string`-producing node at authoring time.
 - A **standalone tool** lowers a recipe to a plain `ScriptData.cs` you commit and
-  may hand-edit. Roslyn is used to **parse snippet bodies and substitute fills at
-  the node level** — never to hand-build syntax trees.
+  may hand-edit (emit stays a *tool*, not a source generator). Roslyn parses snippet
+  bodies and substitutes fills at the node level; **type rendering now goes through the
+  semantic model** (`ITypeSymbol.ToDisplayString`, probe D), not reflection — see
+  `PROBES.md` → *Decision recorded*.
 - **Type-safety is two-stage:** each snippet compiles in isolation (authoring); the
   assembled `ScriptData.cs` compiles (the composition gate).
 
@@ -200,9 +202,11 @@ Two **separate** generation steps — do not conflate them:
 ## 4. The model
 
 > **Note:** §4–§5 describe the *original* model and use its API (`string` markers, `Ref`,
-> `IExpr<T>`/`IStmt`). The mechanism is unchanged, but the authoring surface has moved on —
-> `Var<T>` handles, `Expr<T>`/`Stmt` record bases, generic `Lit<T>`, factories, operators, and
-> collection-expression blocks. For the current API and authoring styles, see `BUILDING-STYLE.md`.
+> `IExpr<T>`/`IStmt`). The composition *mechanism* (parse snippet bodies, substitute fills) is
+> unchanged — but **type rendering has moved from reflection `Type.FullName` to the Roslyn semantic
+> model** (`ITypeSymbol.ToDisplayString`); the recorded decision is in `PROBES.md` → *Decision
+> recorded*, not here. The authoring surface also moved on (`Var<T>` handles, `Expr<T>`/`Stmt` bases,
+> factories, operators); for that API shape see `BUILDING-STYLE.md` (parked).
 
 ### 4.1 A snippet is a real compiling method
 
@@ -300,6 +304,11 @@ generator) lowers the recipe:
 **We parse real C# and swap leaves — we never hand-build `BinaryExpression(...)`
 trees.** That keeps the authoring visible (you read `a + b`, not factory calls)
 while still getting typed nodes that compose and format cleanly.
+
+> **Updated (probe D).** The snippet-body splice above is unchanged, but rendering a **type** to its
+> source text now goes through `ITypeSymbol.ToDisplayString` over a `Compilation` (idiomatic-or-FQN,
+> usings derived), not reflection `Type.FullName`. Emit is still a *tool* (this whole §4.5) — just a
+> `Compilation`-backed one. Recorded in `PROBES.md` → *Decision recorded*.
 
 `Inline` vs `Call` is a per-snippet mode (attribute flag). Inline splices the body
 (only valid for single-expression / simple bodies); Call emits an invocation. The

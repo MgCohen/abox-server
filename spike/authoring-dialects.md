@@ -243,6 +243,13 @@ Handler<SendEmail>.New<EmailOutbox>(c => …).Insert().ReturnId();
 
 ## Conclusion
 
+> **Status: exploration — the dialect is NOT chosen.** This section is a *menu*, not a verdict. No
+> project code commits to any of it until we decide. Before it can become real it must reconcile with
+> the **"minimal dialect — in the wiring"** invariant (`README.md`): D2 (the verb core) *is* that
+> minimal wiring; D1/D3/D4 are sugar/escape *above* it. "No dialect choice" governs the **wiring
+> layer**; whether the sugar tiers stay, collapse, or are dropped is the open question this doc leaves
+> for that decision — it is not a license for an author-picks-altitude free-for-all.
+
 Terseness can't be one universal dialect. The shape that scales is **layered**:
 
 - **Shared verb core = D2** — `Load / Ask / Save / Emit / Query / Insert`. This *is* the marker

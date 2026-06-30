@@ -1,9 +1,10 @@
 # Probes — technical proofs of the recalibrated model
 
-> Active, under `README.md` → *Invariants*. After the model was recalibrated (four positions,
-> two-tier invariants, emit policy), three claims were still **paper-only**. Each got a secluded,
-> runnable probe under `spike/probe-*/`. All three **build and run on net10.0**; tech is left in
-> place as proof. This file is the index — each folder has its own `README.md` with full detail.
+> Active, under `README.md` → *Invariants*. Several claims were still **paper-only** — three from the
+> recalibration (inline type-minting, additive wiring, the emit gate) and two from the Roslyn
+> semantic-model pass (type rendering, forward-refs). Each got a secluded, runnable probe under
+> `spike/probe-*/`. **All five build and run on net10.0**; tech is left in place as proof. This file
+> is the index — each folder has its own `README.md` with full detail.
 
 ## Verdict: 5 / 5 proven
 
@@ -103,10 +104,10 @@ thing to get right.**
 
 ## What this means
 
-The three mechanics the model leans on — **mint-a-type-from-a-use-site**, **read-markers-additively**,
-and **live/emit detachment** — are no longer assumptions; they run. The recalibrated invariants
-("source-generation back-fills inline", "minimal dialect — in the wiring", "owned output via explicit
-emit") have a working floor under them.
+The five mechanics the model leans on — **mint-a-type-from-a-use-site**, **read-markers-additively**,
+**live/emit detachment**, **semantic-model type rendering**, and **forward-ref resolution** — are no
+longer assumptions; they run. The recalibrated invariants ("source-generation back-fills inline",
+"minimal dialect — in the wiring", "owned output via explicit emit") have a working floor under them.
 
 ## Decision recorded — adopt semantic-model generation (probes D + E)
 
