@@ -51,15 +51,25 @@ public sealed class DocEngineValidationTests
         "## Summary", "A how-to.", "",
         "## Actions",
         "### Do a thing",
-        "- **Context:** c.", "- **Validation:** v.", "- **Outcome:** o.",
-        "#### First step", "<!-- id: 1 -->", "Do the first thing.",
+        "- **Context:** c.",
+        "#### First step", "<!-- id: 1 -->", "- **Condition:** only sometimes", "Do the first thing.",
         "#### Second step", "<!-- id: 2 -->", "Do the second thing.",
+        "- **Validation:** v.", "- **Outcome:** o.",
     };
 
     [Rule("DocValidator.Validate → no errors for a guide whose actions nest conforming steps")]
     [Fact]
     public void Validate_passes_a_nested_guide() =>
         Assert.Empty(Validate(NestedGuide));
+
+    [Rule("DocValidator.Validate → an ancestor's label after a nested child attaches to the ancestor")]
+    [Fact]
+    public void Validate_routes_a_trailing_action_label_to_the_action()
+    {
+        var noOutcome = NestedGuide.Where(l => l != "- **Outcome:** o.").ToArray();
+
+        Assert.Contains(Validate(noOutcome), e => e.Contains("missing required label '**Outcome:**'", StringComparison.Ordinal));
+    }
 
     [Rule("DocValidator.Validate → flags a step id that violates its attr pattern")]
     [Fact]

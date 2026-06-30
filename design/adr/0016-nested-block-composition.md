@@ -43,6 +43,10 @@ validates one nested level, and the attr system gains two reusable parameters
   a type **requires ≥1** such child (a per-parent rule, distinct from the existing
   group-emptiness rule). A `####` under a non-composing block stays body text — backward
   compatible.
+- **Labels route by declaration.** A `- **Label:**` bullet attaches to whichever block in the
+  nesting chain *declares* it (closed-set), independent of position — so a parent's labels may
+  bracket its children (an `action`'s Context before its steps, Validation/Outcome after), while a
+  child's own label (a step's Condition) stays on the child.
 - **`pattern` attr param** — a regex the value must match, the open-ended sibling of `enum`,
   run by `DocValidator` exactly where the enum check runs.
 - **`hidden` attr param** — the attr is authored as `<!-- key: value -->`. This **generalizes

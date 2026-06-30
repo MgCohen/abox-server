@@ -24,7 +24,14 @@ harness: ../../../../tests/Harness/README.md
 ### DocValidator.Validate → no errors for a guide whose actions nest conforming steps
 - **Why:** nested-block composition (`composes`) is the engine's third structural level — an action holding
   `#### step` children. A guide with well-formed nested steps must validate clean, proving the recursive parse and
-  validate accept the happy path rather than rejecting any nesting outright.
+  validate accept the happy path rather than rejecting any nesting outright. The fixture brackets its steps with
+  action labels (Context before, Validation/Outcome after), so a passing run also proves those labels route to the
+  action, not the trailing step.
+
+### DocValidator.Validate → an ancestor's label after a nested child attaches to the ancestor
+- **Why:** a label bullet belongs to whichever block in the nesting chain declares it, regardless of position — so
+  an action's Validation/Outcome may sit *after* its steps. Dropping the trailing Outcome must surface as the
+  **action** missing it (not the step swallowing it), proving the label routed up to its declaring ancestor.
 
 ### DocValidator.Validate → flags a step id that violates its attr pattern
 - **Why:** a step's `id` is a `hidden`, `pattern`-enforced attr; an id off its grammar (e.g. `1.X`) must fail, so

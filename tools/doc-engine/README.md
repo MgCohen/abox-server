@@ -112,6 +112,8 @@ status: blocked
   also declare a `pattern` regex the value must match (the open-ended sibling of `enum`).
 - A collection block may `composes: [<child-type>…]`; its members then nest one level
   deeper as `#### child` blocks (e.g. a `guide`'s `### action` → `#### step`), each validated
-  in turn — a parent that composes a type requires at least one such child. See ADR 0016.
+  in turn — a parent that composes a type requires at least one such child. A `- **Label:**`
+  bullet attaches to whichever block in the nesting chain *declares* it, so a parent's labels may
+  bracket its children (before *and* after). See ADR 0016.
 - Final on-disk syntax should match the render repo's parser — the model here is
   parser-agnostic.

@@ -321,7 +321,7 @@
     },
     "step": {
       "type": "step",
-      "description": "One ordered instruction within an action \u2014 the name is the heading, the id is an enforced invisible handle, condition and details are optional.",
+      "description": "One ordered instruction within an action \u2014 the name is the heading, the id is an enforced invisible handle, with an optional Condition and details.",
       "rubric": {
         "imperative": "A single concrete instruction the reader can act on, not a paragraph of context.",
         "id-grammar": "The id reads N, then N.M for a sub-step or N.a for a branch."
@@ -332,9 +332,11 @@
           "pattern": "^\\d\u002B(\\.\\d\u002B)*(\\.[a-z])?$",
           "hidden": "true",
           "required": "true"
-        },
-        "condition": {
-          "type": "string"
+        }
+      },
+      "labels": {
+        "Condition": {
+          "required": "false"
         }
       },
       "body": {

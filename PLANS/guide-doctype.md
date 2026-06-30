@@ -108,9 +108,10 @@ existing block, so we leave it.
 
 `kinds/`, `_schema/`, and the ADR are **protected** (owner-gated). Engine `*.cs`
 (`InstanceParser`, `DocValidator`, `SchemaChecker`, `FieldSpec`) is **not**. Lands via an
-owner-reviewed PR + `design/adr/00NN-nested-block-composition.md`. **Parser detail to settle
-here:** an `action` holds both its own `- **Label:**` bullets and `#### step` children — lean
-is action labels precede the first `####`, pinned by a test.
+owner-reviewed PR + `design/adr/0016-nested-block-composition.md`. **Parser rule (decided):** a
+`- **Label:**` bullet attaches to whichever block in the nesting chain *declares* it — so an
+`action`'s Context can precede its `#### step`s and its Validation/Outcome can follow them, while a
+step's own `Condition` stays on the step. Labels read positionally-independent; pinned by a test.
 
 ---
 
@@ -152,30 +153,33 @@ body:
 
 ### `blocks/step.yaml` (new — child of `action`)
 
-The **name** is the `#### ` heading; the **id** is an enforced, invisible attr; **condition**
-is a visible attr; the **description** is the body.
+The **name** is the `#### ` heading; the **id** is an enforced, invisible attr; **Condition**
+is an optional label; the **details** are the body.
 
 ```yaml
 type: step
-description: One ordered instruction within an action — name in the heading, an invisible enforced id, optional condition and description.
+description: One ordered instruction within an action — the name is the heading, the id is an enforced invisible handle, with an optional Condition and details.
 rubric:
-  imperative: A single concrete instruction, not a paragraph.
-  id-grammar: The id reads N / N.M (sub-step) / N.a (branch).
+  imperative: A single concrete instruction the reader can act on, not a paragraph of context.
+  id-grammar: The id reads N, then N.M for a sub-step or N.a for a branch.
 attrs:
   id:
     type: string
     pattern: '^\d+(\.\d+)*(\.[a-z])?$'
     hidden: true
     required: true
-  condition:
-    type: string
+labels:
+  Condition:
+    required: false
 body:
   type: markdown
+  required: false
 ```
 
 Enforced on a step: `id` present + matches the grammar + unique within its action; a `####`
-only under a block that `composes` it; the body non-empty. Branch selection (one of
-`3.a`/`3.b` by `condition`) is read by the walking agent — semantic, not structural.
+only under a block that `composes` it; only the declared `Condition` label allowed. Branch
+selection (one of `3.a`/`3.b` by its `Condition`) is read by the walking agent — semantic, not
+structural.
 
 ### Example instance
 
@@ -190,28 +194,26 @@ How to work with APIs end to end.
 ## Actions
 ### Add a new API
 - **Context:** registers a brand-new API so it serves traffic.
-- **Validation:** the API appears in `GET /apis` (e.g. `curl -s localhost/apis | grep <name>`).
-- **Outcome:** the API exists and serves traffic.
 #### Create the spec file
 <!-- id: 1 -->
-condition: you have repo access
+- **Condition:** you have repo access
 The spec under `specs/` declares the API's routes and schema.
 #### Register the API
 <!-- id: 2 -->
 Registration wires the spec into the router.
 #### Publish via CLI
 <!-- id: 3.a -->
-condition: CLI access
+- **Condition:** CLI access
 Run `abox publish`.
 #### Publish via dashboard
 <!-- id: 3.b -->
-condition: web only
+- **Condition:** web only
 Open the dashboard → Publish.
+- **Validation:** the API appears in `GET /apis` (e.g. `curl -s localhost/apis | grep <name>`).
+- **Outcome:** the API exists and serves traffic.
 
 ### Edit an API
 - **Context:** changes a field on an existing API.
-- **Validation:** the changed field shows in `GET /apis/{id}`.
-- **Outcome:** the change is reflected.
 #### Ensure an API exists
 <!-- id: 1 -->
 If none, run "Add a new API" steps 1–2 first.
@@ -219,7 +221,9 @@ If none, run "Add a new API" steps 1–2 first.
 <!-- id: 2 -->
 #### Change the field
 <!-- id: 3 -->
-condition: the field is not immutable
+- **Condition:** the field is not immutable
+- **Validation:** the changed field shows in `GET /apis/{id}`.
+- **Outcome:** the change is reflected.
 ```
 
 > **Authoring gotcha (from the parser):** a step's description must not *begin* with a

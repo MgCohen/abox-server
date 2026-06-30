@@ -9,6 +9,7 @@ public static class InstanceParser
     private static readonly Regex H4 = new(@"^####\s+(.+?)\s*$");
     private static readonly Regex HiddenRe = new(@"^<!--\s*([\w-]+):\s*(.+?)\s*-->\s*$");
     private static readonly Regex AttrRe = new(@"^([\w-]+):\s*(.+?)\s*$");
+    private static readonly Regex LabelBulletRe = new(@"^-\s+\*\*(?<label>[^:*]+):\*\*");
 
     public static IReadOnlyDictionary<string, object?> ParseFrontmatter(IReadOnlyList<string> lines)
     {
@@ -36,6 +37,7 @@ public static class InstanceParser
     {
         var (singleton, group) = LabelMaps(defs);
         var hidden = HiddenAttrKeys(defs);
+        var labels = LabelNames(defs);
         var blocks = new List<ParsedBlock>();
         var groupsSeen = new List<string>();
         ParsedBlock? cur = null;
@@ -137,6 +139,17 @@ public static class InstanceParser
                 if (am.Success) { tgt.Attrs[am.Groups[1].Value] = am.Groups[2].Value; continue; }
                 meta = false;
             }
+            if (child is not null && LabelBulletRe.Match(line) is { Success: true } lm)
+            {
+                var name = lm.Groups["label"].Value.Trim();
+                if (labels.GetValueOrDefault(cur!.Type)?.Contains(name) == true &&
+                    labels.GetValueOrDefault(child.Type)?.Contains(name) != true)
+                {
+                    CloseChild();
+                    cur!.Lines.Add(line);
+                    continue;
+                }
+            }
             tgt.Lines.Add(line);
         }
         Close();
@@ -148,6 +161,16 @@ public static class InstanceParser
         defs.TryGetValue(type, out var def)
             ? Yaml.AsList(def.GetValueOrDefault("composes")).OfType<string>().FirstOrDefault()
             : null;
+
+    private static Dictionary<string, HashSet<string>> LabelNames(
+        IReadOnlyDictionary<string, IReadOnlyDictionary<string, object?>> defs)
+    {
+        var labels = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        foreach (var (type, def) in defs)
+            if (Yaml.AsMap(def.GetValueOrDefault("labels")) is { } ls)
+                labels[type] = ls.Keys.ToHashSet(StringComparer.Ordinal);
+        return labels;
+    }
 
     private static Dictionary<string, HashSet<string>> HiddenAttrKeys(
         IReadOnlyDictionary<string, IReadOnlyDictionary<string, object?>> defs)
