@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- SPIKE / feasibility probe (not settled design): can we detect the four contract-change cases
+       (Api dll added / removed / surface changed / binary-only changed) by diffing the public surface
+       of the bundled *.Api assemblies between two builds? Reflection-only via MetadataLoadContext, no
+       network, no execution of the target code. Promote to tools/abox-version if the probe is positive. -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>abox-version-spike</AssemblyName>
+    <RootNamespace>ContractVersioning</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Reflection.MetadataLoadContext" Version="9.0.0" />
+  </ItemGroup>
+
+</Project>
