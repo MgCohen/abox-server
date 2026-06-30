@@ -265,9 +265,10 @@ orchestrator runs, or in the thin built controller otherwise.
    controller execs the command with the `ReactionEvent` on stdin — `run: docengine react`
    *is* a type-safe C# reaction. `builtin:`/`agent:` are deferred opt-in kinds added on a
    real second need; **NL is always an action kind, never the dispatch mechanism.**
-2. **Filter expressiveness.** `on:` (event kind, required) + `when:` (a small fixed set —
-   `source`, `cwd` glob, `tool`). Resist a DSL; richer logic lives in the action, which
-   reads the event and early-exits.
+2. ~~**Filter expressiveness.**~~ **Decided: `on:` + a closed `when:` set.** `on:` is the
+   required event-kind filter; `when:` supports exactly `source` (claude/codex/git),
+   `cwd` glob, and `tool` name — a closed vocabulary the controller indexes, no DSL.
+   Richer logic lives in the action, which reads the event and early-exits.
 3. **Transport medium.** `reactions.jsonl` tail (simple, survives restart, already works
    across the host↔box mount) vs in-proc channel. Lean jsonl.
 4. **Backpressure / retention + trust tier.** Who truncates `reactions.jsonl`; what tier
