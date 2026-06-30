@@ -13,8 +13,10 @@
 > **Books, Users, OrderProcessing, EmailSending, Reporting**, glued by a
 > `SharedKernel` and per-module `*.Contracts` assemblies.
 >
-> **Status:** Iteration 1 = raw flows + summary. Iteration 2 = normalization pass
-> (appended below). All file:line refs are into the cloned RiverBooks tree, not ours.
+> **Status:** Iteration 1 = raw flows + summary. Iteration 2 = normalization pass.
+> Iteration 3 = features as composed workflows (function style). Iteration 4 =
+> usage-driven generation (wrappers + scope, authored vs generated). All file:line
+> refs are into the cloned RiverBooks tree, not ours.
 
 ## Legend (edge vocabulary)
 
@@ -732,3 +734,170 @@ flowchart LR
   params** get *typed* so an illegal sequence won't compose — the same "type system
   is the schema" goal as the earlier template work, but expressed over a call
   sequence instead of a tree.
+
+---
+
+# Iteration 4 — usage-driven generation (wrappers + scope)
+
+> A fourth pass refining *how the sequence is authored*. The principle: **usage drives
+> generation.** You write only the **use site** — a `scope.Get<T>`, a `new
+> CreateRecord("X")` — and a source generator back-fills whatever makes that line
+> compile (the injection, the type). "Define then use" inverts to "use, and generation
+> supplies the definition." This separates **create** (the author declares a need +
+> writes the logic) from **instantiate** (the machine wires + builds it).
+
+## 4.1 The model in four parts
+
+| Piece | Role | Generated? |
+|---|---|---|
+| **Wrapper** — `Endpoint`, `OnEvent<T>`, `Worker`… | the trigger + the scaffolding unit | structure generated |
+| **`scope.Get<T>` / `scope.Ask<T>`** | a static marker: "inject a `T`" / cross-module door | wiring generated |
+| **lambda body** | free C# — acquire data, business logic, save | **no** — hand-written, the escape hatch |
+| **`scope.Emit` / `OnEvent<T>`** | the bulletin board (Iteration 3, decision A) | routing generated |
+
+Two disciplines keep this inside the deterministic/type-safe frame: the `Get`/`Ask`
+markers must be **statically analyzable** (literal type args, not in loops/conditionals
+— same rule as the spike's `@`-markers), and the **type-safety guarantee covers the
+wiring, not the lambda internals** (the body is ordinary compiler-checked C#, but it's
+*free*, not composed). We generate the plumbing; you write the logic.
+
+## 4.2 `Endpoint` — authored vs generated
+
+The generator scans the body, finds `scope.Get<Repo<User>>` (→ one injected dep) and
+`scope.Ask<BookDetails>` (→ `IMediator` + the contract), and emits a FastEndpoints-style
+class — replacing each marker with the injected field, the lambda with `HandleAsync`,
+and the wrapper name with the route.
+
+<table>
+<tr><th>✍️ Authored — what you write</th><th>⚙️ Generated — what is emitted</th></tr>
+<tr><td>
+
+```csharp
+Endpoint("add-to-cart", scope =>
+{
+  var user = scope.Get<Repo<User>>(
+      u => u.ByEmail(cmd.Email));
+  var book = scope.Ask<BookDetails>(cmd.BookId);
+
+  user.AddItemToCart(new CartItem(book, cmd.Qty));
+
+  scope.Get<Repo<User>>().Save(user);
+});
+```
+
+</td><td>
+
+```csharp
+internal sealed class AddToCart_Endpoint
+    : Endpoint<AddToCartRequest>
+{
+  private readonly Repo<User> _user;    // scope.Get
+  private readonly IMediator _mediator; // scope.Ask
+
+  public AddToCart_Endpoint(
+      Repo<User> user, IMediator mediator)
+  { _user = user; _mediator = mediator; }
+
+  public override void Configure()
+      => Post("/add-to-cart");          // wrapper name
+
+  public override async Task HandleAsync(
+      AddToCartRequest cmd, CancellationToken ct)
+  {
+    var user = await _user.ByEmail(cmd.Email);
+    var book = (await _mediator.Send(
+        new BookDetailsQuery(cmd.BookId))).Value;
+    user.AddItemToCart(new CartItem(book, cmd.Qty));
+    await _user.Save(user);
+  }
+}
+// + services.AddScoped<AddToCart_Endpoint>();
+```
+
+</td></tr>
+</table>
+
+## 4.3 `OnEvent<T>` — same wrapper family, different trigger
+
+`OnEvent<T>` is a **peer of `Endpoint`** — same `scope`, same `Get<>` markers, same free
+lambda. The only difference is the wrapper type, which the generator turns into
+`INotificationHandler<T>` instead of `Endpoint<TRequest>`. (This is exactly the RiverBooks
+`UserAddressIntegrationEventDispatcherHandler` shape — but you wrote only the body.)
+
+<table>
+<tr><th>✍️ Authored</th><th>⚙️ Generated</th></tr>
+<tr><td>
+
+```csharp
+OnEvent<AddressAdded>(scope, e =>
+{
+  scope.Get<Repo<OrderAddress>>()
+       .Save(OrderAddress.From(e));
+});
+```
+
+</td><td>
+
+```csharp
+internal sealed class AddressAdded_Handler
+    : INotificationHandler<AddressAdded>
+{
+  private readonly Repo<OrderAddress> _addr; // scope.Get
+
+  public AddressAdded_Handler(Repo<OrderAddress> addr)
+      => _addr = addr;
+
+  public async ValueTask Handle(
+      AddressAdded e, CancellationToken ct)
+      => await _addr.Save(OrderAddress.From(e));
+}
+// + services.AddScoped<
+//     INotificationHandler<AddressAdded>,
+//     AddressAdded_Handler>();
+```
+
+</td></tr>
+</table>
+
+## 4.4 `Emit` and the board (decision A, made concrete)
+
+Posting is just another scope capability; it generates a `Publish`, which the framework
+routes to **every** generated `OnEvent<AddressAdded>` handler. The emitter names no one.
+
+```csharp
+scope.Emit(new AddressAdded(user.Id, addr));     // authored
+// generated:  await _mediator.Publish(new AddressAdded(user.Id, addr));
+//   → routed to every INotificationHandler<AddressAdded> (i.e. every OnEvent<AddressAdded> wrapper)
+```
+
+## 4.5 Live `CreateRecord` → eject (the two-phase generator)
+
+A declaration materializes a usable type **live**; an explicit command **ejects** it to a
+detached, owned file the generator no longer touches. Eject is **one-way** — before it,
+the declaration owns the type; after it, the file does. (Single owner, never shared — the
+same lesson as keeping a diagram's source and its rendered copy from drifting.)
+
+```csharp
+// authored (live):
+var Sale = new CreateRecord("Sale", ("BookId", Guid), ("Units", int));
+scope.Get<Repo<Sale>>(s => s.ForMonth(month));   // Sale usable immediately, on the next line
+```
+
+```csharp
+// generated LIVE (incremental, in-memory only):     // > eject Sale  ⟶  /owned/Sale.cs (frozen, hand-editable)
+public record Sale(Guid BookId, int Units);          public record Sale(Guid BookId, int Units);
+```
+
+This is **two generators**, and the spike already has the split: an incremental generator
+for the live/hot phase, and the one-shot console tool (`spike/gen` / `Generator.cs`) for
+the eject.
+
+## 4.6 Carry-forward
+
+- A feature is a **typed wrapper** (trigger) + a **`scope`** (generated DI) + a **free
+  lambda** (logic); reactors are `OnEvent<T>` wrappers; the board is `Emit`/`OnEvent`.
+- The "what wakes me" question is answered by the **wrapper type** — `Endpoint` vs
+  `OnEvent<T>` vs `Worker` are peers in one family.
+- Still parked for the grounding pass: the exact marker grammar the generator keys on,
+  and how `Repo<T>` / `Ask<T>` resolve to real adapters — i.e. where this meets the
+  code we already have.
