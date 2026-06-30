@@ -319,8 +319,24 @@ orchestrator runs, or in the thin built controller otherwise.
    per project** (an `.abox/` dir), so a turn never litters a repo that wants no hooks;
    the provider's own direct Stop read is untouched. Proven end-to-end: a line in the
    exact shape `EmitTurnEnded` writes is dispatched by `abox-hooks` to a `.hook`.
-4. Add **doc-engine's first `.hook`** (the second real consumer that justifies the
-   abstraction) — `CommitLanded` → `docengine react` revalidates stale docs (NOTES.md
-   punt #1).
-5. Add the Git `post-commit` installer; defer Codex until a `.hook` needs a Codex-only
-   kind.
+4. ~~Add **doc-engine's first `.hook`**~~ **Done.** `tools/doc-engine/revalidate.hook`
+   (`on: [CommitLanded]`, `run: docengine check`) re-validates the catalog when a commit
+   lands — the second real consumer. It uses the existing `check` command; the richer
+   index-staleness reaction (NOTES.md punt #1) swaps in later by changing only `run:`.
+5. ~~Add the Git `post-commit` installer; defer Codex~~ **Done (Git).** `abox-hooks
+   install-git` writes a `post-commit` calling `abox-hooks commit`, which reads HEAD,
+   appends a `CommitLanded` line (source `Git`, raw `{sha,branch,subject}`), and
+   dispatches. It **refuses to touch a repo with a custom `core.hooksPath`** (e.g. this
+   repo's governance `.githooks`) rather than hijack it. Proven end-to-end: a real
+   `git commit` fires the post-commit → `CommitLanded` → the `.hook` runs. Codex stays
+   deferred until a `.hook` needs a Codex-only kind.
+
+### Open follow-ups (owner-gated)
+
+- **`*.hook` is not yet a protected path.** Decision 4 puts `*.hook` at the `attention`
+  tier (an executable surface the bot must not self-add). That needs a
+  `governance/protected-paths` entry — `critical`, owner-only. Until then a `.hook` is an
+  ordinary file.
+- **Packaging.** The `post-commit`'s `abox-hooks` and the `.hook`'s `docengine` must be on
+  PATH (built CLIs). Wiring this repo's own `post-commit` is an owner action — it touches
+  `.githooks`/`core.hooksPath` policy, which the installer deliberately refuses to do.

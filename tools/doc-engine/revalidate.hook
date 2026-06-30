@@ -1,0 +1,7 @@
+# When a commit lands, re-check the doc-engine catalog integrity (meta-schema,
+# kinds, and every block/doctype definition). docengine runs from this folder,
+# so `check` resolves the catalog here. The richer "index staleness" reaction
+# (NOTES.md punt #1) swaps in later by changing only this run: line.
+on:   [CommitLanded]
+mode: react
+run:  docengine check

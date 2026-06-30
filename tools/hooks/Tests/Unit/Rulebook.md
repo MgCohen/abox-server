@@ -42,3 +42,19 @@ harness: ../../../../tests/Harness/README.md
 ### HookController dispatches the pending log slice once and advances the cursor past completed lines
 - **Why:** the durable cursor is what makes delivery deferred-not-dropped — it must advance past completed lines
   after dispatch (so a line isn't re-run forever) yet leave a torn trailing line for the next pass.
+
+### GitInstaller.InstallPostCommit on a default repo → writes an executable post-commit that calls abox-hooks commit
+- **Why:** the git source is wired by a post-commit hook; the installer must drop an executable hook that calls
+  back into the CLI, or commits never produce a CommitLanded event and the whole git path is inert.
+
+### GitInstaller.InstallPostCommit on a repo with a custom core.hooksPath → refuses without writing a hook
+- **Why:** a repo with a managed hooks dir (this one uses governance `.githooks`) must not be silently hijacked —
+  the installer refuses and tells the user to wire it by hand, rather than clobbering or being silently ignored.
+
+### abox-hooks commit in an opted-in repo → appends a CommitLanded line and dispatches matching hooks
+- **Why:** this is the post-commit entry point and the git half of the transport — it must read HEAD, append a
+  well-formed CommitLanded line carrying the sha, and dispatch so a commit triggers its reactions immediately.
+
+### abox-hooks commit with no .abox opt-in → emits nothing
+- **Why:** emission is opt-in per repo (an `.abox/` dir), so a commit in a repo that wants no hooks must leave no
+  hooks.jsonl behind — the same opt-in contract the Claude turn-end emit honors.
