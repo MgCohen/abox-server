@@ -1,0 +1,8 @@
+# Build artifacts — the slice builds to plain local bin/obj (Directory.Build.props
+# stops the repo-root artifacts/ redirect). Not committed.
+bin/
+obj/
+
+# The live preview dir is throwaway — regenerated wholesale by `dotnet run -- live`,
+# never the owned artifact. The owned output is emitted/ (committed). Not committed.
+live/

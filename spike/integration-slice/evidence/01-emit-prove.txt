@@ -1,0 +1,42 @@
+
+--- 0. clean slate ---
+      removed live/ and emitted/
+
+--- 1. LIVE (preview only — no leak across the gate) ---
+LIVE  AddItemToCart  ->  preview 'integration-slice/live'
+      regenerated AddItemToCart.Models.cs
+      regenerated AddItemToCart.Handler.cs
+      (preview is overwritten wholesale each run; never hand-edited)
+      [PASS] live did NOT create the owned target
+
+--- 2. EMIT (explicit gate -> owned files) ---
+EMIT  AddItemToCart  ->  target 'integration-slice/emitted' (namespace Acme.Cart)
+      wrote AddItemToCart.Models.cs
+      wrote AddItemToCart.Handler.cs
+      [PASS] emit created the owned handler file
+      [PASS] wiring (probe B): Repo<User> registered
+      [PASS] wiring (probe B): BookDetails query registered
+      [PASS] mint (probe A): CartItem record emitted to the model file
+
+--- 3. EDIT recipe (variant +Notes field on CartItem) and re-run LIVE ---
+LIVE  AddItemToCart  ->  preview 'integration-slice/live'
+      regenerated AddItemToCart.Models.cs
+      regenerated AddItemToCart.Handler.cs
+      (preview is overwritten wholesale each run; never hand-edited)
+      [PASS] live preview tracked the recipe edit (+Notes)
+      [PASS] DETACHMENT: emitted target untouched by live
+
+--- 4. RE-EMIT v2 (override) ---
+EMIT  AddItemToCart  ->  target 'integration-slice/emitted' (namespace Acme.Cart)
+      wrote AddItemToCart.Models.cs
+      wrote AddItemToCart.Handler.cs
+      [PASS] OVERRIDE: re-emit reflects the recipe edit
+
+--- 4b. restore canonical emit (so the committed sample matches the authored recipe) ---
+EMIT  AddItemToCart  ->  target 'integration-slice/emitted' (namespace Acme.Cart)
+      wrote AddItemToCart.Models.cs
+      wrote AddItemToCart.Handler.cs
+      [PASS] re-emit clobbered the variant — committed sample is the canonical recipe
+
+PROVE: PASS
+exit prove: 0

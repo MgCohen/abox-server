@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Proves the EMITTED feature builds + runs as a unit. It compiles:
+       - the owned, emitted files (../emitted/*.cs) exactly as committed,
+       - the catalog + runtime they depend on (linked from ../src),
+       - a tiny Main that registers, wires (the generated RegisterDiscovered),
+         dispatches the handler, and prints the result.
+       No reference to the emit tool itself — this is the downstream consumer. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Proof</RootNamespace>
+    <AssemblyName>proof</AssemblyName>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Main.cs" />
+    <!-- The committed, owned emitted feature — compiled verbatim. -->
+    <Compile Include="..\emitted\AddItemToCart.Models.cs" Link="emitted\AddItemToCart.Models.cs" />
+    <Compile Include="..\emitted\AddItemToCart.Handler.cs" Link="emitted\AddItemToCart.Handler.cs" />
+    <!-- The hand-authored catalog + runtime the feature depends on. -->
+    <Compile Include="..\src\Catalog.cs" Link="src\Catalog.cs" />
+    <Compile Include="..\src\Runtime.cs" Link="src\Runtime.cs" />
+  </ItemGroup>
+
+</Project>
