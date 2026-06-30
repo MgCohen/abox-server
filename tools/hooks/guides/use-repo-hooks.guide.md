@@ -22,9 +22,11 @@ Pick a wired kind for the `on:` field: `CommitLanded` (a git commit landed) or `
 agent turn ended).
 #### Write the .hook file in your feature's folder
 <!-- id: 2 -->
-Create `<feature>/<name>.hook` with `on:` (required — the event kinds) and `run:` (required — the
-shell command). Optionally add `when:` (a `source` / `cwd glob` / `tool` filter) and `mode:`
-(`notify` or `gate`, default `notify`).
+Create `<feature>/<name>.hook` with `on:` (required — the event kinds) and exactly one action: `run:`
+(a shell command) or `agent:` (a prompt for a fresh, minimal-context reviewer). Optionally add `when:`
+(a `source` / `cwd glob` / `tool` filter) and `mode:` — `notify` (default; async, result ignored),
+`gate` (the synchronous perm-shim), or `check` (synchronous; the action's output is fed back to the
+running agent, and a non-zero exit blocks the turn).
 #### Opt the repo in
 <!-- id: 3 -->
 Create an `.abox/` directory at the repo root. Producers emit events only when `.abox/` exists, so a
@@ -70,6 +72,23 @@ Following "Add a hook", create a `.hook` with `on: [TurnEnded]` and your `run:` 
 Drive a Claude agent turn against that project as you normally would.
 - **Validation:** a `TurnEnded` line appears in `.abox/hooks.jsonl` and your hook's side effect is present.
 - **Outcome:** your command runs at the end of each Claude turn, with the raw turn payload on stdin.
+
+### Feed the agent back with a check hook
+- **Context:** a `mode: check` hook runs synchronously and its output is relayed to the running agent;
+  a non-zero exit blocks the turn-end so the agent must address it before stopping, while a passing
+  check surfaces its output as advisory context.
+#### Write a check hook
+<!-- id: 1 -->
+Following "Add a hook", create a `.hook` with `mode: check` and a `run:` command that prints a message
+and exits non-zero — for example `run: echo "doc invalid" && exit 2`.
+#### Trigger a turn end against the opted-in repo
+<!-- id: 2 -->
+With the repo opted in (an `.abox/` directory), pipe a Claude Code Stop payload into `abox-hooks
+turn-ended --repo .` to emit a `TurnEnded` event and dispatch your check.
+- **Validation:** `abox-hooks turn-ended` exits non-zero (2) and prints the check's message on stderr;
+  flip the command to exit 0 and it instead prints a JSON `additionalContext` carrying the message.
+- **Outcome:** a failing check blocks the turn and feeds its message back to the agent; a passing check
+  surfaces its output as advisory context the agent sees but is not blocked by.
 
 ### Narrow a hook with a when: filter
 - **Context:** `on:` selects the event kind; `when:` adds a closed-vocabulary filter so the hook fires
