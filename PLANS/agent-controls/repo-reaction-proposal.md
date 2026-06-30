@@ -141,24 +141,63 @@ language freedom (C# exe, shell, python). Two optional sugars layer on later:
 
 | Action kind | `.hook` declares | Controller does | When |
 |---|---|---|---|
-| **`run:` command** (default) | `run: docengine react` | exec, event on stdin | max language freedom |
+| **`run:` command** (built) | `run: docengine check` | exec, event on stdin | max language freedom |
 | `action:` builtin | `action: revalidate-docs` | dispatch to a registered handler | common, type-safe, no exec |
-| `agent:` prompt | `agent: ./why.md` | hand the event + prompt to an agent | **NL hooks** — non-deterministic, opt-in |
+| `agent:` prompt | `agent: ./review.md` | **spawn a fresh, minimal-context agent** with this prompt | unbiased review — **now wanted** (see below) |
 
-> Start with `run:` only (YAGNI). `run: docengine react` *is* a type-safe C# hook —
-> the built `docengine` CLI consumes the event. `builtin`/`agent` arrive on a real
-> second need; **NL is an action kind, never the dispatch mechanism** — the controller
-> path stays deterministic.
+> `run:` shipped first (YAGNI). `agent:` is **no longer just deferred** — the fresh-reviewer
+> requirement below is its real use case: a hook spawns a clean-room agent (not the biased main
+> session) and feeds its judgment back. `action:` (builtin) still waits for a real second need.
 
-**`react` vs `gate`.** Two modes, because they have different execution contracts:
+**Modes — three execution contracts** (`mode:` on a `.hook`). *(Renaming `react`→`notify` to
+kill the React.js collision; the current code still says `react` until the rename lands — see
+Next steps.)*
 
-| Mode | Runs | On result | For |
+| Mode | Producer waits? | What the result does | For |
 |---|---|---|---|
-| `react` | fan-out, parallel, failure-isolated | ignored (fire-and-forget) | observe — snapshot, validate, notify |
-| `gate` | sequential, first-deny-wins, **must be fast** | `allow`/`deny` returned to the provider | decide — `ToolPending` permission gating |
+| `notify` (was `react`) | no | ignored (fire-and-forget) | observe — snapshot, log, external ping |
+| `gate` | yes | `allow`/`deny` a **pending tool** | `ToolPending` permission gating |
+| `check` | yes | **fed back to the running agent** — added context (exit 0) or a hard block (exit 2) | validate-before-finish; "you broke a doc, fix it before replying" |
 
-A `gate` is the only path that runs back inside the turn (bounded by the existing
-perm-shim deadline in `ClaudeHooks`); `react` never blocks it.
+`notify` never blocks the turn. `gate` and `check` run synchronously inside the turn boundary;
+`gate` is bounded by the perm-shim deadline, `check` by its own dispatch timeout. The `check`
+result reaches the agent through the **producer's** provider translation — `abox-hooks turn-ended`
+maps a `check` hook's stdout → the Claude Code Stop hook's `additionalContext`, and a non-zero
+exit → exit-2 (blocks the turn, error fed to the agent). The `.hook` itself stays provider-agnostic:
+it just prints feedback and sets an exit code.
+
+## Fresh-agent review — the `check` + `agent:` design
+
+**The bias principle.** The agent that produced an artifact cannot review it cleanly — it reads its
+own intent into the prose, so it is blind to exactly what a reader would trip on:
+
+```
+session fills context  →  session writes a doc  →  session reviews its own doc  ✗ biased
+                                                 →  FRESH agent reviews it       ✓ clean-room
+```
+
+So a high-value hook is: on a doc change, **spawn a brand-new, minimal-context agent** with tight
+directions to review, and **feed its verdict back to the main session**, which acts on it. This is a
+`mode: check` hook with an `agent:` action. It flips the old "never auto-spawn an agent" rule from a
+*ban* into a *deliberate opt-in* — the cost/loop concerns are real but worth it for an unbiased read.
+
+`walk-guide` (`.claude/agents/walk-guide.md`) is already exactly this shape — a fresh subagent that
+*"carries NO knowledge of any specific guide"* and walks it from scratch. doc-engine's
+`onChange: …/walk-guide.md` is "spawn a clean reviewer"; this design makes it **fire automatically and
+feed back**, instead of staying on-demand.
+
+**Loop guard (decided): spawn hook-free.** A reviewer's own turn-end must not re-fire the hook that
+spawned it. The reviewer is launched with a **no-hooks settings** so it *structurally* cannot
+re-trigger — reliable and provider-agnostic, not dependent on a flag. As a cheap secondary we also
+honor Claude Code's `stop_hook_active` (set on a stop-triggered continuation). Plus the existing
+SHA-cursor debounce: a reviewer spawns only on a *real* change, never on an idle turn.
+
+**Two spawners, one `.hook`.** The `.hook` declares intent (`agent: <prompt>`); the runtime fulfills it:
+
+| Runtime | Spawner | Feedback path |
+|---|---|---|
+| **Dev loop** (a normal Claude Code session) | headless `claude -p "<prompt>"`, launched hook-free | `turn-ended` → Stop `additionalContext` / exit-2 → main session |
+| **Orchestration** (A.Box) | the orchestrator's own agent/saga machinery | the orchestrated agent's outcome channel |
 
 ## Worked flow — doc-engine reacts to a turn end
 
@@ -262,10 +301,14 @@ orchestrator runs, or in the thin built controller otherwise.
 
 ## Decisions (settled with the owner)
 
-1. ~~**`.hook` action format.**~~ **Decided: `run:` command + stdin only for v1.** The
-   controller execs the command with the `HookEvent` on stdin — `run: docengine react`
-   *is* a type-safe C# hook. `builtin:`/`agent:` are deferred opt-in kinds added on a
-   real second need; **NL is always an action kind, never the dispatch mechanism.**
+1. ~~**`.hook` action format.**~~ **Decided, then extended.** v1 shipped `run:` command + stdin
+   (the controller execs with the `HookEvent` on stdin — `run: docengine check` *is* a type-safe
+   C# hook). **`agent:` is now promoted from deferred to planned** — the fresh-reviewer requirement
+   is its use case (spawn a clean-room agent, feed its verdict back). `action:` (builtin) stays
+   deferred. **NL is always an action kind, never the dispatch mechanism.**
+   *(Mode taxonomy revised at the same time: `react`→`notify`, plus a new `check` mode that feeds
+   results back to the agent — see the Modes + Fresh-agent-review sections. Loop guard: spawn
+   hook-free.)*
 2. ~~**Filter expressiveness.**~~ **Decided: `on:` + a closed `when:` set.** `on:` is the
    required event-kind filter; `when:` supports exactly `source` (claude/codex/git),
    `cwd` glob, and `tool` name — a closed vocabulary the controller indexes, no DSL.
@@ -335,6 +378,24 @@ orchestrator runs, or in the thin built controller otherwise.
    **normal Claude Code session**, not just orchestration — the same `TurnEnded` event, a second
    producer for the dev-loop context. Both producers are opt-in per repo (an `.abox/` dir).
    Codex stays deferred until a `.hook` needs a Codex-only kind.
+
+### Next — feedback to the agent + fresh-agent review (agreed, not yet built)
+
+6. **Rename the mode `react` → `notify`** across the engine (`HookMode`, the parser, the dispatcher,
+   `.hook` files, tests/rulebook) — kill the React.js collision. Mechanical; do it first.
+7. **Add `check` mode + the producer feedback translation.** `check` runs synchronously and its result
+   is fed back to the running agent: `abox-hooks turn-ended` collects a `check` hook's stdout → emits
+   the Claude Code Stop response (`hookSpecificOutput.additionalContext` on exit 0; **exit 2** to block
+   the turn and force the agent to address it). The `.hook` stays provider-agnostic — prints feedback,
+   sets an exit code. Switch **doc-engine to `check`** and speed its handler up (call the prebuilt
+   `docengine` dll, not `dotnet run`) so an invalid doc blocks the turn with the error fed back, instead
+   of a swallowed `notify` surface.
+8. **Add the `agent:` action + fresh-agent review.** `agent: <prompt>` spawns a brand-new,
+   minimal-context reviewer and feeds its verdict back (a `check` + `agent:` hook). **Loop guard: spawn
+   hook-free** (no-hooks settings on the spawned agent) + honor `stop_hook_active` + SHA-cursor debounce.
+   Dev-loop spawner = headless `claude -p`; orchestration spawner = A.Box's agent/saga machinery.
+   `walk-guide` is the prototype reviewer. Prove the dev-loop spawn live (as the Stop hook was proven)
+   before locking it.
 
 ### Open follow-ups (owner-gated)
 
