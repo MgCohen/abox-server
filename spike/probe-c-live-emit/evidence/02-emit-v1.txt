@@ -1,0 +1,5 @@
+EMIT  recipe=Customer(3 fields)  ->  configured target
+      folder    = /home/user/abox-server/spike/probe-c-live-emit/emitted-sample/Customers
+      namespace = Acme.Customers
+      wrote probe-c-live-emit/emitted-sample/Customers/Customer.cs
+      wrote probe-c-live-emit/emitted-sample/Customers/CustomerFields.cs

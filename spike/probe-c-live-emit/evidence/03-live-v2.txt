@@ -1,0 +1,4 @@
+LIVE  recipe=Customer(4 fields)  ->  preview dir 'probe-c-live-emit/live'
+      regenerated probe-c-live-emit/live/Customer.cs
+      regenerated probe-c-live-emit/live/CustomerFields.cs
+      (preview is never hand-edited; it is overwritten wholesale each run)
