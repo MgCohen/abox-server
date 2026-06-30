@@ -6,14 +6,14 @@ public static class GitInstaller
 
     private const string Script = "#!/bin/sh\nexec abox-hooks commit\n";
 
-    public static GitInstallResult InstallPostCommit(string repoDir)
+    public static InstallResult InstallPostCommit(string repoDir)
     {
         var gitDir = Git.Output(repoDir, "rev-parse", "--git-dir");
-        if (gitDir is null) return new GitInstallResult(false, $"not a git repo: {repoDir}");
+        if (gitDir is null) return new InstallResult(false, $"not a git repo: {repoDir}");
 
         var hooksPath = Git.Output(repoDir, "config", "--get", "core.hooksPath");
         if (!string.IsNullOrEmpty(hooksPath))
-            return new GitInstallResult(false,
+            return new InstallResult(false,
                 $"core.hooksPath is set to '{hooksPath}' — refusing to touch a managed hooks dir. " +
                 $"Add `{Marker}` to that dir's post-commit by hand.");
 
@@ -22,11 +22,11 @@ public static class GitInstaller
 
         var postCommit = Path.Combine(hooksDir, "post-commit");
         if (File.Exists(postCommit) && !File.ReadAllText(postCommit).Contains(Marker))
-            return new GitInstallResult(false, $"a post-commit hook already exists at {postCommit} — leaving it untouched.");
+            return new InstallResult(false, $"a post-commit hook already exists at {postCommit} — leaving it untouched.");
 
         File.WriteAllText(postCommit, Script);
         MakeExecutable(postCommit);
-        return new GitInstallResult(true, $"installed post-commit → `{Marker}` at {postCommit}");
+        return new InstallResult(true, $"installed post-commit → `{Marker}` at {postCommit}");
     }
 
     private static void MakeExecutable(string path)

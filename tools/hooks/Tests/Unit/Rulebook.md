@@ -58,3 +58,19 @@ harness: ../../../../tests/Harness/README.md
 ### abox-hooks commit with no .abox opt-in → emits nothing
 - **Why:** emission is opt-in per repo (an `.abox/` dir), so a commit in a repo that wants no hooks must leave no
   hooks.jsonl behind — the same opt-in contract the Claude turn-end emit honors.
+
+### ClaudeCodeInstaller.InstallStopHook → wires a turn-ended Stop hook into settings, preserving existing keys
+- **Why:** this is how repo-hooks fires in a normal Claude Code session (not just orchestration) — it must add a
+  `Stop` hook that calls `turn-ended` while merging into existing settings, never clobbering other keys or hooks.
+
+### ClaudeCodeInstaller.InstallStopHook on a settings already wired → no duplicate Stop hook
+- **Why:** install must be idempotent — re-running it (or running it in an already-set-up repo) must not stack
+  duplicate Stop hooks that would emit the same event many times per turn.
+
+### abox-hooks turn-ended in an opted-in repo → appends a TurnEnded line from the Stop payload and dispatches
+- **Why:** this is the dev-loop producer — given the Claude Code Stop payload on stdin it must emit a well-formed
+  TurnEnded line (carrying the session id and raw payload) and dispatch, so a normal session fires hooks too.
+
+### abox-hooks turn-ended with no .abox opt-in → emits nothing
+- **Why:** a Stop hook fires every turn, so without the `.abox/` opt-in it must be a silent no-op — never writing
+  a stream into a repo that did not ask for one.

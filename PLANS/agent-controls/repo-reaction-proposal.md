@@ -319,17 +319,22 @@ orchestrator runs, or in the thin built controller otherwise.
    per project** (an `.abox/` dir), so a turn never litters a repo that wants no hooks;
    the provider's own direct Stop read is untouched. Proven end-to-end: a line in the
    exact shape `EmitTurnEnded` writes is dispatched by `abox-hooks` to a `.hook`.
-4. ~~Add **doc-engine's first `.hook`**~~ **Done.** `tools/doc-engine/revalidate.hook`
-   (`on: [CommitLanded]`, `run: docengine check`) re-validates the catalog when a commit
-   lands — the second real consumer. It uses the existing `check` command; the richer
-   index-staleness reaction (NOTES.md punt #1) swaps in later by changing only `run:`.
-5. ~~Add the Git `post-commit` installer; defer Codex~~ **Done (Git).** `abox-hooks
-   install-git` writes a `post-commit` calling `abox-hooks commit`, which reads HEAD,
-   appends a `CommitLanded` line (source `Git`, raw `{sha,branch,subject}`), and
-   dispatches. It **refuses to touch a repo with a custom `core.hooksPath`** (e.g. this
-   repo's governance `.githooks`) rather than hijack it. Proven end-to-end: a real
-   `git commit` fires the post-commit → `CommitLanded` → the `.hook` runs. Codex stays
-   deferred until a `.hook` needs a Codex-only kind.
+4. ~~Add **doc-engine's first `.hook`**~~ **Done, then deepened into the real integration.**
+   doc-engine now consumes repo-hooks via `tools/doc-engine/on-doc-change.hook`
+   (`on: [TurnEnded, CommitLanded]`, `run: sh scripts/on-doc-change.sh`): when a turn ends or
+   a commit lands, it validates the doc instances that changed and dispatches their `onChange`
+   handlers (running deterministic scripts, leaving agent handlers on-demand). This **replaces
+   the bespoke `.claude/hooks/on-doc-change.sh` Stop hook** — doc-engine keeps `onChange` as
+   declarative front matter + the `docengine onchange` resolver, and carries no Claude Code
+   knowledge; repo-hooks owns the trigger.
+5. ~~Add the Git `post-commit` installer; defer Codex~~ **Done (Git + Claude Code dev loop).**
+   `abox-hooks install-git` writes a `post-commit` calling `abox-hooks commit` (reads HEAD →
+   `CommitLanded`); it **refuses a repo with a custom `core.hooksPath`** rather than hijack it.
+   `abox-hooks install-claude` writes a Claude Code **`Stop` hook** calling `abox-hooks
+   turn-ended` (reads the Stop payload on stdin → `TurnEnded`), so repo-hooks fires in a
+   **normal Claude Code session**, not just orchestration — the same `TurnEnded` event, a second
+   producer for the dev-loop context. Both producers are opt-in per repo (an `.abox/` dir).
+   Codex stays deferred until a `.hook` needs a Codex-only kind.
 
 ### Open follow-ups (owner-gated)
 
