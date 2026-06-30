@@ -136,6 +136,16 @@ wiring is load-bearing -> Wiring gap: a handler asks for BookDetails but no quer
    open *design* question (vs §8 #10's typed-lambda-leaf path). **Not a tech blocker — a decision.**
 3. **Mint renders twice** (bootstrap + real) — minting and rendering are entangled in the pass order.
 
+**⚠️ What it did NOT prove — the leverage gap.** The slice proved the *pipe*, not the *value*. The
+authored recipe had **≥ the surface area of the hand-written feature**: the glue was authored as a
+**string that is the handler body verbatim** (a 1:1 copy — zero compression), the models were spelled
+field-by-field, and `FeatureRecipe`/`GlueSpec` ceremony sat on top — so the recipe came out *longer*
+than the code it emits. It also **inverts the invariant** *"components carry the standards; custom glue
+is the slotted exception"*: here the glue carried everything and the components almost nothing. Leverage
+is unsolved and lives entirely in the **dialect + component/motif design** (e.g. a `Mutates<User>` motif
+that implies load/save/wire/return so the author writes only the divergence). `leverage-probe/` takes
+this on directly: re-author the same feature under a motif and measure the surface drop.
+
 ## What this means
 
 The five mechanics the model leans on — **mint-a-type-from-a-use-site**, **read-markers-additively**,
