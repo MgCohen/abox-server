@@ -193,6 +193,44 @@ all of it would run **inside** the agent turn.
 | **Different providers** | One `IReaction` fans out across Claude + Codex + Git; the installer owns the dialects |
 | **Folder + language** | The only thing in `.claude/`/`~/.codex/` is a 3-line dumb shim. Your reaction lives **anywhere**, in **C#** (or anything that can tail a jsonl) |
 
+## Execution contexts — who hosts the bus (the build-time gap)
+
+`AddReaction<…>()` is DI registration **inside a running host**. So if nobody
+built/started a host — a dev runs `claude` by hand, or git `post-commit` fires on a
+bare checkout — there is no container and no subscriber fires. This is the one real
+hole, and the split is designed to absorb it: **the shim needs no DI** (3 lines of
+shell), so it writes `reactions.jsonl` regardless. "App not running" therefore
+degrades to **deferred**, not **dropped** — each subscriber keeps a durable cursor and
+the host replays unconsumed lines on start.
+
+| Context | Host up? | Bus runs where | Delivery |
+|---|---|---|---|
+| **Hosted runtime** — ABox drives agents | yes | co-hosted in the orchestrator | live |
+| **Dev-local / git hook / raw `claude`** | maybe not | standalone reaction-host, or next host start | live-if-runner, else replayed from cursor |
+
+The bus is therefore **a thin standalone host, not bolted into the orchestrator** —
+doc-engine already proves the pattern (`tools/doc-engine/` ships as the built
+`docengine` CLI, deliberately *out of `ABox.slnx`*). Registration is the
+**reaction-host's** DI, not "the app's," so a git hook can invoke the built runner
+with no orchestrator at all:
+
+```sh
+# git post-commit — invoke the BUILT runner; no orchestrator needed
+exec docengine react --since-cursor
+```
+
+```csharp
+// reaction-host (standalone) — same registration, minimal executable
+var host = Host.CreateApplicationBuilder(args);
+host.Services.AddReactionBus(cursor: ".abox/reactions.cursor"); // durable cursor
+host.Services.AddReaction<DocEngineReaction>();
+// on start: replay reactions.jsonl past the cursor, then tail
+```
+
+The **same `IReaction`** runs in either host — co-hosted live when the orchestrator is
+up, or in the thin built runner otherwise. The jsonl + cursor makes them
+interchangeable. (This resolves open question #2.)
+
 ## Constraints / risks (design against these)
 
 - **Hooks block the turn.** The shim must stay dumb; *all* consumer logic runs in the
@@ -221,9 +259,10 @@ all of it would run **inside** the agent turn.
 1. **Transport medium.** `reactions.jsonl` tail (simple, matches existing shim seam,
    survives restart) vs an in-proc channel (lower latency, loses cross-process
    reach). Lean jsonl — it already works across the host↔box mount.
-2. **Bus location.** A hosted service in `Hosting`/`Host`, or a small governance-owned
-   library each consumer hosts? Affects whether reactions can run when no agent host
-   is up (e.g. git `post-commit` on a dev box).
+2. ~~**Bus location.**~~ **Resolved** (see *Execution contexts*): a thin standalone
+   reaction-host, not embedded in the orchestrator — co-hosted live when the
+   orchestrator runs, runnable as a built CLI (the `docengine` pattern) otherwise.
+   Durable cursor makes "no host running" a *deferred*, not *dropped*, delivery.
 3. **Backpressure / retention.** Who truncates `reactions.jsonl`, and what happens to a
    slow `IReaction`? Probably: bounded file + per-subscriber cursor.
 4. **Where the contract assembly lives.** New `ABox.Governance.Reactions` vs folding
