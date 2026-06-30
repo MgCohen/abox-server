@@ -44,9 +44,8 @@ and its glue is the LLM's; what's enforced is the *composition*, not the absence
 - **Custom glue is bounded.** Hand-written code is allowed only as the feature's irreducible business
   logic — a predicate / query / a few lines — at a **typed leaf or block slot, never a new top-level
   form.** Small and standardized, never zero.
-- **Owned output.** Generated code is normal, committed `.cs`. Not invisible weaving. *(Open: the
-  regenerate-vs-hand-edit round-trip policy — write-once / protected-regions / derived-artifact — is
-  not yet decided; see the doc map / chat.)*
+- **Owned output, via explicit emit.** Generated code is normal, committed `.cs` — materialized only
+  by an explicit *emit*, never invisible weaving. The live-vs-emitted policy below governs it.
 - **Standards land on the output, not the components.** The generated code must pass the product's
   good-practice bar / rulebooks. The **components do not** — they are a custom source-generation
   toolchain we are building. Judge a component by the code it *emits*, not by how it reads.
@@ -71,6 +70,23 @@ and its glue is the LLM's; what's enforced is the *composition*, not the absence
 - **Ratchet growth (build-once-then-reuse).** No speculative abstraction. When we hit something not
   yet built, we build it once, clean it into a component (position 3), and it is reusable forever.
   The library grows by harvesting *real* recurring need — YAGNI as a growth model.
+
+### Emit — live vs emitted (the regeneration policy)
+
+Two states, one explicit gate between them:
+
+- **Live (working) recipe** — as you edit, it self-generates *continuously, in place* (a preview).
+  The recipe is the source of truth; nothing here is hand-edited. ("Live" = continuously
+  self-generating, not "editable output.")
+- **Emit** — an explicit action (command / button / step). It materializes the *real* artifact at the
+  **configured target**: real files in the correct folders, proper namespaces, samples — whatever the
+  output needs. Once emitted, that artifact is **detached** — continued live editing never touches it.
+- **Re-emit overrides.** Emit again with the same config and it overwrites the target; expected and
+  fine. It also **clobbers any manual edits** to the emitted files — accepted for now, no auto-sync.
+- **Out of scope (future):** reconciliation / protected-region checks. A manual edit to emitted code
+  is a *signal*, not a workflow — either the business rule changed (pull it back into the recipe) or
+  you need a different structure (make a recipe **variation** others can reuse — goes direct instead
+  of via a repository, a different technology, etc.).
 
 ## Document map — active vs parked
 
