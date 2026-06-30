@@ -13,8 +13,9 @@ public sealed class HookControllerTests
         {
             var hookDir = Directory.CreateDirectory(Path.Combine(dir, "feat")).FullName;
             var runs = Path.Combine(dir, "runs.txt");
+            // echo is a builtin in both cmd and sh — no PATH dependency on a Unix tool.
             File.WriteAllText(Path.Combine(hookDir, "count.hook"),
-                $"on: [TurnEnded]\nrun: printf x >> \"{runs}\"\n");
+                $"on: [TurnEnded]\nrun: echo x >> \"{runs}\"\n");
 
             var log = Path.Combine(dir, ".abox", "hooks.jsonl");
             var cursor = Path.Combine(dir, ".abox", "hooks.cursor");
@@ -26,10 +27,10 @@ public sealed class HookControllerTests
                 new HookCatalog([hookDir]), new HookDispatcher(new HookRunner(10_000)));
 
             Assert.Equal(2, await controller.DispatchPendingAsync(log, cursor));
-            Assert.Equal(2, File.ReadAllText(runs).Length);
+            Assert.Equal(2, File.ReadAllText(runs).Count(c => c == 'x'));
 
             Assert.Equal(0, await controller.DispatchPendingAsync(log, cursor));
-            Assert.Equal(2, File.ReadAllText(runs).Length);
+            Assert.Equal(2, File.ReadAllText(runs).Count(c => c == 'x'));
         }
         finally
         {
