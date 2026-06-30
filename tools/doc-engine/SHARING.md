@@ -186,7 +186,7 @@ For each block `type`, write a render component driven by the catalog entry:
 
 When a document instance arrives at runtime (the plain markdown), parse it —
 front matter, `## Type` headers, `key: value` attrs, and any heading-ordinal id
-(a step's `#### N. <title>`) — and render each parsed block with the matching
+(a step's `##### N. <title>`) — and render each parsed block with the matching
 catalog-driven component. The on-disk instance syntax is built to match the render
 repo's parser, so this stays a thin mapping.
 

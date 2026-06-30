@@ -53,10 +53,9 @@ public sealed class DocEngineValidationTests
         "### Doing a thing",
         "**Context:** c.",
         "",
-        "#### 1. First step", "- **Condition:** only sometimes", "Do the first thing.",
-        "#### 2. Second step", "Do the second thing.",
+        "##### 1. First step", "- **Condition:** only sometimes", "Do the first thing.",
+        "##### 2. Second step", "Do the second thing.",
         "",
-        "---",
         "**Outcome:** o.",
     };
 
@@ -78,7 +77,7 @@ public sealed class DocEngineValidationTests
     [Fact]
     public void Validate_rejects_a_step_id_off_pattern()
     {
-        var lines = NestedGuide.Select(l => l == "#### 1. First step" ? "#### 1.X First step" : l).ToArray();
+        var lines = NestedGuide.Select(l => l == "##### 1. First step" ? "##### 1.X First step" : l).ToArray();
 
         Assert.Contains(Validate(lines), e => e.Contains("does not match", StringComparison.Ordinal));
     }
@@ -87,7 +86,7 @@ public sealed class DocEngineValidationTests
     [Fact]
     public void Validate_rejects_a_non_canonical_ordinal_separator()
     {
-        var lines = NestedGuide.Select(l => l == "#### 1. First step" ? "#### 1) First step" : l).ToArray();
+        var lines = NestedGuide.Select(l => l == "##### 1. First step" ? "##### 1) First step" : l).ToArray();
 
         Assert.Contains(Validate(lines), e => e.Contains("does not match", StringComparison.Ordinal));
     }
@@ -105,7 +104,7 @@ public sealed class DocEngineValidationTests
     [Fact]
     public void Validate_rejects_duplicate_step_ids_in_a_procedure()
     {
-        var lines = NestedGuide.Select(l => l == "#### 2. Second step" ? "#### 1. Second step" : l).ToArray();
+        var lines = NestedGuide.Select(l => l == "##### 2. Second step" ? "##### 1. Second step" : l).ToArray();
 
         Assert.Contains(Validate(lines), e => e.Contains("duplicate id '1'", StringComparison.Ordinal));
     }
@@ -114,7 +113,7 @@ public sealed class DocEngineValidationTests
     [Fact]
     public void Validate_rejects_a_procedure_with_no_steps()
     {
-        var lines = NestedGuide.TakeWhile(l => !l.StartsWith("####", StringComparison.Ordinal)).ToArray();
+        var lines = NestedGuide.TakeWhile(l => !l.StartsWith("#####", StringComparison.Ordinal)).ToArray();
 
         Assert.Contains(Validate(lines), e => e.Contains("requires at least one step", StringComparison.Ordinal));
     }

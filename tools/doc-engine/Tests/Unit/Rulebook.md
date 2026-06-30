@@ -23,7 +23,7 @@ harness: ../../../../tests/Harness/README.md
 
 ### DocValidator.Validate → no errors for a guide whose procedures nest conforming steps
 - **Why:** nested-block composition (`composes`) is the engine's third structural level — a procedure holding
-  `#### N. step` children. A guide with well-formed nested steps must validate clean, proving the recursive parse and
+  `##### N. step` children. A guide with well-formed nested steps must validate clean, proving the recursive parse and
   validate accept the happy path rather than rejecting any nesting outright. The fixture brackets its steps with
   procedure labels (Context before, Outcome after), so a passing run also proves those bare lead-in labels route to the
   procedure, not the trailing step.
@@ -34,12 +34,12 @@ harness: ../../../../tests/Harness/README.md
   **procedure** missing it (not the step swallowing it), proving the label routed up to its declaring ancestor.
 
 ### DocValidator.Validate → flags a step id that violates its attr pattern
-- **Why:** a step's `id` is the leading ordinal of its `#### ` heading, a `pattern`-enforced attr; an id off its
+- **Why:** a step's `id` is the leading ordinal of its `##### ` heading, a `pattern`-enforced attr; an id off its
   grammar (e.g. `1.X`) must fail, so the `pattern` validator is proven to run on real attrs and the visible step
   number cannot drift out of its format.
 
 ### DocValidator.Validate → flags a step ordinal written with a non-canonical separator
-- **Why:** the ordinal split strips only a trailing `.`, so `#### 1) First step` parses the id as `1)` and fails the
+- **Why:** the ordinal split strips only a trailing `.`, so `##### 1) First step` parses the id as `1)` and fails the
   `pattern` loudly rather than being silently accepted as `1` — keeping one canonical `N.` form so authors do not drift.
 
 ### DocValidator.Validate → a bare **Label:** lead-in whose name is undeclared stays prose, not an unexpected label

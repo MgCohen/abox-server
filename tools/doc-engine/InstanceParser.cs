@@ -6,7 +6,9 @@ public static class InstanceParser
 {
     private static readonly Regex H2 = new(@"^##\s+(.+?)\s*$");
     private static readonly Regex H3 = new(@"^###\s+(.+?)\s*$");
-    private static readonly Regex H4 = new(@"^####\s+(.+?)\s*$");
+    // A composed child renders two levels below its member (h3 procedure → h5 step), one heading level
+    // deeper than a plain sub-block, so the nesting reads at a glance in raw markdown. See ADR 0017.
+    private static readonly Regex H5 = new(@"^#####\s+(.+?)\s*$");
     private static readonly Regex AttrRe = new(@"^([\w-]+):\s*(.+?)\s*$");
     private static readonly Regex LabelBulletRe = new(@"^-?\s*\*\*(?<label>[^:*]+):\*\*");
 
@@ -66,7 +68,7 @@ public static class InstanceParser
             var line = raw.TrimEnd('\n');
             var m2 = H2.Match(line);
             var m3 = m2.Success ? Match.Empty : H3.Match(line);
-            var m4 = m2.Success || m3.Success ? Match.Empty : H4.Match(line);
+            var m5 = m2.Success || m3.Success ? Match.Empty : H5.Match(line);
             if (m2.Success)
             {
                 Close();
@@ -110,11 +112,11 @@ public static class InstanceParser
                 (child ?? cur)?.Lines.Add(line);
                 continue;
             }
-            if (m4.Success && cur is not null && ComposedType(defs, cur.Type) is { } childType)
+            if (m5.Success && cur is not null && ComposedType(defs, cur.Type) is { } childType)
             {
                 CloseChild();
                 child = new ParsedBlock { Type = childType };
-                var heading = m4.Groups[1].Value;
+                var heading = m5.Groups[1].Value;
                 if (headingAttr.TryGetValue(childType, out var ordinalAttr) && SplitOrdinal(heading) is (string id, var title))
                 {
                     child.Attrs[ordinalAttr] = id;

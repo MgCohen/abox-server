@@ -10,45 +10,46 @@ conforming instance — the three changes you make when the vocabulary needs to 
 ## Procedures
 ### Adding a block
 **Context:** a block is a reusable content unit (`blocks/<type>.yaml`) that doc types compose.
-#### 1. Pick the type name and content shape
+##### 1. Pick the type name and content shape
 Decide whether the block is a singleton or a `collection`, and how it carries content — typed
 `attrs`, closed-set `labels`, or free `body`.
-#### 2. Write the block definition
+##### 2. Write the block definition
 Add `blocks/<type>.yaml` with `type`, `description`, a `rubric`, and the content fields, listing
 present fields in the canonical order from `kinds/block.yaml`.
-#### 3. Verify the definition conforms
+##### 3. Verify the definition conforms
 Run `docengine check`; fix any field-order, kind, or constraint violation it reports.
 
----
 **Outcome:** `docengine check` passes with no violation naming the new block, so the block type now
 exists in the catalog and is ready to be composed into a doc type.
 
+---
+
 ### Adding a doc type
 **Context:** a doc type (`doctypes/<name>.yaml`) names the blocks a document composes and which are required.
-#### 1. Ensure the blocks exist
+##### 1. Ensure the blocks exist
 If a block the doc type needs is missing, add it first via "Adding a block".
-#### 2. Write the doc type definition
+##### 2. Write the doc type definition
 Add `doctypes/<name>.yaml` with `docType`, `description`, the `blocks` list, the `required` subset, and a `rubric`.
-#### 3. Verify the catalog conforms
+##### 3. Verify the catalog conforms
 Run `docengine check` to confirm `required` is a subset of `blocks` and every field conforms.
 
----
 **Outcome:** `docengine catalog` lists the new doc type with its blocks, so an instance can now declare
 it in its front matter.
 
+---
+
 ### Authoring an instance
 **Context:** an instance is a `.md` file whose front matter declares a `docType` the engine validates it against.
-#### 1. Start from the doc type's blocks
+##### 1. Start from the doc type's blocks
 Run `docengine catalog <docType>` to see the blocks available, then draft `## ` sections for the ones you need.
-#### 2. Fill in the required blocks
+##### 2. Fill in the required blocks
 Write each required block, leading every body with prose so a `word:` first line is not misread as an attr.
-#### 3.a Fix and revalidate
+##### 3.a Fix and revalidate
 - **Condition:** validation fails
 Read each reported violation, correct the instance, and run `docengine validate <file>` again.
-#### 3.b Commit the instance
+##### 3.b Commit the instance
 - **Condition:** validation passes
 The central Docs test discovers it by its front matter and validates it on every run.
 
----
 **Outcome:** `docengine validate <file>` prints `PASS — conforms to the catalog.`, so a structured
 document now exists that the catalog validates and CI guards.

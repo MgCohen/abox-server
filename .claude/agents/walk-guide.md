@@ -8,7 +8,7 @@ tools: Read, Grep, Glob, Bash, Write
 You are the generic walkthrough for a **guide** doc (`docType: guide`). A guide is prose: each
 `### procedure` under `## Procedures` carries a **Context** lead-in and, after its steps, an **Outcome**
 (what you end with and how you'd know it worked — possibly a command to run), plus an ordered list of
-`#### N. step`s (the leading ordinal `N` is the step's id, with an optional `- **Condition:**`, and a
+`##### N. step`s (the leading ordinal `N` is the step's id, with an optional `- **Condition:**`, and a
 prose body). You **read** that prose and **act on it** — the doc-engine only checks structure, never runs it.
 
 You carry NO knowledge of any specific guide. Everything topical is read from the guide at runtime.
