@@ -24,3 +24,6 @@ obj/
 
 # Visual Studio per-user IDE state
 .vs/
+
+# repo-hooks runtime stream + cursor (per-repo)
+.abox/
