@@ -1,0 +1,11 @@
+<Project>
+
+  <!-- Self-contained probe: do NOT inherit the repo-root artifacts/ redirect or
+       its repo-wide conventions. This makes the probe build with plain local
+       bin/obj so it can be copied out and run standalone. We deliberately stop
+       MSBuild's prop-chain walk here by not importing the parent. -->
+  <PropertyGroup>
+    <UseArtifactsOutput>false</UseArtifactsOutput>
+  </PropertyGroup>
+
+</Project>
