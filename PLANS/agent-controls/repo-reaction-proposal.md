@@ -269,8 +269,11 @@ orchestrator runs, or in the thin built controller otherwise.
    required event-kind filter; `when:` supports exactly `source` (claude/codex/git),
    `cwd` glob, and `tool` name — a closed vocabulary the controller indexes, no DSL.
    Richer logic lives in the action, which reads the event and early-exits.
-3. **Transport medium.** `reactions.jsonl` tail (simple, survives restart, already works
-   across the host↔box mount) vs in-proc channel. Lean jsonl.
+3. ~~**Transport medium.**~~ **Decided: `reactions.jsonl` tail.** Shim appends a
+   normalized line; the controller tails it with a durable cursor. The only option that
+   keeps deferred-not-dropped (cursor replay), reuses the existing `ClaudeHooks`
+   file-seam across the host↔box mount (ADR 0013), and stays language-neutral.
+   Latency-sensitive `gate` hooks ride the synchronous perm-shim, not this stream.
 4. **Backpressure / retention + trust tier.** Who truncates `reactions.jsonl`; what tier
    `.hook` files sit at in `protected-paths` (they execute, so likely `attention`+).
 5. **Where the contract assembly lives.** New `ABox.Governance.Reactions` (the controller
