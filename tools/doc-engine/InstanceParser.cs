@@ -6,10 +6,11 @@ public static class InstanceParser
 {
     private static readonly Regex H2 = new(@"^##\s+(.+?)\s*$");
     private static readonly Regex H3 = new(@"^###\s+(.+?)\s*$");
-    private static readonly Regex H4 = new(@"^####\s+(.+?)\s*$");
-    private static readonly Regex HiddenRe = new(@"^<!--\s*([\w-]+):\s*(.+?)\s*-->\s*$");
+    // A composed child renders two levels below its member (h3 procedure → h5 step), one heading level
+    // deeper than a plain sub-block, so the nesting reads at a glance in raw markdown. See ADR 0017.
+    private static readonly Regex H5 = new(@"^#####\s+(.+?)\s*$");
     private static readonly Regex AttrRe = new(@"^([\w-]+):\s*(.+?)\s*$");
-    private static readonly Regex LabelBulletRe = new(@"^-\s+\*\*(?<label>[^:*]+):\*\*");
+    private static readonly Regex LabelBulletRe = new(@"^-?\s*\*\*(?<label>[^:*]+):\*\*");
 
     public static IReadOnlyDictionary<string, object?> ParseFrontmatter(IReadOnlyList<string> lines)
     {
@@ -36,7 +37,7 @@ public static class InstanceParser
         IReadOnlyDictionary<string, IReadOnlyDictionary<string, object?>> defs)
     {
         var (singleton, group) = LabelMaps(defs);
-        var hidden = HiddenAttrKeys(defs);
+        var headingAttr = HeadingAttrKeys(defs);
         var labels = LabelNames(defs);
         var blocks = new List<ParsedBlock>();
         var groupsSeen = new List<string>();
@@ -67,7 +68,7 @@ public static class InstanceParser
             var line = raw.TrimEnd('\n');
             var m2 = H2.Match(line);
             var m3 = m2.Success ? Match.Empty : H3.Match(line);
-            var m4 = m2.Success || m3.Success ? Match.Empty : H4.Match(line);
+            var m5 = m2.Success || m3.Success ? Match.Empty : H5.Match(line);
             if (m2.Success)
             {
                 Close();
@@ -111,10 +112,20 @@ public static class InstanceParser
                 (child ?? cur)?.Lines.Add(line);
                 continue;
             }
-            if (m4.Success && cur is not null && ComposedType(defs, cur.Type) is { } childType)
+            if (m5.Success && cur is not null && ComposedType(defs, cur.Type) is { } childType)
             {
                 CloseChild();
-                child = new ParsedBlock { Type = childType, Title = m4.Groups[1].Value };
+                child = new ParsedBlock { Type = childType };
+                var heading = m5.Groups[1].Value;
+                if (headingAttr.TryGetValue(childType, out var ordinalAttr) && SplitOrdinal(heading) is (string id, var title))
+                {
+                    child.Attrs[ordinalAttr] = id;
+                    child.Title = title;
+                }
+                else
+                {
+                    child.Title = heading;
+                }
                 meta = true;
                 continue;
             }
@@ -122,18 +133,6 @@ public static class InstanceParser
             if (tgt is null) continue;
             if (meta)
             {
-                var hm = HiddenRe.Match(line);
-                if (hm.Success)
-                {
-                    if (hidden.GetValueOrDefault(tgt.Type)?.Contains(hm.Groups[1].Value) == true)
-                    {
-                        tgt.Attrs[hm.Groups[1].Value] = hm.Groups[2].Value;
-                        continue;
-                    }
-                    meta = false;
-                    tgt.Lines.Add(line);
-                    continue;
-                }
                 if (line.Trim().Length == 0) { meta = false; continue; }
                 var am = AttrRe.Match(line);
                 if (am.Success) { tgt.Attrs[am.Groups[1].Value] = am.Groups[2].Value; continue; }
@@ -172,19 +171,26 @@ public static class InstanceParser
         return labels;
     }
 
-    private static Dictionary<string, HashSet<string>> HiddenAttrKeys(
+    private static (string Id, string Title)? SplitOrdinal(string heading)
+    {
+        var sp = -1;
+        for (var i = 0; i < heading.Length; i++)
+            if (char.IsWhiteSpace(heading[i])) { sp = i; break; }
+        if (sp <= 0) return null;
+        var token = heading[..sp].TrimEnd('.');
+        if (token.Length == 0 || !char.IsDigit(token[0])) return null;
+        return (token, heading[(sp + 1)..].Trim());
+    }
+
+    private static Dictionary<string, string> HeadingAttrKeys(
         IReadOnlyDictionary<string, IReadOnlyDictionary<string, object?>> defs)
     {
-        var hidden = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        var heading = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var (type, def) in defs)
-        {
-            var keys = new HashSet<string>(StringComparer.Ordinal);
             foreach (var (name, spec) in Yaml.AsMap(def.GetValueOrDefault("attrs")) ?? new Dictionary<string, object?>())
-                if (FieldSpec.Normalize(spec, false).Hidden)
-                    keys.Add(name);
-            if (keys.Count > 0) hidden[type] = keys;
-        }
-        return hidden;
+                if (FieldSpec.Normalize(spec, false).InHeading)
+                    heading[type] = name;
+        return heading;
     }
 
     private static (Dictionary<string, string> Singleton, Dictionary<string, string> Group) LabelMaps(
