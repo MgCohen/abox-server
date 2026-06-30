@@ -107,6 +107,11 @@ public static class Cli
     // agent. Returns the dispatched count + feedback, or NotOptedIn (-1) when the repo has not opted in.
     public static async Task<TurnEndedOutcome> EmitTurnEndedAsync(string repo, string rawPayload)
     {
+        // Hook-free spawn guard: a reviewer launched by an `agent:` action carries ABOX_HOOKS_SUPPRESS,
+        // so its own turn-end is a silent no-op and can never re-trigger the hook that spawned it.
+        if (Environment.GetEnvironmentVariable(ClaudeAgentLauncher.SuppressEnv) == "1")
+            return TurnEndedOutcome.Suppressed;
+
         var hooksDir = Path.Combine(repo, ".abox");
         if (!Directory.Exists(hooksDir)) return TurnEndedOutcome.NotOptedIn;
 

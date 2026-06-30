@@ -152,6 +152,33 @@ public sealed class ClaudeProducerTests
         }
     }
 
+    [Rule("abox-hooks turn-ended under ABOX_HOOKS_SUPPRESS → no-op, so a hook-spawned agent can't re-trigger")]
+    [Fact]
+    public async Task TurnEnded_is_suppressed_inside_a_spawned_agent()
+    {
+        var repo = Directory.CreateTempSubdirectory("turnend-suppress-").FullName;
+        var prior = Environment.GetEnvironmentVariable(ClaudeAgentLauncher.SuppressEnv);
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(repo, ".abox"));
+            var feat = Directory.CreateDirectory(Path.Combine(repo, "feat")).FullName;
+            File.WriteAllText(Path.Combine(feat, "on-turn.hook"),
+                "on: [TurnEnded]\nmode: notify\nrun: cat > got.json\n");
+
+            Environment.SetEnvironmentVariable(ClaudeAgentLauncher.SuppressEnv, "1");
+            var outcome = await Cli.EmitTurnEndedAsync(repo, """{"session_id":"s"}""");
+
+            Assert.Equal(-1, outcome.Dispatched);
+            Assert.False(File.Exists(Path.Combine(repo, ".abox", "hooks.jsonl")));
+            Assert.False(File.Exists(Path.Combine(feat, "got.json")));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(ClaudeAgentLauncher.SuppressEnv, prior);
+            Directory.Delete(repo, recursive: true);
+        }
+    }
+
     [Rule("abox-hooks turn-ended with no .abox opt-in → emits nothing")]
     [Fact]
     public async Task TurnEnded_is_a_noop_without_opt_in()

@@ -17,7 +17,7 @@ public sealed class HookCatalogTests
             var manifests = new HookCatalog([root], reports.Add).Scan();
 
             Assert.Single(manifests);
-            Assert.Equal("echo hi", manifests[0].Run);
+            Assert.Equal(new HookAction.Run("echo hi"), manifests[0].Action);
             Assert.Single(reports);
             Assert.Contains("bad.hook", reports[0]);
         }

@@ -5,7 +5,7 @@ public sealed record HookManifest(
     IReadOnlyList<HookKind> On,
     HookWhen When,
     HookMode Mode,
-    string Run)
+    HookAction Action)
 {
     public bool Matches(HookEvent e) => On.Contains(e.Kind) && When.Matches(e);
 }

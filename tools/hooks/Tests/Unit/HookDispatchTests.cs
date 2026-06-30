@@ -13,16 +13,16 @@ public sealed class HookDispatchTests
         {
             var notify = new HookManifest(
                 Path.Combine(dir, "m.hook"), [HookKind.TurnEnded],
-                new HookWhen(null, "**/docs/**", null), HookMode.Notify, "cat > captured.json");
+                new HookWhen(null, "**/docs/**", null), HookMode.Notify, new HookAction.Run("cat > captured.json"));
             var check = new HookManifest(
                 Path.Combine(dir, "c.hook"), [HookKind.TurnEnded],
-                new HookWhen(null, "**/docs/**", null), HookMode.Check, "cat > checked.json");
+                new HookWhen(null, "**/docs/**", null), HookMode.Check, new HookAction.Run("cat > checked.json"));
             var wrongCwd = new HookManifest(
                 Path.Combine(dir, "n.hook"), [HookKind.TurnEnded],
-                new HookWhen(null, "**/src/**", null), HookMode.Notify, "cat > nope.json");
+                new HookWhen(null, "**/src/**", null), HookMode.Notify, new HookAction.Run("cat > nope.json"));
             var gate = new HookManifest(
                 Path.Combine(dir, "g.hook"), [HookKind.TurnEnded],
-                HookWhen.None, HookMode.Gate, "cat > gate.json");
+                HookWhen.None, HookMode.Gate, new HookAction.Run("cat > gate.json"));
 
             var evt = new HookEvent(
                 HookKind.TurnEnded, HookSource.Claude, "s1", "/repo/docs/api",
