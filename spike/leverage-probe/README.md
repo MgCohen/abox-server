@@ -1,5 +1,12 @@
 # Leverage probe — does a motif make the recipe smaller than the feature?
 
+> **⛔ API/DIALECT REJECTED.** This probe proves the **tech** (a motif can carry the scaffold so the
+> author writes only the divergence) — but the authoring **style shown here is rejected**: it is
+> stringly-typed free text (`key`/`command`/`models`/`with` as strings), which breaks type-safety,
+> structure, and swappable typed components. The leverage *number* is contaminated by that stringiness
+> and does not carry to a type-safe dialect. The dialect remains UNDESIGNED. See `spike/PROBES.md` for
+> the full disclaimer.
+
 > Answers the **leverage gap** the integration slice left open (`spike/PROBES.md`).
 > The slice proved the *pipe* (mint/wire/render/emit/forward-ref compose into a
 > running feature) but **failed the value**: its authored recipe had **more**

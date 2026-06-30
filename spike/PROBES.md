@@ -155,11 +155,25 @@ surface (generated + one-time motif/catalog excluded):
 | hand-written baseline | 17 | 147 |
 | verbose slice recipe | 31 | 116 |
 
-Win condition `motif << hand-written << verbose-slice` **met** (motif is 1.9× fewer lines / 4× fewer
-tokens than hand-written; the slice's regression reproduced). **Leverage is real — but motif-specific**
-(`Mutates` carries aggregate-mutation only; projection/reactor/ingest need their own components), and
-the one-time motif cost is paid by the first feature of each motif. This is the working proof that
-*components carry the standards; glue is the slotted exception* can hold.
+Win condition `motif << hand-written << verbose-slice` **met by line count** (motif 1.9× fewer lines /
+4× fewer tokens than hand-written; the slice's regression reproduced).
+
+> **⛔ API / DIALECT / STYLE — REJECTED (not merely provisional).** The probe hit the line target by the
+> **wrong means**: the authored surface is **stringly-typed free text** — `key: "command.Email"`,
+> `command: "AddItemCommand(Email:string, …)"`, `models: "CartItem(BookId:Guid, …)"`, `with: """…"""`.
+> That **breaks the very invariants it was meant to serve**: not **type-safe** (strings aren't checked —
+> nothing forces correctness, trivial to drift or write garbage), not **structured / make-illegal-states-
+> unrepresentable**, and the "components" are **not swappable typed parts** (the motif's slots are
+> hardcoded strings). The leverage **magnitude is contaminated** — part of the compression was bought by
+> the stringiness we reject, so the 9-line number does **not** carry to a type-safe dialect and must be
+> re-measured there.
+>
+> **What survives: the TECH only.** A motif *can* carry the scaffold so the author writes only the
+> divergence — that mechanism is real. **What is reproved: the entire authoring API / dialect / style**
+> shown in both the integration slice and this probe. The dialect remains **UNDESIGNED**; the next step
+> must produce a **typed, structured, swappable** surface (no free-text strings), and only then re-measure
+> leverage. Until then, treat *components carry the standards; glue is the slotted exception* as a
+> **tech-feasible hypothesis, not a demonstrated authoring win.**
 
 ## What this means
 
