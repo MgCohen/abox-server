@@ -21,7 +21,7 @@ public sealed class GitInstallerTests
         }
         finally
         {
-            Directory.Delete(repo, recursive: true);
+            SafeDelete(repo);
         }
     }
 
@@ -42,7 +42,7 @@ public sealed class GitInstallerTests
         }
         finally
         {
-            Directory.Delete(repo, recursive: true);
+            SafeDelete(repo);
         }
     }
 
@@ -73,7 +73,7 @@ public sealed class GitInstallerTests
         }
         finally
         {
-            Directory.Delete(repo, recursive: true);
+            SafeDelete(repo);
         }
     }
 
@@ -91,8 +91,16 @@ public sealed class GitInstallerTests
         }
         finally
         {
-            Directory.Delete(repo, recursive: true);
+            SafeDelete(repo);
         }
+    }
+
+    // git marks objects read-only, so a recursive delete throws on Windows; cleanup is
+    // best-effort (the runner reaps temp anyway) — mirrors the repo's TempGitRepo.
+    private static void SafeDelete(string dir)
+    {
+        try { Directory.Delete(dir, recursive: true); }
+        catch { /* best-effort cleanup */ }
     }
 
     private static string NewRepo()
