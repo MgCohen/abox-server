@@ -564,3 +564,171 @@ earns its keep:
 > Next pass (separate): hold these motifs against our own composition/template model
 > and see which fall out for free, which need a new mechanism, and which of the §2.5
 > inconsistencies our type system could make unrepresentable.
+
+---
+
+# Iteration 3 — features as composed workflows (function style)
+
+> A third pass on the **authoring shape**. The templates so far declare a feature as a
+> *tree of components* (Flutter-style: list the parts, let the parent wire them). This
+> pass explores the opposite: write a feature as a **sequence of typed function calls**
+> — each block is a function (a few params in, an instance out), and the feature wires
+> one call's **return into the next call's params**. The wiring *is* the data flow, so
+> you read "this service calls that, returns books, which feed the map" instead of just
+> a list of parts. Still fictional/brainstorm — no grounding on our current tech.
+
+## 3.1 Blocks are functions
+
+Every block from Iteration 1 becomes a function. The **directed** transport family
+from §2.2 (`call` / `send` / `query` — returns a value) maps to call-and-return
+directly:
+
+```
+CreateRepository<TEntity>()        -> Repo<TEntity>
+CreateService(repo?)               -> Service        // repo is OPTIONAL
+Validate(input, rules)             -> Input          // or rejects
+Load(repo, key)                    -> Entity
+Persist(repo, entity)              -> Saved
+Map(source, shape)                 -> Dto
+Ask(contract, params)              -> Result         // cross-module (a *.Contracts message)
+```
+
+That optional `repo?` is the whole insight in one place: a read passes a repo, a
+framework-owned write (flow 8) passes none. Same `CreateService`, different choice.
+
+## 3.2 A feature is a sequence, not a tree
+
+A workflow has a **head** (`on Request(T) -> R`) and a body that threads instances
+through the functions:
+
+```
+workflow ListBooks   on Request(ListBooksQuery) -> BookDto[]:
+  repo  = CreateRepository<Book>()
+  svc   = CreateService(repo)
+  books = svc.List()                     // ← business-logic slot
+  return Map(books, BookDto)
+
+workflow CreateBook  on Request(CreateBookCmd) -> BookDto:
+  cmd   = Validate(cmd, BookRules)        // optional bit: present
+  repo  = CreateRepository<Book>()
+  svc   = CreateService(repo)
+  book  = svc.Create(cmd)                 // ← different logic, SAME CreateService
+  return Map(Persist(repo, book), BookDto)
+
+workflow AddToCart   on Request(AddToCartCmd) -> Ok:
+  cmd  = Validate(cmd, CartRules)
+  repo = CreateRepository<User>()
+  svc  = CreateService(repo)
+  user = Load(repo, cmd.email)
+  book = Ask(BookDetails, cmd.bookId)     // optional bit: cross-module instance, wired in
+  user.AddItem(book, cmd.qty)             // ← business-logic slot
+  return Persist(repo, user)
+```
+
+Reused **verbatim** across all three: `Validate`, `CreateRepository`,
+`CreateService`, `Persist`, `Map`. What moves between features is only (a) the
+business-logic line in the middle, and (b) which optional lines are present — a read
+drops `Validate`/`Persist`; the cross-module feature inserts an `Ask`. Checkout is
+the same shape as `AddToCart` with *two* `Ask`s. Adding a bit, never a new structure.
+
+## 3.3 Collapsing the "too broken down" — a motif is one function, the logic is a parameter
+
+Per-node lines get noisy. Collapse a **motif** into a single function and pass the
+business logic in as an argument:
+
+```
+Mutate(repo, key, apply)      // M2 = Load → apply → Persist, as one call
+
+workflow AddToCart on Request(AddToCartCmd) -> Ok:
+  Validate(cmd, CartRules)
+  return Mutate(users, cmd.email, u => u.AddItem(Ask(BookDetails, cmd.bookId), cmd.qty))
+```
+
+That is "same `Create`/`Mutate`, just replace *that bit*" — and the bit is a function
+handed in. Granularity becomes a **dial**: expand to nodes to see the plumbing,
+collapse to motifs to read the feature.
+
+## 3.4 Events — the bulletin board (decision A)
+
+`call`/`send`/`query` return values, so they compose as `y = f(x)`. The **broadcast**
+family (events) does not — it is a shout, not a question. Decision **A**: a workflow
+**posts** an event and walks away; it never names its reactors. Each reactor is *its
+own* workflow that starts `on Event`. So a workflow's head is `on Request(...)` **or**
+`on Event(...)` — which is why flow 6 (no HTTP entry) stops being a special case.
+
+Flow 5's whole reactive half, under A, is a set of tiny workflows that mirror the code:
+
+```
+workflow AddAddress             on Request(AddAddressCmd) -> Ok:
+  user = Mutate(users, cmd.email, u => u.AddAddress(cmd.addr))
+  emit AddressAddedEvent(user.id, cmd.addr)        // post to the board, walk away
+  return Ok
+
+workflow ReplicateAddressCache  on Event(AddressAddedEvent):       // watches the board
+  cache.Store(toOrderAddress(e))
+
+workflow BridgeUserAddress      on Event(AddressAddedEvent):       // the bridge = re-post
+  emit NewUserAddressAddedIntegrationEvent(details(e))
+
+workflow LogNewAddress          on Event(AddressAddedEvent):
+  log(e)
+```
+
+Nobody coordinates these; the **event type is the seam**. Because every workflow
+declares its `on ...` (what it watches) and `emit ...` (what it posts), a tool can
+stitch the forest into the full causal chain by matching posts to watchers — the
+whole-graph view **without** coupling the poster to its audience. The flow-6 outbox +
+background worker live on one of these seams (an `on Event` workflow that enqueues,
+plus a worker workflow that drains).
+
+## 3.5 Tree vs sequence — the contrast
+
+| | Template tree (Flutter style) | Workflow sequence (this) |
+|---|---|---|
+| Shape | flat **list of sibling components** | **sequence of calls**, output→input |
+| Wiring | implicit — the parent decides | **explicit** — the data dependency *is* the wiring |
+| Reads as | "this feature *has* a Service, Repo, Logic" | "this Service calls that, returns books, feeds the map" |
+| Vary by | add/remove nodes in the list | add/remove **lines**; swap the **passed-in** logic |
+| Events | n/a (a node) | a `emit` line; reactors are sibling workflows (A) |
+
+![Add-to-Cart: template tree vs workflow sequence](flow-graphs/w3.png)
+
+<details>
+<summary>Mermaid source</summary>
+
+```mermaid
+flowchart LR
+  subgraph TREE["Template tree (Flutter) — siblings, wiring implicit"]
+    direction TB
+    F["AddToCart feature"]
+    F --> S["Service"]
+    F --> R["Repository"]
+    F --> Vd["Validator"]
+    F --> Lg["AddItem logic"]
+  end
+  subgraph SEQ["Workflow sequence (functions) — wiring = data flow"]
+    direction TB
+    A1["Validate(cmd, CartRules)"] --> A2["repo = CreateRepository&lt;User&gt;()"]
+    A2 --> A3["svc = CreateService(repo)"]
+    A3 --> A4["user = Load(repo, email)"]
+    A4 --> A5["book = Ask(BookDetails, bookId)"]
+    A5 --> A6["user.AddItem(book, qty)"]
+    A6 --> A7["return Persist(repo, user)"]
+  end
+```
+
+</details>
+
+## 3.6 Carry-forward
+
+- The reusable unit is a **function** = a block (fine) or a motif (coarse); the
+  business logic is a **parameter** handed into it, not a fixed part.
+- A feature is a **head** (`on Request`/`on Event`) + a **sequence** that threads
+  instances; variation is optional lines + the swapped-in logic.
+- Events use **A** (bulletin board): post-and-walk-away, reactors are their own
+  `on Event` workflows; the declared `on`/`emit` labels let a view redraw the whole
+  chain.
+- Open question for next pass: how the **head/return contract** and the **optional
+  params** get *typed* so an illegal sequence won't compose — the same "type system
+  is the schema" goal as the earlier template work, but expressed over a call
+  sequence instead of a tree.
