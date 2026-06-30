@@ -95,7 +95,7 @@ One north star, explored from several entry points. **Parked ≠ legacy** — pa
 | State | Docs | What it is |
 |---|---|---|
 | **Anchor** | `README.md` (this), `NORTH-STAR.md` | the invariants + the `Intent→…→Feature` vision/roadmap |
-| **Active** | `flow-graphs.md`, `authoring-dialects.md` | architecture-first thread: RiverBooks flows → motifs → the authoring surface that serves the invariants |
+| **Active** | `flow-graphs.md`, `authoring-dialects.md`, `PROBES.md` (+ `probe-*/`) | architecture-first thread: RiverBooks flows → motifs → authoring surface → **runnable technical proofs** of the mechanics |
 | **Parked — mechanism (recipe→code)** | `PHASE-2`, `DECLARATION-TIER`, `BUILDING-STYLE` + `src/ gen/ out/ tests/` | proved the lowering mechanism bottom-up; `authoring-dialects.md` supersedes `BUILDING-STYLE`'s authoring pass |
 | **Parked — intent→recipe (the other end)** | `PROMPT-DECOMPOSITION`, `PLAN-TO-RECIPES`, `decomposition-*`, `scheduled-runs.*`, `project-*`, `projects-*`, `favorite-artist.plan` | how intent becomes a recipe (decomposition) — a different axis |
 
