@@ -274,9 +274,15 @@ orchestrator runs, or in the thin built controller otherwise.
    keeps deferred-not-dropped (cursor replay), reuses the existing `ClaudeHooks`
    file-seam across the host↔box mount (ADR 0013), and stays language-neutral.
    Latency-sensitive `gate` hooks ride the synchronous perm-shim, not this stream.
-4. **Backpressure / retention + trust tier.** Who truncates `reactions.jsonl`; what tier
-   `.hook` files sit at in `protected-paths` (they execute, so likely `attention`+).
-5. **Where the contract assembly lives.** New `ABox.Governance.Reactions` (the controller
+4. ~~**`.hook` trust model.**~~ **Decided: `attention` tier + scan-root allowlist.**
+   `*.hook` is a protected path at `attention` (owner-reviewed via CODEOWNERS + elevated
+   label — an executable surface must not be self-addable by the bot agent), and the
+   controller only globs governance-declared roots. `critical` is reserved for core
+   machinery; the allowlist bounds what's discoverable.
+5. **Backpressure / retention.** Who truncates `reactions.jsonl` and what happens to a
+   slow `.hook` action. Probably: bounded/rotated file + per-subscriber cursor + a
+   dispatch timeout per action.
+6. **Where the contract assembly lives.** New `ABox.Governance.Reactions` (the controller
    + `ReactionEvent` + `.hook` parser) vs folding the wire types into `Contracts`.
 
 ## Next steps
