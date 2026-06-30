@@ -143,8 +143,23 @@ field-by-field, and `FeatureRecipe`/`GlueSpec` ceremony sat on top — so the re
 than the code it emits. It also **inverts the invariant** *"components carry the standards; custom glue
 is the slotted exception"*: here the glue carried everything and the components almost nothing. Leverage
 is unsolved and lives entirely in the **dialect + component/motif design** (e.g. a `Mutates<User>` motif
-that implies load/save/wire/return so the author writes only the divergence). `leverage-probe/` takes
-this on directly: re-author the same feature under a motif and measure the surface drop.
+that implies load/save/wire/return so the author writes only the divergence).
+
+**✅ Answered — `leverage-probe/`.** Re-authored the same feature under a `Mutates<User>` motif that
+carries the scaffold; the emitted feature still builds + runs with the slice's behavior. Author-only
+surface (generated + one-time motif/catalog excluded):
+
+| version | authored lines | author tokens |
+|---|---:|---:|
+| **motif recipe** | **9** | **37** |
+| hand-written baseline | 17 | 147 |
+| verbose slice recipe | 31 | 116 |
+
+Win condition `motif << hand-written << verbose-slice` **met** (motif is 1.9× fewer lines / 4× fewer
+tokens than hand-written; the slice's regression reproduced). **Leverage is real — but motif-specific**
+(`Mutates` carries aggregate-mutation only; projection/reactor/ingest need their own components), and
+the one-time motif cost is paid by the first feature of each motif. This is the working proof that
+*components carry the standards; glue is the slotted exception* can hold.
 
 ## What this means
 
