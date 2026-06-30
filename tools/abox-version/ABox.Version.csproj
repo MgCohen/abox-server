@@ -18,4 +18,10 @@
     <PackageReference Include="System.Reflection.MetadataLoadContext" Version="9.0.0" />
   </ItemGroup>
 
+  <!-- The tool's co-located tests (Tests/) nest under this project dir; keep them out of the tool's own default
+       compile glob — they are a separate test assembly that references the tool, not part of it. -->
+  <ItemGroup>
+    <Compile Remove="Tests/**/*.cs" />
+  </ItemGroup>
+
 </Project>
