@@ -279,9 +279,12 @@ orchestrator runs, or in the thin built controller otherwise.
    label — an executable surface must not be self-addable by the bot agent), and the
    controller only globs governance-declared roots. `critical` is reserved for core
    machinery; the allowlist bounds what's discoverable.
-5. **Backpressure / retention.** Who truncates `reactions.jsonl` and what happens to a
-   slow `.hook` action. Probably: bounded/rotated file + per-subscriber cursor + a
-   dispatch timeout per action.
+5. ~~**Backpressure / retention.**~~ **Decided: rotate + per-hook timeout.**
+   `reactions.jsonl` is size/age-bounded and rotated, with the durable cursor carried
+   across rotations (preserves deferred-not-dropped). Every action gets a dispatch
+   timeout — on overrun it's killed and logged, siblings unaffected (`react` fans out, so
+   one timeout drops only that hook; `gate` is additionally bounded by the perm-shim
+   deadline).
 6. **Where the contract assembly lives.** New `ABox.Governance.Reactions` (the controller
    + `ReactionEvent` + `.hook` parser) vs folding the wire types into `Contracts`.
 
