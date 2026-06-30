@@ -116,9 +116,9 @@ is action labels precede the first `####`, pinned by a test.
 
 ## Part 2 — The `guide` doc type
 
-**Doc level:** `docType: guide`, a `summary` block, and an `onChange` attr (Part 3). **No
-`status`.** Instances are `<slug>.guide.md`, but the trigger keys off front-matter
-`docType: guide`, **not** the filename.
+**Doc level:** `docType: guide`, a `summary` block, and an `action` group. **No `status`, no
+`onChange`** — there is one walker, named, not configured per doc (Part 3). Instances are
+`<slug>.guide.md`, but discovery keys off front-matter `docType: guide`, **not** the filename.
 
 **Body — one or more `action`s. Actions are independent** (a menu: *add* / *edit* /
 *publish*), not ordered. A step in one action **may mention another action's steps by id**
@@ -182,7 +182,6 @@ only under a block that `composes` it; the body non-empty. Branch selection (one
 ```md
 ---
 docType: guide
-onChange: .claude/agents/walk-guide.md
 ---
 
 ## Summary
@@ -234,36 +233,34 @@ condition: the field is not immutable
 ## Part 3 — Structure is enforced; an agent walks the prose
 
 The guide is **prose**. doc-engine enforces only its **structure**; an **agent** is the only
-thing that "runs" a guide — it reads it and walks it. Two gates, by cost:
+thing that "runs" a guide — it reads it and walks it. Two gates, by cost and by layer:
 
-| Gate | What | Deterministic? | When |
-|---|---|---|---|
-| **Structural — `docengine validate`** | the guide conforms (blocks, labels, the id grammar, nesting); **touches nothing, runs nothing** | ✅ yes | always-on (Stop hook, `pre-commit`, Docs CI) |
-| **Walkthrough — the agent** | an agent reads the prose, follows each action's steps in a throwaway `git worktree`, and judges whether the Outcome holds (Validation prose is its guidance) | ❌ LLM | on-demand / CI (gated) |
+| Gate | What | Deterministic? | Where it lives | When |
+|---|---|---|---|---|
+| **Structural — `docengine validate`** | the guide conforms (blocks, labels, the id grammar, nesting); **touches nothing, runs nothing** | ✅ yes | the doc-engine CLI | always-on (Stop hook, Docs CI) |
+| **Walkthrough — the agent** | reads the prose, follows each action's steps in a throwaway `git worktree`, judges the Outcome against the Validation prose, tears the worktree down, reports | ❌ LLM | the `.claude/` agent layer | on-demand (`/walk-guide`) |
 
-**`onChange`** = the per-doc executable the walkthrough gate runs; for a guide it points at the
-canonical `walk-guide.md` agent. The field stays polymorphic (a doc could point it at a
-script), so it is constrained to an **allowlisted path** — but a guide's walkthrough is an
-agent, and **the engine never executes guide content**.
+**The deterministic tool stays LLM-free.** The walkthrough is *not* a doc-engine verb — baking a
+`claude`-invoking, worktree-managing `run` into the zero-dep, unit-tested engine would violate its
+charter. The two gates split by layer:
 
-**`docengine run <doc>`** (new verb): if `onChange` is set, run it. The agent path, per action
-(independent):
-1. `git worktree add --detach` a throwaway dir; a `prune` + stale-dir sweep at the start reaps crash-leaked worktrees.
-2. The agent follows the action's steps (resolving mentioned steps as setup), then judges the Outcome against the Validation prose.
-3. Record pass/fail.
-4. `git worktree remove --force` in `finally` (dirty worktrees won't block teardown).
+- **Always-on gate — a Claude Code Stop hook** (`.claude/hooks/validate-guides.sh`, committed; wired
+  **per-user** in `settings.local.json` since `.claude/settings.json` is gitignored project state).
+  On turn-end it does `git diff`/`ls-files` for changed `.md`, keeps the ones with leading
+  `docType: guide`, and runs `docengine validate` on each. A broken guide **blocks the stop**
+  (exit 2) with the violations as feedback so the agent fixes it; `stop_hook_active` breaks the
+  re-block loop. Deterministic, safe, and runs real work only when a guide changed — the
+  linter-on-code ergonomic. (CI's Docs test is the shared hard backstop.)
+- **On-demand walk — the `walk-guide` subagent** (`.claude/agents/walk-guide.md`) + a
+  `/walk-guide` command. The *generic* walkthrough, identical for every guide; sibling of
+  `create-doc.md` / `judge.md`. The **worktree choreography lives in the agent** (`bash git
+  worktree`, `prune` + stale sweep, `remove --force` teardown) — no `src/`, no engine code. Running
+  commands while walking is ordinary agent behaviour in its sandbox, under the **existing agent
+  guardrails**, not doc-engine's concern.
 
-The agent running commands while doing the task is ordinary agent behavior in its sandbox,
-governed by the **existing agent guardrails** — not by doc-engine.
-
-**`walk-guide` agent** (`.claude/agents/walk-guide.md`) — the *generic* walkthrough, identical
-for every guide; sibling of `create-doc.md` / `judge.md`. Uses `bash git worktree`; no `src/` code.
-
-**Trigger.** A Claude Code **Stop hook**: `git diff --name-only` → for each changed
-`docType: guide`, the **always-on gate is `docengine validate`** (cheap, safe, executes
-nothing). The agent walkthrough is **gated behind `docengine run`** (on-demand / CI), with a
-loop-breaker — diff vs the last-validated SHA, ignore worktree paths, a reentrancy-guard env
-var so a nested agent turn can't re-fire it. The same verbs fit `.githooks/pre-commit` / CI.
+**No `onChange` (YAGNI).** There is exactly one walker, named `walk-guide`; a per-doc `onChange`
+pointer earns its place only when a guide needs a *non-default* walker. Until then the doctype stays
+clean and the walk is invoked by name.
 
 ---
 
@@ -278,12 +275,11 @@ var so a nested agent turn can't re-fire it. The same verbs fit `.githooks/pre-c
 | `tools/doc-engine/SchemaChecker.cs` | **edit** — `composes` referential check |
 | `tools/doc-engine/blocks/step.yaml` | **new** — `id` (hidden, pattern, required), `condition`, body |
 | `tools/doc-engine/blocks/action.yaml` | **new** — `composes: [step]`; Context/Validation/Outcome labels |
-| `tools/doc-engine/doctypes/guide.yaml` | **new** — blocks `[summary, action, open-question]`, required `[summary, action]`, attr `onChange`, rubric |
-| `design/adr/00NN-nested-block-composition.md` | **new** — the meta-model ADR (protected) |
-| `tools/doc-engine/Program.cs` + new `Runner.cs` | **new** `run` verb — dispatch `onChange`, worktree isolation, teardown |
-| `.claude/agents/walk-guide.md` | **new** — generic walkthrough agent |
-| `.claude/settings.json` + hook script | **new** — Stop hook → `validate` always-on, `run` gated |
-| one `*.guide.md` instance | **new** — real proof |
+| `tools/doc-engine/doctypes/guide.yaml` | **new** — blocks `[summary, action, open-question]`, required `[summary, action]`, rubric |
+| `design/adr/0016-nested-block-composition.md` | **new** — the meta-model ADR (protected) |
+| `.claude/agents/walk-guide.md` + `.claude/commands/walk-guide.md` | **new** — generic walkthrough subagent + its `/walk-guide` command |
+| `.claude/hooks/validate-guides.sh` (+ `.gitignore` allowlist) | **new** — Stop-hook script → `docengine validate` (deterministic); wired per-user in `settings.local.json` |
+| one `*.guide.md` instance | **new** — real proof (`tools/doc-engine/guides/extend-the-doc-engine.guide.md`) |
 | `src/Api/doc-catalog.json` | regenerated from the catalog |
 
 ## Build order
@@ -291,8 +287,8 @@ var so a nested agent turn can't re-fire it. The same verbs fit `.githooks/pre-c
 1. **Engine extensions** — `composes` + recursive parse/validate; `pattern` + `hidden` attr params + `IdRe` generalization; `check` support; ADR. Prove with a throwaway nested fixture. *(prerequisite; owner-gated)*
 2. **Blocks + doc type** — `step.yaml`, `action.yaml`, `guide.yaml`; `docengine check` green.
 3. **Proof guide** — author one real guide; `docengine validate` PASS + judge; regenerate `doc-catalog.json`.
-4. **Walkthrough** — `walk-guide` agent + `docengine run` (agent reads + walks in a worktree, teardown).
-5. **Trigger** — Stop hook (`validate` always-on; `run` gated), loop-breaker + reentrancy guard.
+4. **Walkthrough (on-demand)** — `walk-guide` subagent + `/walk-guide` command; the agent does the worktree walk + teardown. No engine verb.
+5. **Trigger** — Stop hook runs `docengine validate` on changed guides (deterministic; exit-2 block + `stop_hook_active` loop-breaker).
 
 Phases 1–3 deliver the validated doc type; 4–5 add the agent walkthrough.
 
@@ -311,6 +307,6 @@ Phases 1–3 deliver the validated doc type; 4–5 add the agent walkthrough.
 
 ## Open / to confirm at build time
 
-- **Action-label vs. step-child interleaving** — settle the parse rule in Part 1 (lean: action labels precede `#### ` steps), with a test.
-- **`onChange` agent invocation** — `claude --agent <file>` vs. reading the md as a prompt; settle against the installed CLI surface.
-- **`pattern` engine** — regex flavour/anchoring conventions for attr patterns (one shared helper).
+- **Action-label vs. step-child interleaving** — settled in Part 1: action labels precede the first `#### ` step (once a `####` opens, lines attach to the step), proven by the validator rejecting a stray label on a step. *(resolved)*
+- **`pattern` engine** — `Regex.IsMatch` against the YAML pattern; anchoring lives in the pattern itself (`^…$`). *(resolved)*
+- **`walk-guide` invocation** — on-demand by name (`/walk-guide <file>` → the subagent), not a doc-engine verb; the agent self-manages worktrees via `bash`. *(resolved)*

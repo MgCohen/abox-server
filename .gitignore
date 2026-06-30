@@ -19,6 +19,7 @@ obj/
 !.claude/agents/
 !.claude/commands/
 !.claude/workflows/
+!.claude/hooks/
 
 # Visual Studio per-user IDE state
 .vs/
