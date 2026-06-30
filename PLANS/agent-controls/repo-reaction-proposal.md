@@ -261,9 +261,10 @@ orchestrator runs, or in the thin built controller otherwise.
 
 ## Open questions (still iterating)
 
-1. **`.hook` action format.** `run:` command + stdin (recommended spine — max language
-   freedom) is enough for v1; `builtin:`/`agent:` are deferred sugar. Confirm we start
-   `run:`-only and that NL stays an action *kind*, never the dispatch mechanism.
+1. ~~**`.hook` action format.**~~ **Decided: `run:` command + stdin only for v1.** The
+   controller execs the command with the `ReactionEvent` on stdin — `run: docengine react`
+   *is* a type-safe C# reaction. `builtin:`/`agent:` are deferred opt-in kinds added on a
+   real second need; **NL is always an action kind, never the dispatch mechanism.**
 2. **Filter expressiveness.** `on:` (event kind, required) + `when:` (a small fixed set —
    `source`, `cwd` glob, `tool`). Resist a DSL; richer logic lives in the action, which
    reads the event and early-exits.
