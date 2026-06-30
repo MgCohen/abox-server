@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <Import Project="..\..\..\tests\TestProject.props" />
+
+  <PropertyGroup>
+    <RootNamespace>ABox.Governance.Hooks.Tests</RootNamespace>
+    <AssemblyName>ABox.Governance.Hooks.Tests</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="TestsSourceDir" Value="$(MSBuildProjectDirectory)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\tests\Harness\ABox.Tests.Harness.csproj" />
+    <ProjectReference Include="..\ABox.Hooks.csproj" />
+  </ItemGroup>
+
+</Project>

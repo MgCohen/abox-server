@@ -4,8 +4,9 @@
 > governance-owned **hooks layer**: a thin, provider-agnostic event *transport* feeds
 > a single governance *controller* that discovers declarative `.hook` files — which any
 > feature (doc-engine first) drops in its own folder, in any language, without caring how
-> the underlying provider hook fired. Produced 2026-06-30. Nothing is built behind this
-> yet — this is the shape we agree on first.
+> the underlying provider hook fired. Produced 2026-06-30. **Step 2 (the engine) is now
+> built** as the standalone `tools/hooks/` CLI (`abox-hooks`) — see Next steps; the
+> transport-generalization and first real `.hook` remain.
 
 ## Summary
 
@@ -298,8 +299,17 @@ orchestrator runs, or in the thin built controller otherwise.
 ## Next steps
 
 1. ~~Settle the open questions.~~ Done — Decisions 1–6 above are locked.
-2. Land the **contract + controller**: `HookEvent`/`HookKind`, a `.hook` parser,
-   and the discovery+dispatch loop that tails the stream — thin, no `.hook` files yet.
+2. ~~Land the **contract + controller**: `HookEvent`/`HookKind`, a `.hook` parser,
+   and the discovery+dispatch loop that tails the stream — thin, no `.hook` files yet.~~
+   **Done (per Decision-6 option A): `tools/hooks/` standalone CLI `abox-hooks`,** out of
+   `ABox.slnx` like `tools/doc-engine`, namespace `ABox.Governance.Hooks`. Ships the
+   contract (`HookEvent`/`HookKind`/`HookSource`/`HookMode`), the `.hook` parser +
+   closed `when:` matcher (`source`/`cwd glob`/`tool`), discovery (`HookCatalog`,
+   reports-and-skips a malformed `.hook`), `react` fan-out dispatch with the event on
+   stdin + per-hook timeout, and the `hooks.jsonl` tail + durable cursor
+   (`HookLog`/`HookCursor`/`HookController`, deferred-not-dropped on a torn trailing
+   line). 9 co-located Unit rules, green. **`gate` mode is modelled but not dispatched
+   here** — it rides the existing perm-shim per Decision 3.
 3. **Generalize `ClaudeHooks`** into the Claude installer behind the contract (Stop →
    `TurnEnded`), leaving the existing provider read intact.
 4. Add **doc-engine's first `.hook`** (the second real consumer that justifies the
