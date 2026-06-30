@@ -116,6 +116,12 @@ harness: ../../../../../tests/Harness/README.md
 ### ClaudeHooks.ReadFinalMessage with missing or malformed signal → returns null
 - **Why:** a half-written or garbage signal file must degrade to null rather than throw, so a racey or crashed run doesn't take the reader down with it.
 
+### ClaudeHooks.EmitTurnEnded with an opted-in project → appends a normalized TurnEnded line carrying the raw stop payload
+- **Why:** the repo-hooks transport is a jsonl wire line, not shared types — the producer must emit `kind`/`source`/`sessionId`/`cwd` plus the raw Stop payload so the controller can parse and dispatch it without depending on the provider.
+
+### ClaudeHooks.EmitTurnEnded with no .abox opt-in dir → emits nothing
+- **Why:** emission is opt-in per project (an `.abox/` dir), so a turn in a repo that wants no hooks must leave no `hooks.jsonl` behind rather than littering every working tree Claude touches.
+
 ### ClaudeHooks.Dispose → removes the temp artifacts it created
 - **Why:** the hook scatters settings/shim/signal files into temp; without cleanup on dispose, repeated runs leak files and stale state can bleed into later runs.
 

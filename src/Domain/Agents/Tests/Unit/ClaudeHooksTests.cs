@@ -135,6 +135,54 @@ public class ClaudeHooksTests
         Assert.Null(hook.ReadFinalMessage());
     }
 
+    [Rule("ClaudeHooks.EmitTurnEnded with an opted-in project → appends a normalized TurnEnded line carrying the raw stop payload")]
+    [Fact]
+    public void EmitTurnEnded_appends_a_normalized_line_when_the_project_opts_in()
+    {
+        using var hook = ClaudeHooks.Create();
+        File.WriteAllText(hook.SignalFile, "{\"last_assistant_message\":\"done\"}");
+
+        var projectDir = Directory.CreateTempSubdirectory("ra-emit-").FullName;
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(projectDir, ".abox"));
+
+            Assert.True(hook.EmitTurnEnded(projectDir, "sess-42"));
+
+            var line = File.ReadAllText(Path.Combine(projectDir, ".abox", "hooks.jsonl")).Trim();
+            using var doc = JsonDocument.Parse(line);
+            var root = doc.RootElement;
+            Assert.Equal("TurnEnded", root.GetProperty("kind").GetString());
+            Assert.Equal("Claude", root.GetProperty("source").GetString());
+            Assert.Equal("sess-42", root.GetProperty("sessionId").GetString());
+            Assert.Equal(projectDir, root.GetProperty("cwd").GetString());
+            Assert.Equal("done", root.GetProperty("raw").GetProperty("last_assistant_message").GetString());
+        }
+        finally
+        {
+            Directory.Delete(projectDir, recursive: true);
+        }
+    }
+
+    [Rule("ClaudeHooks.EmitTurnEnded with no .abox opt-in dir → emits nothing")]
+    [Fact]
+    public void EmitTurnEnded_is_a_noop_when_the_project_has_not_opted_in()
+    {
+        using var hook = ClaudeHooks.Create();
+        File.WriteAllText(hook.SignalFile, "{}");
+
+        var projectDir = Directory.CreateTempSubdirectory("ra-emit-none-").FullName;
+        try
+        {
+            Assert.False(hook.EmitTurnEnded(projectDir, "s"));
+            Assert.False(File.Exists(Path.Combine(projectDir, ".abox", "hooks.jsonl")));
+        }
+        finally
+        {
+            Directory.Delete(projectDir, recursive: true);
+        }
+    }
+
     [Rule("ClaudeHooks.Dispose → removes the temp artifacts it created")]
     [Fact]
     public void Dispose_removes_the_temp_artifacts()

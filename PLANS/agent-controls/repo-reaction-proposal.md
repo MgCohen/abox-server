@@ -310,8 +310,15 @@ orchestrator runs, or in the thin built controller otherwise.
    (`HookLog`/`HookCursor`/`HookController`, deferred-not-dropped on a torn trailing
    line). 9 co-located Unit rules, green. **`gate` mode is modelled but not dispatched
    here** — it rides the existing perm-shim per Decision 3.
-3. **Generalize `ClaudeHooks`** into the Claude installer behind the contract (Stop →
-   `TurnEnded`), leaving the existing provider read intact.
+3. ~~**Generalize `ClaudeHooks`** into the Claude installer behind the contract (Stop →
+   `TurnEnded`), leaving the existing provider read intact.~~ **Done — and the seam is
+   the wire, not shared types.** `ClaudeHooks.EmitTurnEnded` maps the raw Stop payload
+   onto a normalized `hooks.jsonl` line (`kind`/`source` as **wire strings**, not the
+   engine's enums), so the producer takes **no dependency on `tools/hooks/` and
+   duplicates no code** — the controller parses the strings back. Emission is **opt-in
+   per project** (an `.abox/` dir), so a turn never litters a repo that wants no hooks;
+   the provider's own direct Stop read is untouched. Proven end-to-end: a line in the
+   exact shape `EmitTurnEnded` writes is dispatched by `abox-hooks` to a `.hook`.
 4. Add **doc-engine's first `.hook`** (the second real consumer that justifies the
    abstraction) — `CommitLanded` → `docengine react` revalidates stale docs (NOTES.md
    punt #1).

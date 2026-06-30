@@ -81,6 +81,7 @@ public sealed class ClaudeProvider(ClaudeConfig config, IDecisionResolver resolv
 
         await session.SubmitAsync(request.Prompt, SubmitSettleMs, dct);
         await PumpUntilStopAsync(hook, dct);
+        hook.EmitTurnEnded(request.ProjectDir, sessionId);
 
         // Stop fired across the /session mount, so the final message + JSONL are on disk;
         // read them before dispose tears the box down (docker rm -f, oracle A10).
