@@ -82,6 +82,37 @@ public sealed class ClaudeHooks : IDisposable
         catch (JsonException) { return null; }
     }
 
+    // The dumb shim already wrote the raw Stop payload; here the host maps it onto the
+    // normalized hooks.jsonl wire line (the repo-hooks transport). Gated on the project
+    // opting in with an .abox/ dir, so a turn never litters a repo that wants no hooks.
+    // The kind/source are wire strings, not the engine's enums — the producer stays
+    // dependency-free; the controller parses them back.
+    public bool EmitTurnEnded(string projectDir, string sessionId)
+    {
+        var hooksDir = Path.Combine(projectDir, ".abox");
+        if (!HasFired || !Directory.Exists(hooksDir)) return false;
+
+        try
+        {
+            var raw = JsonNode.Parse(File.ReadAllText(SignalFile)) ?? new JsonObject();
+            var line = new JsonObject
+            {
+                ["kind"] = "TurnEnded",
+                ["source"] = "Claude",
+                ["sessionId"] = sessionId,
+                ["cwd"] = projectDir,
+                ["raw"] = raw,
+            };
+            File.AppendAllText(Path.Combine(hooksDir, "hooks.jsonl"), line.ToJsonString() + "\n");
+            return true;
+        }
+        catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException)
+        {
+            // A hooks-stream emit must never break the turn; the outcome is already on disk.
+            return false;
+        }
+    }
+
     public IReadOnlyList<PermissionRequest> DrainRequests()
     {
         if (PermissionDir is null) return [];

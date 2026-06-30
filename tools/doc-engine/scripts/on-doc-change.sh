@@ -1,27 +1,23 @@
 #!/bin/sh
-# Stop hook: on turn-end, act on every doc-engine instance that changed since we last ran —
-# committed OR uncommitted. The cloud flow commits mid-session, so an uncommitted-only diff
-# (`git diff HEAD`) would miss freshly-committed docs; we track a last-handled SHA instead, which
-# also keeps it fast (most turns change nothing → instant no-op, no `dotnet`).
+# Repo-hooks consumer: validate every doc-engine instance that changed since we last ran and
+# dispatch its onChange handler. Triggered by tools/doc-engine/on-doc-change.hook on TurnEnded /
+# CommitLanded — the repo-hooks controller owns the trigger; this script is pure doc-engine and
+# carries no knowledge of Claude Code or any provider. The repo-hooks event arrives on stdin and is
+# not needed (we recompute the changed set from git), so it is ignored.
 #
-# A doc-engine feature, not a guide one: any *.md with leading `docType` front matter is in scope.
 # Two jobs, both NON-BLOCKING (surface only; CI's Docs test is the hard backstop):
-#   1. Structural `docengine validate` — always, on each changed instance.
-#   2. `onChange` dispatch — run it when it is a deterministic script; an agent handler stays
+#   1. docengine check + docengine validate on each changed instance.
+#   2. onChange dispatch — run it when it is a deterministic script; an agent handler stays
 #      on-demand (`/walk-guide <doc>`), never auto-spawned from a hook (cost / headless / loops).
-#
-# Opt-in (per-user): `.claude/settings.json` is gitignored, so wire this in YOUR
-# `.claude/settings.local.json`:
-#   { "hooks": { "Stop": [ { "hooks": [
-#       { "type": "command", "command": "sh \"$CLAUDE_PROJECT_DIR/.claude/hooks/on-doc-change.sh\"" }
-#   ] } ] } }
 set -eu
 
 root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
 cd "$root"
 engine="tools/doc-engine"
-marker=".claude/.doc-onchange-state"
+marker="$(git rev-parse --git-dir)/abox-doc-onchange-state"
 
+# Track a last-handled SHA (committed OR uncommitted): the cloud flow commits mid-session, so an
+# uncommitted-only diff would miss freshly-committed docs.
 head=$(git rev-parse HEAD 2>/dev/null || true)
 last=$(cat "$marker" 2>/dev/null || true)
 if [ -n "$last" ] && git cat-file -e "$last" 2>/dev/null; then

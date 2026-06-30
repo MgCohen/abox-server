@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>ABox.Governance.Hooks</RootNamespace>
+    <AssemblyName>abox-hooks</AssemblyName>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <!-- The engine's co-located tests (Tests/) nest under this project dir; keep them out of the engine's own
+       default compile glob — they are a separate test assembly that references the engine, not part of it. -->
+  <ItemGroup>
+    <Compile Remove="Tests/**/*.cs" />
+  </ItemGroup>
+
+</Project>

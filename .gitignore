@@ -15,6 +15,7 @@ obj/
 # Shared project assets under these dirs are checked in; everything else
 # directly under .claude/ (settings.local.json, session state) stays ignored.
 .claude/*
+!.claude/settings.json
 !.claude/skills/
 !.claude/agents/
 !.claude/commands/
@@ -23,3 +24,6 @@ obj/
 
 # Visual Studio per-user IDE state
 .vs/
+
+# repo-hooks runtime stream + cursor (per-repo)
+.abox/

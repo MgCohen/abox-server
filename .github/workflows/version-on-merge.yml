@@ -1,0 +1,94 @@
+name: version-on-merge
+
+# On merge to main, derive the next ABox.Api version from what changed in the shipped wire contract
+# (the *.Api public surface) since the last release tag, then publish that version and tag it for
+# provenance. Self-contained: publishes with the per-run GITHUB_TOKEN — the same way
+# publish-contracts.yml does — so NO PAT and no standing credential. No contract change => no publish,
+# no tag. Manual tagging via publish-contracts.yml stays as the override; put [release:skip] in the
+# merge commit subject to suppress a run. Trigger it by hand (workflow_dispatch) for a dry run.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/Features/**/Api/**'   # a feature's shipped DTOs (new leaves auto-bundle via the wildcard)
+      - 'src/Api/**'               # the rollup itself
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Compute the version but do not publish or tag'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write   # push the provenance tag
+  packages: write   # publish to the GitHub Packages feed
+
+concurrency:
+  group: version-on-merge
+  cancel-in-progress: false
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0          # full history + tags for the baseline diff
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Honor [release:skip]
+        id: gate
+        run: |
+          if git log -1 --pretty=%B | grep -qiE '\[release:skip\]'; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::[release:skip] in the merge subject — no versioning this run."
+          fi
+
+      - name: Resolve last release tag
+        id: base
+        if: steps.gate.outputs.skip != 'true'
+        run: |
+          tag=$(git tag -l 'v*' --sort=-v:refname | head -n1)
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if [ -z "$tag" ]; then
+            echo "::notice::No v* tag yet — nothing to diff against. Seed a baseline tag by hand, then merges auto-version."
+          fi
+
+      - name: Build ABox.Api @ HEAD
+        if: steps.gate.outputs.skip != 'true' && steps.base.outputs.tag != ''
+        run: dotnet build src/Api/ABox.Api.csproj -c Release -o ./after
+
+      - name: Build ABox.Api @ baseline tag
+        if: steps.gate.outputs.skip != 'true' && steps.base.outputs.tag != ''
+        run: |
+          git worktree add --detach ../base "${{ steps.base.outputs.tag }}"
+          dotnet build ../base/src/Api/ABox.Api.csproj -c Release -o ./before
+
+      - name: Compute next version
+        id: ver
+        if: steps.gate.outputs.skip != 'true' && steps.base.outputs.tag != ''
+        run: |
+          dotnet build tools/abox-version/ABox.Version.csproj -c Release -o ./toolbin
+          dotnet ./toolbin/abox-version.dll next \
+            --before ./before --after ./after --current "${{ steps.base.outputs.tag }}"
+
+      - name: Pack, publish, tag
+        if: steps.ver.outputs.publish == 'true' && !(github.event_name == 'workflow_dispatch' && inputs.dry_run)
+        env:
+          V: ${{ steps.ver.outputs.version }}
+          LEVEL: ${{ steps.ver.outputs.level }}
+        run: |
+          # MinVerVersionOverride wins over MinVer's tag-height derivation, so the package carries the
+          # contract-derived version even though the tag does not exist yet at pack time.
+          dotnet pack src/Api/ABox.Api.csproj -c Release -o ./nupkg -p:MinVerVersionOverride="$V"
+          dotnet nuget push "./nupkg/*.nupkg" \
+            --source "https://nuget.pkg.github.com/MgCohen/index.json" \
+            --api-key "${{ secrets.GITHUB_TOKEN }}" --skip-duplicate
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v$V" -m "ABox.Api v$V (auto $LEVEL — contract delta at ${{ github.sha }})"
+          git push origin "v$V"
+          echo "::notice::Published ABox.Api v$V ($LEVEL)."

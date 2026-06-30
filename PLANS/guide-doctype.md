@@ -261,6 +261,15 @@ thing that "runs" a guide — it reads it and walks it. Two gates, by cost and b
 `claude`-invoking, worktree-managing `run` into the zero-dep, unit-tested engine would violate its
 charter. The two gates split by layer:
 
+> **Superseded (repo-hooks integration).** The bespoke `.claude/hooks/on-doc-change.sh` Stop hook
+> below has been **replaced by repo-hooks** (`tools/hooks`): doc-engine now ships
+> `tools/doc-engine/on-doc-change.hook` (`on: [TurnEnded, CommitLanded]` →
+> `scripts/on-doc-change.sh`), and repo-hooks owns the trigger — `abox-hooks install-claude` wires the
+> Claude Code Stop hook, `install-git` the git post-commit. doc-engine keeps `onChange` + `docengine
+> onchange` (declarative) and carries no Claude Code knowledge. The dispatch logic below (SHA cursor,
+> validate-then-onChange, script-runs / agent-on-demand) is preserved verbatim in the new handler. The
+> description below is kept for the rationale.
+
 - **Always-on gate — a Claude Code Stop hook** (`.claude/hooks/on-doc-change.sh`, committed; wired
   **per-user** in `settings.local.json` since `.claude/settings.json` is gitignored project state). A
   **doc-engine** gate, not a guide one: on turn-end it finds every `*.md` instance changed since it
