@@ -102,12 +102,47 @@ thing to get right.**
 
 ---
 
+## Integration slice — the five compose end-to-end (`integration-slice/`)
+
+Beyond the isolated probes: one real `AddItemToCart`-style vertical slice, authored as a (throwaway,
+**provisional**) recipe and **emitted to owned multi-file C# that builds and runs**. Mint (A) + wire (B)
++ render (D) + glue (position 4) + emit/forward-ref (C/E) all meet in one flow. Real run:
+
+```
+PROVE: PASS  (live didn't leak; wiring registered Repo<User> + BookDetails; CartItem minted;
+              detachment + re-emit override all PASS)
+AddItemToCart -> user ada@example.com now has 1 cart item(s)
+  item: 2 x Domain-Driven Design by Eric Evans @ 49.99
+wiring is load-bearing -> Wiring gap: a handler asks for BookDetails but no query produces it.
+```
+
+**They compose — they don't fight — under one hard constraint and one ordering rule:**
+- **Keystone: a single shared compilation.** The probes each owned their own compilation; the slice
+  forces mint/wire/render/forward-ref to resolve against **one `ResolutionModel`** built over catalog +
+  minted source. That shared symbol table is what makes minted `CartItem` and catalog `Repo<User>`
+  render identically and resolve as `<T>` in the same file.
+- **Ordering is required:** `mint → resolve → {wire, render} → assemble`. Mint must run *before* the
+  resolution model is built. You **cannot** do mint+wire+render in one unordered generator pass — but a
+  small fixed ordered pass-set does it, and the in-build generators (A/B/E) re-expressed cleanly as
+  emit-tool passes (C/D style).
+
+**Friction the isolated probes hid:**
+1. **Implicit-usings gap** — `ParseText` compilations don't apply `ImplicitUsings`, so author-written
+   short names (`"Guid"`) errored until the resolver explicitly opened the catalog/feature namespaces.
+   A real emit needs a recipe-level **open-namespaces config**.
+2. **⚠️ Glue is untyped at authoring** — the glue body was authored as a **`string`**, so its markers
+   and minted-type uses are validated only at the *emitted* feature's compile, never while authoring.
+   This is the sharpest tension with the **"type system is the schema"** invariant, and it's the key
+   open *design* question (vs §8 #10's typed-lambda-leaf path). **Not a tech blocker — a decision.**
+3. **Mint renders twice** (bootstrap + real) — minting and rendering are entangled in the pass order.
+
 ## What this means
 
 The five mechanics the model leans on — **mint-a-type-from-a-use-site**, **read-markers-additively**,
 **live/emit detachment**, **semantic-model type rendering**, and **forward-ref resolution** — are no
-longer assumptions; they run. The recalibrated invariants ("source-generation back-fills inline",
-"minimal dialect — in the wiring", "owned output via explicit emit") have a working floor under them.
+longer assumptions; they run, **and they compose into one emitted feature** (`integration-slice/`). The
+recalibrated invariants ("source-generation back-fills inline", "minimal dialect — in the wiring",
+"owned output via explicit emit") have a working floor under them.
 
 ## Decision recorded — adopt semantic-model generation (probes D + E)
 
@@ -140,5 +175,13 @@ approach. Recorded because both probes came back fully positive:
 4. **Emit-target config + path resolution** (C) — a real config loader, and the `artifacts/`/base-dir
    trap, for a non-toy emit.
 5. **Reconciliation on re-emit** (C) — pulling manual edits back, or detecting drift — future scope.
+6. **⚠️ Glue typing (the one real *design* question, from the slice)** — the integration slice authored
+   the position-4 glue as a `string`, which loses authoring-time type-checking and collides with "type
+   system is the schema." The alternative is §8 #10's typed-lambda-leaf path (lower a real lambda to
+   source). This is a decision to make before the dialect is fixed, not a tech unknown.
+7. **Open-namespaces config + shared compilation + pass ordering** (slice) — emit must build one shared
+   `Compilation` with recipe-declared open namespaces, and run a fixed `mint → resolve → {wire,render}
+   → assemble` order.
 
-None of these contradicts the model; each is a known piece of the next build.
+None of these contradicts the model; each is a known piece of the next build. Item 6 is the one that
+feeds the *dialect* decision directly.
