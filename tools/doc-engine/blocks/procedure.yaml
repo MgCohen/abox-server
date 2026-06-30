@@ -2,16 +2,13 @@ type: procedure
 collection: true
 group: Procedures
 composes: [step]
-description: One self-contained how-to within a guide — context, ordered steps, and a stated, observable outcome.
+description: One self-contained how-to within a guide — context, ordered steps, and a stated outcome a reader can recognize.
 rubric:
   title-gerund: The title names the activity as a gerund phrase ("Adding a hook"), not an imperative ("Add a hook").
-  outcome-stated: States a concrete end result a reader can recognize when it is reached.
-  validation-observable: Validation describes a concrete, observable way to confirm the Outcome.
+  outcome-prose: Outcome is one to three lines of prose a human or agent can act on — what you end with and how you'd know it worked; it may name a command to run, not a bare file path.
   steps-present: Has at least one step.
 labels:
   Context:
-    required: true
-  Validation:
     required: true
   Outcome:
     required: true

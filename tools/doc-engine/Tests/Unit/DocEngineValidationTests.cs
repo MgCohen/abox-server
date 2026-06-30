@@ -51,10 +51,13 @@ public sealed class DocEngineValidationTests
         "## Summary", "A how-to.", "",
         "## Procedures",
         "### Doing a thing",
-        "- **Context:** c.",
+        "**Context:** c.",
+        "",
         "#### 1. First step", "- **Condition:** only sometimes", "Do the first thing.",
         "#### 2. Second step", "Do the second thing.",
-        "- **Validation:** v.", "- **Outcome:** o.",
+        "",
+        "---",
+        "**Outcome:** o.",
     };
 
     [Rule("DocValidator.Validate → no errors for a guide whose procedures nest conforming steps")]
@@ -66,7 +69,7 @@ public sealed class DocEngineValidationTests
     [Fact]
     public void Validate_routes_a_trailing_action_label_to_the_action()
     {
-        var noOutcome = NestedGuide.Where(l => l != "- **Outcome:** o.").ToArray();
+        var noOutcome = NestedGuide.Where(l => l != "**Outcome:** o.").ToArray();
 
         Assert.Contains(Validate(noOutcome), e => e.Contains("missing required label '**Outcome:**'", StringComparison.Ordinal));
     }
@@ -78,6 +81,24 @@ public sealed class DocEngineValidationTests
         var lines = NestedGuide.Select(l => l == "#### 1. First step" ? "#### 1.X First step" : l).ToArray();
 
         Assert.Contains(Validate(lines), e => e.Contains("does not match", StringComparison.Ordinal));
+    }
+
+    [Rule("DocValidator.Validate → flags a step ordinal written with a non-canonical separator")]
+    [Fact]
+    public void Validate_rejects_a_non_canonical_ordinal_separator()
+    {
+        var lines = NestedGuide.Select(l => l == "#### 1. First step" ? "#### 1) First step" : l).ToArray();
+
+        Assert.Contains(Validate(lines), e => e.Contains("does not match", StringComparison.Ordinal));
+    }
+
+    [Rule("DocValidator.Validate → a bare **Label:** lead-in whose name is undeclared stays prose, not an unexpected label")]
+    [Fact]
+    public void Validate_treats_an_undeclared_bare_lead_in_as_prose()
+    {
+        var lines = NestedGuide.Select(l => l == "Do the first thing." ? "**Note:** do the first thing." : l).ToArray();
+
+        Assert.Empty(Validate(lines));
     }
 
     [Rule("DocValidator.Validate → flags duplicate step ids within one procedure")]

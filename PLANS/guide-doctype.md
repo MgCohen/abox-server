@@ -1,11 +1,15 @@
 # Plan — `guide` doc type, nested-block composition, and agent-walkable how-tos
 
 > **Amended by [ADR 0017](../design/adr/0017-guide-procedures-and-heading-step-ids.md).** After
-> reading guides raw, two shapes below changed: the how-to block `action` is now **`procedure`**
-> (group `## Procedures`), and a step's id is the **visible leading ordinal of its `#### N. <title>`
+> reading guides raw, several shapes below changed: the how-to block `action` is now **`procedure`**
+> (group `## Procedures`); a step's id is the **visible leading ordinal of its `#### N. <title>`
 > heading** (read via the `inHeading` attr param) instead of an invisible `<!-- id: N -->` comment
-> (the `hidden` param is retired). The `procedure` block also gains a `title-gerund` rubric. Read
-> the `action`/`hidden`/`<!-- id -->` details below as the original design; ADR 0017 is current.
+> (the `hidden` param is retired); **`Validation` and `Outcome` are merged into one prose `Outcome`**
+> label (set off by a `---`); **labels may be bare `**Label:**` lead-ins**, not only `- **bullets**`,
+> so `Context` reads as a preamble; and `summary` gains an `on-subject` rubric (the "procedures are an
+> independent menu" framing moved into the `guide` doctype `description`). `procedure` also gains a
+> `title-gerund` rubric. Read the `action` / `hidden` / `<!-- id -->` / separate-`Validation` details
+> below as the original design; ADR 0017 is current.
 
 ## Context
 

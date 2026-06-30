@@ -41,12 +41,14 @@ heading.** Concretely, amending 0016:
 - **A step's id lives in the heading.** A step is authored `#### N. <imperative>`
   (e.g. `#### 1. Choose the event kind`); the leading ordinal `N` / `N.M` / `N.a` is the
   step's `id`. The parser splits the heading into (id, title): the first whitespace-delimited
-  token, trailing `.`/`)` stripped, is the id when it begins with a digit; the rest is the
-  title. All three id guarantees from 0016 hold unchanged — `pattern` grammar, required,
-  unique within the procedure — and the validator still owns the grammar check, so an
-  off-grammar ordinal (`1.X`) fails `pattern` exactly as before. Putting the ordinal in the
-  heading makes it **mandatory structure**: a `#### ` step with no leading number leaves the
-  required `id` unset and fails `validate`.
+  token (split on any Unicode whitespace, so a copy-pasted non-breaking space does not silently
+  break the parse), trailing `.` stripped, is the id when it begins with a digit; the rest is the
+  title. Only `.` is stripped, so a non-canonical separator (`#### 1) Title`) yields id `1)` and
+  fails `pattern` loudly rather than being silently accepted. All three id guarantees from 0016
+  hold unchanged — `pattern` grammar, required, unique within the procedure — and the validator
+  still owns the grammar check, so an off-grammar ordinal (`1.X`) fails `pattern` exactly as before.
+  Putting the ordinal in the heading makes it **mandatory structure**: a `#### ` step with no leading
+  number leaves the required `id` unset and fails `validate` with a "heading must start with an ordinal" error.
 - **`inHeading` replaces `hidden`.** The attr placement param introduced by 0016 to render
   an attr as an invisible comment is retired and replaced by `inHeading: true`, which reads
   the attr from the member's heading ordinal. `hidden` had exactly one consumer (`step.id`);
@@ -56,6 +58,22 @@ heading.** Concretely, amending 0016:
 - **A `title-gerund` rubric on `procedure`.** The advisory (judge-graded) rubric gains
   `title-gerund`: the title names the activity as a gerund phrase, not an imperative. Steps
   keep their `imperative` rubric. This is guidance, not a `[det]` check.
+- **One `Outcome` label, merged from `Validation` + `Outcome`.** A how-to written as prose does
+  not need a separate observable-check label: following the steps *is* the validation, and a
+  confirming command can be the last step or named inline. So `procedure` carries a single required
+  `Outcome` — one to three lines of prose (human- and agent-readable, not deterministic) stating what
+  you end with and how you'd know; an `outcome-prose` rubric guides it and discourages a bare file
+  path. The `walk-guide` agent reads that `Outcome` as the thing to confirm.
+- **Labels read as bare lead-ins, not just bullets.** A `- **Label:**` bullet and a bare
+  `**Label:**` lead-in are both labels, so a procedure's `Context` reads as a preamble paragraph and
+  its `Outcome` as a closing paragraph (set off by a `---` rule) instead of bullets that a neighbouring
+  `####` heading visually outranks. The bare form counts **only when its name is declared**, so ordinary
+  bold-lead prose (`**Note:** …`) stays prose; the bullet form remains the closed set.
+- **A `summary` `on-subject` rubric.** Summaries were drifting into explaining how the guide *format*
+  works ("procedures are independent", "every procedure ends in a command") — identical boilerplate
+  across instances. The `summary` block gains `on-subject`: stay on the document's subject, never explain
+  the doc type or its sections. The "procedures are an independent menu" framing moves once into the
+  `guide` doctype's `description`.
 
 **Unchanged from 0016:** one level of nesting (`procedure → step`), label routing by
 declaration, the `pattern` attr param, the `composes` mechanism and its `references`
@@ -64,7 +82,7 @@ constraint, and that the guide's prose is read (not executed) by a human or agen
 ## Consequences
 
 - A guide reads correctly raw: numbered steps are visibly distinct from the bracketing
-  Context/Validation/Outcome labels, and each step's order is on the page, not in a comment.
+  Context preamble and Outcome closing labels, and each step's order is on the page, not in a comment.
 - The engine carries one attr-placement param (`inHeading`), down from the momentarily-dead
   `hidden`; the "name nothing special" property holds — the parser splits a heading ordinal
   generically, the validator owns the grammar via `pattern`.

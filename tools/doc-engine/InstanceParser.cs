@@ -8,7 +8,7 @@ public static class InstanceParser
     private static readonly Regex H3 = new(@"^###\s+(.+?)\s*$");
     private static readonly Regex H4 = new(@"^####\s+(.+?)\s*$");
     private static readonly Regex AttrRe = new(@"^([\w-]+):\s*(.+?)\s*$");
-    private static readonly Regex LabelBulletRe = new(@"^-\s+\*\*(?<label>[^:*]+):\*\*");
+    private static readonly Regex LabelBulletRe = new(@"^-?\s*\*\*(?<label>[^:*]+):\*\*");
 
     public static IReadOnlyDictionary<string, object?> ParseFrontmatter(IReadOnlyList<string> lines)
     {
@@ -171,9 +171,11 @@ public static class InstanceParser
 
     private static (string Id, string Title)? SplitOrdinal(string heading)
     {
-        var sp = heading.IndexOf(' ');
+        var sp = -1;
+        for (var i = 0; i < heading.Length; i++)
+            if (char.IsWhiteSpace(heading[i])) { sp = i; break; }
         if (sp <= 0) return null;
-        var token = heading[..sp].TrimEnd('.', ')');
+        var token = heading[..sp].TrimEnd('.');
         if (token.Length == 0 || !char.IsDigit(token[0])) return null;
         return (token, heading[(sp + 1)..].Trim());
     }

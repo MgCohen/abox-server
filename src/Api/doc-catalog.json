@@ -232,18 +232,14 @@
       "composes": [
         "step"
       ],
-      "description": "One self-contained how-to within a guide \u2014 context, ordered steps, and a stated, observable outcome.",
+      "description": "One self-contained how-to within a guide \u2014 context, ordered steps, and a stated outcome a reader can recognize.",
       "rubric": {
         "title-gerund": "The title names the activity as a gerund phrase (\u0022Adding a hook\u0022), not an imperative (\u0022Add a hook\u0022).",
-        "outcome-stated": "States a concrete end result a reader can recognize when it is reached.",
-        "validation-observable": "Validation describes a concrete, observable way to confirm the Outcome.",
+        "outcome-prose": "Outcome is one to three lines of prose a human or agent can act on \u2014 what you end with and how you\u0027d know it worked; it may name a command to run, not a bare file path.",
         "steps-present": "Has at least one step."
       },
       "labels": {
         "Context": {
-          "required": "true"
-        },
-        "Validation": {
           "required": "true"
         },
         "Outcome": {
@@ -351,7 +347,8 @@
       "rubric": {
         "outcome-first": "Outcome-first \u2014 state the objective and what \u0022done\u0022 means, concretely.",
         "tight": "One tight paragraph of real prose, not a bullet skeleton or a wall.",
-        "standalone": "Understandable with no prior context."
+        "standalone": "Understandable with no prior context.",
+        "on-subject": "Stays on the document\u0027s subject \u2014 what it is and what it helps you do; never explains how the doc type, its sections, or the format work."
       },
       "body": {
         "type": "markdown"
@@ -410,7 +407,7 @@
     },
     "guide": {
       "docType": "guide",
-      "description": "A how-to \u2014 independent procedures, each with context, ordered steps, and a stated, observable outcome, read by a human or an agent.",
+      "description": "A how-to whose procedures are an independent menu \u2014 start from whichever matches your task; each carries context, ordered steps, and a stated outcome, read by a human or an agent.",
       "blocks": [
         "summary",
         "procedure",
@@ -422,8 +419,7 @@
       ],
       "rubric": {
         "coverage": "The procedures cover the distinct tasks a reader comes to this guide to perform.",
-        "outcome-each": "Every procedure states a concrete, recognizable outcome.",
-        "validation-each": "Every procedure gives an observable way to confirm its outcome.",
+        "outcome-each": "Every procedure states a concrete, recognizable outcome the reader can confirm.",
         "steps-concrete": "Steps are concrete imperative instructions, not vague guidance.",
         "mentions-resolve": "A step that mentions another procedure\u0027s step refers to one that exists.",
         "one-subject": "The guide stays on one subject; unrelated tasks belong in another guide."
