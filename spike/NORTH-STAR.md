@@ -154,7 +154,9 @@ unmistakably *on the north-star path* rather than a toy.
 
 1. **Unit = Component** (Model/Service/Repo/API/DI); **Feature = composition + glue**. Granularity
    flexible — a whole-feature recipe is fine when the pattern is standard. *(May revisit as we go.)*
-2. **Recipe = class** (named, param-schema'd, wrapping a node tree); the **snippet stays a method**.
+2. **Recipe = any node** — the typed tree itself is the recipe; there is *no* separate wrapper
+   class (the `IRecipe`/wrapper was built at M2 and removed as premature — §8 #12). The **snippet
+   stays a method**. *(Supersedes the earlier "recipe = class" decision.)*
 3. **emit-new first**; **merge-into-existing** after, but designed-for from now.
 
 ## Guardrails (unchanged)
