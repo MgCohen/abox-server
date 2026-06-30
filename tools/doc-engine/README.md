@@ -87,7 +87,10 @@ The data root is found by walking up from the working directory for
 ## Instance syntax
 
 A leading `---` YAML block is the doc's front matter — visible, validated against
-the doctype's `attrs`. Singleton blocks are top-level; collection blocks grouped:
+the doctype's `attrs`. Any doc may also carry an optional **`onChange`** — a universal
+handler pointer (a relative path under `.claude/agents`, `.claude/hooks`, or `scripts/`)
+the engine validates but never runs; a dispatcher reads it via `docengine onchange <doc>`.
+Singleton blocks are top-level; collection blocks grouped:
 
 ```md
 ---

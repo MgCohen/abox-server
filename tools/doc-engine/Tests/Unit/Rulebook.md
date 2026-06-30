@@ -46,6 +46,11 @@ harness: ../../../../tests/Harness/README.md
   empty how-to and must fail; this per-parent required-child rule is distinct from the group-emptiness rule and
   must hold at each composed level.
 
+### DocValidator.Validate → flags an onChange path outside the allowlisted roots
+- **Why:** `onChange` is a universal optional handler any doc may declare, and the engine validates the pointer
+  (not its execution): a path that escapes the runnable roots (`.claude/agents`, `.claude/hooks`, `scripts/`) or
+  contains `..` must fail, so a doc can never aim its change-handler at an arbitrary executable.
+
 ### SchemaChecker.Run → no errors for the shipped catalog
 - **Why:** the catalog the whole repo validates against must itself conform to the meta-schema; a non-vacuous
   pass over the real `_schema`/`kinds`/`blocks`/`doctypes` proves the checker does real work and the catalog is sound.

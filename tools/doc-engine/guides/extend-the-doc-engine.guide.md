@@ -1,5 +1,6 @@
 ---
 docType: guide
+onChange: .claude/agents/walk-guide.md
 ---
 
 ## Summary

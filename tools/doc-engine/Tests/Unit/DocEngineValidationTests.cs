@@ -98,6 +98,16 @@ public sealed class DocEngineValidationTests
         Assert.Contains(Validate(lines), e => e.Contains("requires at least one step", StringComparison.Ordinal));
     }
 
+    [Rule("DocValidator.Validate → flags an onChange path outside the allowlisted roots")]
+    [Fact]
+    public void Validate_rejects_an_onchange_outside_the_allowlist()
+    {
+        var lines = NestedGuide.ToList();
+        lines.Insert(2, "onChange: /etc/evil.sh");
+
+        Assert.Contains(Validate(lines.ToArray()), e => e.Contains("onChange", StringComparison.Ordinal));
+    }
+
     [Rule("SchemaChecker.Run → no errors for the shipped catalog")]
     [Fact]
     public void SchemaChecker_passes_the_shipped_catalog() =>

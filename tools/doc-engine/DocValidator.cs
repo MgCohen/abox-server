@@ -5,6 +5,7 @@ namespace ABox.DocEngine;
 public static class DocValidator
 {
     private static readonly Regex LabelBullet = new(@"^-\s+\*\*(?<label>[^:*]+):\*\*");
+    private static readonly Regex OnChange = new(@"^(\.claude/(agents|hooks)|scripts)/[A-Za-z0-9._/-]+$");
 
     private static HashSet<string> LabelsIn(string body)
     {
@@ -67,6 +68,12 @@ public static class DocValidator
             if (fm.ContainsKey(an) && asp.Type == "enum" && (fav is null || !asp.Values.Contains(fav)))
                 errs.Add($"doc: front-matter {an}='{fav}' not in [{string.Join(", ", asp.Values)}]");
         }
+
+        // onChange is a universal optional handler any doc may declare; the engine validates the
+        // pointer (a relative path under a runnable root) but never executes it — a dispatcher does.
+        var onChange = Yaml.AsString(fm.GetValueOrDefault("onChange"));
+        if (onChange is not null && (onChange.Contains("..", StringComparison.Ordinal) || !OnChange.IsMatch(onChange)))
+            errs.Add($"doc: onChange '{onChange}' must be a relative path under .claude/agents, .claude/hooks, or scripts/");
         return errs;
     }
 
