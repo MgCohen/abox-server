@@ -1,3 +1,5 @@
+> **PARKED EXPLORATION** — paused, not legacy. Anchor + active direction: [README.md](README.md) → *Invariants* + *Document map*. Resume when this thread is picked back up.
+
 # Project Activity Overview — requirements → tasks (method test #3)
 
 > Third test of the decomposition method (`decomposition-method.md`), on a **read-only / aggregation**

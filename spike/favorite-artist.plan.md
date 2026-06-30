@@ -1,3 +1,5 @@
+> **PARKED EXPLORATION** — paused, not legacy. Anchor + active direction: [README.md](README.md) → *Invariants* + *Document map*. Resume when this thread is picked back up.
+
 ---
 docType: feature-plan
 status: approved

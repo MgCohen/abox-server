@@ -1,3 +1,5 @@
+> **PARKED EXPLORATION** — paused, not legacy. Anchor + active direction: [README.md](README.md) → *Invariants* + *Document map*. Resume when this thread is picked back up.
+
 # Scheduled Runs — breakdown at the TASK (work-unit) altitude
 
 > Third run on [`scheduled-runs.md`](scheduled-runs.md). The technical run

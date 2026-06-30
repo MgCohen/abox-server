@@ -1,5 +1,8 @@
 # Flow Graphs — architecture-first extraction (RiverBooks)
 
+> **Active thread** under `README.md` → *Invariants*. This is where the architecture-first pass
+> lives; it feeds `authoring-dialects.md` and, through it, the invariants.
+
 > **Why this doc.** A different angle on the rebuild: instead of starting from
 > templates/recipes, start from **architecture**. Take a real, well-structured
 > reference codebase, draw the *logic flows* of a handful of feature slices the way

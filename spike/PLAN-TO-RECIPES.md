@@ -1,3 +1,5 @@
+> **PARKED EXPLORATION** — paused, not legacy. Anchor + active direction: [README.md](README.md) → *Invariants* + *Document map*. Resume when this thread is picked back up.
+
 # Spike — Plan → Breakdown → Recipes (the middle)
 
 > Branch `claude/stacked-pr-from-109-z7u4th`, stacked on #109.

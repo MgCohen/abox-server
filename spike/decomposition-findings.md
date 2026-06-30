@@ -1,3 +1,5 @@
+> **PARKED EXPLORATION** — paused, not legacy. Anchor + active direction: [README.md](README.md) → *Invariants* + *Document map*. Resume when this thread is picked back up.
+
 # Decomposition — Findings
 
 > Durable conclusions from the prompt→recipe exploration (the "other end" pass). Plain notes, **not** a

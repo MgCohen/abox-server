@@ -1,3 +1,5 @@
+> **PARKED EXPLORATION** — paused, not legacy. Anchor + active direction: [README.md](README.md) → *Invariants* + *Document map*. Resume when this thread is picked back up.
+
 # Decomposition — Tasks & open threads
 
 > What's open and what's next for the prompt→recipe middle, so we don't lose context. Plain notes,

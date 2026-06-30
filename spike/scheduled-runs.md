@@ -1,3 +1,5 @@
+> **PARKED EXPLORATION** — paused, not legacy. Anchor + active direction: [README.md](README.md) → *Invariants* + *Document map*. Resume when this thread is picked back up.
+
 # Scheduled Runs — feature plan (intent only, no phases)
 
 > A deliberately **un-decomposed** plan: intent, behaviour, decisions, and constraints — **no phases,

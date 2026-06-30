@@ -1,3 +1,5 @@
+> **PARKED EXPLORATION** — paused, not legacy. Anchor + active direction: [README.md](README.md) → *Invariants* + *Document map*. Resume when this thread is picked back up.
+
 # Decomposition Method (living)
 
 > The canonical statement of how we turn a plan into tasks. **Living — update as we learn**; supersedes

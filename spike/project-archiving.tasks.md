@@ -1,3 +1,5 @@
+> **PARKED EXPLORATION** — paused, not legacy. Anchor + active direction: [README.md](README.md) → *Invariants* + *Document map*. Resume when this thread is picked back up.
+
 # Project Archiving — requirements → tasks (method test #2)
 
 > Second test of the decomposition method (`decomposition-method.md`) on a **modify-existing** feature

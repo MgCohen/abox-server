@@ -1,3 +1,5 @@
+> **PARKED EXPLORATION** — paused, not legacy. Anchor + active direction: [README.md](README.md) → *Invariants* + *Document map*. Resume when this thread is picked back up.
+
 # Decomposition — the full worked instance (Projects)
 
 > The middle made **concrete** end-to-end on the Projects ground-truth pair: the complete task tree, the

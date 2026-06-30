@@ -9,9 +9,48 @@ This document is written to be **cold-readable**: you should be able to understa
 the whole idea, why it's shaped the way it is, and what we're building, without
 having seen the conversation that produced it.
 
-> **Two follow-on passes branch off this core:** `BUILDING-STYLE.md` explores how a recipe is
-> *authored* (the recipe → code direction), and `PROMPT-DECOMPOSITION.md` explores the **other end** —
-> how a user's intent becomes a recipe in the first place (the intent → recipe direction).
+## Invariants — the anchor (read this first)
+
+These are the properties the whole effort must hold. Everything else (which dialect, which
+milestone, which reference) is detail that serves them. Sharpened from §1's original constraint
+table after the architecture-first pass (`flow-graphs.md` → `authoring-dialects.md`).
+
+- **Structured.** A feature is *composed* from pre-built components, not free-authored. The shape
+  is enforced by the catalog — you can only wire what exists.
+- **Type-safe.** Illegal compositions don't compile. The type system *is* the schema — no JSON, no
+  runtime validator, no "looks right."
+- **Deterministic.** Same input → same output, byte-for-byte. No model in the generation loop.
+- **Minimal dialect.** The wiring an agent emits is a small, regular, unambiguous vocabulary — few
+  forms, no dialect *choice*. Optimized so an agent emits it reliably, not for human prose.
+- **Source-generation back-fills inline.** The author declares a need at the use-site (e.g.
+  `new CreateRecord("X")`, `scope.Get<T>`) and the generator mints the required type / DI / wiring.
+  Any required type can be created in line.
+- **Optimized for agent delivery.** The audience is an *agent composing*, not a human reading the
+  recipe. **The recipe is a tool; the generated output is the artifact** that gets read, reviewed,
+  tested, owned. The recipe need not follow the product's ADRs/standards — **the output must.**
+- **Owned output.** Generated code is normal, committed, hand-editable `.cs`. Not invisible weaving.
+- **Components carry the standards; custom logic is the slotted exception.** The hard standards live
+  in the components. The agent writes only the small custom logic in the middle — itself usually a
+  standardized shape (a query/check where only the variables and the predicate change).
+- **Ratchet growth (build-once-then-reuse).** No speculative abstraction. When we hit something not
+  yet built, we build it once, clean it into a component, and it is reusable forever. The library
+  grows by harvesting *real* recurring need — that is YAGNI as a growth model.
+- **The LLM never writes code.** It produces judgment — plan, breakdown, *selection* — and every line
+  of the feature comes out of the deterministic layer. Illegal code is *unrepresentable*, not discouraged.
+
+## Document map — active vs parked
+
+One north star, explored from several entry points. **Parked ≠ legacy** — paused, resumable threads.
+
+| State | Docs | What it is |
+|---|---|---|
+| **Anchor** | `README.md` (this), `NORTH-STAR.md` | the invariants + the `Intent→…→Feature` vision/roadmap |
+| **Active** | `flow-graphs.md`, `authoring-dialects.md` | architecture-first thread: RiverBooks flows → motifs → the authoring surface that serves the invariants |
+| **Parked — mechanism (recipe→code)** | `PHASE-2`, `DECLARATION-TIER`, `BUILDING-STYLE` + `src/ gen/ out/ tests/` | proved the lowering mechanism bottom-up; `authoring-dialects.md` supersedes `BUILDING-STYLE`'s authoring pass |
+| **Parked — intent→recipe (the other end)** | `PROMPT-DECOMPOSITION`, `PLAN-TO-RECIPES`, `decomposition-*`, `scheduled-runs.*`, `project-*`, `projects-*`, `favorite-artist.plan` | how intent becomes a recipe (decomposition) — a different axis |
+
+**Working rule: enrich the anchor; do not spawn sibling docs.** New thinking folds into the active
+docs or the invariants above.
 
 > **Status — Steps 1 & 2 built and passing.**
 > - **Step 1** (`spike/src/`): `dotnet run` generates `spike/out/ScriptData.cs`,
@@ -45,7 +84,8 @@ We want a system where:
 - The system **merges them into a single, coherent piece of real C# code** —
   e.g. *a loop that sums the indices*.
 
-Hard constraints (these are the whole point — drop any one and the design changes):
+Hard constraints (these are the whole point — drop any one and the design changes). *The
+canonical, sharpened list is the **Invariants** block up top; this is the original framing:*
 
 | Constraint | Meaning |
 |---|---|

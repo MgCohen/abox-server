@@ -1,3 +1,5 @@
+> **PARKED EXPLORATION** — paused, not legacy. Anchor + active direction: [README.md](README.md) → *Invariants* + *Document map*. Resume when this thread is picked back up.
+
 # Spike — Declaration Tier (M1)
 
 > Branch `claude/csharp-snippet-merge-decl`, stacked on the building-style PR (#109).

@@ -1,3 +1,5 @@
+> **PARKED EXPLORATION** — paused, not legacy. Anchor + active direction: [README.md](README.md) → *Invariants* + *Document map*. Resume when this thread is picked back up.
+
 # Project Activity Overview — feature plan (intent only, no phases)
 
 > Third test feature for the decomposition method. Chosen to be **structurally different again**: a

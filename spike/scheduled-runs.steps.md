@@ -1,3 +1,5 @@
+> **PARKED EXPLORATION** — paused, not legacy. Anchor + active direction: [README.md](README.md) → *Invariants* + *Document map*. Resume when this thread is picked back up.
+
 # Scheduled Runs — breakdown (steps)
 
 > Output of the breakdown loop run on [`scheduled-runs.md`](scheduled-runs.md). **One section per round,

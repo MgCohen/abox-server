@@ -1,5 +1,10 @@
 # Authoring dialects — 4 patterns × 5 dialects
 
+> **Active thread** under `README.md` → *Invariants*. This is the authoring-surface exploration
+> that serves them; it supersedes `BUILDING-STYLE.md`'s authoring pass. Read the invariants first —
+> the goal here is the *most regular, least ambiguous* wiring an agent can emit (minimal dialect),
+> not a surface for humans to enjoy. The recipe is a tool; the generated output is the owned artifact.
+
 Brainstorm / fictional style. Goal: find an authoring surface that stays terse as the
 *pattern* changes — not just as the class names change. We take four RiverBooks features
 that are structurally unlike each other and write each one five ways.

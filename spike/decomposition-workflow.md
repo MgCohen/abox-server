@@ -1,3 +1,5 @@
+> **PARKED EXPLORATION** — paused, not legacy. Anchor + active direction: [README.md](README.md) → *Invariants* + *Document map*. Resume when this thread is picked back up.
+
 # Decomposition Workflow (plan → tasks) — formalized
 
 > The runnable form of `decomposition-method.md`. Two staged loops (requirements, then tasks), each a

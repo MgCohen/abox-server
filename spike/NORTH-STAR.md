@@ -1,5 +1,8 @@
 # Spike — North Star (Recipe → Code)
 
+> **Anchor doc** (not parked). The durable contract is `README.md` → *Invariants*; this doc holds the
+> top-down vision + milestone roadmap that serves them.
+
 > Branch `claude/csharp-snippet-merge-decl`, stacked on the building-style PR (#109).
 > The spike validated the **mechanism** (recipe-based composition, merging) bottom-up.
 > This doc fixes the **north star** top-down: the end-result product, our slice of it, and
