@@ -603,14 +603,18 @@ deliberately left for later; bracketed tags map to `NORTH-STAR.md` milestones.
 15. **Output target: namespace + folder** [M4] — a type name alone doesn't say *where* the file
     lands or *what namespace* it declares. A **wrapper on the emitted type** (not a change to the
     node model), forced when recipes reference each other across files (a `using` needs a namespace).
-16. **`using`-derivation** — *largely moot now*: `Of<T>` renders fully-qualified (`System.Guid`), so
-    existing types need **no `using`** and the emitter emits none. Revisit only if we ever want
-    unqualified/idiomatic output — then a using set must be derived from the `TypeRef`s.
-17. **Generated-type representation / `TypeRef` validator** — the forward-reference finding: `<T>`
-    type-checks only **real** types; a type a sibling recipe *generates* lives in another compilation,
-    so it's named by `TypeRef` (value-level), not `<T>`. `TypeRef` is therefore the fundamental
-    representation and `<T>` is sugar for the known subset. Cross-use safety for generated types
-    defers to the compile gate — or a recipe-level `TypeRef` validator if that proves insufficient.
+16. **`using`-derivation** — ✅ **resolved (probe D).** With the **semantic model**, `ITypeSymbol.ToDisplayString`
+    renders either idiomatic (`int`, `List<string>`, `string?`, named tuples) with a **derived `using`
+    set** (walk the symbol graph → namespaces) or fully-qualified with none — an *emit setting*, not an
+    authoring choice. This replaces the reflection-`FullName` path that forced dropping the alias
+    dictionary; the recipe is authored unchanged. (`spike/probe-d-semantic-rendering/`.)
+17. **Generated-type representation / `TypeRef`** — ⚠️ **narrowed (probe E).** The earlier claim (a
+    generated type "lives in another compilation, so it's `TypeRef` not `<T>`") is **not generally
+    true**: a generator-minted type is `public` in the producer's emitted assembly, so it's an ordinary
+    `<T>` type **within the same compilation** (order-independent) and **cross-project when the producer
+    is referenced**. Name-based `TypeRef` is genuinely required **only at the unresolved-producer
+    boundary** — an unbuilt/unreferenced or circular producer (`CS0246`). Keep `TypeRef` for exactly
+    that corner; everywhere else `<T>` works. (`spike/probe-e-forward-ref/`.)
 18. **Members beyond fields; modifiers; base/interface lists** — *methods done* (`MethodNode`, body =
     body tier, via the `Member` base). Remaining: **method params wired to body handles** (next
     sub-step), ctors/properties, access modifiers (`static`/`public`), base + interface lists.

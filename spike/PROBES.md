@@ -5,13 +5,15 @@
 > runnable probe under `spike/probe-*/`. All three **build and run on net10.0**; tech is left in
 > place as proof. This file is the index — each folder has its own `README.md` with full detail.
 
-## Verdict: 3 / 3 proven
+## Verdict: 5 / 5 proven
 
 | Probe | Claim | Reviewer doubt it settles | Result |
 |---|---|---|---|
 | **A** `probe-a-inline-typegen/` | A use-site that names a new type *as a value* mints that type, usable in the **same compilation** | source-gen reviewer: *"a value names a type the generator must mint"* (the deepest unknown, #17) | ✅ **PROVEN** |
 | **B** `probe-b-additive-wiring/` | `scope.Get<T>` is **both** a real call **and** a marker the generator reads — **additively, no interceptors** | source-gen reviewer: *"the verbs need fragile `[InterceptsLocation]` interceptors"* | ✅ **PROVED** |
 | **C** `probe-c-live-emit/` | live preview ↔ explicit emit ↔ detachment ↔ re-emit override | the regeneration policy we locked — does it hold in code? | ✅ **PROVEN** |
+| **D** `probe-d-semantic-rendering/` | `ITypeSymbol.ToDisplayString` renders all type cases + derives usings — **and authoring is unchanged** | the int/string/`FullName` naming struggle (§8 #16) | ✅ **PROVEN** |
+| **E** `probe-e-forward-ref/` | a minted type is usable by `<T>` same-compilation + cross-project-referenced; `TypeRef` only at the unresolved-producer boundary | the forward-ref / `TypeRef` claim (§8 #17) | ✅ **PROVEN** |
 
 Each is a classic `IIncrementalGenerator` / console tool, `Microsoft.CodeAnalysis.CSharp 4.11.0`
 (reused from `spike/gen/`), isolated by a local `Directory.Build.props`, referencing no repo project
@@ -106,15 +108,36 @@ and **live/emit detachment** — are no longer assumptions; they run. The recali
 ("source-generation back-fills inline", "minimal dialect — in the wiring", "owned output via explicit
 emit") have a working floor under them.
 
-**Residual technical unknowns** (not blockers, but the honest next layer):
+## Decision recorded — adopt semantic-model generation (probes D + E)
 
-1. **Cross-recipe / cross-compilation forward refs** (A's residual) — a type one recipe generates that
-   another recipe must reference. This is the `TypeRef`-vs-`<T>` seam already named in `README.md` §8 #17.
-2. **Diagnostics quality** (B) — gaps surface as runtime throws; for agent-authoring they should be
-   build `Diagnostic`s with actionable messages (a companion analyzer).
-3. **Emit-target config + path resolution** (C) — a real config loader, and the `artifacts/`/base-dir
-   trap, need solving for a non-toy emit.
-4. **Reconciliation on re-emit** (C) — pulling manual edits back into the recipe, or detecting drift —
-   explicitly future scope.
+The core spike's reflection-`FullName` renderer is superseded by the probes' **Roslyn semantic-model**
+approach. Recorded because both probes came back fully positive:
+
+- **Type rendering goes through `ITypeSymbol.ToDisplayString`** with a chosen `SymbolDisplayFormat`.
+  Idiomatic (`int`, `List<string>`, `Outer.Inner`, `string?`, named tuples) + a **derived `using` set**,
+  or fully-qualified with none. Closes §8 #16; ends the hand-rolled alias/`FullName` problem.
+- **Authoring is unchanged — only the backend moved.** The recipe is the same typed tree; idiomatic
+  vs fully-qualified is an **emit setting**, not an authoring choice. `TypeRef` = C# type text is
+  strictly *more* expressive than the old reflection `typeof`/`Of<T>` (it can spell `int?`, `string?`,
+  named tuples that `System.Type` cannot).
+- **Generation runs over a `Compilation`** (the in-build "live" generator + the Compilation-backed
+  "emit" tool share one symbol-rendering core). Emit stays a tool, not a source generator.
+- **Forward refs (§8 #17) narrowed:** a minted type is an ordinary `<T>` within the same compilation
+  (order-independent) and cross-project when the producer is referenced. `TypeRef` (name-based) is
+  required **only at the unresolved-producer boundary** (unbuilt/unreferenced or circular producer).
+
+**Residual technical unknowns** (not blockers, the honest next layer):
+
+1. **Unresolved-producer forward refs** (E's corner) — referencing a generated type whose producer
+   isn't built/referenced (or a circular producer). The only place `TypeRef` is genuinely needed;
+   §8 #17 now scoped to exactly this.
+2. **Pinned reference set for rendering** (D) — the probe resolved types off the running runtime's TPA
+   list, not a pinned reference pack / the target compilation. A real emit must render against the
+   target's `Compilation` (also where types the target owns / a sibling generates resolve).
+3. **Diagnostics quality** (B) — gaps surface as runtime throws; agent-authoring wants build
+   `Diagnostic`s with actionable messages (a companion analyzer).
+4. **Emit-target config + path resolution** (C) — a real config loader, and the `artifacts/`/base-dir
+   trap, for a non-toy emit.
+5. **Reconciliation on re-emit** (C) — pulling manual edits back, or detecting drift — future scope.
 
 None of these contradicts the model; each is a known piece of the next build.
