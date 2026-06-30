@@ -21,6 +21,24 @@ harness: ../../../../tests/Harness/README.md
 - **Why:** required front-matter attrs are a hard floor — dropping one must produce an error naming it, so a doc
   cannot ship missing the metadata its doctype declares mandatory.
 
+### DocValidator.Validate → no errors for a guide whose actions nest conforming steps
+- **Why:** nested-block composition (`composes`) is the engine's third structural level — an action holding
+  `#### step` children. A guide with well-formed nested steps must validate clean, proving the recursive parse and
+  validate accept the happy path rather than rejecting any nesting outright.
+
+### DocValidator.Validate → flags a step id that violates its attr pattern
+- **Why:** a step's `id` is a `hidden`, `pattern`-enforced attr; an id off its grammar (e.g. `1.X`) must fail, so
+  the `pattern` validator is proven to run on real attrs and the invisible id cannot drift out of its format.
+
+### DocValidator.Validate → flags duplicate step ids within one action
+- **Why:** step ids are unique within their action (siblings), the handle a cross-reference resolves against;
+  two steps sharing an id must error, while the same id reused in a different action stays legal.
+
+### DocValidator.Validate → flags a block that composes a child type but has no child
+- **Why:** a block that declares `composes` requires at least one such child — an action with zero steps is an
+  empty how-to and must fail; this per-parent required-child rule is distinct from the group-emptiness rule and
+  must hold at each composed level.
+
 ### SchemaChecker.Run → no errors for the shipped catalog
 - **Why:** the catalog the whole repo validates against must itself conform to the meta-schema; a non-vacuous
   pass over the real `_schema`/`kinds`/`blocks`/`doctypes` proves the checker does real work and the catalog is sound.
@@ -33,3 +51,7 @@ harness: ../../../../tests/Harness/README.md
 - **Why:** a renamed or emptied `kinds`/`blocks`/`doctypes` directory makes the checker validate zero
   definitions and return PASS — a vacuous green. The checker must report the missing collection so a broken
   catalog layout can never look sound.
+
+### SchemaChecker.Run → flags a composes entry that names no block type
+- **Why:** `composes` is referential — every entry must name a real block definition. A typo'd or dangling
+  child type must fail `check`, so nesting can never point at a block that does not exist.

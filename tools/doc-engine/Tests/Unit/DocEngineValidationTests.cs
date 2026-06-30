@@ -45,10 +45,73 @@ public sealed class DocEngineValidationTests
         Assert.Contains(Validate(lines), e => e.Contains("rubric", StringComparison.Ordinal));
     }
 
+    private static readonly string[] NestedGuide =
+    {
+        "---", "docType: guide", "---", "",
+        "## Summary", "A how-to.", "",
+        "## Actions",
+        "### Do a thing",
+        "- **Context:** c.", "- **Validation:** v.", "- **Outcome:** o.",
+        "#### First step", "<!-- id: 1 -->", "Do the first thing.",
+        "#### Second step", "<!-- id: 2 -->", "Do the second thing.",
+    };
+
+    [Rule("DocValidator.Validate → no errors for a guide whose actions nest conforming steps")]
+    [Fact]
+    public void Validate_passes_a_nested_guide() =>
+        Assert.Empty(Validate(NestedGuide));
+
+    [Rule("DocValidator.Validate → flags a step id that violates its attr pattern")]
+    [Fact]
+    public void Validate_rejects_a_step_id_off_pattern()
+    {
+        var lines = NestedGuide.Select(l => l == "<!-- id: 1 -->" ? "<!-- id: 1.X -->" : l).ToArray();
+
+        Assert.Contains(Validate(lines), e => e.Contains("does not match", StringComparison.Ordinal));
+    }
+
+    [Rule("DocValidator.Validate → flags duplicate step ids within one action")]
+    [Fact]
+    public void Validate_rejects_duplicate_step_ids_in_an_action()
+    {
+        var lines = NestedGuide.Select(l => l == "<!-- id: 2 -->" ? "<!-- id: 1 -->" : l).ToArray();
+
+        Assert.Contains(Validate(lines), e => e.Contains("duplicate id '1'", StringComparison.Ordinal));
+    }
+
+    [Rule("DocValidator.Validate → flags a block that composes a child type but has no child")]
+    [Fact]
+    public void Validate_rejects_an_action_with_no_steps()
+    {
+        var lines = NestedGuide.TakeWhile(l => !l.StartsWith("####", StringComparison.Ordinal)).ToArray();
+
+        Assert.Contains(Validate(lines), e => e.Contains("requires at least one step", StringComparison.Ordinal));
+    }
+
     [Rule("SchemaChecker.Run → no errors for the shipped catalog")]
     [Fact]
     public void SchemaChecker_passes_the_shipped_catalog() =>
         Assert.Empty(new SchemaChecker(EngineRoot).Run());
+
+    [Rule("SchemaChecker.Run → flags a composes entry that names no block type")]
+    [Fact]
+    public void SchemaChecker_rejects_composes_of_an_unknown_block()
+    {
+        var root = Directory.CreateTempSubdirectory("docengine-schema-").FullName;
+        try
+        {
+            foreach (var dir in new[] { "_schema", "kinds", "blocks", "doctypes" })
+                CopyDir(Path.Combine(EngineRoot, dir), Path.Combine(root, dir));
+            var action = Path.Combine(root, "blocks", "action.yaml");
+            File.WriteAllText(action, File.ReadAllText(action).Replace("composes: [step]", "composes: [nonexistent]"));
+
+            Assert.Contains(new SchemaChecker(root).Run(), e => e.Contains("nonexistent", StringComparison.Ordinal));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
 
     [Rule("SchemaChecker.Run → flags a definition file that is not a YAML map")]
     [Fact]

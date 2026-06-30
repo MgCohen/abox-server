@@ -1,6 +1,6 @@
 namespace ABox.DocEngine;
 
-public sealed record FieldSpec(string? Type, bool Required, IReadOnlyList<string> Values)
+public sealed record FieldSpec(string? Type, bool Required, IReadOnlyList<string> Values, string? Pattern, bool Hidden)
 {
     public static FieldSpec Normalize(object? spec, bool defaultRequired)
     {
@@ -15,6 +15,8 @@ public sealed record FieldSpec(string? Type, bool Required, IReadOnlyList<string
             type ??= "enum";
         }
         var required = map.ContainsKey("required") ? Yaml.Truthy(map["required"]) : defaultRequired;
-        return new FieldSpec(type, required, values);
+        var pattern = Yaml.AsString(map.GetValueOrDefault("pattern"));
+        var hidden = Yaml.Truthy(map.GetValueOrDefault("hidden"));
+        return new FieldSpec(type, required, values, pattern, hidden);
     }
 }

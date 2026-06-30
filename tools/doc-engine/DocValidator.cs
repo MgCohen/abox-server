@@ -29,16 +29,14 @@ public static class DocValidator
         var errs = new List<string>();
         var allowed = Yaml.AsList(dt.GetValueOrDefault("blocks")).OfType<string>().ToHashSet(StringComparer.Ordinal);
         var required = Yaml.AsList(dt.GetValueOrDefault("required")).OfType<string>().ToHashSet(StringComparer.Ordinal);
-        var seenIds = new HashSet<string>(StringComparer.Ordinal);
         var present = new HashSet<string>(StringComparer.Ordinal);
         var docType = Yaml.AsString(dt.GetValueOrDefault("docType"));
 
+        CheckDuplicateIds(blocks, "", errs);
         for (var i = 0; i < blocks.Count; i++)
         {
             var b = blocks[i];
-            var where = b.Id.Length > 0 ? $"#{i + 1} (id={b.Id})" : $"#{i + 1} ({b.Title})";
-            if (b.Id.Length > 0 && !seenIds.Add(b.Id)) errs.Add($"{where}: duplicate id '{b.Id}'");
-
+            var where = $"#{i + 1} ({Label(b)})";
             present.Add(b.Type);
             if (b.Unknown || !defs.ContainsKey(b.Type))
             {
@@ -47,42 +45,8 @@ public static class DocValidator
             }
             if (!allowed.Contains(b.Type))
                 errs.Add($"{where}: '{b.Type}' not in the '{docType}' catalog");
-
-            var specAttrs = Yaml.AsMap(defs[b.Type].GetValueOrDefault("attrs")) ?? new Dictionary<string, object?>();
-            foreach (var (an, raw) in specAttrs)
-            {
-                var asp = FieldSpec.Normalize(raw, false);
-                if (asp.Required && !b.Attrs.ContainsKey(an))
-                    errs.Add($"{where} {b.Type}: missing required attr '{an}'");
-                if (b.Attrs.TryGetValue(an, out var av) && asp.Type == "enum" && !asp.Values.Contains(av))
-                    errs.Add($"{where} {b.Type}: {an}='{av}' not in [{string.Join(", ", asp.Values)}]");
-            }
-            foreach (var an in b.Attrs.Keys)
-                if (!specAttrs.ContainsKey(an))
-                    errs.Add($"{where} {b.Type}: unknown attr '{an}'");
-
-            var bodySpec = defs[b.Type].GetValueOrDefault("body");
-            if (bodySpec is not null)
-            {
-                var body = FieldSpec.Normalize(bodySpec, true);
-                if (body.Required && b.Body.Length == 0)
-                    errs.Add($"{where} {b.Type}: required body is empty");
-            }
-
-            var labelSpec = Yaml.AsMap(defs[b.Type].GetValueOrDefault("labels"));
-            if (labelSpec is not null)
-            {
-                var labels = LabelsIn(b.Body);
-                foreach (var (label, spec) in labelSpec)
-                {
-                    var ls = Yaml.AsMap(spec);
-                    if (ls is not null && Yaml.Truthy(ls.GetValueOrDefault("required")) && !labels.Contains(label))
-                        errs.Add($"{where} {b.Type}: missing required label '**{label}:**'");
-                }
-                foreach (var label in labels)
-                    if (!labelSpec.ContainsKey(label))
-                        errs.Add($"{where} {b.Type}: unexpected label '**{label}:**'");
-            }
+            ValidateBlock(defs, b, where, errs);
+            ValidateChildren(defs, b, where, errs);
         }
 
         var counts = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -105,4 +69,80 @@ public static class DocValidator
         }
         return errs;
     }
+
+    private static void ValidateBlock(
+        IReadOnlyDictionary<string, IReadOnlyDictionary<string, object?>> defs,
+        ParsedBlock b, string where, List<string> errs)
+    {
+        var specAttrs = Yaml.AsMap(defs[b.Type].GetValueOrDefault("attrs")) ?? new Dictionary<string, object?>();
+        foreach (var (an, raw) in specAttrs)
+        {
+            var asp = FieldSpec.Normalize(raw, false);
+            if (asp.Required && !b.Attrs.ContainsKey(an))
+                errs.Add($"{where} {b.Type}: missing required attr '{an}'");
+            if (!b.Attrs.TryGetValue(an, out var av)) continue;
+            if (asp.Type == "enum" && !asp.Values.Contains(av))
+                errs.Add($"{where} {b.Type}: {an}='{av}' not in [{string.Join(", ", asp.Values)}]");
+            if (asp.Pattern is { } pat && !Regex.IsMatch(av, pat))
+                errs.Add($"{where} {b.Type}: {an}='{av}' does not match /{pat}/");
+        }
+        foreach (var an in b.Attrs.Keys)
+            if (!specAttrs.ContainsKey(an))
+                errs.Add($"{where} {b.Type}: unknown attr '{an}'");
+
+        var bodySpec = defs[b.Type].GetValueOrDefault("body");
+        if (bodySpec is not null && FieldSpec.Normalize(bodySpec, true).Required && b.Body.Length == 0)
+            errs.Add($"{where} {b.Type}: required body is empty");
+
+        var labelSpec = Yaml.AsMap(defs[b.Type].GetValueOrDefault("labels"));
+        if (labelSpec is null) return;
+        var labels = LabelsIn(b.Body);
+        foreach (var (label, spec) in labelSpec)
+        {
+            var ls = Yaml.AsMap(spec);
+            if (ls is not null && Yaml.Truthy(ls.GetValueOrDefault("required")) && !labels.Contains(label))
+                errs.Add($"{where} {b.Type}: missing required label '**{label}:**'");
+        }
+        foreach (var label in labels)
+            if (!labelSpec.ContainsKey(label))
+                errs.Add($"{where} {b.Type}: unexpected label '**{label}:**'");
+    }
+
+    private static void ValidateChildren(
+        IReadOnlyDictionary<string, IReadOnlyDictionary<string, object?>> defs,
+        ParsedBlock parent, string where, List<string> errs)
+    {
+        var composes = Yaml.AsList(defs[parent.Type].GetValueOrDefault("composes"))
+            .OfType<string>().ToHashSet(StringComparer.Ordinal);
+        if (composes.Count == 0) return;
+        if (parent.Children.Count == 0)
+            errs.Add($"{where} {parent.Type}: requires at least one {string.Join("/", composes)}");
+
+        CheckDuplicateIds(parent.Children, where + " ", errs);
+        for (var j = 0; j < parent.Children.Count; j++)
+        {
+            var c = parent.Children[j];
+            var cw = $"{where} > #{j + 1} ({Label(c)})";
+            if (!defs.ContainsKey(c.Type))
+            {
+                errs.Add($"{cw}: unknown block/section '{c.Type}'");
+                continue;
+            }
+            if (!composes.Contains(c.Type))
+                errs.Add($"{cw}: '{c.Type}' is not composable by '{parent.Type}'");
+            ValidateBlock(defs, c, cw, errs);
+            ValidateChildren(defs, c, cw, errs);
+        }
+    }
+
+    private static void CheckDuplicateIds(IReadOnlyList<ParsedBlock> siblings, string where, List<string> errs)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var b in siblings)
+            if (b.Attrs.TryGetValue("id", out var id) && !seen.Add(id))
+                errs.Add($"{where}duplicate id '{id}'");
+    }
+
+    private static string Label(ParsedBlock b) =>
+        b.Attrs.TryGetValue("id", out var id) ? $"id={id}" : b.Title;
 }

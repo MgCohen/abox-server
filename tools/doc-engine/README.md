@@ -106,8 +106,12 @@ status: blocked
 **Goal.** ...
 ```
 
-- `key: value` lines under the (sub)header are scalar attrs (status, lean, caveat).
-- An optional `<!-- id: <slug> -->` comment pins a stable, agent-oriented handle on a
-  block — only when something references it across edits; most blocks omit it.
+- `key: value` lines under the (sub)header are scalar attrs (status, lean, caveat). An
+  attr declared `hidden` is authored as `<!-- key: value -->` so enforced metadata (e.g. a
+  step's `id`, which a `pattern` constrains) stays out of the rendered prose; an attr may
+  also declare a `pattern` regex the value must match (the open-ended sibling of `enum`).
+- A collection block may `composes: [<child-type>…]`; its members then nest one level
+  deeper as `#### child` blocks (e.g. a `guide`'s `### action` → `#### step`), each validated
+  in turn — a parent that composes a type requires at least one such child. See ADR 0016.
 - Final on-disk syntax should match the render repo's parser — the model here is
   parser-agnostic.

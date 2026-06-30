@@ -6,7 +6,8 @@ public static class InstanceParser
 {
     private static readonly Regex H2 = new(@"^##\s+(.+?)\s*$");
     private static readonly Regex H3 = new(@"^###\s+(.+?)\s*$");
-    private static readonly Regex IdRe = new(@"^<!--\s*id:\s*(\S+)\s*-->\s*$");
+    private static readonly Regex H4 = new(@"^####\s+(.+?)\s*$");
+    private static readonly Regex HiddenRe = new(@"^<!--\s*([\w-]+):\s*(.+?)\s*-->\s*$");
     private static readonly Regex AttrRe = new(@"^([\w-]+):\s*(.+?)\s*$");
 
     public static IReadOnlyDictionary<string, object?> ParseFrontmatter(IReadOnlyList<string> lines)
@@ -34,14 +35,25 @@ public static class InstanceParser
         IReadOnlyDictionary<string, IReadOnlyDictionary<string, object?>> defs)
     {
         var (singleton, group) = LabelMaps(defs);
+        var hidden = HiddenAttrKeys(defs);
         var blocks = new List<ParsedBlock>();
         var groupsSeen = new List<string>();
         ParsedBlock? cur = null;
+        ParsedBlock? child = null;
         string? mode = null, gtype = null;
         var meta = false;
 
+        void CloseChild()
+        {
+            if (child is null) return;
+            child.Body = string.Join("\n", child.Lines).Trim();
+            cur!.Children.Add(child);
+            child = null;
+        }
+
         void Close()
         {
+            CloseChild();
             if (cur is null) return;
             cur.Body = string.Join("\n", cur.Lines).Trim();
             blocks.Add(cur);
@@ -53,6 +65,7 @@ public static class InstanceParser
             var line = raw.TrimEnd('\n');
             var m2 = H2.Match(line);
             var m3 = m2.Success ? Match.Empty : H3.Match(line);
+            var m4 = m2.Success || m3.Success ? Match.Empty : H4.Match(line);
             if (m2.Success)
             {
                 Close();
@@ -93,23 +106,62 @@ public static class InstanceParser
                     meta = true;
                     continue;
                 }
-                cur?.Lines.Add(line);
+                (child ?? cur)?.Lines.Add(line);
                 continue;
             }
-            if (cur is null) continue;
+            if (m4.Success && cur is not null && ComposedType(defs, cur.Type) is { } childType)
+            {
+                CloseChild();
+                child = new ParsedBlock { Type = childType, Title = m4.Groups[1].Value };
+                meta = true;
+                continue;
+            }
+            var tgt = child ?? cur;
+            if (tgt is null) continue;
             if (meta)
             {
-                var idm = IdRe.Match(line);
-                if (idm.Success) { cur.Id = idm.Groups[1].Value; continue; }
+                var hm = HiddenRe.Match(line);
+                if (hm.Success)
+                {
+                    if (hidden.GetValueOrDefault(tgt.Type)?.Contains(hm.Groups[1].Value) == true)
+                    {
+                        tgt.Attrs[hm.Groups[1].Value] = hm.Groups[2].Value;
+                        continue;
+                    }
+                    meta = false;
+                    tgt.Lines.Add(line);
+                    continue;
+                }
                 if (line.Trim().Length == 0) { meta = false; continue; }
                 var am = AttrRe.Match(line);
-                if (am.Success) { cur.Attrs[am.Groups[1].Value] = am.Groups[2].Value; continue; }
+                if (am.Success) { tgt.Attrs[am.Groups[1].Value] = am.Groups[2].Value; continue; }
                 meta = false;
             }
-            cur.Lines.Add(line);
+            tgt.Lines.Add(line);
         }
         Close();
         return (blocks, groupsSeen);
+    }
+
+    private static string? ComposedType(
+        IReadOnlyDictionary<string, IReadOnlyDictionary<string, object?>> defs, string type) =>
+        defs.TryGetValue(type, out var def)
+            ? Yaml.AsList(def.GetValueOrDefault("composes")).OfType<string>().FirstOrDefault()
+            : null;
+
+    private static Dictionary<string, HashSet<string>> HiddenAttrKeys(
+        IReadOnlyDictionary<string, IReadOnlyDictionary<string, object?>> defs)
+    {
+        var hidden = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        foreach (var (type, def) in defs)
+        {
+            var keys = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var (name, spec) in Yaml.AsMap(def.GetValueOrDefault("attrs")) ?? new Dictionary<string, object?>())
+                if (FieldSpec.Normalize(spec, false).Hidden)
+                    keys.Add(name);
+            if (keys.Count > 0) hidden[type] = keys;
+        }
+        return hidden;
     }
 
     private static (Dictionary<string, string> Singleton, Dictionary<string, string> Group) LabelMaps(
