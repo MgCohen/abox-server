@@ -15,15 +15,28 @@ public sealed class HookRunner
     {
         var psi = new ProcessStartInfo
         {
-            FileName = OperatingSystem.IsWindows() ? "cmd.exe" : "/bin/sh",
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
             WorkingDirectory = WorkingDir(manifest),
         };
-        psi.ArgumentList.Add(OperatingSystem.IsWindows() ? "/c" : "-c");
-        psi.ArgumentList.Add(manifest.Run);
+
+        // cmd.exe parses its own command line, so the run string must reach it raw via
+        // Arguments — ArgumentList would escape embedded quotes/redirects and corrupt the
+        // command. A POSIX shell takes the command as a single -c argument. (Mirrors the
+        // host's Shell.Command, the proven dialect handling this engine is standalone from.)
+        if (OperatingSystem.IsWindows())
+        {
+            psi.FileName = Path.Combine(Environment.SystemDirectory, "cmd.exe");
+            psi.Arguments = "/c " + manifest.Run;
+        }
+        else
+        {
+            psi.FileName = "/bin/bash";
+            psi.ArgumentList.Add("-c");
+            psi.ArgumentList.Add(manifest.Run);
+        }
 
         try
         {
