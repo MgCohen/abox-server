@@ -87,7 +87,10 @@ The data root is found by walking up from the working directory for
 ## Instance syntax
 
 A leading `---` YAML block is the doc's front matter — visible, validated against
-the doctype's `attrs`. Singleton blocks are top-level; collection blocks grouped:
+the doctype's `attrs`. Any doc may also carry an optional **`onChange`** — a universal
+handler pointer (a relative path under `.claude/agents`, `.claude/hooks`, or `scripts/`)
+the engine validates but never runs; a dispatcher reads it via `docengine onchange <doc>`.
+Singleton blocks are top-level; collection blocks grouped:
 
 ```md
 ---
@@ -106,8 +109,14 @@ status: blocked
 **Goal.** ...
 ```
 
-- `key: value` lines under the (sub)header are scalar attrs (status, lean, caveat).
-- An optional `<!-- id: <slug> -->` comment pins a stable, agent-oriented handle on a
-  block — only when something references it across edits; most blocks omit it.
+- `key: value` lines under the (sub)header are scalar attrs (status, lean, caveat). An
+  attr declared `hidden` is authored as `<!-- key: value -->` so enforced metadata (e.g. a
+  step's `id`, which a `pattern` constrains) stays out of the rendered prose; an attr may
+  also declare a `pattern` regex the value must match (the open-ended sibling of `enum`).
+- A collection block may `composes: [<child-type>…]`; its members then nest one level
+  deeper as `#### child` blocks (e.g. a `guide`'s `### action` → `#### step`), each validated
+  in turn — a parent that composes a type requires at least one such child. A `- **Label:**`
+  bullet attaches to whichever block in the nesting chain *declares* it, so a parent's labels may
+  bracket its children (before *and* after). See ADR 0016.
 - Final on-disk syntax should match the render repo's parser — the model here is
   parser-agnostic.

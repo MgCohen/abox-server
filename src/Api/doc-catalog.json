@@ -18,6 +18,11 @@
           "kind": "string",
           "required": "false"
         },
+        "composes": {
+          "kind": "list",
+          "required": "false",
+          "of": "string"
+        },
         "description": {
           "kind": "string",
           "required": "true"
@@ -44,6 +49,16 @@
           "rule": "requires_when",
           "when": "collection",
           "then": "group"
+        },
+        {
+          "rule": "requires_when",
+          "when": "composes",
+          "then": "collection"
+        },
+        {
+          "rule": "references",
+          "field": "composes",
+          "by": "type"
         }
       ]
     },
@@ -89,6 +104,34 @@
     }
   },
   "blocks": {
+    "action": {
+      "type": "action",
+      "collection": "true",
+      "group": "Actions",
+      "composes": [
+        "step"
+      ],
+      "description": "One self-contained how-to within a guide \u2014 context, ordered steps, and a stated, observable outcome.",
+      "rubric": {
+        "outcome-stated": "States a concrete end result a reader can recognize when it is reached.",
+        "validation-observable": "Validation describes a concrete, observable way to confirm the Outcome.",
+        "steps-present": "Has at least one step."
+      },
+      "labels": {
+        "Context": {
+          "required": "true"
+        },
+        "Validation": {
+          "required": "true"
+        },
+        "Outcome": {
+          "required": "true"
+        }
+      },
+      "body": {
+        "type": "markdown"
+      }
+    },
     "analysis": {
       "type": "analysis",
       "description": "The main investigation \u2014 evidence and reasoning.",
@@ -276,6 +319,31 @@
         "type": "markdown"
       }
     },
+    "step": {
+      "type": "step",
+      "description": "One ordered instruction within an action \u2014 the name is the heading, the id is an enforced invisible handle, with an optional Condition and details.",
+      "rubric": {
+        "imperative": "A single concrete instruction the reader can act on, not a paragraph of context.",
+        "id-grammar": "The id reads N, then N.M for a sub-step or N.a for a branch."
+      },
+      "attrs": {
+        "id": {
+          "type": "string",
+          "pattern": "^\\d\u002B(\\.\\d\u002B)*(\\.[a-z])?$",
+          "hidden": "true",
+          "required": "true"
+        }
+      },
+      "labels": {
+        "Condition": {
+          "required": "false"
+        }
+      },
+      "body": {
+        "type": "markdown",
+        "required": "false"
+      }
+    },
     "summary": {
       "type": "summary",
       "description": "One-paragraph what-and-why at the very top.",
@@ -337,6 +405,27 @@
         "open-lean": "Open questions are genuinely open and carry a recommended lean.",
         "verify-real": "Verification runs a real end-to-end behaviour, not just build/typecheck.",
         "prose": "Prose is substantive where it matters; bold marks labels, not emphasis."
+      }
+    },
+    "guide": {
+      "docType": "guide",
+      "description": "A how-to \u2014 independent actions, each with context, ordered steps, and a stated, observable outcome, read by a human or an agent.",
+      "blocks": [
+        "summary",
+        "action",
+        "open-question"
+      ],
+      "required": [
+        "summary",
+        "action"
+      ],
+      "rubric": {
+        "coverage": "The actions cover the distinct tasks a reader comes to this guide to perform.",
+        "outcome-each": "Every action states a concrete, recognizable outcome.",
+        "validation-each": "Every action gives an observable way to confirm its outcome.",
+        "steps-concrete": "Steps are concrete imperative instructions, not vague guidance.",
+        "mentions-resolve": "A step that mentions another action\u0027s step refers to one that exists.",
+        "one-subject": "The guide stays on one subject; unrelated tasks belong in another guide."
       }
     },
     "research": {

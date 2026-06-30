@@ -14,6 +14,7 @@ internal static class Program
             {
                 "check" => Check(root),
                 "validate" => ValidateCmd(root, positional.ElementAtOrDefault(1)),
+                "onchange" => OnChangeCmd(root, positional.ElementAtOrDefault(1)),
                 "catalog" => CatalogCmd(root, positional.ElementAtOrDefault(1), args.Contains("--json")),
                 "outline" => OutlineCmd(root, positional.ElementAtOrDefault(1), args.Contains("--write")),
                 _ => Usage(),
@@ -61,6 +62,19 @@ internal static class Program
             return 1;
         }
         Console.WriteLine("PASS — conforms to the catalog.");
+        return 0;
+    }
+
+    private static int OnChangeCmd(string root, string? rel)
+    {
+        if (rel is null)
+        {
+            Console.Error.WriteLine("usage: docengine onchange <file>");
+            return 2;
+        }
+        var fm = InstanceParser.ParseFrontmatter(File.ReadAllLines(ToPath(root, rel)));
+        var onChange = Yaml.AsString(fm.GetValueOrDefault("onChange"));
+        if (!string.IsNullOrEmpty(onChange)) Console.WriteLine(onChange);
         return 0;
     }
 
@@ -154,7 +168,7 @@ internal static class Program
 
     private static int Usage()
     {
-        Console.Error.WriteLine("usage: docengine <check | validate <file> | catalog [doctype] [--json] | outline <file> [--write]> [--root <dir>]");
+        Console.Error.WriteLine("usage: docengine <check | validate <file> | onchange <file> | catalog [doctype] [--json] | outline <file> [--write]> [--root <dir>]");
         return 2;
     }
 }
