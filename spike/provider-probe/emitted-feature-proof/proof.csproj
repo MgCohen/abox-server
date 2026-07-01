@@ -14,8 +14,8 @@
 
   <ItemGroup>
     <Compile Include="Main.cs" />
-    <Compile Include="..\emitted\AddPoints.Repo.Handler.cs" Link="emitted\AddPoints.Repo.Handler.cs" />
-    <Compile Include="..\emitted\AddPoints.Bucket.Handler.cs" Link="emitted\AddPoints.Bucket.Handler.cs" />
+    <Compile Include="..\emitted\AddPoints.Repository.Handler.cs" Link="emitted\AddPoints.Repository.Handler.cs" />
+    <Compile Include="..\emitted\AddPoints.BucketStore.Handler.cs" Link="emitted\AddPoints.BucketStore.Handler.cs" />
     <Compile Include="..\src\Store.cs" Link="src\Store.cs" />
     <Compile Include="..\src\Domain.cs" Link="src\Domain.cs" />
   </ItemGroup>

@@ -4,18 +4,17 @@ using static Probe.Compose;
 namespace Probe;
 
 // THE SAME FEATURE, provider = Repo. `new Feature<AddPointsCommand>(scope => …)` is the
-// builder — it fixes TCmd and hands `scope` down. `Mutate(scope, …)` is the action (the
-// canonical catalog form). Because via is a Repo (IStore<string,User>), the key MUST return
-// a string — `c.Email` type-checks. The body is provider-agnostic. Everything between the
-// AUTHORED markers is the measured surface.
+// builder — it provides the scope. `Mutate(store, key, body)` is the action — no scope in its
+// params; the leaves reach the command through the ambient `scope.Command`. Because the store
+// is IStore<string,User>, `key` must be a string — `scope.Command.Email` type-checks.
+// Everything between the AUTHORED markers is the measured surface.
 public static class RepoRecipe
 {
     // === AUTHORED (begin) ===
     public static Node AddPoints() =>
         new Feature<AddPointsCommand>(scope =>
-            Mutate(scope,
-                via:  Stores.Repository<User>(),
-                key:  c => c.Email,
-                body: (user, c) => user.AddPoints(c.Points)));
+            Mutate(store: Stores.Repository<User>(),
+                   key:   scope.Command.Email,
+                   body:  user => user.AddPoints(scope.Command.Points)));
     // === AUTHORED (end) ===
 }

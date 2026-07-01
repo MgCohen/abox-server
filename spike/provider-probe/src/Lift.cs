@@ -5,16 +5,18 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace Probe;
 
 // Lift the recipe's shape out of its source: the command type (from Feature<TCmd>), the
-// provider (aggregate + factory, from the `via:` argument), and the real-code glue (the
-// `key` selector + the `body` divergence), renaming author lambda params to canonical names.
+// aggregate (from the store's type argument), and the named-arg fills of the Mutate(...)
+// call. Expression args (store, key) become expression fills; a lambda arg (body) becomes a
+// block fill. Author names are renamed to canonical handler names: scope.Command -> command,
+// the body lambda's parameter -> agg.
 static class Lift
 {
     public sealed record Recipe(
         string Command,
         string Aggregate,
-        string StoreFactory,
-        string KeyExpression,
-        IReadOnlyList<string> BodyStatements)
+        string StoreName,
+        IReadOnlyDictionary<string, string> ExprFills,
+        IReadOnlyDictionary<string, string> BlockFills)
     {
         public string FeatureName => Command.EndsWith("Command") ? Command[..^"Command".Length] : Command;
     }
@@ -34,15 +36,31 @@ static class Lift
 
         var command = FeatureCommandType(method);
         var mutate = MutateCall(method);
-        var (aggregate, factory) = ProviderFromVia(mutate);
 
-        var key = (SimpleLambdaExpressionSyntax)LambdaArg(mutate, "key");
-        var body = (ParenthesizedLambdaExpressionSyntax)LambdaArg(mutate, "body");
+        var exprFills = new Dictionary<string, string>();
+        var blockFills = new Dictionary<string, string>();
+        (string Aggregate, string StoreName)? store = null;
 
-        return new Recipe(command, aggregate, factory, LiftKey(key), LiftBody(body));
+        foreach (var arg in mutate.ArgumentList.Arguments)
+        {
+            var name = arg.NameColon?.Name.Identifier.ValueText
+                ?? throw new InvalidOperationException("Mutate(...) args must be named (store:, key:, body:).");
+
+            if (name == "store")
+                store = StoreOf(arg.Expression);
+
+            if (arg.Expression is LambdaExpressionSyntax lambda)
+                blockFills[name] = string.Join("\n", LiftBody(lambda));
+            else
+                exprFills[name] = Canonicalize(arg.Expression).ToString();
+        }
+
+        if (store is null)
+            throw new InvalidOperationException("Mutate(...) has no 'store:' argument.");
+
+        return new Recipe(command, store.Value.Aggregate, store.Value.StoreName, exprFills, blockFills);
     }
 
-    // `new Feature<AddPointsCommand>(scope => …)` — the builder fixes TCmd; we read it here.
     static string FeatureCommandType(MethodDeclarationSyntax method)
     {
         var feature = method.DescendantNodes().OfType<ObjectCreationExpressionSyntax>()
@@ -51,62 +69,52 @@ static class Lift
         return ((GenericNameSyntax)feature.Type).TypeArgumentList.Arguments[0].ToString();
     }
 
-    // The canonical action form is the free function `Mutate(scope, via:…, key:…, body:…)`.
     static InvocationExpressionSyntax MutateCall(MethodDeclarationSyntax method) =>
         method.DescendantNodes().OfType<InvocationExpressionSyntax>()
             .FirstOrDefault(i => i.Expression is IdentifierNameSyntax id && id.Identifier.ValueText == "Mutate")
-        ?? throw new InvalidOperationException("no `Mutate(scope, …)` call in the recipe.");
+        ?? throw new InvalidOperationException("no `Mutate(store:, key:, body:)` call in the recipe.");
 
-    // `via: Stores.Repository<User>()` -> aggregate "User", factory "Repository".
-    static (string Aggregate, string Factory) ProviderFromVia(InvocationExpressionSyntax mutate)
+    // `store: Stores.Repository<User>()` -> aggregate "User", store name "Repository".
+    static (string Aggregate, string StoreName) StoreOf(ExpressionSyntax via)
     {
-        var via = mutate.ArgumentList.Arguments
-            .FirstOrDefault(a => a.NameColon?.Name.Identifier.ValueText == "via")?.Expression
-            ?? throw new InvalidOperationException("Mutate(...) has no 'via:' argument.");
-
-        if (via is not InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax { Name: GenericNameSyntax g } })
-            throw new InvalidOperationException("'via:' must be a Stores.<Factory><T>() call.");
-
-        return (g.TypeArgumentList.Arguments[0].ToString(), g.Identifier.ValueText);
+        if (via is InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax { Name: GenericNameSyntax g } })
+            return (g.TypeArgumentList.Arguments[0].ToString(), g.Identifier.ValueText);
+        throw new InvalidOperationException("'store:' must be a Stores.<Factory><T>() call.");
     }
 
-    static LambdaExpressionSyntax LambdaArg(InvocationExpressionSyntax call, string name)
+    static IReadOnlyList<string> LiftBody(LambdaExpressionSyntax lambda)
     {
-        var arg = call.ArgumentList.Arguments
-            .FirstOrDefault(a => a.NameColon?.Name.Identifier.ValueText == name)
-            ?? throw new InvalidOperationException($"Mutate(...) has no '{name}:' argument.");
-        return arg.Expression as LambdaExpressionSyntax
-            ?? throw new InvalidOperationException($"'{name}:' must be a lambda.");
-    }
-
-    static string LiftKey(SimpleLambdaExpressionSyntax lambda)
-    {
-        var rename = new Dictionary<string, string> { [lambda.Parameter.Identifier.ValueText] = CanonicalCommand };
-        var body = lambda.Body as ExpressionSyntax
-            ?? throw new InvalidOperationException("key must be an expression lambda (c => …).");
-        return Rename(body, rename).ToString();
-    }
-
-    static IReadOnlyList<string> LiftBody(ParenthesizedLambdaExpressionSyntax lambda)
-    {
-        var ps = lambda.ParameterList.Parameters;
-        if (ps.Count != 2)
-            throw new InvalidOperationException("body must take (aggregate, command).");
-        var rename = new Dictionary<string, string>
+        var param = lambda switch
         {
-            [ps[0].Identifier.ValueText] = CanonicalAggregate,
-            [ps[1].Identifier.ValueText] = CanonicalCommand,
+            SimpleLambdaExpressionSyntax s => s.Parameter.Identifier.ValueText,
+            ParenthesizedLambdaExpressionSyntax p when p.ParameterList.Parameters.Count == 1
+                => p.ParameterList.Parameters[0].Identifier.ValueText,
+            _ => throw new InvalidOperationException("body must be a single-parameter lambda (agg => …)."),
         };
+        var rename = new Dictionary<string, string> { [param] = CanonicalAggregate };
         return lambda.Body switch
         {
-            BlockSyntax block => block.Statements.Select(s => Rename(s, rename).ToString()).ToList(),
-            ExpressionSyntax expr => new[] { Rename(expr, rename) + ";" },
+            BlockSyntax block => block.Statements.Select(s => Canonicalize(Rename(s, rename)).ToString()).ToList(),
+            ExpressionSyntax expr => new[] { Canonicalize(Rename(expr, rename)) + ";" },
             _ => throw new InvalidOperationException("body must be a block or expression lambda."),
         };
     }
 
+    // scope.Command -> command, everywhere (safe: store expressions carry no scope.Command).
+    static SyntaxNode Canonicalize(SyntaxNode node) => new ScopeCommandRewriter().Visit(node)!;
+
     static SyntaxNode Rename(SyntaxNode node, IReadOnlyDictionary<string, string> map) =>
         new ParameterRenamer(map).Visit(node)!;
+
+    sealed class ScopeCommandRewriter : CSharpSyntaxRewriter
+    {
+        public override SyntaxNode? VisitMemberAccessExpression(MemberAccessExpressionSyntax node)
+        {
+            if (node is { Expression: IdentifierNameSyntax { Identifier.ValueText: "scope" }, Name.Identifier.ValueText: "Command" })
+                return SyntaxFactory.IdentifierName(CanonicalCommand).WithTriviaFrom(node);
+            return base.VisitMemberAccessExpression(node);
+        }
+    }
 
     sealed class ParameterRenamer(IReadOnlyDictionary<string, string> map) : CSharpSyntaxRewriter
     {

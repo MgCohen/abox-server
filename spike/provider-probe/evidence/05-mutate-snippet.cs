@@ -6,25 +6,19 @@ namespace Probe;
 // template (exactly like the original spike's Loop -> for). The methods are never invoked;
 // they exist to be authored/validated by the compiler and parsed by the emitter.
 //
-// Mutate's fills:
-//   @store  (marker) : the provider receiver name (repo / bucket) — from the StoreCatalog.
-//   key     (param)  : the lifted key expression (command.Email / new BucketKey(...)) — glue.
-//   body    (block)  : Block.Of("body") -> the lifted body statements — glue + business logic.
-//
-// The canonical recipe verbs .Get / .Save are REWRITTEN to the provider's idiomatic methods
-// (Repo -> Load/Store, Bucket -> Download/Upload) at lower — the conversion that leaving
-// IStore freed. Because the scaffold is real C#, it is compiler-checked and editable, not a
-// string built in the emitter.
+// Mutate lowers by turning its PARAMS into locals (store <- the `store:` arg, key <- the
+// `key:` arg) and filling Block.Of("body") with the lifted body. store.Get / store.Save
+// SURVIVE verbatim — the store is a real component, so there is nothing to translate and no
+// __key alias to invent.
 static class Snippets
 {
     [Snippet("mutate")]
-    public static TReturn Mutate<TArgs, TReturn>(IStore<TArgs, TReturn> @store, TArgs key)
+    public static TReturn Mutate<TArgs, TReturn>(IStore<TArgs, TReturn> store, TArgs key)
         where TReturn : notnull
     {
-        var __key = key;
-        var agg = @store.Get(__key);
+        var agg = store.Get(key);
         Block.Of("body");
-        @store.Save(__key, agg);
+        store.Save(key, agg);
         return agg;
     }
 

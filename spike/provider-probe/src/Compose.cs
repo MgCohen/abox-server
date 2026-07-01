@@ -1,25 +1,24 @@
 namespace Probe;
 
 // ============================================================================
-// THE COMPOSITION SURFACE — builders vs actions.
+// THE COMPOSITION SURFACE — builders provide scope, actions don't take it.
 //
-//   Builders (Feature, Endpoint) SCAFFOLD structure (folder, namespace, DI, route) and
-//   PROVIDE a scope: `new Feature<TCmd>(scope => …children…)`. TCmd flows DOWN through the
-//   builder lambda — that is the binding surface. A Feature need not have an Endpoint.
+//   Builder (Feature) SCAFFOLDS structure and PROVIDES a scope:
+//       new Feature<TCmd>(scope => …children…)
+//   The scope carries the command (scope.Command : TCmd). A Feature need not have an Endpoint.
 //
-//   Actions (Mutate, Ask, Emit) DO one thing at a point. They CONSUME the ambient scope
-//   (to recover TCmd) but open none — leaves, no lambda of their own.
+//   Action (Mutate) DOES one thing. Its parameters are just (store, key, body) — NO scope.
+//   The command is reached by the business-logic LEAVES through the ambient scope
+//   (scope.Command.Email / scope.Command.Points), not threaded through the action.
 //
-// The canonical action form is the free function `Mutate(scope, via, key, body)` (sibling
-// of `Ask(scope, q)`); `scope.Mutate(...)` is generated sugar over it. `new Mutate<>()`
-// is NOT used: a C# constructor cannot infer the class type params (TCmd from scope, TArgs
-// from via), so the free function — which infers all three — is the working leaf.
-//
-// None of this is executed. It exists to TYPE-CHECK (so the swap is enforced) and to be
-// LIFTED from source by the emitter (Lift.cs).
+// Nothing here executes. It exists to TYPE-CHECK (so the swap is enforced: `key: TArgs`
+// forces the key to the store's arg type) and to be LIFTED from source by the emitter.
 // ============================================================================
 
-public sealed class Scope<TCmd>;
+public sealed class Scope<TCmd>
+{
+    public TCmd Command => throw new InvalidOperationException("scope.Command is compile-time only; never executed.");
+}
 
 public abstract record Node;
 
@@ -29,22 +28,10 @@ public sealed record MutateNode : Node;
 
 public static class Compose
 {
-    public static Node Mutate<TCmd, TArgs, TAgg>(
-        Scope<TCmd> scope,
-        IStore<TArgs, TAgg> via,
-        Func<TCmd, TArgs> key,
-        Action<TAgg, TCmd> body)
-        where TAgg : notnull
+    public static Node Mutate<TArgs, TReturn>(
+        IStore<TArgs, TReturn> store,
+        TArgs key,
+        Action<TReturn> body)
+        where TReturn : notnull
         => new MutateNode();
-}
-
-public static class ScopeSugar
-{
-    public static Node Mutate<TCmd, TArgs, TAgg>(
-        this Scope<TCmd> scope,
-        IStore<TArgs, TAgg> via,
-        Func<TCmd, TArgs> key,
-        Action<TAgg, TCmd> body)
-        where TAgg : notnull
-        => Compose.Mutate(scope, via, key, body);
 }
