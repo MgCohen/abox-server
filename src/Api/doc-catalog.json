@@ -89,6 +89,11 @@
           "kind": "attrs",
           "required": "false"
         },
+        "checks": {
+          "kind": "list",
+          "required": "false",
+          "of": "string"
+        },
         "rubric": {
           "kind": "strmap",
           "required": "false"
@@ -423,6 +428,9 @@
       "required": [
         "summary",
         "action"
+      ],
+      "checks": [
+        "scripts/guide-max-steps.sh"
       ],
       "rubric": {
         "coverage": "The actions cover the distinct tasks a reader comes to this guide to perform.",

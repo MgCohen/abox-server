@@ -61,7 +61,7 @@ for f in $changed; do
     head -n 1 "$f" | grep -q '^---$' || continue
     head -n 20 "$f" | grep -q '^docType:' || continue
 
-    # 1. Deterministic gate: an invalid doc blocks the turn-end.
+    # 1. Deterministic gate: an invalid doc (generic structure) blocks the turn-end.
     if ! out=$(de validate "$f" --root "$engine" 2>&1); then
         invalid=1
         notes="$notes
@@ -70,7 +70,18 @@ $out"
         continue
     fi
 
-    # 2. Deterministic onChange script side-effect, if the doc declares one.
+    # 2. Custom deterministic checks (per docType) — cheap, objective, and also blocking. Each is an
+    #    engine-relative script that gets the doc and exits non-zero with a message to block.
+    for c in $(de checks "$f" --root "$engine" 2>/dev/null); do
+        if ! cout=$(sh "$engine/$c" "$f" 2>&1); then
+            invalid=1
+            notes="$notes
+[check failed] $f -> $c
+$cout"
+        fi
+    done
+
+    # 3. Deterministic onChange script side-effect, if the doc declares one.
     handler=$(de onchange "$f" --root "$engine" 2>/dev/null || true)
     case "$handler" in
         scripts/* | *.sh)
@@ -84,7 +95,7 @@ $out"
             ;;
     esac
 
-    # 3. Fresh reviewers (advisory) — turn end only, and only when a spawner is on PATH.
+    # 4. Fresh reviewers (advisory) — turn end only, and only when a spawner is on PATH.
     [ "$kind" = "TurnEnded" ] || continue
     command -v "$review_cmd" >/dev/null 2>&1 || continue
     dt=$(sed -n 's/^docType:[[:space:]]*//p' "$f" | head -n 1)

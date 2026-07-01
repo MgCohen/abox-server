@@ -123,6 +123,16 @@ public sealed class DocEngineValidationTests
     public void Reviewers_from_the_doctype_when_declared() =>
         Assert.Equal(new[] { "judge", "walk-guide" }, Reviewers.Resolve(Catalog.LoadDoctype(EngineRoot, "guide")));
 
+    [Rule("Checks.Resolve → empty for a docType with no custom deterministic checks")]
+    [Fact]
+    public void Checks_default_to_none() =>
+        Assert.Empty(Checks.Resolve(Catalog.LoadDoctype(EngineRoot, "feature-plan")));
+
+    [Rule("Checks.Resolve → returns the docType's declared checks when present")]
+    [Fact]
+    public void Checks_from_the_doctype_when_declared() =>
+        Assert.Equal(new[] { "scripts/guide-max-steps.sh" }, Checks.Resolve(Catalog.LoadDoctype(EngineRoot, "guide")));
+
     [Rule("SchemaChecker.Run → flags a composes entry that names no block type")]
     [Fact]
     public void SchemaChecker_rejects_composes_of_an_unknown_block()

@@ -63,6 +63,14 @@ harness: ../../../../tests/Harness/README.md
 - **Why:** a docType opts into extra fresh reviewers (the guide adds `walk-guide`) via its `reviewers:` field, so
   when present the resolver must return exactly that list — the seam that lets one docType react differently.
 
+### Checks.Resolve → empty for a docType with no custom deterministic checks
+- **Why:** custom deterministic checks are strictly opt-in — the generic `validate` is the universal floor, so a
+  docType that declares no `checks:` must resolve to none, never inventing a blocking rule it didn't ask for.
+
+### Checks.Resolve → returns the docType's declared checks when present
+- **Why:** a docType names its own cheap, objective guards (the guide caps step count) via `checks:`; the resolver
+  must return exactly that list so the handler can run each as a blocking gate the structural validator can't express.
+
 ### SchemaChecker.Run → flags a definition file that is not a YAML map
 - **Why:** a definition that is not a YAML map is structurally broken; the checker must report it rather than
   skip or throw, so a corrupted block/doctype can never silently weaken the standard.

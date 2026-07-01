@@ -199,38 +199,52 @@ SHA-cursor debounce: a reviewer spawns only on a *real* change, never on an idle
 | **Dev loop** (a normal Claude Code session) | headless `claude -p "<prompt>"`, launched hook-free | `turn-ended` → Stop `additionalContext` / exit-2 → main session |
 | **Orchestration** (A.Box) | the orchestrator's own agent/saga machinery | the orchestrated agent's outcome channel |
 
-### The reviewers pipeline (built) — one trigger, N fresh reviewers
+### The reaction pipeline (built) — deterministic gates + fresh reviewers
 
 One doc change wants to fan out to several reactions with different scopes: **every** docType is graded
-against its rubric by the shared `judge`; a **guide** additionally wants `walk-guide` to walk it. Four
-constraints reconcile these, and the built pipeline satisfies all four **without new machinery** — the
-reaction target is just a **named agent**, and the "workflow" is that agent's own definition md:
+against its rubric by the shared `judge`; a **guide** additionally wants `walk-guide` to walk it and a
+deterministic cap on its step count. Four constraints reconcile these, and the built pipeline satisfies
+all four **without new machinery** — a reaction is just a named agent (whose definition md *is* the
+"directions") or a script, listed flat on the docType:
 
 | Constraint | How it's met |
 |---|---|
 | Validation feedback returns to the main session so it can fix | the `check`-mode Stop protocol (`additionalContext` / exit-2 block) — already built |
 | Evaluation is **not** done by the main session (no bias, no context bloat) | it runs in the Stop-hook **subprocess**; reviewers are **fresh `claude -p --agent <name>`** spawns — the main agent never grades its own work nor spends context on it |
-| The deterministic check validates shape first, for free | `docengine validate` gates before any agent spawns; structural failure **blocks** (exit 2) |
-| No complex machinery for the non-deterministic part | reaction = a flat **`reviewers:`** list of named agents on the **docType** (schema field). No DSL, no conductor, no workflow engine — the agent definition md *is* the "directions." |
+| The deterministic check validates shape first, for free | `docengine validate` (generic) then `checks:` (custom) gate before any agent spawns; either failure **blocks** (exit 2) |
+| No complex machinery | a reaction is a flat list on the **docType** — **`checks:`** (deterministic scripts) or **`reviewers:`** (named agents). No DSL, no conductor, no workflow engine — the agent definition md *is* the "directions." |
+
+The reaction space is a **2×2** — how it's judged × how broadly it applies — and every cell now has a seam:
+
+| | **Deterministic** (cheap, objective, blocks) | **Agent** (judgment, advises) |
+|---|---|---|
+| **Generic** (all docTypes) | `docengine validate` (catalog structure) | — |
+| **Custom** (per docType) | **`checks:`** — deterministic scripts (guide caps steps) | **`reviewers:`** — fresh `--agent` spawns |
+
+`checks:` is the deterministic twin of `reviewers:` — the cheap, per-docType rule the generic structural
+validator can't express and an agent reviewer is the wrong tool for. Both are flat lists on the docType.
 
 **Pipeline** (in the subprocess, off the main session), per changed doc:
 
 ```
-validate ──fail──► BLOCK + feed structural error back           (deterministic; every event)
+validate  (generic structure)     ──fail──► BLOCK + structural error fed back   (deterministic; every event)
    │ pass
    ▼
-reviewers = docType `reviewers:`   (default [judge]; guide [judge, walk-guide])
-   │  spawn each: claude -p --agent <name>, hook-free (ABOX_HOOKS_SUPPRESS)
+checks    (docType `checks:`)      ──fail──► BLOCK + check message fed back      (deterministic; every event)
+   │ pass                                     each: engine-relative script, exit≠0 to block
    ▼
-aggregate their notes ─────────────► advisory context back to the main session   (turn-end only)
+reviewers (docType `reviewers:`)   ─────────► advisory context back to the main session   (turn-end only)
+      default [judge]; guide [judge, walk-guide] · spawn each claude -p --agent <name>, hook-free
 ```
 
-**Registration is per-docType, not per-instance:** "every doc gets judged" is the resolver default, not
+**Registration is per-docType, not per-instance:** "every doc gets judged" is the reviewers default, not
 a line every doc repeats; a docType *adds* reviewers (guide → `[judge, walk-guide]`) or opts out with an
-explicit empty list. **Policy:** the deterministic validate **blocks**; reviewers **advise** (subjective
-blocking invites loops — the `stop_hook_active` guard backstops any block anyway). Reviewers fire on a
-**turn end only** — a commit has no agent session to feed back to. The `judge` (tools = Read/Grep/Glob,
-no shell) is handed its criteria inline via `docengine rubric <doc>`; `walk-guide` gets the doc path.
+explicit empty list. `checks:` is opt-in (none by default — `validate` is the universal deterministic
+floor). **Policy:** both deterministic tiers (`validate`, `checks`) **block**; reviewers **advise**
+(subjective blocking invites loops — the `stop_hook_active` guard backstops any block anyway). Checks run
+on **every event** (cheap); reviewers fire on a **turn end only** — a commit has no agent session to feed
+back to. The `judge` (tools = Read/Grep/Glob, no shell) is handed its criteria inline via `docengine
+rubric <doc>`; `walk-guide` gets the doc path.
 
 This **supersedes the `onChange: …/walk-guide.md` agent-on-demand** use: `reviewers:` now fires the
 fresh reviewer automatically and feeds back. `onChange:` stays for deterministic *script* side-effects.
