@@ -1,0 +1,6 @@
+Repo   -> user ada now has 5 points
+          persisted? reload shows 5 points
+Bucket -> user ada now has 5 points
+          persisted? reload shows 5 points
+
+BOTH providers: loaded, mutated, saved — same feature, one recipe shape. OK

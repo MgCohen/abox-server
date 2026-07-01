@@ -1,0 +1,9 @@
+<Project>
+
+  <!-- Self-contained probe: stop MSBuild's prop-chain walk so the repo-root
+       artifacts/ redirect never captures this build. -->
+  <PropertyGroup>
+    <UseArtifactsOutput>false</UseArtifactsOutput>
+  </PropertyGroup>
+
+</Project>

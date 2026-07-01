@@ -1,0 +1,21 @@
+
+--- 1. ONE recipe shape, TWO owned handlers — provider-specific load/save ---
+      [PASS] Repo handler takes Repo<User>
+      [PASS] Repo key is a string (command.Email), bound once
+      [PASS] Repo load = repo.Load
+      [PASS] Repo save = repo.Store
+      [PASS] Bucket handler takes Bucket<User>
+      [PASS] Bucket key is a BucketKey (forced by the provider), bound once
+      [PASS] Bucket load = bucket.Download
+      [PASS] Bucket save = bucket.Upload
+
+--- 2. SAME shape + SAME output — the body is provider-agnostic ---
+      [PASS] identical lifted body in both handlers
+      [PASS] both return the aggregate (same output type: User)
+
+--- 3. THE TYPE-SAFE SWAP — the compiler REJECTS a key that doesn't match the provider ---
+      [PASS] MATCHED key (BucketKey) compiles against a Bucket provider
+      [PASS] MISMATCHED key (string) is REJECTED against a Bucket provider
+      compiler said: The type arguments for method 'FeatureBuilder<AddPointsCommand>.Mutate<TArgs, TReturn>(IStore<TArgs, TReturn>, Func<AddPointsCommand, TArgs>, Action<TReturn, AddPointsCommand>)' cannot be inferred from the usage. Try specifying the type arguments explicitly.
+
+PROVE: PASS
