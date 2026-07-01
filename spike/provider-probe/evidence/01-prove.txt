@@ -1,0 +1,27 @@
+
+--- 1. ONE recipe shape, TWO handlers — the store is swapped, nothing else ---
+      [PASS] both handlers take just the command — the store is static, not a parameter
+      [PASS] Repo handler binds the static Repository store
+      [PASS] Bucket handler binds the static BucketStore store
+      [PASS] Repo key is a string (command.Email) — no __key alias
+      [PASS] Bucket key is a BucketKey (forced by the store) — no __key alias
+
+--- 2. THE STORE SURVIVES — store.Get/Save uniform, no verb translation ---
+      [PASS] both load via store.Get(key) — identical, provider-agnostic
+      [PASS] both save via store.Save(key, agg) — the idiomatic Load/Download lives in the store
+      [PASS] identical lifted body in both handlers
+      [PASS] both return the aggregate (same output type: User)
+
+--- 3. THE SNIPPET IS REAL C# — the scaffold is authored, not string-built ---
+      [PASS] mutate is a [Snippet] method (like Loop)
+      [PASS] the scaffold body is real, compiling C# over the store's Get/Save — no __key
+      [PASS] the body is a Block.Of("body") slot
+      [PASS] the emitter SUBSTITUTES the snippet — it never spells the scaffold statements itself
+      [PASS] no StoreCatalog — the per-provider string bag is gone
+
+--- 4. THE TYPE-SAFE SWAP — the compiler REJECTS a key that doesn't match the store ---
+      [PASS] MATCHED key (BucketKey) compiles against a Bucket store
+      [PASS] MISMATCHED key (string) is REJECTED against a Bucket store
+      compiler said: The type arguments for method 'Compose.Mutate<TArgs, TReturn>(IStore<TArgs, TReturn>, TArgs, Action<TReturn>)' cannot be inferred from the usage. Try specifying the type arguments explicitly.
+
+PROVE: PASS

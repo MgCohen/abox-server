@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Scenario3</RootNamespace>
+    <AssemblyName>scenario3</AssemblyName>
+  </PropertyGroup>
+
+  <!-- DELIBERATELY does NOT reference the producer of `Foo`, and does NOT run the
+       generator. `Foo` is therefore an unresolved NAME here. The default build target
+       (Break.cs) demonstrates the CS0246 failure. The working target (Works.cs, via the
+       `typeref` configuration) shows the value-level TypeRef that DOES compile. -->
+
+  <!-- Default build: the failing file only. -->
+  <ItemGroup Condition="'$(Mode)' != 'typeref'">
+    <Compile Remove="Works.cs" />
+  </ItemGroup>
+
+  <!-- `dotnet run -p:Mode=typeref`: the value-level TypeRef workaround only. -->
+  <ItemGroup Condition="'$(Mode)' == 'typeref'">
+    <Compile Remove="Break.cs" />
+  </ItemGroup>
+
+</Project>

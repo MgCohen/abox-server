@@ -1,0 +1,10 @@
+<Project>
+
+  <!-- Self-contained slice: stop MSBuild's prop-chain walk so the repo-root
+       artifacts/ redirect never captures this build (it otherwise leaks bin/obj
+       to the repo root). Plain local bin/obj keeps the slice copy-out runnable. -->
+  <PropertyGroup>
+    <UseArtifactsOutput>false</UseArtifactsOutput>
+  </PropertyGroup>
+
+</Project>

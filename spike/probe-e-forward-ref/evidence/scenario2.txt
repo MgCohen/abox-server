@@ -1,0 +1,5 @@
+Foo (in B)   -> Foo { Id = 75f525b5-1e7b-409d-85c1-76734455bb52, Name = from-B }
+List<Foo> ct -> 2
+Repo<Foo> ct -> 1
+A.MakeFoo    -> Foo { Id = af4e199b-3dfb-49ff-b554-16ca8a3c883e, Name = via-A-API }
+Scenario 2: cross-project, B references A => COMPILED & RAN

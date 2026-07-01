@@ -1,0 +1,11 @@
+<Project>
+
+  <!-- Self-contained probe: do NOT inherit the repo-root artifacts/ output redirect or
+       its repo-wide conventions. Plain local bin/obj so it builds + runs standalone and
+       never leaks generated .cs into the repo's shared artifacts/ dir. We stop MSBuild's
+       prop-chain walk here by not importing the parent. -->
+  <PropertyGroup>
+    <UseArtifactsOutput>false</UseArtifactsOutput>
+  </PropertyGroup>
+
+</Project>

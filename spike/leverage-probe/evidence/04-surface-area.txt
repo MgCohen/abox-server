@@ -1,0 +1,77 @@
+version                            | authored lines | author tokens
+-----------------------------------|----------------|--------------
+hand-written baseline              |             17 |           147
+integration-slice recipe (verbose) |             31 |           116
+motif recipe (this probe)          |              9 |            37
+
+motif vs baseline : 9 vs 17 lines  ->  1.89x smaller than hand-written
+slice vs baseline : 31 vs 17 lines  ->  1.82x LARGER than hand-written
+motif vs slice    : 9 vs 31 lines  ->  3.44x smaller than the verbose recipe
+tokens motif/base/slice: 37 / 147 / 116  ->  motif is 3.97x fewer tokens than baseline
+
+WIN CONDITION (motif << hand-written << verbose slice): MET
+
+======================================================================
+
+----- hand-written baseline  (17 lines, 147 tokens) -----
+using Probe.Catalog;
+using Probe.Runtime;
+namespace Acme.Users;
+public sealed record AddItemCommand(string Email, Guid BookId, int Qty);
+public sealed record CartItem(Guid BookId, int Qty, decimal Price, string Label);
+public static class AddItemHandler
+{
+    public static User Handle(Scope scope, AddItemCommand command)
+    {
+        var users = scope.Get<Repo<User>>();
+        var user = users.Load(command.Email);
+        var book = scope.Ask<BookDetails>(new BookDetailsQuery(command.BookId));
+        user.AddToCart(new CartItem(command.BookId, command.Qty, book.Price, book.Label));
+        users.Save();
+        return user;
+    }
+}
+
+----- integration-slice recipe (verbose)  (31 lines, 116 tokens) -----
+    public static FeatureRecipe AddItemToCart() => new(
+        Namespace: "Acme.Cart",
+        FeatureName: "AddItemToCart",
+        Command: "AddItemCommand",
+        Models:
+        [
+            new ModelSpec("CartItem",
+            [
+                new FieldSpec("BookId", "Guid"),
+                new FieldSpec("Qty", "int"),
+                new FieldSpec("Price", "decimal"),
+                new FieldSpec("Label", "string"),
+            ]),
+            new ModelSpec("AddItemCommand",
+            [
+                new FieldSpec("Email", "string"),
+                new FieldSpec("BookId", "Guid"),
+                new FieldSpec("Qty", "int"),
+            ]),
+        ],
+        Glue: new GlueSpec(
+            Returns: "User",
+            Body: """
+                var users = scope.Get<Repo<User>>();
+                var book = scope.Ask<BookDetails>(new BookDetailsQuery(command.BookId));
+                var user = users.Load(command.Email);
+                var item = new CartItem(command.BookId, command.Qty, book.Price, book.Label);
+                user.AddToCart(item);
+                users.Save();
+                return user;
+                """));
+
+----- motif recipe (this probe)  (9 lines, 37 tokens) -----
+using Probe.Catalog;
+    public static MutationRecipe AddItemToCart() => Feature.Mutates<User>(
+        key: "command.Email",
+        command: "AddItemCommand(Email:string, BookId:Guid, Qty:int)",
+        models: "CartItem(BookId:Guid, Qty:int, Price:decimal, Label:string)",
+        with: """
+            var book = scope.Ask<BookDetails>(new BookDetailsQuery(command.BookId));
+            agg.AddToCart(new CartItem(command.BookId, command.Qty, book.Price, book.Label));
+            """);

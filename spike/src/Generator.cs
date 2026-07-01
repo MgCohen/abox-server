@@ -37,6 +37,14 @@ static class Generator
         return CSharpSyntaxTree.ParseText(full).GetRoot().NormalizeWhitespace().ToFullString();
     }
 
+    // Renders just a Block's statements (no shell) — the seam the declaration tier (a MethodNode's
+    // body) joins through.
+    public static string RenderBody(Block block)
+    {
+        LoadSnippets();
+        return RenderBlock(block);
+    }
+
     // --- rendering -----------------------------------------------------------------------
 
     static string RenderStmt(Stmt node)

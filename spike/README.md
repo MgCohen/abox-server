@@ -9,6 +9,99 @@ This document is written to be **cold-readable**: you should be able to understa
 the whole idea, why it's shaped the way it is, and what we're building, without
 having seen the conversation that produced it.
 
+## Invariants — the anchor (read this first)
+
+These are the properties the whole effort must hold. Everything else (which dialect, which
+milestone, which reference) is detail that serves them. Sharpened from §1's original constraint
+table after the architecture-first pass (`flow-graphs.md` → `authoring-dialects.md`).
+
+**What the LLM does — four bounded positions (not "writes no code").** The LLM stays the author
+throughout; the system constrains *where and how* it authors. The positions run in **workflow order**:
+
+1. **Analyze / select** — first, read the task and pick which recipes & components fit (intent → catalog).
+2. **Compose** — wire the chosen components into a recipe (output→input). The structured, minimal-dialect bulk.
+3. **Author the missing** — if no component matches what the feature needs, you **do not wire it in
+   place.** You stop, step out to a *separate* session, author (or alter) the component properly,
+   clean it, and come back to use it. A deliberate detour out of composition — never an inline
+   improvisation. This is how the catalog grows (the ratchet); a cleaned component carries the hard
+   standards so every later composition inherits them.
+4. **Glue** — the irreducibly-custom middle: *how* an element is found in a repository (a
+   predicate/lambda), *how* it's changed (a few lines). No way around it — it is the feature's
+   business logic. Made small and standardized, dropped into a **typed slot**. The only thing
+   genuinely hand-written *in place*.
+
+The **deterministic** part is only the *lowering* (recipe → owned source). Authorship of the recipe
+and its glue is the LLM's; what's enforced is the *composition*, not the absence of the author.
+
+### Invariants — must hold (a guard or the compiler can assert these)
+
+- **Type-safe.** Illegal compositions don't compile. The type system *is* the schema — no JSON, no
+  runtime validator, no "looks right."
+- **Deterministic lowering.** A fixed recipe → the same owned source, byte-for-byte. "Input" =
+  recipe + catalog version + toolchain (Roslyn/formatter). No model *in the lowering step*.
+- **Structured.** You can only wire what the catalog holds. New *behavior* enters only as an authored
+  component (position 3) — never improvised inline; the only hand-written code in place is the glue.
+- **Custom glue is bounded.** Hand-written code is allowed only as the feature's irreducible business
+  logic — a predicate / query / a few lines — at a **typed leaf or block slot, never a new top-level
+  form.** Small and standardized, never zero.
+- **Owned output, via explicit emit.** Generated code is normal, committed `.cs` — materialized only
+  by an explicit *emit*, never invisible weaving. The live-vs-emitted policy below governs it.
+- **Standards land on the output, not the components.** The generated code must pass the product's
+  good-practice bar / rulebooks. The **components do not** — they are a custom source-generation
+  toolchain we are building. Judge a component by the code it *emits*, not by how it reads.
+
+### Design principles — guide choices (not build-failing)
+
+- **The LLM authors, within structure.** It writes code in all four positions — *not* zero code. What
+  it cannot do is improvise *structure*. ("Deterministic" governs the lowering; "structured" governs
+  the authoring.)
+- **Minimal dialect — in the wiring.** The composition surface (position 2) is a small, regular,
+  unambiguous vocabulary — few forms, no dialect *choice* — so an agent emits it reliably. The glue
+  slot (position 4) is necessarily freer; minimal dialect is a property of the *wiring*, not the glue.
+- **Source-generation back-fills inline — bounded.** The author declares a need at the use-site
+  (`new CreateRecord("X")`, `scope.Get<T>`) and the generator mints it — but only **types / DI /
+  plumbing from a fixed grammar, never new behavior.** New behavior enters only as a component.
+- **Recipe and components are tools, optimized for agent delivery.** The audience is an *agent
+  composing*, not a human reading the recipe. The recipe and the components are tooling; **the
+  generated output is the artifact** that gets read, reviewed, tested, owned.
+- **Components carry the standards — with leeway.** A cleaned component *encodes* the hard standards
+  so output inherits them, but the component itself follows *its own* internal conventions, not the
+  product's. Leeway in, standard code out.
+- **Ratchet growth (build-once-then-reuse).** No speculative abstraction. When we hit something not
+  yet built, we build it once, clean it into a component (position 3), and it is reusable forever.
+  The library grows by harvesting *real* recurring need — YAGNI as a growth model.
+
+### Emit — live vs emitted (the regeneration policy)
+
+Two states, one explicit gate between them:
+
+- **Live (working) recipe** — as you edit, it self-generates *continuously, in place* (a preview).
+  The recipe is the source of truth; nothing here is hand-edited. ("Live" = continuously
+  self-generating, not "editable output.")
+- **Emit** — an explicit action (command / button / step). It materializes the *real* artifact at the
+  **configured target**: real files in the correct folders, proper namespaces, samples — whatever the
+  output needs. Once emitted, that artifact is **detached** — continued live editing never touches it.
+- **Re-emit overrides.** Emit again with the same config and it overwrites the target; expected and
+  fine. It also **clobbers any manual edits** to the emitted files — accepted for now, no auto-sync.
+- **Out of scope (future):** reconciliation / protected-region checks. A manual edit to emitted code
+  is a *signal*, not a workflow — either the business rule changed (pull it back into the recipe) or
+  you need a different structure (make a recipe **variation** others can reuse — goes direct instead
+  of via a repository, a different technology, etc.).
+
+## Document map — active vs parked
+
+One north star, explored from several entry points. **Parked ≠ legacy** — paused, resumable threads.
+
+| State | Docs | What it is |
+|---|---|---|
+| **Anchor** | `README.md` (this), `NORTH-STAR.md` | the invariants + the `Intent→…→Feature` vision/roadmap |
+| **Active** | `flow-graphs.md`, `authoring-dialects.md`, `PROBES.md` (+ the probe dirs: `probe-a…e/`, `integration-slice/`, `leverage-probe/`, `extraction-probe/`) | architecture-first thread: RiverBooks flows → motifs → authoring surface → **runnable technical proofs** of the mechanics, ending at the **typed dialect** (`extraction-probe/`) |
+| **Parked — mechanism (recipe→code)** | `PHASE-2`, `DECLARATION-TIER`, `BUILDING-STYLE` + `src/ gen/ out/ tests/` | proved the lowering mechanism bottom-up; `authoring-dialects.md` supersedes `BUILDING-STYLE`'s authoring pass |
+| **Parked — intent→recipe (the other end)** | `PROMPT-DECOMPOSITION`, `PLAN-TO-RECIPES`, `decomposition-*`, `scheduled-runs.*`, `project-*`, `projects-*`, `favorite-artist.plan` | how intent becomes a recipe (decomposition) — a different axis |
+
+**Working rule: enrich the anchor; do not spawn sibling docs.** New thinking folds into the active
+docs or the invariants above.
+
 > **Status — Steps 1 & 2 built and passing.**
 > - **Step 1** (`spike/src/`): `dotnet run` generates `spike/out/ScriptData.cs`,
 >   compiles it in-memory, and runs it → returns `10`. Editing a snippet flows
@@ -41,7 +134,8 @@ We want a system where:
 - The system **merges them into a single, coherent piece of real C# code** —
   e.g. *a loop that sums the indices*.
 
-Hard constraints (these are the whole point — drop any one and the design changes):
+Hard constraints (these are the whole point — drop any one and the design changes). *The
+canonical, sharpened list is the **Invariants** block up top; this is the original framing:*
 
 | Constraint | Meaning |
 |---|---|
@@ -96,8 +190,10 @@ Two **separate** generation steps — do not conflate them:
   `IStmt` (produces statements) — so **composition is type-checked**: an `int`
   param rejects a `string`-producing node at authoring time.
 - A **standalone tool** lowers a recipe to a plain `ScriptData.cs` you commit and
-  may hand-edit. Roslyn is used to **parse snippet bodies and substitute fills at
-  the node level** — never to hand-build syntax trees.
+  may hand-edit (emit stays a *tool*, not a source generator). Roslyn parses snippet
+  bodies and substitutes fills at the node level; **type rendering now goes through the
+  semantic model** (`ITypeSymbol.ToDisplayString`, probe D), not reflection — see
+  `PROBES.md` → *Decision recorded*.
 - **Type-safety is two-stage:** each snippet compiles in isolation (authoring); the
   assembled `ScriptData.cs` compiles (the composition gate).
 
@@ -106,9 +202,11 @@ Two **separate** generation steps — do not conflate them:
 ## 4. The model
 
 > **Note:** §4–§5 describe the *original* model and use its API (`string` markers, `Ref`,
-> `IExpr<T>`/`IStmt`). The mechanism is unchanged, but the authoring surface has moved on —
-> `Var<T>` handles, `Expr<T>`/`Stmt` record bases, generic `Lit<T>`, factories, operators, and
-> collection-expression blocks. For the current API and authoring styles, see `BUILDING-STYLE.md`.
+> `IExpr<T>`/`IStmt`). The composition *mechanism* (parse snippet bodies, substitute fills) is
+> unchanged — but **type rendering has moved from reflection `Type.FullName` to the Roslyn semantic
+> model** (`ITypeSymbol.ToDisplayString`); the recorded decision is in `PROBES.md` → *Decision
+> recorded*, not here. The authoring surface also moved on (`Var<T>` handles, `Expr<T>`/`Stmt` bases,
+> factories, operators); for that API shape see `BUILDING-STYLE.md` (parked).
 
 ### 4.1 A snippet is a real compiling method
 
@@ -206,6 +304,11 @@ generator) lowers the recipe:
 **We parse real C# and swap leaves — we never hand-build `BinaryExpression(...)`
 trees.** That keeps the authoring visible (you read `a + b`, not factory calls)
 while still getting typed nodes that compose and format cleanly.
+
+> **Updated (probe D).** The snippet-body splice above is unchanged, but rendering a **type** to its
+> source text now goes through `ITypeSymbol.ToDisplayString` over a `Compilation` (idiomatic-or-FQN,
+> usings derived), not reflection `Type.FullName`. Emit is still a *tool* (this whole §4.5) — just a
+> `Compilation`-backed one. Recorded in `PROBES.md` → *Decision recorded*.
 
 `Inline` vs `Call` is a per-snippet mode (attribute flag). Inline splices the body
 (only valid for single-expression / simple bodies); Call emits an invocation. The
@@ -388,10 +491,12 @@ renames, snippet base-class.
 
 ---
 
-## 8. Post-spike backlog
+## 8. Backlog
 
-Revisit each **against running code**, once the Step-1 slice works. Kept out of the
-spike to keep the first cut minimal.
+**This is the canonical backlog — record deferred/parked items here**, not in `NORTH-STAR.md`
+(which holds only the north-star vision + the milestone *roadmap*, and references items here by
+number). Revisit each **against running code**. As the spike grew, some items (the declaration
+tier, #7–9) moved **into** it and now carry a status; the rest stay parked.
 
 1. ✅ **DONE — Variable names on the instance, not a recipe field** — shipped as `Var<T>`
    handles (Phase 2b); a declaration binds a handle, a use references it, the name is chosen once.
@@ -428,6 +533,13 @@ recipe only fills the `<recipe>` statements. Items 7–9 are the same modeling m
 applied one level up: from "compose statements" to "compose declarations." They
 share a spine — a **member region** is to a type what a `Block` is to a method.
 
+> **Status — M1 shipped the type tier** (`DECLARATION-TIER.md` / `NORTH-STAR.md` M1): hand-authored
+> `TypeNode` nodes (record/class/struct/enum) + a `TypeEmitter`, gated by compile + reflect. So **#8 is
+> done** (via structural nodes, not a type-`[Snippet]` — a deliberate divergence), **#9 is answered**
+> (members are a typed `Field[]`, *not* a `Block` — a field slot rejects a statement, by design), and
+> **#7 is now mostly done** (the method tier added `MethodNode` — a class member whose body is the
+> body tier, compiled + invoked), and **#11 stays partial** (no single root/result spine yet).
+
 7. **What the generated element *is*** — the output shell (class? method? what
    name / return type / params?) is **not modeled** today; it's baked into the
    generator. Model a declaration tier: a `MethodNode` (name, return type, params,
@@ -461,6 +573,16 @@ share a spine — a **member region** is to a type what a `Block` is to a method
     note the tension with operator sugar (see `BUILDING-STYLE.md`): `acc + i` solves
     the same "don't hand-build expression nodes" itch while staying *inside* the
     type system, where a lambda steps outside it.
+    > **Largely answered — `spike/extraction-probe/`.** A lambda body *can* be lowered
+    > deterministically — not via `CallerArgumentExpression`/expression-trees, but by
+    > **lifting the lambda's Roslyn syntax** from the recipe source and splicing it into the
+    > owned output (renaming params to canonical names). It extends past leaf expressions to a
+    > full **statement block** (the `With((agg,cmd,scope)=>{ … })` divergence), so the "never
+    > where a `Block` is expected" worry is relaxed: a block lambda is a legitimate typed glue
+    > slot. The leaf stays *typed* (the compiler checks every access against the real domain) and
+    > carries **0 free-text strings**. The decision tilts to **typed lambda leaf** over `Raw("…")`
+    > for business glue; the residual is the syntactic-vs-semantic rename (probe notes the
+    > semantic-model upgrade).
 
 ### The type spine (item 11)
 
@@ -477,6 +599,46 @@ share a spine — a **member region** is to a type what a `Block` is to a method
     statements, a statement *references* a `Var<T>`), or does any tier actually want
     **inheritance** — and if nothing does, say so, so we don't reach for a base type
     the structure doesn't ask for.
+
+### Recipe model & emitter (items 12–19: parked from the M1/M2 build)
+
+Terminology settled here: **a recipe is any node** — the whole typed tree, primitive
+(`RecordNode`, `LoopNode`, `Var`) up to a composite that builds a subtree. A node is *already* a
+parameterized recipe, so there is no wrapper "recipe class." These are what the type-tier build
+deliberately left for later; bracketed tags map to `NORTH-STAR.md` milestones.
+
+12. **Catalog surface / matcher seam** [M3] — a recipe needs a catalog **name + description +
+    param schema** so an LLM can *select and parameterize* it; an `IRecipe` **marker** over
+    `Stmt`/`Expr`/`TypeNode` joins when a consumer (the matcher half of the system) needs to handle
+    recipes uniformly. Built once at M2 and **removed as premature** — no consumer yet. *Test:* the
+    marker stays a marker; composition slots stay typed (`Block` holds `Stmt[]`), or type-safety is lost.
+13. **Composite recipes (`Build()` → subtree)** — a recipe that expands to *many* nodes (a service:
+    class + interface + repo + DI), the Flutter `StatelessWidget.build()` pattern, typed so a
+    composite *is-a* the category it produces. Reserve until a genuinely multi-node recipe forces it
+    (`ScaffoldService`); a 1:1 wrapper earns nothing. Overlaps #18.
+14. **Inheritance — a `Model` base** — a generated type declaring a base (`record User : Model`);
+    needs **base-list support** in the emitter, and `Model` becomes the shared base entities inherit.
+    Makes the inheritance half of #11 concrete. [before/with M4]
+15. **Output target: namespace + folder** [M4] — a type name alone doesn't say *where* the file
+    lands or *what namespace* it declares. A **wrapper on the emitted type** (not a change to the
+    node model), forced when recipes reference each other across files (a `using` needs a namespace).
+16. **`using`-derivation** — ✅ **resolved (probe D).** With the **semantic model**, `ITypeSymbol.ToDisplayString`
+    renders either idiomatic (`int`, `List<string>`, `string?`, named tuples) with a **derived `using`
+    set** (walk the symbol graph → namespaces) or fully-qualified with none — an *emit setting*, not an
+    authoring choice. This replaces the reflection-`FullName` path that forced dropping the alias
+    dictionary; the recipe is authored unchanged. (`spike/probe-d-semantic-rendering/`.)
+17. **Generated-type representation / `TypeRef`** — ⚠️ **narrowed (probe E).** The earlier claim (a
+    generated type "lives in another compilation, so it's `TypeRef` not `<T>`") is **not generally
+    true**: a generator-minted type is `public` in the producer's emitted assembly, so it's an ordinary
+    `<T>` type **within the same compilation** (order-independent) and **cross-project when the producer
+    is referenced**. Name-based `TypeRef` is genuinely required **only at the unresolved-producer
+    boundary** — an unbuilt/unreferenced or circular producer (`CS0246`). Keep `TypeRef` for exactly
+    that corner; everywhere else `<T>` works. (`spike/probe-e-forward-ref/`.)
+18. **Members beyond fields; modifiers; base/interface lists** — *methods done* (`MethodNode`, body =
+    body tier, via the `Member` base). Remaining: **method params wired to body handles** (next
+    sub-step), ctors/properties, access modifiers (`static`/`public`), base + interface lists.
+19. **Enum underlying type + explicit values** — `enum X : byte { A = 1 }`. The current `EnumNode`
+    carries bare names only.
 
 ---
 

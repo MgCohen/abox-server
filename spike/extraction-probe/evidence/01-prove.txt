@@ -1,0 +1,43 @@
+
+--- 0. clean slate ---
+      removed live/ and emitted/
+
+--- 1. LIVE (preview only — no leak across the gate) ---
+LIVE  AddItem  ->  preview 'extraction-probe/live'
+      regenerated AddItem.Handler.cs
+      (preview is overwritten wholesale each run; never hand-edited)
+      [PASS] live did NOT create the owned target
+
+--- 2. EMIT (explicit gate -> owned handler) ---
+EMIT  AddItem  ->  target 'extraction-probe/emitted' (namespace Acme.Users)
+      wrote AddItem.Handler.cs
+      [PASS] emit created the owned handler file
+
+--- 3. the SCAFFOLD was derived from the types (author never wrote it) ---
+      [PASS] scaffold: load the aggregate from Repo<User> (derived from TAgg)
+      [PASS] scaffold: save (derived)
+      [PASS] scaffold: return the aggregate (derived)
+
+--- 4. the GLUE was LIFTED from the author's real lambdas, and RENAMED ---
+      [PASS] lift: LoadBy(cmd => cmd.Email) -> command.Email, spliced into the load
+      [PASS] lift: the divergence's first statement, renamed ctx->scope / cmd->command
+      [PASS] lift: the divergence's second statement, renamed cart->agg / cmd->command
+      [PASS] rename: NONE of the author's natural names (cart/cmd/ctx) leaked into the owned code
+
+--- 5. WIRING (probe B) discovered from the assembled body ---
+      [PASS] wiring: Repo<User> registered — from the SCAFFOLD's own scope.Get, not authored
+      [PASS] wiring: BookDetails query registered — from the LIFTED glue's scope.Ask
+
+--- 6. DETACHMENT — live after emit does not touch the owned file ---
+LIVE  AddItem  ->  preview 'extraction-probe/live'
+      regenerated AddItem.Handler.cs
+      (preview is overwritten wholesale each run; never hand-edited)
+      [PASS] emitted target untouched by a live preview
+
+--- 7. OVERRIDE — a manual edit to the emitted file is clobbered by re-emit ---
+EMIT  AddItem  ->  target 'extraction-probe/emitted' (namespace Acme.Users)
+      wrote AddItem.Handler.cs
+      [PASS] re-emit overrode the manual edit (re-emit is authoritative)
+      [PASS] re-emit is deterministic — byte-identical to the first emit
+
+PROVE: PASS

@@ -1,0 +1,5 @@
+RegisterDiscovered: all statically-discovered deps are bound — OK
+AddItemToCart -> user ada@example.com now has 1 cart item(s)
+  item: 2 x Domain-Driven Design by Eric Evans @ 49.99 (BookId 11111111-1111-1111-1111-111111111111)
+after a second add -> cart has 2 item(s)
+wiring is load-bearing -> Wiring gap: a handler asks for Probe.Domain.BookDetails (scope.Ask<BookDetails>) but no query produces it.
