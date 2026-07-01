@@ -36,9 +36,11 @@ the owner cuts `1.0.0` by hand, after which the same classifier auto-shifts up o
 ## CLI
 
 ```
-abox-version next --before <dir> --after <dir> --current <vX.Y.Z>
+abox-version next --before <dir> --after <dir> --current <vX.Y.Z> [--catalog-before <file>] [--catalog-after <file>]
   Classify the delta and print the next version, or skip if the contract is unchanged.
   Emits machine-readable `publish=` / `version=` / `level=` (also appended to $GITHUB_OUTPUT).
+  The catalog rides the package as an embedded resource, invisible to the surface diff, so pass the two
+  doc-catalog.json paths: a byte change counts as an additive contract change on its own (never Breaking).
 
 abox-version diff --before <dir> --after <dir>     # the classified delta, no version math
 abox-version dump <dir>                            # the *.Api public surface of one build dir
@@ -51,6 +53,7 @@ abox-version dump <dir>                            # the *.Api public surface of
 
 A `version-on-merge` workflow (owner-gated — `.github/**` is a critical protected path)
 runs on push to `main`: resolve the last `v*` tag, build `ABox.Api` at that tag and at
-`HEAD`, run `abox-version next`, and on `publish=true` push the computed `vX.Y.Z` tag so
+`HEAD`, run `abox-version next` (passing both the baseline and HEAD `doc-catalog.json` so a
+catalog-only change still bumps), and on `publish=true` push the computed `vX.Y.Z` tag so
 the existing tag-gated `publish-contracts.yml` publishes. No contract change → no tag → no
 publish. Manual tagging stays as the override.

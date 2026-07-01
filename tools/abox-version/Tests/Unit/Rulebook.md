@@ -40,6 +40,16 @@ harness: ../../../../tests/Harness/README.md
 - **Why:** a recompile that changes the DLL bytes but not the public surface is not a contract change — the
   `.Api` dll is the boundary — so it must classify None and never trigger a version bump.
 
+### CatalogSignal reports a byte-different or newly-present catalog as changed and an identical or absent pair as unchanged
+- **Why:** the shared doc catalog is shipped vocabulary but rides the package as an embedded resource, invisible
+  to the surface diff — comparing its bytes is the only signal that its blocks/doctypes moved, so a real change
+  must read as changed and a no-op build must not, or a catalog edit silently never publishes.
+
+### CatalogSignal lifts a None surface to Additive when the catalog changed and never downgrades a real surface change
+- **Why:** a catalog change adds to what a client can render, so on its own it must trigger an additive (patch)
+  publish; but it must only lift `None` — a concurrent breaking or additive surface change already dominates and
+  the catalog signal must never soften it.
+
 ### SemVer parses a v-prefixed tag and ignores any prerelease or build suffix
 - **Why:** release tags carry a `v` prefix and MinVer can append a prerelease/height or build suffix, so parsing
   must read the `X.Y.Z` core (`v0.0.2`, `v1.4.2-alpha.0.5`) or the baseline the bump is computed from is wrong.

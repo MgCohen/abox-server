@@ -1,8 +1,10 @@
 name: version-on-merge
 
 # On merge to main, derive the next ABox.Api version from what changed in the shipped wire contract
-# (the *.Api public surface) since the last release tag, then publish that version and tag it for
-# provenance. Self-contained: publishes with the per-run GITHUB_TOKEN — the same way
+# (the *.Api public surface, plus the embedded doc catalog) since the last release tag, then publish that
+# version and tag it for provenance. A catalog change rides the package as an embedded resource — invisible
+# to the surface diff — so it is compared by content and counts as an additive bump on its own.
+# Self-contained: publishes with the per-run GITHUB_TOKEN — the same way
 # publish-contracts.yml does — so NO PAT and no standing credential. No contract change => no publish,
 # no tag. Manual tagging via publish-contracts.yml stays as the override; put [release:skip] in the
 # merge commit subject to suppress a run. Trigger it by hand (workflow_dispatch) for a dry run.
@@ -73,7 +75,9 @@ jobs:
         run: |
           dotnet build tools/abox-version/ABox.Version.csproj -c Release -o ./toolbin
           dotnet ./toolbin/abox-version.dll next \
-            --before ./before --after ./after --current "${{ steps.base.outputs.tag }}"
+            --before ./before --after ./after --current "${{ steps.base.outputs.tag }}" \
+            --catalog-before ../base/src/Api/doc-catalog.json \
+            --catalog-after src/Api/doc-catalog.json
 
       - name: Pack, publish, tag
         if: steps.ver.outputs.publish == 'true' && !(github.event_name == 'workflow_dispatch' && inputs.dry_run)
