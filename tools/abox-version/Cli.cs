@@ -3,8 +3,9 @@ namespace ABox.Versioning;
 public static class Cli
 {
     private const string Usage =
-        "abox-version next --before <dir> --after <dir> --current <vX.Y.Z>\n" +
+        "abox-version next --before <dir> --after <dir> --current <vX.Y.Z> [--catalog-before <file>] [--catalog-after <file>]\n" +
         "  Classify the *.Api surface delta and print the next version (or skip if unchanged).\n" +
+        "  A changed doc catalog counts as an additive contract change on its own.\n" +
         "abox-version diff --before <dir> --after <dir>\n" +
         "  Print the classified surface delta between two build output dirs.\n" +
         "abox-version dump <dir>\n" +
@@ -53,7 +54,11 @@ public static class Cli
         var report = Report(o);
         PrintDelta(report);
 
-        var bump = VersionPolicy.Next(current, report.Classify());
+        var catalogChanged = CatalogSignal.Changed(o.Get("--catalog-before"), o.Get("--catalog-after"));
+        if (catalogChanged) Console.WriteLine("~ doc catalog changed: additive contract signal");
+
+        var change = CatalogSignal.Combine(report.Classify(), catalogChanged);
+        var bump = VersionPolicy.Next(current, change);
         Console.WriteLine();
         if (bump is null)
         {
@@ -62,7 +67,7 @@ public static class Cli
             return 0;
         }
 
-        Console.WriteLine($"{current.Tag}  ->  {bump.Next.Tag}   ({report.Classify()} => {bump.Level})");
+        Console.WriteLine($"{current.Tag}  ->  {bump.Next.Tag}   ({change} => {bump.Level})");
         Emit(publish: true, version: bump.Next.ToString(), level: bump.Level);
         return 0;
     }
@@ -107,6 +112,8 @@ public static class Cli
 
         public string Require(string name) =>
             _values.TryGetValue(name, out var v) ? v : throw new ArgumentException($"missing required option {name}");
+
+        public string? Get(string name) => _values.TryGetValue(name, out var v) ? v : null;
 
         public static Opts Parse(string[] args)
         {
