@@ -199,6 +199,56 @@ SHA-cursor debounce: a reviewer spawns only on a *real* change, never on an idle
 | **Dev loop** (a normal Claude Code session) | headless `claude -p "<prompt>"`, launched hook-free | `turn-ended` → Stop `additionalContext` / exit-2 → main session |
 | **Orchestration** (A.Box) | the orchestrator's own agent/saga machinery | the orchestrated agent's outcome channel |
 
+### The reaction pipeline (built) — deterministic gates + fresh reviewers
+
+One doc change wants to fan out to several reactions with different scopes: **every** docType is graded
+against its rubric by the shared `judge`; a **guide** additionally wants `walk-guide` to walk it. Four
+constraints reconcile these, and the built pipeline satisfies all four **without new machinery** — a
+reaction is just a named agent (whose definition md *is* the "directions") or a script, listed flat on
+the docType:
+
+| Constraint | How it's met |
+|---|---|
+| Validation feedback returns to the main session so it can fix | the `check`-mode Stop protocol (`additionalContext` / exit-2 block) — already built |
+| Evaluation is **not** done by the main session (no bias, no context bloat) | it runs in the Stop-hook **subprocess**; reviewers are **fresh `claude -p --agent <name>`** spawns — the main agent never grades its own work nor spends context on it |
+| The deterministic check validates shape first, for free | `docengine validate` (generic) then `checks:` (custom) gate before any agent spawns; either failure **blocks** (exit 2) |
+| No complex machinery | a reaction is a flat list on the **docType** — **`checks:`** (deterministic scripts) or **`reviewers:`** (named agents). No DSL, no conductor, no workflow engine — the agent definition md *is* the "directions." |
+
+The reaction space is a **2×2** — how it's judged × how broadly it applies — and every cell now has a seam:
+
+| | **Deterministic** (cheap, objective, blocks) | **Agent** (judgment, advises) |
+|---|---|---|
+| **Generic** (all docTypes) | `docengine validate` (catalog structure) | — |
+| **Custom** (per docType) | **`checks:`** — deterministic scripts (seam built; none wired yet) | **`reviewers:`** — fresh `--agent` spawns |
+
+`checks:` is the deterministic twin of `reviewers:` — the cheap, per-docType rule the generic structural
+validator can't express and an agent reviewer is the wrong tool for. Both are flat lists on the docType.
+
+**Pipeline** (in the subprocess, off the main session), per changed doc:
+
+```
+validate  (generic structure)     ──fail──► BLOCK + structural error fed back   (deterministic; every event)
+   │ pass
+   ▼
+checks    (docType `checks:`)      ──fail──► BLOCK + check message fed back      (deterministic; every event)
+   │ pass                                     each: engine-relative script, exit≠0 to block
+   ▼
+reviewers (docType `reviewers:`)   ─────────► advisory context back to the main session   (turn-end only)
+      default [judge]; guide [judge, walk-guide] · spawn each claude -p --agent <name>, hook-free
+```
+
+**Registration is per-docType, not per-instance:** "every doc gets judged" is the reviewers default, not
+a line every doc repeats; a docType *adds* reviewers (guide → `[judge, walk-guide]`) or opts out with an
+explicit empty list. `checks:` is opt-in (none by default — `validate` is the universal deterministic
+floor). **Policy:** both deterministic tiers (`validate`, `checks`) **block**; reviewers **advise**
+(subjective blocking invites loops — the `stop_hook_active` guard backstops any block anyway). Checks run
+on **every event** (cheap); reviewers fire on a **turn end only** — a commit has no agent session to feed
+back to. The `judge` (tools = Read/Grep/Glob, no shell) is handed its criteria inline via `docengine
+rubric <doc>`; `walk-guide` gets the doc path.
+
+This **supersedes the `onChange: …/walk-guide.md` agent-on-demand** use: `reviewers:` now fires the
+fresh reviewer automatically and feeds back. `onChange:` stays for deterministic *script* side-effects.
+
 ## Worked flow — doc-engine reacts to a turn end
 
 ```
@@ -379,23 +429,30 @@ orchestrator runs, or in the thin built controller otherwise.
    producer for the dev-loop context. Both producers are opt-in per repo (an `.abox/` dir).
    Codex stays deferred until a `.hook` needs a Codex-only kind.
 
-### Next — feedback to the agent + fresh-agent review (agreed, not yet built)
+### Next — feedback to the agent + fresh-agent review (built)
 
-6. **Rename the mode `react` → `notify`** across the engine (`HookMode`, the parser, the dispatcher,
-   `.hook` files, tests/rulebook) — kill the React.js collision. Mechanical; do it first.
-7. **Add `check` mode + the producer feedback translation.** `check` runs synchronously and its result
-   is fed back to the running agent: `abox-hooks turn-ended` collects a `check` hook's stdout → emits
-   the Claude Code Stop response (`hookSpecificOutput.additionalContext` on exit 0; **exit 2** to block
-   the turn and force the agent to address it). The `.hook` stays provider-agnostic — prints feedback,
-   sets an exit code. Switch **doc-engine to `check`** and speed its handler up (call the prebuilt
-   `docengine` dll, not `dotnet run`) so an invalid doc blocks the turn with the error fed back, instead
-   of a swallowed `notify` surface.
-8. **Add the `agent:` action + fresh-agent review.** `agent: <prompt>` spawns a brand-new,
-   minimal-context reviewer and feeds its verdict back (a `check` + `agent:` hook). **Loop guard: spawn
-   hook-free** (no-hooks settings on the spawned agent) + honor `stop_hook_active` + SHA-cursor debounce.
-   Dev-loop spawner = headless `claude -p`; orchestration spawner = A.Box's agent/saga machinery.
-   `walk-guide` is the prototype reviewer. Prove the dev-loop spawn live (as the Stop hook was proven)
-   before locking it.
+6. ~~Rename the mode `react` → `notify`~~ **Done.** `HookMode.Notify` across engine, parser, dispatcher,
+   `.hook` files, tests/rulebook, and the guide — the React.js collision is gone. Pure rename, no behavior
+   change.
+7. ~~Add `check` mode + the producer feedback translation.~~ **Done.** `check` runs synchronously and its
+   output is relayed to the running agent. The dispatcher now runs `notify`+`check` (capturing
+   stdout/stderr — which also closed a latent undrained-pipe deadlock); `DispatchPendingAsync` returns a
+   pass (events + results); `HookFeedback.FromChecks` translates them. `abox-hooks turn-ended` renders the
+   Claude Code Stop protocol: a non-zero check **blocks** the turn (exit 2, reason on stderr); a passing
+   check's output is injected as advisory `additionalContext` (exit 0). A **`stop_hook_active` loop guard**
+   downgrades a re-block to context so a check can't wedge the agent in a block→resume cycle. **doc-engine
+   switched to `mode: check`** (an invalid instance now blocks the turn-end) and its handler resolves the
+   prebuilt `docengine.dll` instead of paying `dotnet run`'s restore+build each call. Proven live: the real
+   binary blocks (exit 2) and the guard downgrades to exit-0 `additionalContext`.
+8. ~~Add the `agent:` action + fresh-agent review.~~ **Done.** A `.hook` declares exactly one action —
+   `run:` (a command) or `agent:` (a prompt for a fresh, minimal-context reviewer) — modelled as a
+   `HookAction` sum type, enforced at parse time. The dev-loop spawner runs `claude -p "<prompt>"` launched
+   **hook-free**: `ABOX_HOOKS_SUPPRESS=1` in the child's environment makes the spawned agent's own turn-end
+   producer a no-op, so a reviewer can never re-trigger the hook that spawned it — the structural loop guard,
+   not a flag we hope holds. The process run-loop is factored into `ProcessExec`, shared by the shell runner
+   and the Claude launcher (`IAgentLauncher` seam, stubbed in tests; orchestration's spawner is the future
+   second impl). `walk-guide` is the prototype reviewer. Proven live: an `agent:` hook spawned `claude -p`
+   with `suppress=1` and fed the review back as `additionalContext`.
 
 ### Open follow-ups (owner-gated)
 

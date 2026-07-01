@@ -26,10 +26,10 @@ public sealed class HookControllerTests
             var controller = new HookController(
                 new HookCatalog([hookDir]), new HookDispatcher(new HookRunner(10_000)));
 
-            Assert.Equal(2, await controller.DispatchPendingAsync(log, cursor));
+            Assert.Equal(2, (await controller.DispatchPendingAsync(log, cursor)).Events);
             Assert.Equal(2, File.ReadAllText(runs).Count(c => c == 'x'));
 
-            Assert.Equal(0, await controller.DispatchPendingAsync(log, cursor));
+            Assert.Equal(0, (await controller.DispatchPendingAsync(log, cursor)).Events);
             Assert.Equal(2, File.ReadAllText(runs).Count(c => c == 'x'));
         }
         finally

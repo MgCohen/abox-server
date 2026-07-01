@@ -46,6 +46,13 @@ status: draft
 ---
 ```
 
+**Optional `onChange`.** A path to a deterministic *script* handler (under `scripts/`,
+`.claude/agents`, or `.claude/hooks`; no `..`) run as a side-effect when this instance
+changes — e.g. to regenerate a derived file. It is validated (the path must resolve
+inside those roots) but never executed by `validate`. Grading and review are **not** set
+here — those come from the doc type's `reviewers:`/`checks:` (see "Wire a doc type's
+on-change reactions" in `guides/extend-the-doc-engine.guide.md`).
+
 ### Blocks
 
 First tell singletons from collections: open `blocks/<type>.yaml` — if it has

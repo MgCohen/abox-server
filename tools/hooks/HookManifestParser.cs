@@ -10,8 +10,9 @@ public static class HookManifestParser
         HookSource? source = null;
         string? cwdGlob = null;
         string? tool = null;
-        var mode = HookMode.React;
+        var mode = HookMode.Notify;
         string? run = null;
+        string? agent = null;
 
         var lineNo = 0;
         foreach (var raw in text.Split('\n'))
@@ -31,14 +32,20 @@ public static class HookManifestParser
                 case "when": ApplyWhen(path, lineNo, raw, value, ref source, ref cwdGlob, ref tool); break;
                 case "mode": mode = ParseMode(path, lineNo, raw, value); break;
                 case "run": run = value; break;
-                default: throw Bad(path, lineNo, raw, $"unknown key '{key}' (expected on/when/mode/run)");
+                case "agent": agent = value; break;
+                default: throw Bad(path, lineNo, raw, $"unknown key '{key}' (expected on/when/mode/run/agent)");
             }
         }
 
         if (on is null || on.Count == 0) throw Bad(path, 0, "", "missing required 'on:' (at least one event kind)");
-        if (string.IsNullOrWhiteSpace(run)) throw Bad(path, 0, "", "missing required 'run:' command");
 
-        return new HookManifest(path, on, new HookWhen(source, cwdGlob, tool), mode, run);
+        var hasRun = !string.IsNullOrWhiteSpace(run);
+        var hasAgent = !string.IsNullOrWhiteSpace(agent);
+        if (hasRun && hasAgent) throw Bad(path, 0, "", "'run:' and 'agent:' are mutually exclusive — give exactly one");
+        if (!hasRun && !hasAgent) throw Bad(path, 0, "", "missing required action — give 'run:' (a command) or 'agent:' (a prompt)");
+
+        HookAction action = hasAgent ? new HookAction.Agent(agent!) : new HookAction.Run(run!);
+        return new HookManifest(path, on, new HookWhen(source, cwdGlob, tool), mode, action);
     }
 
     private static List<HookKind> ParseKinds(string path, int lineNo, string raw, string value)
@@ -88,7 +95,7 @@ public static class HookManifestParser
     private static HookMode ParseMode(string path, int lineNo, string raw, string value)
     {
         if (!Enum.TryParse<HookMode>(value, ignoreCase: true, out var mode))
-            throw Bad(path, lineNo, raw, $"unknown mode '{value}' (expected react|gate)");
+            throw Bad(path, lineNo, raw, $"unknown mode '{value}' (expected notify|gate|check)");
         return mode;
     }
 
@@ -116,7 +123,7 @@ public static class HookManifestParser
         var where = lineNo > 0 ? $"{path}:{lineNo}" : path;
         var snippet = raw.Trim().Length > 0 ? $" near \"{raw.Trim()}\"" : "";
         return new FormatException(
-            $"Invalid .hook {where}: {why}{snippet}. A .hook needs 'on:' (event kinds) and 'run:' (command); " +
-            "optional 'when:' and 'mode:'.");
+            $"Invalid .hook {where}: {why}{snippet}. A .hook needs 'on:' (event kinds) and exactly one of " +
+            "'run:' (command) or 'agent:' (prompt); optional 'when:' and 'mode:'.");
     }
 }

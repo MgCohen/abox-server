@@ -15,6 +15,9 @@ internal static class Program
                 "check" => Check(root),
                 "validate" => ValidateCmd(root, positional.ElementAtOrDefault(1)),
                 "onchange" => OnChangeCmd(root, positional.ElementAtOrDefault(1)),
+                "reviewers" => ReviewersCmd(root, positional.ElementAtOrDefault(1)),
+                "checks" => ChecksCmd(root, positional.ElementAtOrDefault(1)),
+                "rubric" => RubricCmd(root, positional.ElementAtOrDefault(1)),
                 "catalog" => CatalogCmd(root, positional.ElementAtOrDefault(1), args.Contains("--json")),
                 "outline" => OutlineCmd(root, positional.ElementAtOrDefault(1), args.Contains("--write")),
                 _ => Usage(),
@@ -75,6 +78,47 @@ internal static class Program
         var fm = InstanceParser.ParseFrontmatter(File.ReadAllLines(ToPath(root, rel)));
         var onChange = Yaml.AsString(fm.GetValueOrDefault("onChange"));
         if (!string.IsNullOrEmpty(onChange)) Console.WriteLine(onChange);
+        return 0;
+    }
+
+    private static int ReviewersCmd(string root, string? rel)
+    {
+        if (rel is null)
+        {
+            Console.Error.WriteLine("usage: docengine reviewers <file>");
+            return 2;
+        }
+        var path = ToPath(root, rel);
+        var dt = Catalog.LoadDoctype(root, InstanceParser.DoctypeOf(path, File.ReadAllLines(path)));
+        foreach (var reviewer in Reviewers.Resolve(dt)) Console.WriteLine(reviewer);
+        return 0;
+    }
+
+    private static int ChecksCmd(string root, string? rel)
+    {
+        if (rel is null)
+        {
+            Console.Error.WriteLine("usage: docengine checks <file>");
+            return 2;
+        }
+        var path = ToPath(root, rel);
+        var dt = Catalog.LoadDoctype(root, InstanceParser.DoctypeOf(path, File.ReadAllLines(path)));
+        foreach (var check in Checks.Resolve(dt)) Console.WriteLine(check);
+        return 0;
+    }
+
+    private static int RubricCmd(string root, string? rel)
+    {
+        if (rel is null)
+        {
+            Console.Error.WriteLine("usage: docengine rubric <file>");
+            return 2;
+        }
+        var path = ToPath(root, rel);
+        var dt = Catalog.LoadDoctype(root, InstanceParser.DoctypeOf(path, File.ReadAllLines(path)));
+        var rubric = Yaml.AsMap(dt.GetValueOrDefault("rubric"));
+        if (rubric is not null)
+            foreach (var (criterion, rule) in rubric) Console.WriteLine($"{criterion}: {Yaml.AsString(rule)}");
         return 0;
     }
 
@@ -168,7 +212,7 @@ internal static class Program
 
     private static int Usage()
     {
-        Console.Error.WriteLine("usage: docengine <check | validate <file> | onchange <file> | catalog [doctype] [--json] | outline <file> [--write]> [--root <dir>]");
+        Console.Error.WriteLine("usage: docengine <check | validate <file> | onchange <file> | reviewers <file> | checks <file> | rubric <file> | catalog [doctype] [--json] | outline <file> [--write]> [--root <dir>]");
         return 2;
     }
 }

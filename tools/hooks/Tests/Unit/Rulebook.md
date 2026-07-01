@@ -15,9 +15,17 @@ harness: ../../../../tests/Harness/README.md
 - **Why:** the `.hook` file is the whole feature-facing seam; if the parser drops the `on:` kinds, the `when:`
   filter, the mode, or the run command, a feature's declared intent is silently not what the controller runs.
 
-### HookManifestParser rejects a .hook missing on: or run: with an actionable error naming the file
-- **Why:** `on:` and `run:` are the two load-bearing fields — a hook with neither an event to fire on nor a
-  command to run is inert, so it must fail loudly, naming the file, not be discovered as a silent no-op.
+### HookManifestParser rejects a .hook missing on: or an action with an actionable error naming the file
+- **Why:** `on:` and an action (`run:` or `agent:`) are the load-bearing fields — a hook with neither an event to
+  fire on nor an action to take is inert, so it must fail loudly, naming the file, not be a silent no-op.
+
+### HookManifestParser parses agent: into a spawn-agent action carrying the prompt
+- **Why:** `agent:` is the second action axis — instead of a shell command it names a prompt for a fresh agent, so
+  the parser must capture it as a spawn-agent action (not a run command) or the fresh-review intent is lost.
+
+### HookManifestParser rejects a .hook that sets both run: and agent:
+- **Why:** a hook takes exactly one action; allowing both leaves it ambiguous which one fires, so two actions must
+  fail loudly at parse time rather than silently picking one.
 
 ### HookEvent round-trips through its jsonl line, preserving kind, source, ids, and raw payload
 - **Why:** the jsonl line is the transport between the dumb shim and the controller; a consumer reads the kind,
@@ -35,9 +43,14 @@ harness: ../../../../tests/Harness/README.md
 - **Why:** discovery is convention-over-registration across many feature folders; one malformed `.hook` must be
   reported and skipped, leaving the rest discoverable, so a single typo can't blind the controller to every hook.
 
-### HookDispatcher runs only the matching react hooks, feeding the event on stdin
-- **Why:** `react` hooks fan out off the event with the payload on stdin; a non-matching hook or a `gate` hook
-  (which rides the synchronous perm-shim, not this stream) must not be run here, or the wrong code fires.
+### HookDispatcher runs the matching notify and check hooks, not gate, feeding the event on stdin
+- **Why:** `notify` and `check` hooks both fan out off the event with the payload on stdin; a non-matching hook
+  or a `gate` hook (which rides the synchronous perm-shim, not this stream) must not be run here, or the wrong
+  code fires — `check` differs only in that its captured output is relayed back to the agent, not discarded.
+
+### HookDispatcher routes an agent: action to the agent launcher, not the shell, and relays its output
+- **Why:** an `agent:` action must reach the agent launcher (a fresh `claude -p`), never the shell runner — and its
+  output must come back as the result so a `check` hook can feed the fresh review to the main agent.
 
 ### HookController dispatches the pending log slice once and advances the cursor past completed lines
 - **Why:** the durable cursor is what makes delivery deferred-not-dropped — it must advance past completed lines
@@ -70,6 +83,23 @@ harness: ../../../../tests/Harness/README.md
 ### abox-hooks turn-ended in an opted-in repo → appends a TurnEnded line from the Stop payload and dispatches
 - **Why:** this is the dev-loop producer — given the Claude Code Stop payload on stdin it must emit a well-formed
   TurnEnded line (carrying the session id and raw payload) and dispatch, so a normal session fires hooks too.
+
+### abox-hooks turn-ended with a passing check hook → returns the check output as advisory Stop context
+- **Why:** a `check` hook is the synchronous, fed-back mode — when it passes (exit 0) its stdout must come back as
+  advisory context so the producer can inject it via the Stop hook's `additionalContext`, guiding without blocking.
+
+### abox-hooks turn-ended with a failing check hook → blocks the turn, feeding the check output back as the reason
+- **Why:** the whole point of `check` is to let a reaction stop a premature turn-end — a non-zero check must surface
+  as a block whose reason is the hook's output, which the producer renders as a Stop exit-2 fed back to the agent.
+
+### abox-hooks turn-ended honors stop_hook_active → a blocking check is downgraded to context, not re-blocked
+- **Why:** Claude sets `stop_hook_active` once a stop has already been blocked and resumed; if a check still wants
+  to block, re-blocking would wedge the agent in an endless block→resume loop, so the guard downgrades it to
+  advisory context — the reason is still surfaced, but the turn is allowed to end.
+
+### abox-hooks turn-ended under ABOX_HOOKS_SUPPRESS → no-op, so a hook-spawned agent can't re-trigger
+- **Why:** a reviewer launched by an `agent:` action carries `ABOX_HOOKS_SUPPRESS`; its own turn-end must emit and
+  dispatch nothing, or the fresh review would re-trigger the hook that spawned it — the structural loop guard.
 
 ### abox-hooks turn-ended with no .abox opt-in → emits nothing
 - **Why:** a Stop hook fires every turn, so without the `.abox/` opt-in it must be a silent no-op — never writing

@@ -8,3 +8,4 @@ rubric:
   steps-concrete: Steps are concrete imperative instructions, not vague guidance.
   mentions-resolve: A step that mentions another procedure's step refers to one that exists.
   one-subject: The guide stays on one subject; unrelated tasks belong in another guide.
+reviewers: [judge, walk-guide]

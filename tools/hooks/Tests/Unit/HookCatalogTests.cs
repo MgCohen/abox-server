@@ -11,13 +11,13 @@ public sealed class HookCatalogTests
         {
             var feat = Directory.CreateDirectory(Path.Combine(root, "feat")).FullName;
             File.WriteAllText(Path.Combine(feat, "good.hook"), "on: [TurnEnded]\nrun: echo hi\n");
-            File.WriteAllText(Path.Combine(feat, "bad.hook"), "mode: react\n");
+            File.WriteAllText(Path.Combine(feat, "bad.hook"), "mode: notify\n");
 
             var reports = new List<string>();
             var manifests = new HookCatalog([root], reports.Add).Scan();
 
             Assert.Single(manifests);
-            Assert.Equal("echo hi", manifests[0].Run);
+            Assert.Equal(new HookAction.Run("echo hi"), manifests[0].Action);
             Assert.Single(reports);
             Assert.Contains("bad.hook", reports[0]);
         }

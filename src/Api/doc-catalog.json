@@ -89,9 +89,19 @@
           "kind": "attrs",
           "required": "false"
         },
+        "checks": {
+          "kind": "list",
+          "required": "false",
+          "of": "string"
+        },
         "rubric": {
           "kind": "strmap",
           "required": "false"
+        },
+        "reviewers": {
+          "kind": "list",
+          "required": "false",
+          "of": "string"
         }
       },
       "constraints": [
@@ -423,7 +433,11 @@
         "steps-concrete": "Steps are concrete imperative instructions, not vague guidance.",
         "mentions-resolve": "A step that mentions another procedure\u0027s step refers to one that exists.",
         "one-subject": "The guide stays on one subject; unrelated tasks belong in another guide."
-      }
+      },
+      "reviewers": [
+        "judge",
+        "walk-guide"
+      ]
     },
     "research": {
       "docType": "research",

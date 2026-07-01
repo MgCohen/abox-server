@@ -15,8 +15,8 @@ public sealed class HookMatchingTests
             "/feat/x.hook",
             new[] { HookKind.TurnEnded },
             new HookWhen(HookSource.Claude, "**/docs/**", null),
-            HookMode.React,
-            "run");
+            HookMode.Notify,
+            new HookAction.Run("run"));
 
         Assert.True(manifest.Matches(Event(HookKind.TurnEnded, HookSource.Claude, "/repo/docs/a")));
         Assert.False(manifest.Matches(Event(HookKind.CommitLanded, HookSource.Claude, "/repo/docs/a")));
@@ -24,7 +24,7 @@ public sealed class HookMatchingTests
         Assert.False(manifest.Matches(Event(HookKind.TurnEnded, HookSource.Claude, "/repo/src")));
 
         var toolGated = new HookManifest(
-            "/feat/t.hook", new[] { HookKind.ToolPending }, new HookWhen(null, null, "Bash"), HookMode.React, "run");
+            "/feat/t.hook", new[] { HookKind.ToolPending }, new HookWhen(null, null, "Bash"), HookMode.Notify, new HookAction.Run("run"));
         Assert.True(toolGated.Matches(Event(HookKind.ToolPending, HookSource.Claude, "/x", """{"tool_name":"Bash"}""")));
         Assert.False(toolGated.Matches(Event(HookKind.ToolPending, HookSource.Claude, "/x", """{"tool_name":"Edit"}""")));
     }
