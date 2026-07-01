@@ -55,6 +55,14 @@ harness: ../../../../tests/Harness/README.md
 - **Why:** the catalog the whole repo validates against must itself conform to the meta-schema; a non-vacuous
   pass over the real `_schema`/`kinds`/`blocks`/`doctypes` proves the checker does real work and the catalog is sound.
 
+### Reviewers.Resolve → defaults to the judge for a docType that declares none
+- **Why:** every doc is graded against its rubric by the shared judge — that universal must hold with no
+  per-docType config, so a docType that names no `reviewers:` still resolves to `[judge]`, never to nothing.
+
+### Reviewers.Resolve → returns the docType's declared reviewers when present
+- **Why:** a docType opts into extra fresh reviewers (the guide adds `walk-guide`) via its `reviewers:` field, so
+  when present the resolver must return exactly that list — the seam that lets one docType react differently.
+
 ### SchemaChecker.Run → flags a definition file that is not a YAML map
 - **Why:** a definition that is not a YAML map is structurally broken; the checker must report it rather than
   skip or throw, so a corrupted block/doctype can never silently weaken the standard.

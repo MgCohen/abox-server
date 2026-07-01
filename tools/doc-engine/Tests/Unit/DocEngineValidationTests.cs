@@ -113,6 +113,16 @@ public sealed class DocEngineValidationTests
     public void SchemaChecker_passes_the_shipped_catalog() =>
         Assert.Empty(new SchemaChecker(EngineRoot).Run());
 
+    [Rule("Reviewers.Resolve → defaults to the judge for a docType that declares none")]
+    [Fact]
+    public void Reviewers_default_to_the_judge() =>
+        Assert.Equal(new[] { "judge" }, Reviewers.Resolve(Catalog.LoadDoctype(EngineRoot, "feature-plan")));
+
+    [Rule("Reviewers.Resolve → returns the docType's declared reviewers when present")]
+    [Fact]
+    public void Reviewers_from_the_doctype_when_declared() =>
+        Assert.Equal(new[] { "judge", "walk-guide" }, Reviewers.Resolve(Catalog.LoadDoctype(EngineRoot, "guide")));
+
     [Rule("SchemaChecker.Run → flags a composes entry that names no block type")]
     [Fact]
     public void SchemaChecker_rejects_composes_of_an_unknown_block()

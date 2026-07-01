@@ -23,6 +23,10 @@ fields:
   rubric:
     kind: strmap
     required: false
+  reviewers:
+    kind: list
+    required: false
+    of: string
 constraints:
   - rule: subset
     of: required
