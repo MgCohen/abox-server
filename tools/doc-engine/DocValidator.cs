@@ -4,18 +4,22 @@ namespace ABox.DocEngine;
 
 public static class DocValidator
 {
-    private static readonly Regex LabelBullet = new(@"^-\s+\*\*(?<label>[^:*]+):\*\*");
+    private static readonly Regex LabelBullet = new(@"^-?\s*\*\*(?<label>[^:*]+):\*\*");
     private static readonly Regex OnChange = new(@"^(\.claude/(agents|hooks)|scripts)/[A-Za-z0-9._/-]+$");
 
-    private static HashSet<string> LabelsIn(string body)
+    // A label is a `- **Name:**` bullet or a bare `**Name:**` lead-in. The bullet form is the closed set
+    // (any undeclared bullet label is flagged); the bare form is only a label when its name is declared, so
+    // ordinary bold-lead prose (`**Note:** …`) stays prose rather than tripping the unexpected-label check.
+    private static HashSet<string> LabelsIn(string body, IReadOnlySet<string> declared)
     {
         var labels = new HashSet<string>(StringComparer.Ordinal);
         var inFence = false;
         foreach (var line in body.Split('\n'))
         {
             if (line.StartsWith("```", StringComparison.Ordinal)) { inFence = !inFence; continue; }
-            if (!inFence && LabelBullet.Match(line) is { Success: true } m)
-                labels.Add(m.Groups["label"].Value.Trim());
+            if (inFence || LabelBullet.Match(line) is not { Success: true } m) continue;
+            var name = m.Groups["label"].Value.Trim();
+            if (line.TrimStart().StartsWith('-') || declared.Contains(name)) labels.Add(name);
         }
         return labels;
     }
@@ -86,7 +90,9 @@ public static class DocValidator
         {
             var asp = FieldSpec.Normalize(raw, false);
             if (asp.Required && !b.Attrs.ContainsKey(an))
-                errs.Add($"{where} {b.Type}: missing required attr '{an}'");
+                errs.Add(asp.InHeading
+                    ? $"{where} {b.Type}: heading must start with an ordinal id (e.g. '#### 1. Title')"
+                    : $"{where} {b.Type}: missing required attr '{an}'");
             if (!b.Attrs.TryGetValue(an, out var av)) continue;
             if (asp.Type == "enum" && !asp.Values.Contains(av))
                 errs.Add($"{where} {b.Type}: {an}='{av}' not in [{string.Join(", ", asp.Values)}]");
@@ -103,7 +109,7 @@ public static class DocValidator
 
         var labelSpec = Yaml.AsMap(defs[b.Type].GetValueOrDefault("labels"));
         if (labelSpec is null) return;
-        var labels = LabelsIn(b.Body);
+        var labels = LabelsIn(b.Body, labelSpec.Keys.ToHashSet(StringComparer.Ordinal));
         foreach (var (label, spec) in labelSpec)
         {
             var ls = Yaml.AsMap(spec);

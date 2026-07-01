@@ -119,13 +119,16 @@ status: blocked
 ```
 
 - `key: value` lines under the (sub)header are scalar attrs (status, lean, caveat). An
-  attr declared `hidden` is authored as `<!-- key: value -->` so enforced metadata (e.g. a
-  step's `id`, which a `pattern` constrains) stays out of the rendered prose; an attr may
-  also declare a `pattern` regex the value must match (the open-ended sibling of `enum`).
-- A collection block may `composes: [<child-type>…]`; its members then nest one level
-  deeper as `#### child` blocks (e.g. a `guide`'s `### action` → `#### step`), each validated
-  in turn — a parent that composes a type requires at least one such child. A `- **Label:**`
-  bullet attaches to whichever block in the nesting chain *declares* it, so a parent's labels may
-  bracket its children (before *and* after). See ADR 0016.
+  attr declared `inHeading` is read from the leading ordinal of the member's own heading
+  (e.g. a step's `id` in `##### 1. <title>`, which a `pattern` constrains) so the enforced
+  handle reads as a visible step number; an attr may also declare a `pattern` regex the value
+  must match (the open-ended sibling of `enum`).
+- A collection block may `composes: [<child-type>…]`; its members then nest two heading levels
+  deeper as `##### child` blocks (e.g. a `guide`'s `### procedure` → `##### N. step`, one level skipped
+  so the nesting reads at a glance), each validated
+  in turn — a parent that composes a type requires at least one such child. A label — a `- **Label:**`
+  bullet or a bare `**Label:**` lead-in (bare only counts when the name is declared) — attaches to whichever
+  block in the nesting chain *declares* it, so a parent's labels may bracket its children (before *and*
+  after). See ADR 0016 and ADR 0017.
 - Final on-disk syntax should match the render repo's parser — the model here is
   parser-agnostic.

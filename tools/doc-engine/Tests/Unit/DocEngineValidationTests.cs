@@ -49,15 +49,17 @@ public sealed class DocEngineValidationTests
     {
         "---", "docType: guide", "---", "",
         "## Summary", "A how-to.", "",
-        "## Actions",
-        "### Do a thing",
-        "- **Context:** c.",
-        "#### First step", "<!-- id: 1 -->", "- **Condition:** only sometimes", "Do the first thing.",
-        "#### Second step", "<!-- id: 2 -->", "Do the second thing.",
-        "- **Validation:** v.", "- **Outcome:** o.",
+        "## Procedures",
+        "### Doing a thing",
+        "**Context:** c.",
+        "",
+        "##### 1. First step", "- **Condition:** only sometimes", "Do the first thing.",
+        "##### 2. Second step", "Do the second thing.",
+        "",
+        "**Outcome:** o.",
     };
 
-    [Rule("DocValidator.Validate → no errors for a guide whose actions nest conforming steps")]
+    [Rule("DocValidator.Validate → no errors for a guide whose procedures nest conforming steps")]
     [Fact]
     public void Validate_passes_a_nested_guide() =>
         Assert.Empty(Validate(NestedGuide));
@@ -66,7 +68,7 @@ public sealed class DocEngineValidationTests
     [Fact]
     public void Validate_routes_a_trailing_action_label_to_the_action()
     {
-        var noOutcome = NestedGuide.Where(l => l != "- **Outcome:** o.").ToArray();
+        var noOutcome = NestedGuide.Where(l => l != "**Outcome:** o.").ToArray();
 
         Assert.Contains(Validate(noOutcome), e => e.Contains("missing required label '**Outcome:**'", StringComparison.Ordinal));
     }
@@ -75,25 +77,43 @@ public sealed class DocEngineValidationTests
     [Fact]
     public void Validate_rejects_a_step_id_off_pattern()
     {
-        var lines = NestedGuide.Select(l => l == "<!-- id: 1 -->" ? "<!-- id: 1.X -->" : l).ToArray();
+        var lines = NestedGuide.Select(l => l == "##### 1. First step" ? "##### 1.X First step" : l).ToArray();
 
         Assert.Contains(Validate(lines), e => e.Contains("does not match", StringComparison.Ordinal));
     }
 
-    [Rule("DocValidator.Validate → flags duplicate step ids within one action")]
+    [Rule("DocValidator.Validate → flags a step ordinal written with a non-canonical separator")]
     [Fact]
-    public void Validate_rejects_duplicate_step_ids_in_an_action()
+    public void Validate_rejects_a_non_canonical_ordinal_separator()
     {
-        var lines = NestedGuide.Select(l => l == "<!-- id: 2 -->" ? "<!-- id: 1 -->" : l).ToArray();
+        var lines = NestedGuide.Select(l => l == "##### 1. First step" ? "##### 1) First step" : l).ToArray();
+
+        Assert.Contains(Validate(lines), e => e.Contains("does not match", StringComparison.Ordinal));
+    }
+
+    [Rule("DocValidator.Validate → a bare **Label:** lead-in whose name is undeclared stays prose, not an unexpected label")]
+    [Fact]
+    public void Validate_treats_an_undeclared_bare_lead_in_as_prose()
+    {
+        var lines = NestedGuide.Select(l => l == "Do the first thing." ? "**Note:** do the first thing." : l).ToArray();
+
+        Assert.Empty(Validate(lines));
+    }
+
+    [Rule("DocValidator.Validate → flags duplicate step ids within one procedure")]
+    [Fact]
+    public void Validate_rejects_duplicate_step_ids_in_a_procedure()
+    {
+        var lines = NestedGuide.Select(l => l == "##### 2. Second step" ? "##### 1. Second step" : l).ToArray();
 
         Assert.Contains(Validate(lines), e => e.Contains("duplicate id '1'", StringComparison.Ordinal));
     }
 
     [Rule("DocValidator.Validate → flags a block that composes a child type but has no child")]
     [Fact]
-    public void Validate_rejects_an_action_with_no_steps()
+    public void Validate_rejects_a_procedure_with_no_steps()
     {
-        var lines = NestedGuide.TakeWhile(l => !l.StartsWith("####", StringComparison.Ordinal)).ToArray();
+        var lines = NestedGuide.TakeWhile(l => !l.StartsWith("#####", StringComparison.Ordinal)).ToArray();
 
         Assert.Contains(Validate(lines), e => e.Contains("requires at least one step", StringComparison.Ordinal));
     }
@@ -144,8 +164,8 @@ public sealed class DocEngineValidationTests
         {
             foreach (var dir in new[] { "_schema", "kinds", "blocks", "doctypes" })
                 CopyDir(Path.Combine(EngineRoot, dir), Path.Combine(root, dir));
-            var action = Path.Combine(root, "blocks", "action.yaml");
-            File.WriteAllText(action, File.ReadAllText(action).Replace("composes: [step]", "composes: [nonexistent]"));
+            var procedure = Path.Combine(root, "blocks", "procedure.yaml");
+            File.WriteAllText(procedure, File.ReadAllText(procedure).Replace("composes: [step]", "composes: [nonexistent]"));
 
             Assert.Contains(new SchemaChecker(root).Run(), e => e.Contains("nonexistent", StringComparison.Ordinal));
         }

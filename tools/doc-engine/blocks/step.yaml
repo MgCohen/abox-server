@@ -1,5 +1,5 @@
 type: step
-description: One ordered instruction within an action — the name is the heading, the id is an enforced invisible handle, with an optional Condition and details.
+description: One ordered instruction within a procedure — the heading reads "N. <imperative>", its leading ordinal is the enforced id, with an optional Condition and details.
 rubric:
   imperative: A single concrete instruction the reader can act on, not a paragraph of context.
   id-grammar: The id reads N, then N.M for a sub-step or N.a for a branch.
@@ -7,7 +7,7 @@ attrs:
   id:
     type: string
     pattern: '^\d+(\.\d+)*(\.[a-z])?$'
-    hidden: true
+    inHeading: true
     required: true
 labels:
   Condition:
