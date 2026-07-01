@@ -4,18 +4,25 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Probe;
 
-// Lift the real-code glue (the `key` selector + the `body` divergence) out of a recipe
-// method's source, renaming the author's lambda params to the canonical handler names.
-// Same Roslyn lift as the extraction probe; here it pulls the named `key:` / `body:`
-// arguments of the Mutate(...) call.
+// Lift the recipe's shape out of its source: the command type (from Feature<TCmd>), the
+// provider (aggregate + factory, from the `via:` argument), and the real-code glue (the
+// `key` selector + the `body` divergence), renaming author lambda params to canonical names.
 static class Lift
 {
-    public sealed record Glue(string KeyExpression, IReadOnlyList<string> BodyStatements);
+    public sealed record Recipe(
+        string Command,
+        string Aggregate,
+        string StoreFactory,
+        string KeyExpression,
+        IReadOnlyList<string> BodyStatements)
+    {
+        public string FeatureName => Command.EndsWith("Command") ? Command[..^"Command".Length] : Command;
+    }
 
     const string CanonicalAggregate = "agg";
     const string CanonicalCommand = "command";
 
-    public static Glue From(string recipeSource, string methodName)
+    public static Recipe From(string recipeSource, string methodName)
     {
         var root = CSharpSyntaxTree
             .ParseText(recipeSource, new CSharpParseOptions(LanguageVersion.Latest))
@@ -25,15 +32,42 @@ static class Lift
             .FirstOrDefault(m => m.Identifier.ValueText == methodName)
             ?? throw new InvalidOperationException($"no method '{methodName}' in the recipe source.");
 
-        var mutate = method.DescendantNodes().OfType<InvocationExpressionSyntax>()
-            .FirstOrDefault(i => i.Expression is MemberAccessExpressionSyntax ma
-                && ma.Name.Identifier.ValueText == "Mutate")
-            ?? throw new InvalidOperationException("no .Mutate(...) call in the recipe.");
+        var command = FeatureCommandType(method);
+        var mutate = MutateCall(method);
+        var (aggregate, factory) = ProviderFromVia(mutate);
 
         var key = (SimpleLambdaExpressionSyntax)LambdaArg(mutate, "key");
         var body = (ParenthesizedLambdaExpressionSyntax)LambdaArg(mutate, "body");
 
-        return new Glue(LiftKey(key), LiftBody(body));
+        return new Recipe(command, aggregate, factory, LiftKey(key), LiftBody(body));
+    }
+
+    // `new Feature<AddPointsCommand>(scope => …)` — the builder fixes TCmd; we read it here.
+    static string FeatureCommandType(MethodDeclarationSyntax method)
+    {
+        var feature = method.DescendantNodes().OfType<ObjectCreationExpressionSyntax>()
+            .FirstOrDefault(o => o.Type is GenericNameSyntax g && g.Identifier.ValueText == "Feature")
+            ?? throw new InvalidOperationException("no `new Feature<…>(…)` in the recipe.");
+        return ((GenericNameSyntax)feature.Type).TypeArgumentList.Arguments[0].ToString();
+    }
+
+    // The canonical action form is the free function `Mutate(scope, via:…, key:…, body:…)`.
+    static InvocationExpressionSyntax MutateCall(MethodDeclarationSyntax method) =>
+        method.DescendantNodes().OfType<InvocationExpressionSyntax>()
+            .FirstOrDefault(i => i.Expression is IdentifierNameSyntax id && id.Identifier.ValueText == "Mutate")
+        ?? throw new InvalidOperationException("no `Mutate(scope, …)` call in the recipe.");
+
+    // `via: Stores.Repository<User>()` -> aggregate "User", factory "Repository".
+    static (string Aggregate, string Factory) ProviderFromVia(InvocationExpressionSyntax mutate)
+    {
+        var via = mutate.ArgumentList.Arguments
+            .FirstOrDefault(a => a.NameColon?.Name.Identifier.ValueText == "via")?.Expression
+            ?? throw new InvalidOperationException("Mutate(...) has no 'via:' argument.");
+
+        if (via is not InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax { Name: GenericNameSyntax g } })
+            throw new InvalidOperationException("'via:' must be a Stores.<Factory><T>() call.");
+
+        return (g.TypeArgumentList.Arguments[0].ToString(), g.Identifier.ValueText);
     }
 
     static LambdaExpressionSyntax LambdaArg(InvocationExpressionSyntax call, string name)

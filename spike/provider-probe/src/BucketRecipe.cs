@@ -1,4 +1,5 @@
 using Probe.Domain;
+using static Probe.Compose;
 
 namespace Probe;
 
@@ -9,9 +10,11 @@ namespace Probe;
 public static class BucketRecipe
 {
     // === AUTHORED (begin) ===
-    public static Mutation AddPoints() => Feature.For<AddPointsCommand>().Mutate(
-        via:  Stores.BucketStore<User>(),
-        key:  c => new BucketKey(c.Region),
-        body: (user, c) => user.AddPoints(c.Points));
+    public static Node AddPoints() =>
+        new Feature<AddPointsCommand>(scope =>
+            Mutate(scope,
+                via:  Stores.BucketStore<User>(),
+                key:  c => new BucketKey(c.Region),
+                body: (user, c) => user.AddPoints(c.Points)));
     // === AUTHORED (end) ===
 }

@@ -9,13 +9,19 @@
       [PASS] Bucket load = bucket.Download
       [PASS] Bucket save = bucket.Upload
 
---- 2. SAME shape + SAME output — the body is provider-agnostic ---
+--- 2. SAME shape + SAME output — the scaffold came from ONE snippet, body lifted ---
       [PASS] identical lifted body in both handlers
-      [PASS] both return the aggregate (same output type: User)
+      [PASS] both return the aggregate (same output type: User) — from the snippet's `return agg;`
 
---- 3. THE TYPE-SAFE SWAP — the compiler REJECTS a key that doesn't match the provider ---
+--- 3. THE SNIPPET IS REAL C# — the scaffold is authored, not string-built ---
+      [PASS] mutate is a [Snippet] method (like Loop)
+      [PASS] the scaffold body is real, compiling C# over the canonical Get/Save verbs
+      [PASS] the body is a Block.Of("body") slot
+      [PASS] the emitter does NOT string-build the scaffold — it substitutes the snippet
+
+--- 4. THE TYPE-SAFE SWAP — the compiler REJECTS a key that doesn't match the provider ---
       [PASS] MATCHED key (BucketKey) compiles against a Bucket provider
       [PASS] MISMATCHED key (string) is REJECTED against a Bucket provider
-      compiler said: The type arguments for method 'FeatureBuilder<AddPointsCommand>.Mutate<TArgs, TReturn>(IStore<TArgs, TReturn>, Func<AddPointsCommand, TArgs>, Action<TReturn, AddPointsCommand>)' cannot be inferred from the usage. Try specifying the type arguments explicitly.
+      compiler said: The type arguments for method 'Compose.Mutate<TCmd, TArgs, TAgg>(Scope<TCmd>, IStore<TArgs, TAgg>, Func<TCmd, TArgs>, Action<TAgg, TCmd>)' cannot be inferred from the usage. Try specifying the type arguments explicitly.
 
 PROVE: PASS

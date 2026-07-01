@@ -8,9 +8,10 @@ namespace Probe;
 //   dotnet run -- emit    emit both owned handlers (Repo + Bucket) from the two recipes
 //   dotnet run -- prove   emit + assert the two outputs + the compiler REJECTS a bad swap
 //
-// The two recipes differ by ONE token (via) plus the key it forces. Both type-check;
-// the emitter lowers each to a different owned handler; and a mismatched key does not
-// compile (the negative check). Paths anchored via CallerFilePath.
+// The two recipes differ by ONE token (via) plus the key it forces. Both type-check; the
+// emitter SUBSTITUTES the `mutate` snippet (not string-built) and rewrites the canonical
+// verbs per the StoreCatalog, so each lowers to a different owned handler; and a mismatched
+// key does not compile (the negative check). Paths anchored via CallerFilePath.
 static class Program
 {
     static int Main(string[] args)
@@ -30,10 +31,8 @@ static class Program
     static (Emitter.Artifact repo, Emitter.Artifact bucket) LowerBoth(string root)
     {
         var repo = Emitter.Lower(
-            RepoRecipe.AddPoints(),
             Lift.From(File.ReadAllText(Path.Combine(root, "src", "RepoRecipe.cs")), "AddPoints"));
         var bucket = Emitter.Lower(
-            BucketRecipe.AddPoints(),
             Lift.From(File.ReadAllText(Path.Combine(root, "src", "BucketRecipe.cs")), "AddPoints"));
         return (repo, bucket);
     }
@@ -73,15 +72,26 @@ static class Program
         ok &= Check(bucket.Text.Contains("var agg = bucket.Download(__key);"), "Bucket load = bucket.Download");
         ok &= Check(bucket.Text.Contains("bucket.Upload(__key, agg);"), "Bucket save = bucket.Upload");
 
-        Section("2. SAME shape + SAME output — the body is provider-agnostic");
+        Section("2. SAME shape + SAME output — the scaffold came from ONE snippet, body lifted");
         ok &= Check(repo.Text.Contains("agg.AddPoints(command.Points);")
                  && bucket.Text.Contains("agg.AddPoints(command.Points);"),
             "identical lifted body in both handlers");
         ok &= Check(repo.Text.Contains("return agg;") && bucket.Text.Contains("return agg;"),
-            "both return the aggregate (same output type: User)");
+            "both return the aggregate (same output type: User) — from the snippet's `return agg;`");
 
-        Section("3. THE TYPE-SAFE SWAP — the compiler REJECTS a key that doesn't match the provider");
-        var shared = new[] { "Store.cs", "Domain.cs", "Feature.cs" }
+        Section("3. THE SNIPPET IS REAL C# — the scaffold is authored, not string-built");
+        var snippetSrc = File.ReadAllText(Snippets.SourcePath);
+        ok &= Check(snippetSrc.Contains("[Snippet(\"mutate\")]"), "mutate is a [Snippet] method (like Loop)");
+        ok &= Check(snippetSrc.Contains("var agg = @store.Get(__key);")
+                 && snippetSrc.Contains("@store.Save(__key, agg);"),
+            "the scaffold body is real, compiling C# over the canonical Get/Save verbs");
+        ok &= Check(snippetSrc.Contains("Block.Of(\"body\")"), "the body is a Block.Of(\"body\") slot");
+        var emitterSrc = File.ReadAllText(Path.Combine(root, "src", "Emitter.cs"));
+        ok &= Check(!emitterSrc.Contains("var agg =") && !emitterSrc.Contains("return agg;"),
+            "the emitter does NOT string-build the scaffold — it substitutes the snippet");
+
+        Section("4. THE TYPE-SAFE SWAP — the compiler REJECTS a key that doesn't match the provider");
+        var shared = new[] { "Store.cs", "Domain.cs", "Compose.cs" }
             .Select(f => File.ReadAllText(Path.Combine(root, "src", f))).ToArray();
 
         var matched = Errors(shared, Snippet(key: "c => new BucketKey(c.Region)"));
@@ -97,25 +107,29 @@ static class Program
         return ok ? 0 : 1;
     }
 
-    // A recipe that plugs a Bucket provider but takes `key` as a parameter, so we can vary
-    // it. With key => BucketKey it must compile; with key => string it must NOT.
+    // The Bucket recipe surface with `key` parameterised, so we can vary it. With key =>
+    // BucketKey it must compile; with key => string it must NOT (the swap is enforced by the
+    // builder: via is IStore<BucketKey,User>, so key must be Func<TCmd,BucketKey>).
     static string Snippet(string key) => $$"""
         using Probe;
         using Probe.Domain;
+        using static Probe.Compose;
         public static class __Neg
         {
-            public static Mutation Recipe() => Feature.For<AddPointsCommand>().Mutate(
-                via:  Stores.BucketStore<User>(),
-                key:  {{key}},
-                body: (user, c) => user.AddPoints(c.Points));
+            public static Node Recipe() =>
+                new Feature<AddPointsCommand>(scope =>
+                    Mutate(scope,
+                        via:  Stores.BucketStore<User>(),
+                        key:  {{key}},
+                        body: (user, c) => user.AddPoints(c.Points)));
         }
         """;
 
     static IReadOnlyList<Diagnostic> Errors(string[] sharedSources, string snippet)
     {
         var options = new CSharpParseOptions(LanguageVersion.Latest);
-        // The project builds with ImplicitUsings; the throwaway compilation must supply
-        // the same global usings or the shared sources' Dictionary<,> etc. won't resolve.
+        // The project builds with ImplicitUsings; the throwaway compilation must supply the
+        // same global usings or the shared sources' Dictionary<,> etc. won't resolve.
         const string globals = """
             global using System;
             global using System.Collections.Generic;
