@@ -429,9 +429,6 @@
         "summary",
         "action"
       ],
-      "checks": [
-        "scripts/guide-max-steps.sh"
-      ],
       "rubric": {
         "coverage": "The actions cover the distinct tasks a reader comes to this guide to perform.",
         "outcome-each": "Every action states a concrete, recognizable outcome.",

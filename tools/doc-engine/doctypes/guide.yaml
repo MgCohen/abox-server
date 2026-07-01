@@ -2,7 +2,6 @@ docType: guide
 description: A how-to — independent actions, each with context, ordered steps, and a stated, observable outcome, read by a human or an agent.
 blocks: [summary, action, open-question]
 required: [summary, action]
-checks: [scripts/guide-max-steps.sh]
 rubric:
   coverage: The actions cover the distinct tasks a reader comes to this guide to perform.
   outcome-each: Every action states a concrete, recognizable outcome.

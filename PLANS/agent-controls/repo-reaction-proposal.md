@@ -202,10 +202,10 @@ SHA-cursor debounce: a reviewer spawns only on a *real* change, never on an idle
 ### The reaction pipeline (built) — deterministic gates + fresh reviewers
 
 One doc change wants to fan out to several reactions with different scopes: **every** docType is graded
-against its rubric by the shared `judge`; a **guide** additionally wants `walk-guide` to walk it and a
-deterministic cap on its step count. Four constraints reconcile these, and the built pipeline satisfies
-all four **without new machinery** — a reaction is just a named agent (whose definition md *is* the
-"directions") or a script, listed flat on the docType:
+against its rubric by the shared `judge`; a **guide** additionally wants `walk-guide` to walk it. Four
+constraints reconcile these, and the built pipeline satisfies all four **without new machinery** — a
+reaction is just a named agent (whose definition md *is* the "directions") or a script, listed flat on
+the docType:
 
 | Constraint | How it's met |
 |---|---|
@@ -219,7 +219,7 @@ The reaction space is a **2×2** — how it's judged × how broadly it applies �
 | | **Deterministic** (cheap, objective, blocks) | **Agent** (judgment, advises) |
 |---|---|---|
 | **Generic** (all docTypes) | `docengine validate` (catalog structure) | — |
-| **Custom** (per docType) | **`checks:`** — deterministic scripts (guide caps steps) | **`reviewers:`** — fresh `--agent` spawns |
+| **Custom** (per docType) | **`checks:`** — deterministic scripts (seam built; none wired yet) | **`reviewers:`** — fresh `--agent` spawns |
 
 `checks:` is the deterministic twin of `reviewers:` — the cheap, per-docType rule the generic structural
 validator can't express and an agent reviewer is the wrong tool for. Both are flat lists on the docType.

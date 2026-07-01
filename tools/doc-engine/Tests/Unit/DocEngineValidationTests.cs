@@ -126,12 +126,14 @@ public sealed class DocEngineValidationTests
     [Rule("Checks.Resolve → empty for a docType with no custom deterministic checks")]
     [Fact]
     public void Checks_default_to_none() =>
-        Assert.Empty(Checks.Resolve(Catalog.LoadDoctype(EngineRoot, "feature-plan")));
+        Assert.Empty(Checks.Resolve(Catalog.LoadDoctype(EngineRoot, "guide")));
 
     [Rule("Checks.Resolve → returns the docType's declared checks when present")]
     [Fact]
     public void Checks_from_the_doctype_when_declared() =>
-        Assert.Equal(new[] { "scripts/guide-max-steps.sh" }, Checks.Resolve(Catalog.LoadDoctype(EngineRoot, "guide")));
+        Assert.Equal(
+            new[] { "scripts/shape.sh" },
+            Checks.Resolve(new Dictionary<string, object?> { ["checks"] = new List<object?> { "scripts/shape.sh" } }));
 
     [Rule("SchemaChecker.Run → flags a composes entry that names no block type")]
     [Fact]
