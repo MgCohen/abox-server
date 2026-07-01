@@ -1,0 +1,422 @@
+# Spike: Deterministic, Type-Safe Code Composition
+
+> A spike to prove out a **deterministic, data-driven, type-safe** way to compose
+> code from reusable fragments — the opposite of "ask an LLM to glue snippets
+> together." Everything for this spike (this doc, code, generated output) lives in
+> this folder.
+
+This document is written to be **cold-readable**: you should be able to understand
+the whole idea, why it's shaped the way it is, and what we're building, without
+having seen the conversation that produced it.
+
+> **Prior art:** [`PRIOR-ART.md`](PRIOR-ART.md) maps this design against the
+> existing field through two lenses — the **PL/metaprogramming** one (Metalama,
+> MetaOCaml/Scala quotes/Squid, Hazel/ChatLSP, Roslyn generators, type-constrained
+> decoding) and the **node-based / no-code** one (Blockly, FlutterFlow, Plasmic,
+> Simulink, Blueprint Nativization, OutSystems) — and locates the white space. §6's
+> "rejected alternatives," widened with a fact-checked survey.
+
+> **Status — Steps 1 & 2 built and passing.**
+> - **Step 1** (`spike/src/`): `dotnet run` generates `spike/out/ScriptData.cs`,
+>   compiles it in-memory, and runs it → returns `10`. Editing a snippet flows
+>   through; a mistyped recipe fails to compile (the 3 done-when criteria, §7.5).
+> - **Step 2** (`spike/gen/`): the recipe nodes are now **source-generated** from
+>   the `[Snippet]` methods into `spike/src/Nodes.Generated.cs` (standalone emit,
+>   decoupled hole recognizers). The hand-written nodes are gone. Adding a
+>   `[Snippet]` makes its node appear with no other edit; a **regression net**
+>   (`spike/tests/`, 3 tests) pins the output across the refactor — all green.
+>
+> Spike divergences from the ideal design: **int-specialized** (no generic `<T>`
+> yet) and **inline-only** (no `Call` mode). The emit is a console tool now (A2);
+> swapping to an in-build source generator (A1) later is just a host change.
+>
+> **What building taught us:** the base interface (`IExpr<T>` vs `IStmt`) is
+> decided by the snippet's **body kind** — expression-bodied (`=> a + b`) produces
+> a value, block-bodied (`{ return value; }`) produces statements — **not** by the
+> return type. `int Return(int value) { return value; }` is a statement snippet.
+
+---
+
+## 1. The problem
+
+We want a system where:
+
+- A catalog of **snippets** exists — e.g. one that "knows how to do a loop", one
+  that "knows how to add two ints".
+- Something (a human, or an **agent**) declares a **combination** of those
+  snippets.
+- The system **merges them into a single, coherent piece of real C# code** —
+  e.g. *a loop that sums the indices*.
+
+Hard constraints (these are the whole point — drop any one and the design changes):
+
+| Constraint | Meaning |
+|---|---|
+| **Deterministic** | Same input → same output, byte for byte. No model in the loop. |
+| **Data-driven** | The combination is *declared as data*, not hand-written each time. |
+| **Type-safe** | Illegal compositions fail to compile — not at runtime, not "looks wrong". |
+| **Agent-first** | An LLM agent authors the combination; the structure must constrain it and validate it *for free*. |
+| **Owned output** | The generated code is a normal `.cs` file you can read, commit, and hand-edit. Not invisible compiler magic. |
+
+Non-goal: a general "compile any C#" engine. We model the **vocabulary our agents
+actually compose in**, and grow it deliberately.
+
+---
+
+## 2. Glossary
+
+| Term | Meaning |
+|---|---|
+| **Snippet** | A reusable code fragment, authored as a **real, compiling C# method** with typed **holes**. The method body *is* the template. |
+| **Hole** | A gap in a snippet to be filled at composition time. Three kinds (see §4.2). |
+| **Slot** | The marker for a *body* hole — `Slot.Of<T>()` — a real call that compiles and is type-checked. |
+| **Atom** | A primitive expression node too trivial to be a snippet (`Lit`, `Ref`). Hand-written. |
+| **Recipe** | The **combination**, declared as a typed tree of records. This is what the agent writes. |
+| **Node** | One entry in a recipe (e.g. `LoopNode`). **Generated from the snippet** (see §4.4). |
+| **Generator (tool)** | A standalone one-shot program: recipe → `ScriptData.cs`. |
+
+Two **separate** generation steps — do not conflate them:
+
+1. **Source generation (in-build, always on):** snippets → typed recipe **nodes**
+   (the *vocabulary* the agent writes against).
+2. **The one-shot tool (run on demand):** a recipe instance → `ScriptData.cs`
+   (the *artifact* you commit and own).
+
+---
+
+## 3. TL;DR of the design
+
+- A **snippet is a real C# method** annotated `[Snippet]`. Its body is genuine,
+  compiler-checked code with typed holes. You can author it, rename its variables,
+  and get type errors — like any code.
+- **Holes come in three kinds**, all visible in the method signature/body, all
+  type-checked.
+- The snippet's **signature is its contract** — exactly like `Func<>`/`Action<>`:
+  the return type says what it produces, the parameters are its value holes.
+- A **recipe** is a **typed tree of records** the agent writes. The record types
+  are **source-generated from the snippets**, so they can't drift, and the agent
+  gets IntelliSense + compile-time validation. The type system *is* the schema —
+  no JSON, no hand-written validator.
+- Recipe nodes share a normalized base — `IExpr<T>` (produces a value) /
+  `IStmt` (produces statements) — so **composition is type-checked**: an `int`
+  hole rejects a `string`-producing node at authoring time.
+- A **standalone tool** lowers a recipe to a plain `ScriptData.cs` you commit and
+  may hand-edit. Roslyn is used to **parse snippet bodies and substitute holes at
+  the node level** — never to hand-build syntax trees.
+- **Type-safety is two-stage:** each snippet compiles in isolation (authoring); the
+  assembled `ScriptData.cs` compiles (the composition gate).
+
+---
+
+## 4. The model
+
+### 4.1 A snippet is a real compiling method
+
+```csharp
+[Snippet("define", Inline)]
+void Define<T>(T value) { T @var = value; }
+```
+
+This **compiles**. `@var` is a legal identifier (the `@` escapes the `var`
+keyword), so `T @var = value;` type-checks: rename, IntelliSense, and error
+squiggles all work. The body is the template; the generator substitutes the holes.
+
+> **The breakthrough.** Earlier we believed a *variable declaration* couldn't be a
+> real snippet, because the declared **name** isn't an expression you can put a
+> placeholder into. `@var` solves it: a placeholder *identifier* that compiles and
+> is swapped at generation. This unified "trivial primitives" and "boilerplate"
+> into **one model** (annotated methods with holes) instead of two.
+
+### 4.2 The three hole kinds
+
+Holes are encoded so the snippet still compiles and the generator can find them:
+
+| Hole kind | How it's written | Filled by | Generated node field |
+|---|---|---|---|
+| **Value** | a by-value parameter (`T value`, `int count`) | a rendered child **expression** | `IExpr<T>` |
+| **Name — new** | an `@`-prefixed identifier *declared* in the body (`T @var = …`, `for (int @i …)`) | a name **string** from the recipe | `string` |
+| **Name — existing** | an `@`-prefixed **`ref` parameter** (`ref T @target`) — a variable the snippet mutates/reads | a name **string** from the recipe | `string` |
+| **Body** | `Slot.Of<Block>()` (statements) or `Slot.Of<T>()` (an expression) | a rendered child **statement/expression** | `Block` / `IExpr<T>` |
+
+Conventions the generator keys on:
+
+- **`@`-prefixed identifier = name hole.** Invisible to the C# compiler (it's a
+  valid identifier, so the snippet compiles), meaningful to our generator. Used
+  even when no keyword-escape is needed — `@` *is* our "this is a hole" sigil.
+- **by-value param = value hole**, **`ref` param = existing-name hole.** A `ref`
+  param is exactly "a variable that already exists, which I mutate" — and it makes
+  a mutation snippet like `Assign` compile *in isolation* (without it, `@target =
+  value;` wouldn't compile because `@target` would be undeclared).
+- **`Slot.Of<…>()` = body hole.** The generic argument tells you (and the agent,
+  and the generator) the hole's shape/type.
+
+### 4.3 Signature = contract (the Func/Action normalization)
+
+We don't need a base class on the snippet methods — the **signature already is the
+contract**, exactly like the BCL normalizes shapes into `Func<>`/`Action<>`:
+
+```csharp
+int  Add(int a, int b)   // == Func<int,int,int>  → produces an int
+void Define<T>(T value)  // == Action<T>          → produces statements
+```
+
+The **return type** is what the snippet produces; the **parameters** are its value
+holes. The generator reads this to decide whether the recipe node is an
+`IExpr<T>` or an `IStmt`.
+
+### 4.4 The recipe: a typed tree, generated from the snippets
+
+The recipe nodes are **source-generated** from the `[Snippet]` methods — single
+source of truth, no drift, full IntelliSense. The generator reads each snippet's
+holes and emits a node implementing the normalized base:
+
+```csharp
+interface IStmt;            // produces statement(s)        — Action-like
+interface IExpr<out T>;     // produces a value of type T   — Func-like
+```
+
+So `void Loop(int count) { for (int @i = 0; @i < count; @i++) { Slot.Of<Block>(); } }`
+mechanically generates:
+
+```csharp
+record LoopNode(IExpr<int> Count, string I, Block Body) : IStmt;
+```
+
+`Count` (value hole) → `IExpr<int>`; `@i` (new-name hole) → `string`;
+`Slot.Of<Block>()` (body hole) → `Block`. Because the node carries its produced
+type, **composition is statically correct by construction**: an `int` hole only
+accepts `IExpr<int>`; plug in a `string` producer and it won't compile.
+
+### 4.5 Generation of the artifact
+
+A **standalone tool** (a `dotnet run` console program, *not* a Roslyn source
+generator) lowers the recipe:
+
+1. Walk the recipe tree.
+2. For each node, find its snippet (by `[Snippet]` key / type map).
+3. Parse the snippet body with Roslyn (`ParseStatement`/`ParseExpression`).
+4. Substitute holes at the **node level**:
+   - name holes → swap the `@`-identifier / `ref`-param name for the recipe string,
+   - value holes → swap the param reference for the recursively-rendered child,
+   - body holes → replace the `Slot.Of<…>()` call with the rendered child block.
+5. For `Inline` snippets, drop the method wrapper and keep the (substituted) body.
+6. Assemble into one tree → `NormalizeWhitespace().ToFullString()` → write
+   `ScriptData.cs`.
+
+**We parse real C# and swap leaves — we never hand-build `BinaryExpression(...)`
+trees.** That keeps the authoring visible (you read `a + b`, not factory calls)
+while still getting typed nodes that compose and format cleanly.
+
+`Inline` vs `Call` is a per-snippet mode (attribute flag). Inline splices the body
+(only valid for single-expression / simple bodies); Call emits an invocation. The
+spike does **Inline only**.
+
+### 4.6 Type-safety is two-stage
+
+| Stage | When | What it checks |
+|---|---|---|
+| **Snippet** | you author a `[Snippet]` method | the fragment is well-formed C#; holes are typed; rename works |
+| **Recipe** | the agent writes the recipe | structure + `IExpr<T>`/`IStmt` wiring — illegal compositions don't compile |
+| **Composition** | the generated `ScriptData.cs` builds | the assembled whole (scope, types across snippet boundaries) |
+
+Nothing is validated "by convention" or by vibes. The C# compiler is the gate at
+every stage.
+
+---
+
+## 5. Worked example: `loop + var + sum`
+
+Goal: generate code that sums the loop indices `0..4` → `10`.
+
+### 5.1 The snippets (authored, all compile in isolation)
+
+```csharp
+[Snippet("define", Inline)]
+void Define<T>(T value) { T @var = value; }
+
+[Snippet("assign", Inline)]
+void Assign<T>(ref T @target, T value) { @target = value; }
+
+[Snippet("add", Inline)]
+int Add(int a, int b) => a + b;
+
+[Snippet("loop", Inline)]
+void Loop(int count) { for (int @i = 0; @i < count; @i++) { Slot.Of<Block>(); } }
+
+[Snippet("return", Inline)]
+T Return<T>(T value) { return value; }
+```
+
+Plus two hand-written **atoms** (too trivial to be snippets):
+
+```csharp
+record Lit(int Value)   : IExpr<int>;   // 0, 5
+record Ref(string Name) : IExpr<int>;   // acc, i
+record Block(IReadOnlyList<IStmt> Statements);
+```
+
+### 5.2 The generated recipe nodes (from §4.4)
+
+```csharp
+record DefineNode<T>(string Var, IExpr<T> Value)           : IStmt;
+record AssignNode<T>(string Target, IExpr<T> Value)        : IStmt;
+record AddNode(IExpr<int> A, IExpr<int> B)                 : IExpr<int>;
+record LoopNode(IExpr<int> Count, string I, Block Body)    : IStmt;
+record ReturnNode<T>(IExpr<T> Value)                       : IStmt;
+```
+
+### 5.3 The recipe (what the agent writes)
+
+```csharp
+var recipe = new Block(new IStmt[]
+{
+    new DefineNode<int>(Var: "acc", Value: new Lit(0)),
+    new LoopNode(
+        Count: new Lit(5),
+        I:     "i",
+        Body:  new Block(new IStmt[]
+        {
+            new AssignNode<int>(
+                Target: "acc",
+                Value:  new AddNode(new Ref("acc"), new Ref("i")))
+        })),
+    new ReturnNode<int>(new Ref("acc")),
+});
+```
+
+### 5.4 The generated `ScriptData.cs`
+
+```csharp
+int acc = 0;
+for (int i = 0; i < 5; i++)
+{
+    acc = acc + i;
+}
+return acc;
+```
+
+### 5.5 How the wiring happens (the crucial bit)
+
+Nothing magically knows "sum the index into the count." It is **stated** by the
+recipe, against the contract each snippet publishes:
+
+- `Define.@var` ← `"acc"`, `Loop.@i` ← `"i"`, `Assign.@target` ← `"acc"`.
+- `Assign.value` ← `Add(Ref("acc"), Ref("i"))`, which renders `acc + i`.
+- The snippets share variables **by name** — the recipe uses `"acc"` / `"i"`
+  consistently. The loop only loops; the accumulator comes from a *separate*
+  `Define`; the addition is a *separate* `Add`. Each snippet is ignorant of the
+  others; the recipe is the wiring.
+
+(Making those names instance-derived instead of stringly-typed is backlog item #1.)
+
+---
+
+## 6. Design decisions & rejected alternatives
+
+These are the insights — *why* the design is shaped this way, and what we tried and
+discarded.
+
+| Alternative | Why we rejected it |
+|---|---|
+| **Metalama** (C#-to-C# compile-time templates) | Excellent for type-safe templates **woven via attributes at compile time**. But our composition is driven by a **typed recipe** and we want an **owned source artifact**, not invisible weaving. Its grain is "composition expressed in C#," not "recipe data → file you commit." We'd end up using its underlying Roslyn anyway. |
+| **Record IR for *content*** (encode the `for` loop as `new Loop(...)`, lower via `SyntaxFactory`) | The actual code (`for (...)`) then **lives nowhere readable or editable** — it's synthesized by factory calls. You lose authoring, rename, and type-checking of the boilerplate. **Content must live in real source.** |
+| **`SyntaxFactory` tree-building as the renderer** | Verbose and **invisible**: you write `BinaryExpression(SyntaxKind.AddExpression, …)` and can't *see* `a + b` until it renders. Wrong tool for authoring. (We still use Roslyn — but to **parse** real C# and **substitute** leaves, not to build trees by hand.) |
+| **JSON recipe** | Records give the same structure **plus the type system as a free schema** — no parser, no validator, and compile-time validation for the agent. JSON buys nothing here. |
+| **Record carrying a `Code` string** (`override string Code => "T [name] = value"`) | Typed *inputs*, but the `Code` string is an **unvalidated** blob — you lose authoring-time validation of the *output*, the exact thing we want. A real method (`[Snippet]`) validates the output **and** co-locates the template. |
+| **`Slot.Body(params object[])`** | A generic `Slot.Of<T>()` makes the hole's produced **type visible and checked at authoring**; `params object[]` tells you nothing. |
+| **Two-grain split** (records for trivial leaves, snippets for boilerplate) | Made redundant by `@var`: once declarations can be real snippets, **everything is one model** — annotated methods with holes. Simpler. |
+
+---
+
+## 7. The spike plan
+
+**Hypothesis to prove:** we can take authored `[Snippet]` methods + a typed recipe
+and deterministically emit a plain, compiling `ScriptData.cs` — with the snippets
+validated at authoring and the composition validated by the type system.
+
+### 7.1 Folder layout
+
+```
+spike/
+  README.md          ← this doc
+  src/
+    Slot.cs          ← Slot.Of<T>(), the body-hole marker
+    Snippets.cs      ← the [Snippet] methods (§5.1)
+    Nodes.cs         ← IExpr<T>, IStmt, atoms, and recipe nodes (HAND-WRITTEN for the spike)
+    Generator.cs     ← recipe → C# (parse snippet bodies, substitute holes, assemble)
+    Program.cs       ← Main: build the recipe, run the generator, write out/ScriptData.cs
+  out/
+    ScriptData.cs    ← the generated artifact (committed, to show the output)
+```
+
+### 7.2 Step 1 — core merge (the real proof)
+
+- Implement `Slot`, the five snippets, the atoms, and **hand-written** recipe nodes
+  (defer source-gen — it's mechanical; the *merge* is the risk).
+- Implement the generator: parse each snippet body, substitute the three hole kinds,
+  inline, assemble, format, write the file.
+- **Inline mode only.**
+
+### 7.3 Step 2 — source-gen the nodes (only if Step 1 proves out)
+
+- Replace the hand-written recipe nodes with a Roslyn **source generator** that
+  reads `[Snippet]` methods and emits `IExpr<T>`/`IStmt` nodes from the holes.
+
+### 7.4 Out of scope (parked — see §8)
+
+Source-gen (until Step 2), `Call` mode, implicit literal conversions,
+instance-derived names, context-based variations, raw/custom code, interface
+renames, snippet base-class.
+
+### 7.5 Done-when
+
+1. Running the tool on the `loop + var + sum` recipe emits a `ScriptData.cs` that
+   **compiles** and, when executed, **returns `10`** (`0+1+2+3+4`). ✅
+2. **Editing a snippet body** (e.g. the loop bound `<` → `<=`) **flows through** to
+   the output — proving the generator reads live snippet source, not a hardcoded
+   template. ✅ *(Note: the output variable **name** is recipe-controlled — it comes
+   from `LoopNode.I` / `Ref("i")`, not the marker. The `@i` marker is the hole's
+   identity, bound by convention to the node field `I`; in Step 2 the field is
+   generated from the marker, so they always agree.)*
+3. A deliberately wrong recipe (a `string` producer into an `int` hole) **fails to
+   compile** — `CS1503: cannot convert from 'string' to 'IExpr<int>'`. ✅
+
+---
+
+## 8. Post-spike backlog
+
+Revisit each **against running code**, once the Step-1 slice works. Kept out of the
+spike to keep the first cut minimal.
+
+1. **Variable names on the instance, not a recipe field** — derive the `@var` name
+   from the instance (binding / fluent `.Named("acc")`) instead of a `string`
+   field. *Test:* readability vs a positional field; survives nesting?
+2. **Implicit conversion operators for literals** — `new LoopNode(5)` via
+   `implicit operator IExpr<int>(int) => new Lit(...)`. *Test:* how far it composes;
+   does implicit wrapping ever hide a type error we'd want to see?
+3. **Recipe variations by context** — same recipe → different output by context
+   (target framework, flags, config). *Test:* where the branch lives — recipe, a
+   context object, or composition.
+4. **Custom code without a recipe** — an escape hatch (`Raw("…")` node / passthrough
+   block) for code not modeled as snippets. *Test:* coexistence with typed nodes;
+   effect on the final-compile gate.
+5. **Rename the interfaces** — `IStmt`/`IExpr<T>` are opaque. Find clearer,
+   domain-fit names. *Test:* what reads best in a real recipe.
+6. **Snippet base class vs attribute** — revisit `[Snippet]` attribute vs a base
+   class/interface. *Test:* does inheritance buy anything now that holes are
+   discovered by the generator, or is it ceremony?
+
+---
+
+## 9. Open questions / risks
+
+- **`@`-marker discovery robustness** — scanning parsed identifier nodes for `@`
+  is clean, but verify it never collides with a legitimately-escaped keyword
+  identifier the author actually wants literal.
+- **Inline limits** — inlining is safe for single-expression / simple bodies;
+  multi-statement snippets with locals need `Call` (Step-2+). Don't over-reach.
+- **Cross-snippet scope** — snippets compile in isolation, but a recipe can still
+  wire an out-of-scope name; that error only surfaces at the composition gate
+  (§4.6). Acceptable, but the error message quality matters for agent-first.
+- **Name wiring is stringly-typed** for now (`"acc"`, `"i"`). Backlog #1 addresses
+  this; until then, recipe authors must keep names consistent by hand.
