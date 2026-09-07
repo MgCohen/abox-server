@@ -14,7 +14,8 @@ for the full analysis and `MANIFEST.md` here for what travels.
 |---|---|
 | `catalog/` | An editable, checked-in catalog (the authoring mode). The meta floor (`_schema`, `kinds`) is verbatim; `blocks/finding.yaml` and `doctypes/brief.yaml` are **new vocabulary authored here** — neither exists in the engine's home catalog. |
 | `bundle/` | The author-agent surface that travels: `create-doc` (agent + command), `selector.md`, the `howto/` guides. |
-| `run.sh` | The proof: `check` the extended catalog, discover the new types, author + `validate` an instance, reject a bad one. |
+| `run.sh` | The authoring proof: `check` the extended catalog, discover the new types, author + `validate` an instance, reject a bad one. |
+| `gate.sh` | The layer-3 enforcement net: a harness-free driver that discovers every instance and blocks on any drift. |
 
 ## What it proves
 
@@ -32,6 +33,26 @@ bash run.sh   # PASS — new block + doctype authored as data; instances enforce
 
 The engine used is the already-proven Phase 1 copy — **same engine, new editable
 catalog**. That is the whole point: the catalog is what a home owns and extends.
+
+## Layer 3 — enforcing that validation actually runs
+
+Validation itself (does an element follow the schema) is the engine's `check`
+(catalog) and `validate` (instance). `gate.sh` adds the third layer: the net that
+makes conformance mandatory across a whole repo — what this repo's `Docs` test
+does, but with **zero xUnit / ParityGuard**.
+
+```
+bash gate.sh   # PASS — discovers every instance against the editable catalog and blocks on any drift
+```
+
+It discovers instances the way `DocInstances.Discover()` does — every `*.md` that
+opens with a `docType:` front-matter block (a plain README is skipped) — then
+`validate`s each against the `--root` catalog. A clean corpus passes; the moment a
+malformed instance drifts in, the gate exits non-zero and names it. Because it is
+just a shell driver shelling the engine (ADR 0015 process boundary), the same
+check can be a CI step or a git hook — the test-harness is one option for layer 3,
+not a requirement. The dependency only ever points test-engine → doc-engine, never
+the reverse.
 
 ## Why the catalog is repo-local here (not baked into the tool)
 
