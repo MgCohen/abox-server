@@ -1,0 +1,13 @@
+<Project>
+
+  <!-- Standalone, like every spike: no <Import> of the repo-root props, so the walk-up stops here and the
+       engine packs under settings it carries ITSELF — the bar an extracted repo would set. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+</Project>

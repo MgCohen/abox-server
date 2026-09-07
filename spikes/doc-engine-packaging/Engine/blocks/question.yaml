@@ -1,0 +1,9 @@
+type: question
+collection: true
+group: Questions
+description: A specific question the research sets out to answer.
+rubric:
+  one-question:    One concrete, answerable question per member; phrase it as a question.
+  why-it-matters:  Body says why it matters or scopes it; keep it tight.
+body:
+  type: markdown
