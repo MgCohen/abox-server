@@ -1,0 +1,18 @@
+docType: brief
+description: A short investigative brief — a headline summary, evidenced findings, and open questions.
+
+# Reuses `summary` and `open-question` from the shared registry; `finding` is the new block authored
+# alongside this doctype. Proves a new home extends the vocabulary with data, no engine change.
+blocks: [summary, finding, open-question]
+required: [summary, finding]
+
+attrs:
+  status:
+    enum: [draft, final]
+    default: draft
+
+rubric:
+  headline-first:     The summary leads with the takeaway, not a buried conclusion.
+  findings-evidenced: Every finding names the evidence it rests on.
+  right-type:         Facts sit in findings, unresolved calls in open questions.
+  no-filler:          No filler blocks.

@@ -1,0 +1,13 @@
+type: finding
+collection: true
+group: Findings
+description: One discovered fact and what it implies.
+rubric:
+  one-fact:   One finding per member — a single fact and the implication it carries.
+  evidenced:  Name the source or observation the finding rests on.
+  standalone: Reads without the surrounding brief.
+attrs:
+  impact:
+    type: string
+body:
+  type: markdown
