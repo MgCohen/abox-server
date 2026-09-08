@@ -119,6 +119,40 @@ bash spikes/doc-engine-authoring/run.sh   # PASS — new block + doctype authore
 The `create-doc` bundle ([`doc-engine-authoring/bundle/`](doc-engine-authoring/bundle))
 travels alongside — a topic-blind author agent that reads the catalog at runtime.
 
+### Bootstrapping a fresh catalog (the seed step)
+
+Custom blocks / doctypes / rubrics are **catalog data (YAML), not source** — a rubric
+is a `rubric:` field *inside* a block or doctype. So to scaffold your own vocabulary you
+never move C#; you need an **editable catalog** in the new repo for the tool to read via
+`--root`. A brand-new repo starts with none, so it must first get the **meta floor**:
+
+| Must seed | Why |
+|---|---|
+| `_schema/kind.schema.yaml` | the meta-schema everything is `check`ed against |
+| `kinds/block.yaml`, `kinds/doctype.yaml` | define what a block / doctype *is* |
+| a few starter `blocks/*.yaml` | so you extend, not start from zero |
+
+Two ways to obtain that starter catalog:
+
+| Option | How | Status |
+|---|---|---|
+| **A. Copy the catalog** | lift the catalog dir from this repo (or unzip the nupkg's `tools/net10.0/any/`) into `./doc-catalog`, then diverge | works today, manual |
+| **B. `docengine init`** | a verb that writes the tool's baked catalog out to `./doc-catalog` as editable YAML | **not built yet** — recommended addition |
+
+Option B is the clean bootstrap (the "seed the editable catalog on init, then let the home
+diverge" open question). Until it exists, use option A. Either way the loop is:
+
+```sh
+dotnet tool install --tool-path ./.tools ABox.DocEngine.Tool
+# seed ./doc-catalog  (docengine init  — or copy the catalog dir by hand)
+# edit doc-catalog/blocks/*.yaml, doctypes/*.yaml, rubric: fields — your vocabulary
+docengine check    --root ./doc-catalog          # gate the catalog
+docengine validate <doc> --root ./doc-catalog    # gate an instance
+```
+
+The binary carries the starter templates; the editable copy is what you own and extend —
+**no source, but you can still scaffold and grow the vocabulary.**
+
 ## 3. test-harness — the parity pillar
 
 Lifts off this repo's identity: the `ParityGuard` logic moves verbatim, the
@@ -180,6 +214,24 @@ Run each engine's spike; all print `PASS`. Then, in your new home:
 - [ ] parity suite green; an uncited `[Fact]` in scope fails the guard (teeth)
 - [ ] judge returns a per-criterion verdict for a sample rubric
 - [ ] layer-3 gate blocks a drifted instance in CI
+
+## Exporting to another repo — the file-move map
+
+For a local session lifting this into a new repo. Source lives in `tools/doc-engine/`
+here; the spikes under `spikes/` are the *proven shapes* to copy from. `<new>` is the
+target repo root.
+
+| Engine | Copy from → to | Then |
+|---|---|---|
+| **doc-engine (binary)** | `tools/doc-engine/` → its own home repo (or keep it here) | add `PackAsTool`/`ToolCommandName`/catalog-`<Content>` per `spikes/doc-engine-packaging/Engine/ABox.DocEngine.csproj`; add the `AppContext.BaseDirectory` fallback in `ResolveRoot` (see that spike's `Program.cs`); `dotnet pack`, publish to a feed |
+| **doc-engine (catalog)** | `tools/doc-engine/{_schema,kinds,blocks,doctypes}/` → `<new>/doc-catalog/` | this is the seed catalog `<new>` owns and extends; keep the meta floor, trim/add blocks + doctypes |
+| **judge** | `spikes/judge-packaging/bundle/.claude/{agents/judge.md,workflows/judge.js}` → `<new>/.claude/` | copy core verbatim; re-author `commands/judge*.md` + `skills/test-rulebook/` for `<new>`'s taxonomy |
+| **author agent** | `spikes/doc-engine-authoring/bundle/.claude/{agents,commands}/create-doc.*` → `<new>/.claude/` | repoint its engine call from `dotnet run --project tools/doc-engine` to installed `docengine --root ./doc-catalog` |
+| **test-harness** | `spikes/test-harness-packaging/Harness/{ParityGuard,RuleAttribute,TestMarkers,RepoRoot}.cs` → `<new>/tests/Harness/` | rename namespace; pick your root marker via `RepoRoot.LocateBy`; write your own `Rulebook.md` + `[Rule]` tests (copy `Sample/` as the shape) |
+| **layer-3 gate** | `spikes/doc-engine-authoring/gate.sh` → `<new>/` (or a CI step) | repoint `engine`/`catalog` vars to `<new>`'s installed tool + `doc-catalog` |
+
+Take only the rows you need — each engine is independent. In `<new>`, run the
+Verification checklist below to confirm the lift.
 
 ## What a real cutover repoints (protected paths — out of scope for the spikes)
 
