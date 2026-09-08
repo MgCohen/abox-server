@@ -1,0 +1,7 @@
+type: verification
+description: How "done" is proven.
+rubric:
+  concrete-checks: Name concrete checks — build, tests, and at least one behaviour run end-to-end.
+  end-to-end:      Not just "it compiles". One block, near the end.
+body:
+  type: markdown

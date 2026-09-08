@@ -1,0 +1,15 @@
+type: rule
+collection: true
+group: Rules
+description: One guarantee — a behaviour or invariant — stated as the heading, justified by its Why.
+rubric:
+  guarantee-not-implementation: States a behaviour or invariant guaranteed, not how it is coded.
+  one-per-rule: Exactly one guarantee, not several bundled.
+  why-justifies: The Why gives the property at stake, not a restatement of the header.
+labels:
+  Why:
+    required: true
+  Outcome:
+    required: false
+body:
+  type: markdown

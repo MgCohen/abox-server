@@ -1,0 +1,13 @@
+<Project>
+
+  <!-- Standalone, like every spike: no <Import> of the repo-root props. The harness must build under settings
+       it carries itself — net10 / nullable / warnings-as-errors — the bar its extracted repo would set. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,15 @@
+<Project>
+
+  <!-- Standalone, like every other spike: no <Import> of the repo-root props, so MSBuild's nearest-wins rule
+       stops the walk-up here. That is the whole point of this spike — the engine must build under settings it
+       carries ITSELF, not ones inherited from the host repo. These reproduce the repo's real bar
+       (net10 / nullable / warnings-as-errors) so a clean build here proves a clean build in an extracted repo. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+</Project>

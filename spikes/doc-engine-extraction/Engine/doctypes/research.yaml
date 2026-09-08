@@ -1,0 +1,24 @@
+docType: research
+description: Investigate questions against sources and record what was found.
+
+# Reuses `summary` and `open-question` from the shared block registry; the rest
+# are research-specific. (Proves blocks are shared across doc types.)
+blocks: [summary, question, expected-result, quotation, analysis, outcome, open-question]
+required: [summary, question, outcome]
+
+attrs:
+  status:
+    enum: [draft, final]
+    default: draft
+
+# Binary checks as `id: rule` — one list, for both authoring and grading.
+rubric:
+  coverage:               Every investigated question, key source, and the conclusion has a block.
+  right-type:             Content sits in the right block (questions → question, sources → quotation, conclusion → outcome).
+  no-filler:              No filler blocks.
+  standalone:             The doc stands alone — no references to the source, prior chat, or drafts.
+  sourced:                Every claim ties to a cited source; no unsupported assertions.
+  headline-first:         The summary leads with the finding, not a buried conclusion.
+  expectation-vs-outcome: The outcome says whether the result matched the expected-result.
+  questions-answered:     Each question is actually answered.
+  prose:                  Prose is substantive; bold marks labels, not emphasis.

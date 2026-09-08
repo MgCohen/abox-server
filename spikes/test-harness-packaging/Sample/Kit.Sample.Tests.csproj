@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- A consumer suite on the extracted harness — the shape any feature would take on the new home:
+       reference the harness engine, stamp RulebookDir so parity finds this suite's Rulebook in source. -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>Kit.Sample.Tests</RootNamespace>
+    <AssemblyName>Kit.Sample.Tests</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Harness/Kit.Tests.Harness.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="RulebookDir" Value="$(MSBuildProjectDirectory)" />
+  </ItemGroup>
+
+</Project>

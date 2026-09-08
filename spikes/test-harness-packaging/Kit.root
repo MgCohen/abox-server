@@ -1,0 +1,2 @@
+Root marker for the extracted-harness spike. Stands in for ABox.slnx: RepoRoot.LocateBy names its own marker,
+proving the "ABox.slnx" token is a seam a new home parameterizes, not a hardcoded dependency.

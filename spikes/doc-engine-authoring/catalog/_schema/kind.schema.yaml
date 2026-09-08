@@ -1,0 +1,22 @@
+# The ONE meta-schema. Every kinds/*.yaml conforms to this — and so does this
+# file (it is itself a kind), so the regress stops here. The engine knows no kind
+# names; a new enforced structure is a new kinds/*.yaml, no code change.
+name: kind
+description: The meta-schema every kind file conforms to — including itself.
+defs: kinds/*.yaml
+fields:
+  name:
+    kind: string
+    required: true
+  description:
+    kind: string
+    required: true
+  defs:
+    kind: string
+    required: true
+  fields:
+    kind: fieldmap
+    required: true
+  constraints:
+    kind: list
+    required: false
